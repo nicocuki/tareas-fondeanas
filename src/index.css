@@ -1,0 +1,72 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; background: #12100d; }
+.cs-root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Source Sans 3', system-ui, sans-serif;
+  color: #efe6cc;
+  min-height: 100vh;
+  min-height: 100dvh;
+  transition: background 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cs-mono { font-family: 'Special Elite', 'Courier New', monospace; letter-spacing: 0.5px; }
+.cs-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  hyphens: auto;
+  overflow-wrap: anywhere;
+  user-select: none;
+}
+.cs-card:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.45);
+}
+.cs-btn {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: filter 0.15s ease, transform 0.1s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.cs-btn:not(:disabled):hover { filter: brightness(1.1); }
+.cs-btn:not(:disabled):active { transform: scale(0.97); }
+.cs-btn:disabled { cursor: not-allowed; filter: saturate(0.4) brightness(0.7); }
+.cs-input { font-family: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #b3893a; outline-offset: 2px; }
+::selection { background: #b3893a; color: #2a2415; }
+
+/* Partida: jugadores a la izquierda, tablero al medio, reglas y chat a la derecha */
+.cs-layout { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "players" "side"; gap: 16px; align-items: start; }
+.cs-main { grid-area: main; min-width: 0; }
+.cs-players { grid-area: players; }
+.cs-side { grid-area: side; }
+@media (min-width: 960px) { .cs-layout { grid-template-columns: minmax(0, 1fr) 300px; grid-template-areas: "main players" "main side"; grid-template-rows: auto 1fr; } }
+@media (min-width: 1180px) { .cs-layout { grid-template-columns: 220px minmax(0, 1fr) 310px; grid-template-areas: "players main side"; grid-template-rows: auto; } }
+.cs-scroll { overflow-y: auto; overscroll-behavior: contain; }
+.cs-scroll::-webkit-scrollbar { width: 8px; }
+.cs-scroll::-webkit-scrollbar-thumb { background: #3a3225; border-radius: 4px; }
+.cs-credits { margin: 30px 2px 0; text-align: right; font-size: 10px; line-height: 1.6; color: #7d7360; }
+.cs-credits .cs-mono { font-size: 9px; letter-spacing: 1px; color: #6a6151; }
+details > summary::marker { color: #b3893a; }
+
+/* Badges para el sistema de Listo */
+.cs-badge-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(79, 125, 70, 0.25);
+  color: #a7d99f;
+  border: 1px solid rgba(79, 125, 70, 0.45);
+}
+.cs-badge-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(156, 145, 120, 0.15);
+  color: #b5a990;
+  border: 1px solid rgba(156, 145, 120, 0.25);
+}

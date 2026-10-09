@@ -1,0 +1,160 @@
+0.1.0 = Creacion del proyecto
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.1.1 = Bug Fix
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.1.2 = Diseño nuevo
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.1.3 = Regla nueva
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.2.0 = Nuevo juego (cafe o te)
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.2.1 = Creditos
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.2.2 = Modificación de texto en la descripción de Código Secreto en el menú de juegos
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.2.3 = Reorganización de estructura de carpetas (src/menu y src/codigo-secreto)
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.3.0 = Nuevo juego: Fútbol 2D (inspirado en HaxBall). Motor de física con colisiones circulares, rebotes, kicks, detección de goles, lobby con equipos y partidos temporizados.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.3.1 = Fútbol: Aumento sustancial de velocidad y aceleración de jugadores, menú de opciones con ESC (sin pausar el partido), y controles WASD + Espacio asignados al jugador propio por cliente.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.3.2 = Fútbol: Reducción de potencia y velocidad de la pelota, desaceleración natural en césped, jugador ligeramente más lento, resolución de colisión entre 2 jugadores aprisionando la pelota y orden de renderizado corregido (pelota por debajo del jugador).
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.3.3 = Fútbol: Corrección en el kick. El kick únicamente se aplica al hacer contacto sprite a sprite con la pelota (sin patear a distancia). El efecto de kick finaliza de inmediato al hacer contacto directo con la pelota o al soltar la tecla Espacio.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.4.0 = Fútbol: Eliminado el círculo negro decorativo de la pelota. Selección de mapas en las opciones del lobby (Canchas de 3, 5, 9 y 11 con dimensiones y arcos proporcionales). Opción de estámina (Shift para correr a velocidad normal consumiendo barra, caminar a 50% de velocidad sin Shift, y recarga automática tras 2s de descanso).
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.4.1 = Fútbol: Estado de KICK retenido sin pelota (con movimiento 25% más lento). Fuerza del pateo dinámica (777 de potencia máxima al toque o conducción instantánea decayendo a 420 tras 5s de carga continua). Desactivación del kick al colisionar con la pelota. Agregado control de Zoom hacia el jugador usando la rueda del mouse y teclas Q / E.
+
+0.4.2 = Fútbol: Laterales abiertos — zonas caminables fuera de los bordes superior e inferior de la cancha donde los jugadores pueden moverse libremente pero la pelota no puede salir. Terreno oscuro con línea punteada marca el límite del mundo.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.5.0 = Unificación visual y arquitectónica de los lobbys: Creación de componentes modulares compartidos en src/lobby (LobbyLayout, LobbyOptions, Segmented, OptionField, LobbyTeamCard, TeamRoleSlot, TeamRoster, LobbyActionSection). Todos los juegos actuales (Código Secreto, Café o Té, Fútbol) y los que se incorporen a futuro adoptan el diseño de lobby de Código Secreto para una experiencia consistente en toda la plataforma. Corregida la acumulación inicial de kickHoldTime en la física de fútbol.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.6.0 = Fútbol: Nuevo modificador de modo de juego «Pelotas o Coches» en el lobby. Modo Coches inspirado en Rocket League 2D con vista cenital: físicas vehiculares realistas sin movimiento en 4 direcciones tradicional, inercia y derrape con fricción lateral, radio de giro dependiente de la velocidad, freno rápido y marcha atrás progresiva tras detenerse por completo. Sin botón de patada: colisión física OBB transmitiendo mayor impulso frontal. Visuales detallados de autos 2D con orientación nítida.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.6.1 = Fútbol (Modo Coches): Reorganización de controles de conducción a esquema natural. W para avanzar hacia donde apunta el auto (adelante), S para retroceder / frenar (dirección contraria a W), A para girar a la izquierda (antihorario) y D para girar a la derecha (horario). Soporte idéntico con las flechas del teclado y actualización de la barra de controles en pantalla.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.6.2 = Fútbol (Modo Coches): Cancha rotada 90 grados a orientación vertical (de abajo hacia arriba). El Equipo Rojo defiende el arco inferior y ataca hacia arriba (arranca abajo apuntando hacia arriba), y el Equipo Azul defiende el arco superior y ataca hacia abajo (arranca arriba apuntando hacia abajo). Rediseño físico y visual con arcos en paredes superior e inferior, colisiones con postes, detección de goles adaptada y zoom/encuadre de cámara vertical optimizado.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.7.0 = Fútbol (Modo Coches): Incorporación de tres mecánicas avanzadas inspiradas en Rocket League 2D:
+- Sistema de Boost: medidor de turbo 0-100 por auto (consumo continuo mediante Shift, sin recarga pasiva) que otorga aceleración frontal adicional y velocidad punta superior.
+- Boost Pickups: pads distribuidos en la cancha vertical con recolección física y respawn automático (6 pads grandes de recarga completa +100 con orbes brillantes y respawn en 8s; 10 pads pequeños de +12 con rombos celestes y respawn en 4s). Clamp estricto a 100 de turbo.
+- Front Flip / Kick aéreo (Espacio): salto acrobático hacia adelante con impulso de avance e ilusión de rotación pitch 3D en 2D con cooldown de ~1.2s. Si se ejecuta lejos de la pelota, el auto salta en el aire sin ejercer fuerza a distancia.
+- HUD y efectos visuales de autos: medidor de Boost estilo Rocket League con indicador circular en pantalla, pastilla de cooldown de Flip, llamaradas de turbo en escapes traseros y estelas dinámicas durante el flip.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.7.1 = Fútbol (Modo Coches): Controles de dirección estilo Rocket League y ajustes de conducción:
+- Dirección de ruedas reales: presionar A o D posiciona el ángulo de las ruedas delanteras (steerAngle) en vez de hacer rotar el auto sobre su propio eje. Si el auto está detenido, presionar A/D NO hace girar el chasis.
+- Rotación dinámica al acelerar: al avanzar con W (o retroceder con S), el chasis curva progresivamente hacia donde apuntan las ruedas.
+- Flecha HUD indicadora de ruedas: se añade una flecha frontal en la punta del auto que apunta en tiempo real en la dirección exacta de las ruedas delanteras, iluminándose en amarillo al girar para saber hacia dónde irá el auto antes de acelerar. Además, los neumáticos delanteros giran físicamente sobre el sprite del auto.
+- Conducción optimizada: desaceleración post-boost más ágil, impulso de arranque de turbo inmediato, toquecitos dinámicos al llevar la pelota sin frenar al vehículo y pelota con rodamiento fluido y natural.
+
+0.7.2 = Arreglos fisica de pelota
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.7.3 = Arreglos de mantenimiento:
+- Fútbol online arreglado: las reglas de la base denegaban la rama `futbol/` (donde se sincronizan el estado del partido y los inputs), así que el modo online no funcionaba en el sitio publicado. Se agregó la regla y se desplegó.
+- Limpieza de la mudanza a carpetas: se borraron los 8 archivos sueltos de `src/` que solo reexportaban (`game.js`, `words.js`, `MainMenu.jsx`, `Credits.jsx`, `Chat.jsx`, `Options.jsx`, `Players.jsx`, `Rules.jsx`) y el único import que quedaba apuntando a uno de ellos pasa a la ruta real.
+- La version que se muestra en pantalla (APP_VERSION) estaba clavada en v0.4.2 y ahora acompaña al changelog.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.8.0 = Fútbol: nueva sincronización multijugador (se terminó el lag del segundo jugador):
+- Cada pantalla mueve a su jugador al instante con sus teclas; ya no espera a Firebase ni lo corrige el host. Antes, 20 veces por segundo, el segundo jugador era arrastrado hacia la posición vieja que el host tenía de él y su velocidad se pisaba: por eso se trababa y el host no.
+- Cada jugador publica una foto compacta de sí mismo 20 veces por segundo (unos 100 bytes; antes el host mandaba el estado entero, hasta 2,7 KB por envío en modo coches). Quieto, solo avisa cada medio segundo.
+- Los demás jugadores se dibujan interpolando entre fotos, un poco en el pasado según lo que tarde la conexión. Si las fotos se atrasan, se los sigue simulando con la física y las teclas que tenían apretadas, y la diferencia se funde en vez de saltar.
+- La pelota la simula quien la tocó último: tu toque responde en el mismo cuadro, seas host o no.
+- Arreglado: algunos goles se contaban dos veces (los detectaban las dos pantallas). Ahora lo declara solo quien tenía la pelota, con transacción.
+- El reloj, los festejos y las cuentas regresivas usan la hora del servidor: pasan a la vez en todas las pantallas.
+- Menos trabajo: escuchas separadas por jugador, pelota y partido (antes cualquier cambio bajaba y armaba todo el estado), escrituras que nunca se encolan, el marcador ya no redibuja la interfaz 60 veces por segundo, y un gol ya no reinicia la simulación entera.
+- Si se pierde el foco de la ventana con una tecla apretada, se suelta sola (antes el jugador quedaba andando).
+
+0.8.1 = Futbol: laterales
+- Se puede pasar por detras de los arcos
+- Se agrego "beta" a Futbol en el menu
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.9.0 = Fútbol: Modo Juego Local (1v1 en una misma pantalla):
+- Nueva opción en el menú de fútbol para crear una partida local en el mismo teclado sin necesidad de internet.
+- Jugador 1 (Equipo Rojo): Movimiento con WASD, patada con ESPACIO y correr con SHIFT Izquierdo (si el modo estámina está activo).
+- Jugador 2 (Equipo Azul): Movimiento con Flechitas, patada con ENTER y correr con SHIFT Derecho (si el modo estámina está activo).
+- Simulación física simultánea de ambos jugadores a 60 FPS locales con cámara siguiendo la pelota.
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.10.0 = Fútbol online: conexión directa entre jugadores y la misma pelota en todas las pantallas
+- Las jugadas ahora viajan directo de una pantalla a otra (WebRTC), sin pasar por el servidor. Antes cada foto pasaba por Firebase y tardaba de 200 a 1.200 ms en llegar, en ráfagas; ahora tarda lo que tarda la red entre los dos (unos 15 ms en la prueba) y se manda una por cuadro en vez de 20 por segundo.
+- A los demás jugadores se los dibuja con unos 50 ms de atraso (antes, entre 300 ms y un segundo).
+- Firebase sigue presentando a los jugadores y guardando el marcador. Si con alguien no se puede conectar directo (hay redes que lo bloquean), sus jugadas siguen yendo por Firebase como antes, sin cortar el partido.
+- Debajo del reloj se ve cómo está la conexión: «conexión directa», «mixta» (directa con algunos) o «lenta» (todo por el servidor).
+- Los goles también llegan por la conexión directa: el festejo aparece a la vez en todas las pantallas.
+- Arreglado: la pelota se comportaba distinto según la pantalla. La física avanzaba en pasos del largo de cada cuadro, así que una pantalla de 144 Hz y otra de 60 Hz resolvían distinto los choques y las patadas. Ahora todas simulan en pasos fijos de 1/120 de segundo y dan exactamente lo mismo (también en el 1v1 local).
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.10.1 = Fútbol coches: derrape con Control
+- Manteniendo Control (Ctrl Izq para el Jugador 1 y Ctrl Der para el Jugador 2 en el 1v1 local) el auto pierde agarre de costado y gira más rápido: se le abre la cola y sigue patinando para donde venía. Al soltar, recupera el agarre.
+- Mientras derrapa deja marcas de goma en la cancha, que se borran solas. Los demás jugadores también ven el derrape.
+- Como Ctrl+W cierra la pestaña (y el navegador no deja evitarlo), durante un partido de coches el navegador pregunta antes de cerrarla. Control ya no dispara otros atajos del navegador (Ctrl+D, Ctrl+S…).
+- Arreglado: al empezar el partido, a veces se veía a los demás con casi medio segundo de atraso durante varios segundos, hasta que se movían un rato. Quedaban medidas las demoras de Firebase de antes de abrirse la conexión directa.
+
+0.10.15 = Arreglo bug de goles
+- Ya no se suman goles adicionales por error
+
+--------------------------------------------------------------------------------------------------------------------
+
+0.10.2 = Fútbol online: a veces se veía al otro jugador con 300 ms de atraso aunque hubiera conexión directa
+- Después de estar quieto unos segundos, al arrancar se lo dibujaba con 300-400 ms de atraso, que tardaba varios segundos en bajar. La copia de respaldo que va por Firebase una vez por segundo a veces llegaba más nueva que el último aviso por conexión directa, y su demora (la de Firebase) contaba para decidir cuánto atrasar el dibujo. Ahora esa copia sigue sirviendo de respaldo pero su demora no cuenta.
+- Si la hora que estima Firebase para una pantalla estaba atrás de la de la otra (pasa seguido, puede errar cientos de ms), se veía al otro siempre ~300 ms tarde. El retraso tenía un mínimo fijo que convertía esa diferencia de relojes en atraso de verdad. Ahora los límites son relativos a lo medido.
+- Medido con el reloj de la máquina en las dos pantallas: el otro jugador se ve con 33-36 ms de atraso en todos los casos (antes, hasta 360 ms).
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 0.11.0 = Trazo Loco: teléfono descompuesto visual multijugador integrado a Tareas Veganas.
+- Salas Firebase con códigos e invitaciones, avatares, anfitrión, máximo configurable y reconexión.
+- Modos Normal, Imitación, Historia y Sandwich con secuencias propias; las demás tarjetas tienen candado.
+- Editor táctil con figuras, balde, colores, grosor, goma, limpiar, deshacer y rehacer.
+- Entregas privadas por participante con Firebase Authentication anónimo y reglas que validan asignaciones, capacidad y avances.
+- Reloj del servidor, guardado automático, borradores recuperables y transferencia del anfitrión.
+- Revelación progresiva, reproducción, álbumes y revancha.
+- Pruebas de lógica, seguridad en emulador y partidas completas en navegadores separados.
+- Hosting y nuevas reglas publicados el 08/10/2026; se conservan las reglas vigentes de los demás juegos. Pendiente inicializar Authentication y habilitar Anónimo desde Firebase Console. El usuario pidió retomar ese paso en otra sesión; continuidad guardada en CONTINUAR_GARTIC.md.

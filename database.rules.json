@@ -1,0 +1,142 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$code": {
+        ".read": "$code.matches(/^[A-Z]{4}$/)",
+        ".write": "$code.matches(/^[A-Z]{4}$/)",
+        ".validate": "newData.isString() && newData.val().length < 30000"
+      }
+    },
+    "futbol": {
+      "$code": {
+        ".read": "$code.matches(/^[A-Z]{4}$/)",
+        ".write": "$code.matches(/^[A-Z]{4}$/)"
+      }
+    },
+    "garticRooms": {
+      "$code": {
+        ".read": "auth != null && $code.matches(/^[A-Z]{4}$/)",
+        ".write": "auth != null && !data.exists() && newData.child('hostId').val() == auth.uid && newData.child('players').child(auth.uid).exists() && newData.child('slots/0').val() == auth.uid && newData.child('state/phase').val() == 'lobby' && $code.matches(/^[A-Z]{4}$/)",
+        ".validate": "newData.hasChildren(['hostId','players','slots','mode','settings','state']) && (!newData.child('slots/0').exists() || (newData.child('players').child(newData.child('slots/0').val()).exists() && newData.child('players').child(newData.child('slots/0').val()).child('index').val() == 0)) && (!newData.child('slots/1').exists() || (newData.child('players').child(newData.child('slots/1').val()).exists() && newData.child('players').child(newData.child('slots/1').val()).child('index').val() == 1)) && (!newData.child('slots/2').exists() || (newData.child('players').child(newData.child('slots/2').val()).exists() && newData.child('players').child(newData.child('slots/2').val()).child('index').val() == 2)) && (!newData.child('slots/3').exists() || (newData.child('players').child(newData.child('slots/3').val()).exists() && newData.child('players').child(newData.child('slots/3').val()).child('index').val() == 3)) && (!newData.child('slots/4').exists() || (newData.child('players').child(newData.child('slots/4').val()).exists() && newData.child('players').child(newData.child('slots/4').val()).child('index').val() == 4)) && (!newData.child('slots/5').exists() || (newData.child('players').child(newData.child('slots/5').val()).exists() && newData.child('players').child(newData.child('slots/5').val()).child('index').val() == 5)) && (!newData.child('slots/6').exists() || (newData.child('players').child(newData.child('slots/6').val()).exists() && newData.child('players').child(newData.child('slots/6').val()).child('index').val() == 6)) && (!newData.child('slots/7').exists() || (newData.child('players').child(newData.child('slots/7').val()).exists() && newData.child('players').child(newData.child('slots/7').val()).child('index').val() == 7)) && (!newData.child('slots/8').exists() || (newData.child('players').child(newData.child('slots/8').val()).exists() && newData.child('players').child(newData.child('slots/8').val()).child('index').val() == 8)) && (!newData.child('slots/9').exists() || (newData.child('players').child(newData.child('slots/9').val()).exists() && newData.child('players').child(newData.child('slots/9').val()).child('index').val() == 9)) && (!newData.child('slots/10').exists() || (newData.child('players').child(newData.child('slots/10').val()).exists() && newData.child('players').child(newData.child('slots/10').val()).child('index').val() == 10)) && (!newData.child('slots/11').exists() || (newData.child('players').child(newData.child('slots/11').val()).exists() && newData.child('players').child(newData.child('slots/11').val()).child('index').val() == 11)) && (!newData.child('slots/12').exists() || (newData.child('players').child(newData.child('slots/12').val()).exists() && newData.child('players').child(newData.child('slots/12').val()).child('index').val() == 12)) && (!newData.child('slots/13').exists() || (newData.child('players').child(newData.child('slots/13').val()).exists() && newData.child('players').child(newData.child('slots/13').val()).child('index').val() == 13)) && (!newData.child('slots/14').exists() || (newData.child('players').child(newData.child('slots/14').val()).exists() && newData.child('players').child(newData.child('slots/14').val()).child('index').val() == 14)) && (!newData.child('slots/15').exists() || (newData.child('players').child(newData.child('slots/15').val()).exists() && newData.child('players').child(newData.child('slots/15').val()).child('index').val() == 15)) && (!newData.child('slots/16').exists() || (newData.child('players').child(newData.child('slots/16').val()).exists() && newData.child('players').child(newData.child('slots/16').val()).child('index').val() == 16)) && (!newData.child('slots/17').exists() || (newData.child('players').child(newData.child('slots/17').val()).exists() && newData.child('players').child(newData.child('slots/17').val()).child('index').val() == 17)) && (!newData.child('slots/18').exists() || (newData.child('players').child(newData.child('slots/18').val()).exists() && newData.child('players').child(newData.child('slots/18').val()).child('index').val() == 18)) && (!newData.child('slots/19').exists() || (newData.child('players').child(newData.child('slots/19').val()).exists() && newData.child('players').child(newData.child('slots/19').val()).child('index').val() == 19)) && (data.exists() || (!newData.child('slots/1').exists() && !newData.child('slots/2').exists() && !newData.child('slots/3').exists() && !newData.child('slots/4').exists() && !newData.child('slots/5').exists() && !newData.child('slots/6').exists() && !newData.child('slots/7').exists() && !newData.child('slots/8').exists() && !newData.child('slots/9').exists() && !newData.child('slots/10').exists() && !newData.child('slots/11').exists() && !newData.child('slots/12').exists() && !newData.child('slots/13').exists() && !newData.child('slots/14').exists() && !newData.child('slots/15').exists() && !newData.child('slots/16').exists() && !newData.child('slots/17').exists() && !newData.child('slots/18').exists() && !newData.child('slots/19').exists()))",
+        "hostId": {
+          ".write": "auth != null && root.child('garticRooms').child($code).child('players').child(auth.uid).exists() && newData.isString() && root.child('garticRooms').child($code).child('players').child(newData.val()).exists() && !root.child('garticPresence').child($code).child(data.val()).exists() && root.child('garticPresence').child($code).child(newData.val()).exists()",
+          ".validate": "newData.isString()"
+        },
+        "mode": {
+          ".write": "auth != null && root.child('garticRooms').child($code).child('players').child(auth.uid).exists() && auth.uid == root.child('garticRooms').child($code).child('hostId').val() && root.child('garticRooms').child($code).child('state').child('phase').val() == 'lobby'",
+          ".validate": "newData.val() == 'normal' || newData.val() == 'imitation' || newData.val() == 'story' || newData.val() == 'sandwich'"
+        },
+        "settings": {
+          ".write": "auth != null && root.child('garticRooms').child($code).child('players').child(auth.uid).exists() && auth.uid == root.child('garticRooms').child($code).child('hostId').val() && root.child('garticRooms').child($code).child('state').child('phase').val() == 'lobby'",
+          ".validate": "newData.hasChildren(['maxPlayers','seconds']) && newData.child('maxPlayers').isNumber() && newData.child('maxPlayers').val() >= 3 && newData.child('maxPlayers').val() <= 20 && newData.child('maxPlayers').val() % 1 == 0 && (newData.child('seconds').val() == 45 || newData.child('seconds').val() == 60 || newData.child('seconds').val() == 90 || newData.child('seconds').val() == 120) && (newData.child('maxPlayers').val() > 0 || !newData.parent().child('slots/0').exists()) && (newData.child('maxPlayers').val() > 1 || !newData.parent().child('slots/1').exists()) && (newData.child('maxPlayers').val() > 2 || !newData.parent().child('slots/2').exists()) && (newData.child('maxPlayers').val() > 3 || !newData.parent().child('slots/3').exists()) && (newData.child('maxPlayers').val() > 4 || !newData.parent().child('slots/4').exists()) && (newData.child('maxPlayers').val() > 5 || !newData.parent().child('slots/5').exists()) && (newData.child('maxPlayers').val() > 6 || !newData.parent().child('slots/6').exists()) && (newData.child('maxPlayers').val() > 7 || !newData.parent().child('slots/7').exists()) && (newData.child('maxPlayers').val() > 8 || !newData.parent().child('slots/8').exists()) && (newData.child('maxPlayers').val() > 9 || !newData.parent().child('slots/9').exists()) && (newData.child('maxPlayers').val() > 10 || !newData.parent().child('slots/10').exists()) && (newData.child('maxPlayers').val() > 11 || !newData.parent().child('slots/11').exists()) && (newData.child('maxPlayers').val() > 12 || !newData.parent().child('slots/12').exists()) && (newData.child('maxPlayers').val() > 13 || !newData.parent().child('slots/13').exists()) && (newData.child('maxPlayers').val() > 14 || !newData.parent().child('slots/14').exists()) && (newData.child('maxPlayers').val() > 15 || !newData.parent().child('slots/15').exists()) && (newData.child('maxPlayers').val() > 16 || !newData.parent().child('slots/16').exists()) && (newData.child('maxPlayers').val() > 17 || !newData.parent().child('slots/17').exists()) && (newData.child('maxPlayers').val() > 18 || !newData.parent().child('slots/18').exists()) && (newData.child('maxPlayers').val() > 19 || !newData.parent().child('slots/19').exists())",
+          "maxPlayers": {},
+          "seconds": {},
+          "$other": {
+            ".validate": false
+          }
+        },
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid && root.child('garticRooms').child($code).child('state').child('phase').val() == 'lobby'",
+            ".validate": "newData.hasChildren(['name','avatar','index']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 24 && newData.child('avatar').isString() && newData.child('avatar').val().length <= 8 && newData.child('index').isNumber() && newData.child('index').val() % 1 == 0 && newData.child('index').val() >= 0 && newData.child('index').val() < newData.parent().parent().child('settings/maxPlayers').val() && newData.parent().parent().child('slots').child(newData.child('index').val() + '').val() == $uid",
+            "name": {},
+            "avatar": {},
+            "index": {},
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "state": {
+          ".write": "auth != null && root.child('garticRooms').child($code).child('players').child(auth.uid).exists() && newData.exists() && ((data.child('phase').val() == 'lobby' && newData.child('phase').val() == 'playing' && auth.uid == root.child('garticRooms').child($code).child('hostId').val() && newData.child('round').val() == 0 && newData.child('match').val() != data.child('match').val() && newData.child('mode').val() == root.child('garticRooms').child($code).child('mode').val() && newData.child('seconds').val() == root.child('garticRooms').child($code).child('settings/seconds').val() && newData.child('count').val() <= root.child('garticRooms').child($code).child('settings/maxPlayers').val()) || (data.child('phase').val() == 'playing' && data.child('positions').child(auth.uid).exists() && newData.child('round').val() == data.child('round').val() + 1 && newData.child('match').val() == data.child('match').val() && (((data.child('count').val() <= 0 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/0').val()).val() == true) && (data.child('count').val() <= 1 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/1').val()).val() == true) && (data.child('count').val() <= 2 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/2').val()).val() == true) && (data.child('count').val() <= 3 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/3').val()).val() == true) && (data.child('count').val() <= 4 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/4').val()).val() == true) && (data.child('count').val() <= 5 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/5').val()).val() == true) && (data.child('count').val() <= 6 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/6').val()).val() == true) && (data.child('count').val() <= 7 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/7').val()).val() == true) && (data.child('count').val() <= 8 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/8').val()).val() == true) && (data.child('count').val() <= 9 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/9').val()).val() == true) && (data.child('count').val() <= 10 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/10').val()).val() == true) && (data.child('count').val() <= 11 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/11').val()).val() == true) && (data.child('count').val() <= 12 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/12').val()).val() == true) && (data.child('count').val() <= 13 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/13').val()).val() == true) && (data.child('count').val() <= 14 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/14').val()).val() == true) && (data.child('count').val() <= 15 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/15').val()).val() == true) && (data.child('count').val() <= 16 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/16').val()).val() == true) && (data.child('count').val() <= 17 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/17').val()).val() == true) && (data.child('count').val() <= 18 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/18').val()).val() == true) && (data.child('count').val() <= 19 || root.child('garticReady').child($code).child(data.child('match').val()).child(data.child('round').val() + '').child(data.child('order/19').val()).val() == true)) || now >= data.child('startedAt').val() + data.child('duration').val() + 5000) && ((newData.child('round').val() < data.child('count').val() && newData.child('phase').val() == 'playing') || (newData.child('round').val() == data.child('count').val() && newData.child('phase').val() == 'reveal'))) || (data.child('phase').val() == 'reveal' && newData.child('phase').val() == 'lobby' && auth.uid == root.child('garticRooms').child($code).child('hostId').val()))",
+          ".validate": "(newData.child('phase').val() == 'lobby' && newData.child('match').val() == 'none' && newData.child('round').val() == 0) || (newData.hasChildren(['phase','match','round','count','mode','seconds','order','positions','startedAt','duration']) && newData.child('match').isString() && newData.child('match').val().length <= 40 && newData.child('startedAt').val() == now && newData.child('count').val() >= 3 && newData.child('count').val() <= 20 && (newData.child('count').val() <= 0 || newData.child('order/0').exists()) && (newData.child('count').val() <= 1 || newData.child('order/1').exists()) && (newData.child('count').val() <= 2 || newData.child('order/2').exists()) && (newData.child('count').val() <= 3 || newData.child('order/3').exists()) && (newData.child('count').val() <= 4 || newData.child('order/4').exists()) && (newData.child('count').val() <= 5 || newData.child('order/5').exists()) && (newData.child('count').val() <= 6 || newData.child('order/6').exists()) && (newData.child('count').val() <= 7 || newData.child('order/7').exists()) && (newData.child('count').val() <= 8 || newData.child('order/8').exists()) && (newData.child('count').val() <= 9 || newData.child('order/9').exists()) && (newData.child('count').val() <= 10 || newData.child('order/10').exists()) && (newData.child('count').val() <= 11 || newData.child('order/11').exists()) && (newData.child('count').val() <= 12 || newData.child('order/12').exists()) && (newData.child('count').val() <= 13 || newData.child('order/13').exists()) && (newData.child('count').val() <= 14 || newData.child('order/14').exists()) && (newData.child('count').val() <= 15 || newData.child('order/15').exists()) && (newData.child('count').val() <= 16 || newData.child('order/16').exists()) && (newData.child('count').val() <= 17 || newData.child('order/17').exists()) && (newData.child('count').val() <= 18 || newData.child('order/18').exists()) && (newData.child('count').val() <= 19 || newData.child('order/19').exists()) && newData.child('round').isNumber() && newData.child('round').val() % 1 == 0 && newData.child('round').val() >= 0 && newData.child('round').val() <= newData.child('count').val() && (newData.child('mode').val() == 'normal' || newData.child('mode').val() == 'imitation' || newData.child('mode').val() == 'story' || newData.child('mode').val() == 'sandwich') && (newData.child('seconds').val() == 45 || newData.child('seconds').val() == 60 || newData.child('seconds').val() == 90 || newData.child('seconds').val() == 120) && ((newData.child('phase').val() == 'reveal' && newData.child('duration').val() == 0) || (newData.child('phase').val() == 'playing' && ((newData.child('mode').val() != 'imitation' && newData.child('duration').val() == newData.child('seconds').val() * 1000) || (newData.child('mode').val() == 'imitation' && newData.child('duration').val() == ((newData.child('seconds').val() - newData.child('round').val() * 10 < 15) ? 15 : newData.child('seconds').val() - newData.child('round').val() * 10) * 1000)))))",
+          "match": {
+            ".validate": "!(root.child('garticRooms').child($code).child('state').child('phase').val() == 'playing') || (data.exists() && newData.val() == data.val())"
+          },
+          "count": {
+            ".validate": "!(root.child('garticRooms').child($code).child('state').child('phase').val() == 'playing') || (data.exists() && newData.val() == data.val())"
+          },
+          "mode": {
+            ".validate": "!(root.child('garticRooms').child($code).child('state').child('phase').val() == 'playing') || (data.exists() && newData.val() == data.val())"
+          },
+          "seconds": {
+            ".validate": "!(root.child('garticRooms').child($code).child('state').child('phase').val() == 'playing') || (data.exists() && newData.val() == data.val())"
+          },
+          "order": {
+            "$index": {
+              ".validate": "newData.isString() && newData.parent().parent().child('positions').child(newData.val()).val() + '' == $index && (!(root.child('garticRooms').child($code).child('state').child('phase').val() == 'playing') || (data.exists() && newData.val() == data.val())) && (!(root.child('garticRooms').child($code).child('state').child('phase').val() == 'playing') ? root.child('garticRooms').child($code).child('players').child(newData.val()).exists() && root.child('garticPresence').child($code).child(newData.val()).exists() : true)"
+            }
+          },
+          "positions": {
+            "$uid": {
+              ".validate": "newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= 0 && newData.val() < newData.parent().parent().child('count').val() && newData.parent().parent().child('order').child(newData.val() + '').val() == $uid && (!(root.child('garticRooms').child($code).child('state').child('phase').val() == 'playing') || (data.exists() && newData.val() == data.val()))"
+            }
+          },
+          "phase": {},
+          "round": {},
+          "startedAt": {},
+          "duration": {},
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        },
+        "slots": {
+          "$index": {
+            ".write": "auth != null && root.child('garticRooms').child($code).child('state').child('phase').val() == 'lobby' && ((!data.exists() && newData.val() == auth.uid) || (data.val() == auth.uid && !newData.exists()))",
+            ".validate": "newData.isString() && newData.parent().parent().child('players').child(newData.val()).child('index').isNumber() && newData.parent().parent().child('players').child(newData.val()).child('index').val() + '' == $index"
+          }
+        }
+      }
+    },
+    "garticPresence": {
+      "$code": {
+        ".read": "auth != null && root.child('garticRooms').child($code).child('players').child(auth.uid).exists()",
+        "$uid": {
+          "$connection": {
+            ".write": "auth != null && auth.uid == $uid && root.child('garticRooms').child($code).child('players').child($uid).exists()",
+            ".validate": "newData.val() == true"
+          }
+        }
+      }
+    },
+    "garticReady": {
+      "$code": {
+        "$match": {
+          "$round": {
+            ".read": "auth != null && root.child('garticRooms').child($code).child('players').child(auth.uid).exists() && root.child('garticRooms').child($code).child('state').child('positions').child(auth.uid).exists() && root.child('garticRooms').child($code).child('state').child('match').val() == $match",
+            "$uid": {
+              ".write": "auth != null && root.child('garticRooms').child($code).child('players').child(auth.uid).exists() && root.child('garticRooms').child($code).child('state').child('positions').child(auth.uid).exists() && auth.uid == $uid && root.child('garticRooms').child($code).child('state').child('phase').val() == 'playing' && root.child('garticRooms').child($code).child('state').child('match').val() == $match && root.child('garticRooms').child($code).child('state').child('round').val() + '' == $round && newData.val() == true && root.child('garticSteps').child($code).child($match).child($round).child($uid).exists()",
+              ".validate": "newData.val() == true"
+            }
+          }
+        }
+      }
+    },
+    "garticSteps": {
+      "$code": {
+        "$match": {
+          ".read": "auth != null && root.child('garticRooms').child($code).child('players').child(auth.uid).exists() && root.child('garticRooms').child($code).child('state').child('phase').val() == 'reveal' && root.child('garticRooms').child($code).child('state').child('match').val() == $match",
+          "$round": {
+            "$uid": {
+              ".read": "auth != null && root.child('garticRooms').child($code).child('players').child(auth.uid).exists() && (auth.uid == $uid || (root.child('garticRooms').child($code).child('state').child('phase').val() == 'playing' && root.child('garticRooms').child($code).child('state').child('match').val() == $match && (root.child('garticRooms').child($code).child('state').child('round').val() - 1) + '' == $round && root.child('garticRooms').child($code).child('state').child('positions').child(auth.uid).val() == (root.child('garticRooms').child($code).child('state').child('positions').child($uid).val() + 1) % root.child('garticRooms').child($code).child('state').child('count').val()))",
+              ".write": "auth != null && root.child('garticRooms').child($code).child('players').child(auth.uid).exists() && root.child('garticRooms').child($code).child('state').child('positions').child(auth.uid).exists() && auth.uid == $uid && root.child('garticRooms').child($code).child('state').child('phase').val() == 'playing' && root.child('garticRooms').child($code).child('state').child('match').val() == $match && root.child('garticRooms').child($code).child('state').child('round').val() + '' == $round && newData.exists() && !root.child('garticReady').child($code).child($match).child($round).child($uid).exists() && now <= root.child('garticRooms').child($code).child('state').child('startedAt').val() + root.child('garticRooms').child($code).child('state').child('duration').val() + 5000",
+              ".validate": "newData.hasChildren(['type','content','authorId','order']) && newData.child('authorId').val() == $uid && newData.child('order').val() == root.child('garticRooms').child($code).child('state').child('round').val() && newData.child('content').isString() && (((root.child('garticRooms').child($code).child('state').child('mode').val() == 'imitation' || (root.child('garticRooms').child($code).child('state').child('mode').val() == 'normal' && root.child('garticRooms').child($code).child('state').child('round').val() % 2 == 1) || (root.child('garticRooms').child($code).child('state').child('mode').val() == 'sandwich' && root.child('garticRooms').child($code).child('state').child('round').val() > 0 && root.child('garticRooms').child($code).child('state').child('round').val() < root.child('garticRooms').child($code).child('state').child('count').val() - 1)) && newData.child('type').val() == 'drawing' && (newData.child('content').val() == '' || (newData.child('content').val().beginsWith('data:image/png;base64,') && newData.child('content').val().length <= 600000))) || (!(root.child('garticRooms').child($code).child('state').child('mode').val() == 'imitation' || (root.child('garticRooms').child($code).child('state').child('mode').val() == 'normal' && root.child('garticRooms').child($code).child('state').child('round').val() % 2 == 1) || (root.child('garticRooms').child($code).child('state').child('mode').val() == 'sandwich' && root.child('garticRooms').child($code).child('state').child('round').val() > 0 && root.child('garticRooms').child($code).child('state').child('round').val() < root.child('garticRooms').child($code).child('state').child('count').val() - 1)) && newData.child('type').val() == 'text' && newData.child('content').val().length <= 300))",
+              "type": {},
+              "content": {},
+              "authorId": {},
+              "order": {},
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

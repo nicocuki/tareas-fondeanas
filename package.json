@@ -1,0 +1,24 @@
+{
+  "name": "codigo-secreto",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:gartic:rules": "node --test tests/gartic.rules.mjs",
+    "test:gartic:browser": "node tests/gartic.browser.mjs"
+  },
+  "type": "module",
+  "dependencies": {
+    "firebase": "^12.19.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.64.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "vite": "^8.3.0"
+  }
+}
