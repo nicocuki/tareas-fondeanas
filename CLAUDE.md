@@ -167,13 +167,14 @@ por una versión anterior siga abriéndose sin romper.
 |---|---|
 | `src/codigo-secreto/game.js` | Reducer, reglas, validaciones, generación del tablero de Código Secreto |
 | `src/codigo-secreto/words.js` | 980 palabras únicas del pozo |
-| `src/menu/MainMenu.jsx` `src/menu/Credits.jsx` | Menú principal de selección de juegos y créditos |
 | `src/cafeote/` | Componentes y lógica del juego Café o Té |
 | `src/futbol/` | Componentes, física y lógica del juego Fútbol 2D |
 | `src/lobby/` | Componentes unificados y reutilizables para las salas de espera de todos los juegos |
-| `src/App.jsx` | Pantalla principal, enrutador de juegos y estado local |
+| `src/App.jsx` | Enrutador: qué juego se muestra, dentro del marco común |
+| `src/codigo-secreto/CodigoSecretoApp.jsx` | Pantallas de Código Secreto (entrada, sala de espera, partida) |
+| `src/ui/` | Marco común: header, menú hamburguesa, portada, catálogo de juegos, perfil, temas y novedades (ver *Diseño*) |
 | `src/codigo-secreto/Options.jsx` `Chat.jsx` `Rules.jsx` `Players.jsx` | Paneles de la interfaz de Código Secreto |
-| `src/theme.js` | Colores y estilos compartidos |
+| `src/theme.js` | Colores y estilos para los estilos en línea de los juegos (apuntan a las variables de `src/ui/tokens.css`) |
 | `src/gartic/` | Componentes y lógica de Trazo Loco (ver `docs/GARTIC.md`) |
 | `src/storage.js` | Salas (`rooms/`) y canal del fútbol sobre el servidor de salas |
 | `src/realtime.js` | Cliente del servidor de salas, con la misma forma que Firebase Realtime Database |
@@ -192,6 +193,24 @@ celular va todo apilado con el tablero primero.
 
 `docs/captura.png` es la imagen del README: una partida armada a mano con `game.js`, escrita en
 la base y abierta como el espía rojo. Si la interfaz cambia mucho, conviene rehacerla.
+
+### Diseño (src/ui)
+
+Todo pasa por **variables CSS** en `src/ui/tokens.css`: tema oscuro (pizarrón con resaltador amarillo) y
+claro (hoja con birome roja), elegidos en Ajustes y guardados en `tf:preferencias`. `theme.js`
+traduce `COLORS` a esas variables, así los estilos en línea viejos cambian de tema solos.
+**No escribas colores fijos en un componente**: usá `COLORS` o `var(--…)`. Las excepciones son los
+colores de equipo, las casillas de Código Secreto y la cancha del fútbol, que son iguales en los dos temas.
+
+- `games.js` es el catálogo (nombre, emoji, color, jugadores, «cómo jugar»). **Un juego nuevo se
+  agrega ahí, en `SCREENS` de `App.jsx` y en `ROOTS` de `worker/rules.js`.**
+- `store.js`: preferencias, perfil (el nombre usa la misma clave que `session.js`), la sala actual y
+  los avisos. Cada juego llama a `useRegisterRoom(juego, código, salir)`: con eso el header muestra
+  el código y el menú ofrece «Salir de la partida».
+- `GameHero` es el encabezado de la pantalla de entrada de cada juego; `LobbyLayout`, el de la sala de espera.
+- La versión que se muestra sale del archivo `updates` (la entrada `LATEST`), que también alimenta «Novedades».
+- La sesión guarda `game`: `loadSession(código, juego)` no devuelve la de otro juego (todos usan la misma clave).
+- Fuentes: Bricolage Grotesque (títulos, `.cs-mono`) e Inter (texto), de Google Fonts.
 
 ### El servidor de salas (Cloudflare)
 

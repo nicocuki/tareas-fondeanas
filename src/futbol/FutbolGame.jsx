@@ -838,7 +838,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
   }, [code, meId, matchNumber, isCarMode, timed, initialTimeMs]);
 
   return (
-    <div style={{ background: '#121212', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
+    <div style={{ background: '#121212', minHeight: 'var(--page-h)', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
       {/* HUD: ROJO  0 - 0  AZUL y tiempo visible */}
       <div style={{
         width: canvasSize.w,
@@ -932,7 +932,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
         ref={canvasRef}
         width={canvasSize.w}
         height={canvasSize.h}
-        style={{ display: 'block', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.6)', marginTop: 4 }}
+        style={{ display: 'block', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.6)', marginTop: 4 }}
       />
 
       {/* Indicador de controles */}
@@ -1017,7 +1017,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
                 onClick={() => setShowMenu(false)}
                 style={{
                   padding: '12px 18px',
-                  borderRadius: 4,
+                  borderRadius: 10,
                   background: COLORS.gold,
                   color: COLORS.ink,
                   fontWeight: 700,

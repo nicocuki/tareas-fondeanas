@@ -146,7 +146,7 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
         >
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
             <div>
-              <label style={{ display: 'block', color: '#bbb', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+              <label style={{ display: 'block', color: 'var(--text-2)', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 ⏱️ Minutos de partido (0 = ilimitado)
               </label>
               <input
@@ -162,23 +162,23 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
                 style={{
                   width: '100%',
                   boxSizing: 'border-box',
-                  background: '#1e1e1e',
-                  border: '1px solid #3a3a3a',
-                  borderRadius: 6,
-                  color: '#fff',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 12,
+                  color: 'var(--text)',
                   padding: '9px 12px',
                   fontSize: 14,
                   fontFamily: 'monospace',
                   outline: 'none',
                 }}
               />
-              <span style={{ display: 'block', color: '#777', fontSize: 11, marginTop: 4 }}>
+              <span style={{ display: 'block', color: 'var(--text-3)', fontSize: 11, marginTop: 4 }}>
                 {(options.matchMinutes ?? 0) === 0 ? 'Tiempo ilimitado' : `${options.matchMinutes} min reglamentarios`}
               </span>
             </div>
 
             <div>
-              <label style={{ display: 'block', color: '#bbb', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+              <label style={{ display: 'block', color: 'var(--text-2)', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 🎯 Goles para ganar (0 = ilimitado)
               </label>
               <input
@@ -194,17 +194,17 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
                 style={{
                   width: '100%',
                   boxSizing: 'border-box',
-                  background: '#1e1e1e',
-                  border: '1px solid #3a3a3a',
-                  borderRadius: 6,
-                  color: '#fff',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 12,
+                  color: 'var(--text)',
                   padding: '9px 12px',
                   fontSize: 14,
                   fontFamily: 'monospace',
                   outline: 'none',
                 }}
               />
-              <span style={{ display: 'block', color: '#777', fontSize: 11, marginTop: 4 }}>
+              <span style={{ display: 'block', color: 'var(--text-3)', fontSize: 11, marginTop: 4 }}>
                 {(options.goalsToWin ?? 0) === 0 ? 'Goles ilimitados' : `Gana quien marque ${options.goalsToWin}`}
               </span>
             </div>

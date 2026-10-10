@@ -161,7 +161,7 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 0.12.0 = Mudanza de Firebase a Cloudflare (gratis)
+0.12.0 = Mudanza de Firebase a Cloudflare (gratis)
 - La página y las salas ahora viven en Cloudflare: https://tareas-fondeanas.nicocukier.workers.dev
 - Cada sala es un servidor propio con WebSocket (Durable Object): las jugadas llegan en decenas de milisegundos, no en 200 a 1.200 como con Firebase.
 - Cada git push publica la página solo; ya no hace falta instalar ni configurar nada para subir cambios.
@@ -169,3 +169,14 @@ LATEST 0.12.0 = Mudanza de Firebase a Cloudflare (gratis)
 - Fútbol: sigue jugándose por conexión directa entre navegadores; cuando no se puede, el respaldo va por el servidor nuevo, mucho más rápido que antes.
 - Las salas sin uso se borran solas a los tres días.
 - Se sacaron Firebase y todos sus archivos del proyecto. Tests nuevos para el servidor de salas (127 en total).
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.0.0 = Tareas Fondeanas: diseño nuevo para toda la página
+- Nuevo nombre y logo: Tareas Fondeanas, juegos para jugar con los del fondo.
+- Header fijo en todas las pantallas, con el código de la sala en la que estás (tocalo para copiar la invitación) y tu avatar.
+- Menú hamburguesa: unirse con código a cualquier juego, lista de juegos, tu perfil (nombre y avatar), cómo jugar cada juego, novedades, ajustes y salir de la partida actual.
+- Portada nueva con tarjetas para cada juego, unirse con código, cómo funciona y la última novedad.
+- Tema oscuro y tema claro (o el del sistema), y opción para reducir animaciones.
+- Los cuatro juegos comparten el mismo estilo: entradas, salas de espera con el código en grande, botones, campos y colores.
+- Arreglado: la sesión de un juego ya no se abre por error en otro.

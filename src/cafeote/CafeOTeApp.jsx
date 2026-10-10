@@ -6,6 +6,8 @@ import { applyAction, cleanName, findPlayer, makeId, newRoom } from './game.js';
 import CafeOTeLobby from './CafeOTeLobby.jsx';
 import CafeOTeSecretWord from './CafeOTeSecretWord.jsx';
 import CafeOTeBoard from './CafeOTeBoard.jsx';
+import GameHero from '../ui/GameHero.jsx';
+import { useRegisterRoom } from '../ui/store.js';
 
 function codeFromUrl() {
   const code = new URLSearchParams(window.location.search).get('sala') || '';
@@ -35,13 +37,14 @@ function inviteLink(code) {
 export default function CafeOTeApp({ onBackToMenu }) {
   const [name, setName] = useState(loadName);
   const [joinCode, setJoinCode] = useState(codeFromUrl);
-  const [session, setSession] = useState(() => loadSession(codeFromUrl()));
+  const [session, setSession] = useState(() => loadSession(codeFromUrl(), 'cafe-o-te'));
   const [room, setRoom] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const code = session?.code;
+  useRegisterRoom('cafe-o-te', code, () => handleLeave());
 
   useEffect(() => {
     if (!code) return undefined;
@@ -62,7 +65,7 @@ export default function CafeOTeApp({ onBackToMenu }) {
   const me = findPlayer(room, session?.playerId);
 
   function enterRoom(next) {
-    saveSession(next);
+    saveSession({ ...next, game: 'cafe-o-te' });
     setUrlCode(next.code);
     setError('');
     setSession(next);
@@ -143,27 +146,9 @@ export default function CafeOTeApp({ onBackToMenu }) {
   // Home de Café o Té (sin sesión)
   if (!session) {
     return (
-      <div className="cs-root" style={{ background: COLORS.bg, padding: '48px 16px 32px', minHeight: '100vh', display: 'flex', justifyContent: 'center' }}>
+      <div className="cs-root" style={{ background: COLORS.bg, padding: '48px 16px 32px', minHeight: 'var(--page-h)', display: 'flex', justifyContent: 'center' }}>
         <div style={{ maxWidth: 440, width: '100%' }}>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <button
-              type="button"
-              className="cs-btn"
-              onClick={onBackToMenu}
-              style={{ ...ghostButton, marginBottom: 16 }}
-            >
-              ← Volver a Tareas Veganas
-            </button>
-            <div className="cs-mono" style={{ fontSize: 13, color: COLORS.gold, marginBottom: 8, letterSpacing: 1 }}>
-              ADIVINANZA POR ASOCIACIÓN (2v2)
-            </div>
-            <h1 className="cs-mono" style={{ fontSize: 38, margin: 0, color: COLORS.cream, lineHeight: 1.2 }}>
-              ☕ Café o Té
-            </h1>
-            <p style={{ color: COLORS.muted, marginTop: 10, fontSize: 15, lineHeight: 1.45 }}>
-              4 jugadores divididos en 2 equipos: 2 Pensadores y 2 Adivinadores compitiendo en simultáneo.
-            </p>
-          </div>
+          <GameHero gameId="cafe-o-te" onBack={onBackToMenu} />
 
           <div style={{ ...panelStyle, padding: 24 }}>
             {/* Paso 1: Tu nombre */}
@@ -189,7 +174,7 @@ export default function CafeOTeApp({ onBackToMenu }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Crear sala */}
-              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 6, padding: 14 }}>
+              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 12, padding: 14 }}>
                 <div style={{ fontWeight: 700, color: COLORS.cream, fontSize: 15, marginBottom: 6 }}>
                   🌐 Crear sala online (2v2)
                 </div>
@@ -201,14 +186,14 @@ export default function CafeOTeApp({ onBackToMenu }) {
                   className="cs-btn"
                   disabled={busy}
                   onClick={handleCreate}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 4, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 14 }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 14 }}
                 >
                   Crear sala de Café o Té
                 </button>
               </div>
 
               {/* Unirse a sala */}
-              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 6, padding: 14 }}>
+              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 12, padding: 14 }}>
                 <div style={{ fontWeight: 700, color: COLORS.cream, fontSize: 15, marginBottom: 6 }}>
                   🔑 Unirse a una sala
                 </div>
@@ -228,7 +213,7 @@ export default function CafeOTeApp({ onBackToMenu }) {
                     type="submit"
                     className="cs-btn"
                     disabled={busy || !joinCode}
-                    style={{ padding: '10px 18px', borderRadius: 4, background: COLORS.blue, color: COLORS.blueText, fontWeight: 700 }}
+                    style={{ padding: '10px 18px', borderRadius: 10, background: COLORS.blue, color: COLORS.blueText, fontWeight: 700 }}
                   >
                     Unirme
                   </button>
@@ -245,7 +230,7 @@ export default function CafeOTeApp({ onBackToMenu }) {
 
   if (!room) {
     return (
-      <div className="cs-root" style={{ background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 16 }}>
+      <div className="cs-root" style={{ background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'var(--page-h)', padding: 16 }}>
         <div style={{ textAlign: 'center' }}>
           <div className="cs-mono" style={{ color: COLORS.gold, marginBottom: 16 }}>Cargando sala de Café o Té...</div>
           <button type="button" className="cs-btn" onClick={handleLeave} style={ghostButton}>Cancelar</button>

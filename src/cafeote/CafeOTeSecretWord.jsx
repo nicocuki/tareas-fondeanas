@@ -59,7 +59,7 @@ export default function CafeOTeSecretWord({ room, me, onDispatch }) {
   };
 
   return (
-    <div className="cs-root" style={{ background: COLORS.bg, padding: '24px 16px', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <div className="cs-root" style={{ background: COLORS.bg, padding: '24px 16px', minHeight: 'var(--page-h)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       <div style={{ maxWidth: 520, width: '100%' }}>
 
         {/* Encabezado */}
@@ -90,7 +90,7 @@ export default function CafeOTeSecretWord({ room, me, onDispatch }) {
               style={{
                 background: COLORS.panelSoft,
                 border: `1px solid ${COLORS.panelBorder}`,
-                borderRadius: 6,
+                borderRadius: 12,
                 padding: 14,
                 maxHeight: 320,
                 minHeight: 220,
@@ -116,7 +116,7 @@ export default function CafeOTeSecretWord({ room, me, onDispatch }) {
                     <div
                       key={msg.id}
                       style={{
-                        background: 'rgba(179, 137, 58, 0.15)',
+                        background: 'var(--accent-soft)',
                         border: `1.5px solid ${COLORS.gold}`,
                         borderRadius: 8,
                         padding: 12,
@@ -135,7 +135,7 @@ export default function CafeOTeSecretWord({ room, me, onDispatch }) {
                         onClick={() => handleToggleLike(msg.id)}
                         style={{
                           padding: '6px 14px',
-                          borderRadius: 4,
+                          borderRadius: 10,
                           background: hasLiked ? COLORS.gold : COLORS.panel,
                           color: hasLiked ? COLORS.ink : COLORS.gold,
                           border: `1px solid ${COLORS.gold}`,
@@ -185,7 +185,7 @@ export default function CafeOTeSecretWord({ room, me, onDispatch }) {
                 style={{
                   flex: 1,
                   padding: '8px',
-                  borderRadius: 4,
+                  borderRadius: 10,
                   fontSize: 13,
                   fontWeight: 700,
                   background: activeTab === 'chat' ? COLORS.panelBorder : COLORS.panelSoft,
@@ -202,10 +202,10 @@ export default function CafeOTeSecretWord({ room, me, onDispatch }) {
                 style={{
                   flex: 1,
                   padding: '8px',
-                  borderRadius: 4,
+                  borderRadius: 10,
                   fontSize: 13,
                   fontWeight: 700,
-                  background: activeTab === 'sugerir' ? 'rgba(179, 137, 58, 0.25)' : COLORS.panelSoft,
+                  background: activeTab === 'sugerir' ? 'var(--accent-soft)' : COLORS.panelSoft,
                   color: activeTab === 'sugerir' ? COLORS.gold : COLORS.muted,
                   border: `1px solid ${activeTab === 'sugerir' ? COLORS.gold : COLORS.panelBorder}`,
                 }}
@@ -227,7 +227,7 @@ export default function CafeOTeSecretWord({ room, me, onDispatch }) {
                   type="submit"
                   className="cs-btn"
                   disabled={!chatText.trim()}
-                  style={{ padding: '9px 16px', borderRadius: 4, background: COLORS.panelBorder, color: COLORS.cream, fontWeight: 700 }}
+                  style={{ padding: '9px 16px', borderRadius: 10, background: COLORS.panelBorder, color: COLORS.cream, fontWeight: 700 }}
                 >
                   Enviar
                 </button>
@@ -245,7 +245,7 @@ export default function CafeOTeSecretWord({ room, me, onDispatch }) {
                   type="submit"
                   className="cs-btn"
                   disabled={!suggestionText.trim()}
-                  style={{ padding: '9px 16px', borderRadius: 4, background: COLORS.gold, color: COLORS.ink, fontWeight: 700 }}
+                  style={{ padding: '9px 16px', borderRadius: 10, background: COLORS.gold, color: COLORS.ink, fontWeight: 700 }}
                 >
                   Sugerir
                 </button>

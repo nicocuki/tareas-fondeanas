@@ -1,6 +1,7 @@
-# Código Secreto
+# Tareas Fondeanas
 
-Codenames online y en castellano, para jugar con amigos cada uno desde su pantalla.
+Juegos multijugador para jugar con los del fondo, cada uno desde su pantalla: **Trazo Loco**,
+**Código Secreto**, **Café o Té** y **Fútbol**. Gratis, sin cuentas y sin instalar nada.
 
 **👉 Jugá acá: https://tareas-fondeanas.nicocukier.workers.dev**
 

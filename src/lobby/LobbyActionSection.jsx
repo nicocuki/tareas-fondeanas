@@ -20,8 +20,8 @@ export default function LobbyActionSection({
   const shadow = isSoft
     ? 'none'
     : isGreen
-      ? '0 4px 16px rgba(79, 125, 70, 0.4)'
-      : '0 4px 16px rgba(179, 137, 58, 0.35)';
+      ? '0 4px 16px var(--success-soft)'
+      : '0 4px 16px var(--accent-soft)';
 
   return (
     <div style={{ textAlign: 'center', marginTop: 16, marginBottom: 20, ...style }}>
@@ -33,7 +33,7 @@ export default function LobbyActionSection({
           onClick={onClick}
           style={{
             padding: '14px 40px',
-            borderRadius: 6,
+            borderRadius: 12,
             background: bg,
             color: fg,
             fontWeight: 700,

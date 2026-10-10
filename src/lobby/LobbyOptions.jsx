@@ -17,7 +17,7 @@ export function Segmented({ name, value, choices, onChange, disabled }) {
             onClick={() => onChange(c.value)}
             style={{
               padding: '6px 12px',
-              borderRadius: 4,
+              borderRadius: 10,
               fontSize: 13,
               background: active ? COLORS.gold : COLORS.panelSoft,
               color: active ? COLORS.ink : COLORS.cream,

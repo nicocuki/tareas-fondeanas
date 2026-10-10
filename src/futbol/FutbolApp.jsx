@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { backend } from '../storage.js';
+import GameHero from '../ui/GameHero.jsx';
+import { useRegisterRoom } from '../ui/store.js';
 import { clearSession, loadName, loadSession, saveSession } from '../session.js';
 import { COLORS, panelStyle, inputStyle, ghostButton, labelStyle } from '../theme.js';
 import { applyAction, cleanName, DEFAULT_OPTIONS, findPlayer, makeId, newRoom } from './game.js';
@@ -74,7 +76,7 @@ function makeTrainingRoom(playerName) {
 export default function FutbolApp({ onBackToMenu }) {
   const [name, setName] = useState(loadName);
   const [joinCode, setJoinCode] = useState(codeFromUrl);
-  const [session, setSession] = useState(() => loadSession(codeFromUrl()));
+  const [session, setSession] = useState(() => loadSession(codeFromUrl(), 'futbol'));
   const [room, setRoom] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -83,6 +85,7 @@ export default function FutbolApp({ onBackToMenu }) {
 
   const isLocal = Boolean(session?.isLocalGame);
   const code = session?.code;
+  useRegisterRoom('futbol', isLocal ? '' : code, () => handleLeave());
 
   // Suscripción a sala online. Solo corre cuando hay sesión online (no local).
   useEffect(() => {
@@ -104,7 +107,7 @@ export default function FutbolApp({ onBackToMenu }) {
   const me = findPlayer(room, session?.playerId);
 
   function enterRoom(next) {
-    saveSession(next);
+    saveSession({ ...next, game: 'futbol' });
     if (!next.isLocalGame) setUrlCode(next.code);
     setError('');
     setSession(next);
@@ -222,25 +225,9 @@ export default function FutbolApp({ onBackToMenu }) {
   // ─── Pantalla de inicio (sin sesión) ──────────────────────────────────
   if (!session) {
     return (
-      <div className="cs-root" style={{ background: COLORS.bg, padding: '48px 16px 32px', minHeight: '100vh', display: 'flex', justifyContent: 'center' }}>
+      <div className="cs-root" style={{ background: COLORS.bg, padding: '48px 16px 32px', minHeight: 'var(--page-h)', display: 'flex', justifyContent: 'center' }}>
         <div style={{ maxWidth: 440, width: '100%' }}>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <button type="button" className="cs-btn" onClick={onBackToMenu} style={{ ...ghostButton, marginBottom: 16 }}>
-              ← Volver a Tareas Veganas
-            </button>
-            <div className="cs-mono" style={{ fontSize: 13, color: COLORS.gold, marginBottom: 8, letterSpacing: 1 }}>
-              FÚTBOL 2D · VISTA CENITAL
-            </div>
-            <h1 className="cs-mono" style={{ fontSize: 38, margin: 0, color: COLORS.cream, lineHeight: 1.2 }}>
-              ⚽ Fútbol
-            </h1>
-            <p style={{ color: COLORS.muted, marginTop: 10, fontSize: 15, lineHeight: 1.45 }}>
-              Juego de fútbol 2D con física real. Dos equipos, una pelota, un arco. Controlado con teclado.
-            </p>
-            <div style={{ marginTop: 8, fontSize: 12, color: COLORS.dim, fontFamily: 'monospace' }}>
-              WASD + Espacio (Rojo) · Flechas + Enter (Azul)
-            </div>
-          </div>
+          <GameHero gameId="futbol" onBack={onBackToMenu} />
 
           <div style={{ ...panelStyle, padding: 24 }}>
             <div style={{ marginBottom: 24 }}>
@@ -265,35 +252,35 @@ export default function FutbolApp({ onBackToMenu }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Modo Entrenamiento */}
-              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 6, padding: 14 }}>
+              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 12, padding: 14 }}>
                 <div style={{ fontWeight: 700, color: COLORS.cream, fontSize: 15, marginBottom: 6 }}>
                   🎯 Modo Entrenamiento (Solo)
                 </div>
                 <p style={{ margin: '0 0 10px', fontSize: 13, color: COLORS.muted }}>
                   Practicá solo en la cancha con todas las opciones y modificadores del modo online. Tu auto es blanco.
                 </p>
-                <div style={{ background: '#181818', borderRadius: 4, padding: '8px 10px', marginBottom: 12, fontSize: 11, color: '#aaa', fontFamily: 'monospace', lineHeight: 1.6 }}>
+                <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '8px 10px', marginBottom: 12, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6 }}>
                   <div>⚪ <b>Jugador Solo:</b> WASD + Espacio + Shift Izq (+ Ctrl Izq para derrapar en coches)</div>
                 </div>
                 <button
                   type="button"
                   className="cs-btn"
                   onClick={handleCreateTraining}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 4, background: '#ffffff', color: '#111111', fontWeight: 700, fontSize: 14 }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'var(--text)', color: 'var(--bg)', fontWeight: 700, fontSize: 14 }}
                 >
                   Entrar a Modo Entrenamiento
                 </button>
               </div>
 
               {/* Juego Local */}
-              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 6, padding: 14 }}>
+              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 12, padding: 14 }}>
                 <div style={{ fontWeight: 700, color: COLORS.cream, fontSize: 15, marginBottom: 6 }}>
                   🎮 Juego Local (Misma pantalla)
                 </div>
                 <p style={{ margin: '0 0 10px', fontSize: 13, color: COLORS.muted }}>
                   Enfrentate 1v1 contra un amigo en la misma computadora sin necesidad de internet.
                 </p>
-                <div style={{ background: '#181818', borderRadius: 4, padding: '8px 10px', marginBottom: 12, fontSize: 11, color: '#aaa', fontFamily: 'monospace', lineHeight: 1.6 }}>
+                <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '8px 10px', marginBottom: 12, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6 }}>
                   <div>🔴 <b>Jugador 1:</b> WASD + Espacio + Shift Izq (+ Ctrl Izq para derrapar en coches)</div>
                   <div>🔵 <b>Jugador 2:</b> Flechitas + Enter + Shift Der (+ Ctrl Der para derrapar en coches)</div>
                 </div>
@@ -301,14 +288,14 @@ export default function FutbolApp({ onBackToMenu }) {
                   type="button"
                   className="cs-btn"
                   onClick={handleCreateLocal}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 4, background: COLORS.green, color: COLORS.greenText, fontWeight: 700, fontSize: 14 }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: COLORS.green, color: COLORS.greenText, fontWeight: 700, fontSize: 14 }}
                 >
                   Crear partida local (1v1)
                 </button>
               </div>
 
               {/* Crear sala online */}
-              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 6, padding: 14 }}>
+              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 12, padding: 14 }}>
                 <div style={{ fontWeight: 700, color: COLORS.cream, fontSize: 15, marginBottom: 6 }}>
                   🌐 Crear sala online
                 </div>
@@ -320,14 +307,14 @@ export default function FutbolApp({ onBackToMenu }) {
                   className="cs-btn"
                   disabled={busy}
                   onClick={handleCreate}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 4, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 14 }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 14 }}
                 >
                   Crear sala de Fútbol
                 </button>
               </div>
 
               {/* Unirse a sala */}
-              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 6, padding: 14 }}>
+              <div style={{ background: COLORS.panelSoft, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 12, padding: 14 }}>
                 <div style={{ fontWeight: 700, color: COLORS.cream, fontSize: 15, marginBottom: 6 }}>
                   🔑 Unirse a una sala
                 </div>
@@ -346,7 +333,7 @@ export default function FutbolApp({ onBackToMenu }) {
                     type="submit"
                     className="cs-btn"
                     disabled={busy || !joinCode}
-                    style={{ padding: '10px 18px', borderRadius: 4, background: COLORS.blue, color: COLORS.blueText, fontWeight: 700 }}
+                    style={{ padding: '10px 18px', borderRadius: 10, background: COLORS.blue, color: COLORS.blueText, fontWeight: 700 }}
                   >
                     Unirme
                   </button>
@@ -364,7 +351,7 @@ export default function FutbolApp({ onBackToMenu }) {
   // ─── Cargando sala online ──────────────────────────────────────────────
   if (!room) {
     return (
-      <div className="cs-root" style={{ background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 16 }}>
+      <div className="cs-root" style={{ background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'var(--page-h)', padding: 16 }}>
         <div style={{ textAlign: 'center' }}>
           <div className="cs-mono" style={{ color: COLORS.gold, marginBottom: 16 }}>Cargando sala de Fútbol...</div>
           <button type="button" className="cs-btn" onClick={handleLeave} style={ghostButton}>Cancelar</button>
@@ -393,10 +380,10 @@ export default function FutbolApp({ onBackToMenu }) {
     const score = room.score;
     const winner = room.winner;
     const winnerLabel = winner === 'red' ? '🔴 ROJO' : winner === 'blue' ? '🔵 AZUL' : null;
-    const winnerColor = winner === 'red' ? '#e05050' : winner === 'blue' ? '#4a90d9' : COLORS.gold;
+    const winnerColor = winner === 'red' ? 'var(--team-red-text)' : winner === 'blue' ? 'var(--team-blue-text)' : COLORS.gold;
 
     return (
-      <div className="cs-root" style={{ background: COLORS.bg, padding: '48px 16px', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="cs-root" style={{ background: COLORS.bg, padding: '48px 16px', minHeight: 'var(--page-h)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <div style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>⚽</div>
 
@@ -425,12 +412,12 @@ export default function FutbolApp({ onBackToMenu }) {
             gap: 24,
           }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ color: '#e05050', fontWeight: 700, fontSize: 14, marginBottom: 4 }}>ROJO</div>
+              <div style={{ color: 'var(--team-red-text)', fontWeight: 700, fontSize: 14, marginBottom: 4 }}>ROJO</div>
               <div style={{ color: COLORS.cream, fontWeight: 900, fontSize: 48, lineHeight: 1 }}>{score.red}</div>
             </div>
             <div style={{ color: COLORS.dim, fontSize: 24 }}>—</div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ color: '#4a90d9', fontWeight: 700, fontSize: 14, marginBottom: 4 }}>AZUL</div>
+              <div style={{ color: 'var(--team-blue-text)', fontWeight: 700, fontSize: 14, marginBottom: 4 }}>AZUL</div>
               <div style={{ color: COLORS.cream, fontWeight: 900, fontSize: 48, lineHeight: 1 }}>{score.blue}</div>
             </div>
           </div>
@@ -446,7 +433,7 @@ export default function FutbolApp({ onBackToMenu }) {
               style={{
                 width: '100%',
                 padding: 14,
-                borderRadius: 4,
+                borderRadius: 10,
                 background: COLORS.gold,
                 color: COLORS.ink,
                 fontWeight: 700,

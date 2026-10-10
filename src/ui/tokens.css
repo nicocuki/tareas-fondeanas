@@ -1,0 +1,125 @@
+/* Sistema de diseño de Tareas Fondeanas.
+   Todo color de la interfaz sale de estas variables (theme.js las usa también), así el tema
+   claro y el oscuro cambian la página entera. Oscuro: pizarrón con resaltador amarillo.
+   Claro: hoja de carpeta con birome roja. */
+
+:root {
+  --font-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --header-h: 60px;
+  --page-h: calc(100dvh - var(--header-h));
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 26px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Colores propios de cada juego (iguales en los dos temas) */
+  --game-gartic: #8b7cf6;
+  --game-codigo: #e5484d;
+  --game-cafe: #d99a4e;
+  --game-futbol: #2fbf71;
+
+  /* Tarjetas de equipo y casillas: fijas, se leen bien en los dos temas */
+  --paper: #ece3c6;
+  --paper-shadow: #c9bb92;
+  --paper-ink: #2a2415;
+
+  color-scheme: dark;
+  --bg: #0d0f13;
+  --bg-glow: radial-gradient(1200px 600px at 10% -10%, rgba(255, 210, 63, 0.07), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(139, 124, 246, 0.08), transparent 60%);
+  --surface: #161920;
+  --surface-2: #1d212a;
+  --surface-3: #262b36;
+  --border: #2b303c;
+  --border-strong: #3a4050;
+  --text: #f3f1ea;
+  --text-2: #a7aab5;
+  --text-3: #767b89;
+  --accent: #ffd23f;
+  --accent-soft: rgba(255, 210, 63, 0.14);
+  --on-accent: #17140a;
+  --danger: #ff7a70;
+  --danger-soft: rgba(255, 122, 112, 0.12);
+  --success: #45d48a;
+  --success-soft: rgba(69, 212, 138, 0.14);
+  --input-bg: #0f1218;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --header-bg: rgba(13, 15, 19, 0.78);
+  --overlay: rgba(4, 5, 8, 0.6);
+
+  --team-red-text: #ff9b8f;
+  --team-blue-text: #8fd0db;
+  --team-yellow-text: #f3d775;
+  --team-green-text: #93d98c;
+  --team-bg-red: radial-gradient(ellipse at 50% 0%, #2c1413 0%, #160d0d 55%, #0f0909 100%);
+  --team-bg-blue: radial-gradient(ellipse at 50% 0%, #0f2329 0%, #0a1519 55%, #070e11 100%);
+  --team-bg-yellow: radial-gradient(ellipse at 50% 0%, #2a230f 0%, #18150b 55%, #100e08 100%);
+  --team-bg-green: radial-gradient(ellipse at 50% 0%, #132617 0%, #0c180f 55%, #08100a 100%);
+  --team-bg-lobby: transparent;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f6f3ec;
+  --bg-glow: radial-gradient(1200px 600px at 10% -10%, rgba(214, 69, 32, 0.06), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(139, 124, 246, 0.08), transparent 60%);
+  --surface: #ffffff;
+  --surface-2: #f3efe6;
+  --surface-3: #e9e4d8;
+  --border: #e3ddd0;
+  --border-strong: #cfc7b6;
+  --text: #1c1a16;
+  --text-2: #5f5a50;
+  --text-3: #8b8578;
+  --accent: #d2461f;
+  --accent-soft: rgba(210, 70, 31, 0.1);
+  --on-accent: #ffffff;
+  --danger: #c4321f;
+  --danger-soft: rgba(196, 50, 31, 0.08);
+  --success: #1f8a4c;
+  --success-soft: rgba(31, 138, 76, 0.1);
+  --input-bg: #ffffff;
+  --shadow: 0 1px 2px rgba(40, 30, 10, 0.06), 0 8px 24px rgba(40, 30, 10, 0.06);
+  --shadow-lg: 0 24px 60px rgba(40, 30, 10, 0.18);
+  --header-bg: rgba(246, 243, 236, 0.82);
+  --overlay: rgba(30, 24, 12, 0.35);
+
+  --team-red-text: #b42318;
+  --team-blue-text: #1d6b78;
+  --team-yellow-text: #8a6500;
+  --team-green-text: #2c7a34;
+  --team-bg-red: radial-gradient(ellipse at 50% 0%, #fbe4df 0%, #f6efe9 60%, #f6f3ec 100%);
+  --team-bg-blue: radial-gradient(ellipse at 50% 0%, #dcedf0 0%, #eef2f0 60%, #f6f3ec 100%);
+  --team-bg-yellow: radial-gradient(ellipse at 50% 0%, #f6ecc9 0%, #f5f0e2 60%, #f6f3ec 100%);
+  --team-bg-green: radial-gradient(ellipse at 50% 0%, #def0dc 0%, #eef3ea 60%, #f6f3ec 100%);
+}
+
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  background-image: var(--bg-glow);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button, input, select, textarea { font: inherit; }
+a { color: var(--accent); }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
+::selection { background: var(--accent); color: var(--on-accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

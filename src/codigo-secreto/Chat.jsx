@@ -46,7 +46,7 @@ export default function Chat({ room, me, onSend }) {
         style={{
           flex: 1,
           padding: '7px 8px',
-          borderRadius: 4,
+          borderRadius: 10,
           fontSize: 12,
           fontWeight: active ? 700 : 400,
           background: active ? COLORS.gold : COLORS.panelSoft,
@@ -71,7 +71,7 @@ export default function Chat({ room, me, onSend }) {
         ref={listRef}
         data-chat-list={scope}
         className="cs-scroll"
-        style={{ height: 160, padding: '6px 8px', background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 4, marginBottom: 8 }}
+        style={{ height: 160, padding: '6px 8px', background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, borderRadius: 10, marginBottom: 8 }}
       >
         {messages.length === 0 ? (
           <div style={{ fontSize: 12, color: COLORS.dim, paddingTop: 6 }}>
@@ -95,7 +95,7 @@ export default function Chat({ room, me, onSend }) {
               className="cs-btn"
               disabled={!me}
               onClick={() => onSend({ scope: 'global', msg: i })}
-              style={{ padding: '6px 10px', borderRadius: 4, fontSize: 12, background: COLORS.panelSoft, color: COLORS.cream, border: `1px solid ${COLORS.panelBorder}` }}
+              style={{ padding: '6px 10px', borderRadius: 10, fontSize: 12, background: COLORS.panelSoft, color: COLORS.cream, border: `1px solid ${COLORS.panelBorder}` }}
             >
               {text}
             </button>
@@ -118,7 +118,7 @@ export default function Chat({ room, me, onSend }) {
               type="submit"
               className="cs-btn"
               disabled={!cleanChatText(draft)}
-              style={{ padding: '7px 12px', borderRadius: 4, fontSize: 13, fontWeight: 700, background: COLORS.gold, color: COLORS.ink }}
+              style={{ padding: '7px 12px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: COLORS.gold, color: COLORS.ink }}
             >
               Enviar
             </button>

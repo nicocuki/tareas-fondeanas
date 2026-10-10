@@ -64,7 +64,7 @@ export function TeamRoleSlot({
             marginTop: 6,
             fontSize: 12,
             padding: '6px 12px',
-            borderRadius: 4,
+            borderRadius: 10,
             background: bg,
             color: fg,
             opacity: isMine ? 1 : 0.65,
@@ -112,7 +112,7 @@ export function TeamRoster({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                borderBottom: `1px solid rgba(255,255,255,0.04)`,
+                borderBottom: '1px solid var(--border)',
               }}
             >
               <span style={{ color: COLORS.cream, fontWeight: p.id === myPlayerId ? 700 : 500 }}>
@@ -143,7 +143,7 @@ export function TeamRoster({
             marginTop: 4,
             fontSize: 13,
             padding: '8px 12px',
-            borderRadius: 4,
+            borderRadius: 10,
             background: bg,
             color: fg,
             fontWeight: 600,

@@ -49,7 +49,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
   };
 
   return (
-    <div className="cs-root" style={{ background: COLORS.bg, padding: '16px', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div className="cs-root" style={{ background: COLORS.bg, padding: '16px', minHeight: 'var(--page-h)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       
       {/* Contenedor Principal */}
       <div style={{ maxWidth: 560, width: '100%', display: 'flex', flexDirection: 'column', flex: 1 }}>
@@ -91,7 +91,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
         {room.options.mode === 'contador' && room.phase === 'playing' && (
           <>
             {myTeamState.solved && (
-              <div style={{ background: 'rgba(79, 125, 70, 0.2)', border: `1px solid ${COLORS.green}`, borderRadius: 6, padding: 12, marginBottom: 12, textAlign: 'center' }}>
+              <div style={{ background: 'var(--success-soft)', border: `1px solid ${COLORS.green}`, borderRadius: 12, padding: 12, marginBottom: 12, textAlign: 'center' }}>
                 <div style={{ fontSize: 14, color: COLORS.greenLight, fontWeight: 700 }}>
                   🎉 ¡Tu equipo ya sacó la palabra en {myTeamState.solvedAttempts} intentos!
                 </div>
@@ -101,7 +101,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
               </div>
             )}
             {!myTeamState.solved && rivalTeamState.solved && (
-              <div style={{ background: 'rgba(179, 137, 58, 0.2)', border: `1px solid ${COLORS.gold}`, borderRadius: 6, padding: 12, marginBottom: 12, textAlign: 'center' }}>
+              <div style={{ background: 'var(--accent-soft)', border: `1px solid ${COLORS.gold}`, borderRadius: 12, padding: 12, marginBottom: 12, textAlign: 'center' }}>
                 <div style={{ fontSize: 14, color: COLORS.gold, fontWeight: 700 }}>
                   ⚠️ El equipo rival ya sacó la palabra en {rivalTeamState.solvedAttempts} intentos.
                 </div>
@@ -115,7 +115,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
 
         {/* Palabra Secreta (Visible solo para el Pensador) */}
         {isPensador && (
-          <div style={{ background: 'rgba(179, 137, 58, 0.15)', border: `1px solid ${COLORS.gold}`, borderRadius: 6, padding: '8px 14px', marginBottom: 12, textAlign: 'center' }}>
+          <div style={{ background: 'var(--accent-soft)', border: `1px solid ${COLORS.gold}`, borderRadius: 12, padding: '8px 14px', marginBottom: 12, textAlign: 'center' }}>
             <span style={{ fontSize: 12, color: COLORS.gold }}>🔒 Secreto a adivinar: </span>
             <strong style={{ fontSize: 15, color: COLORS.cream }}>"{room.secretWord}"</strong>
           </div>
@@ -141,7 +141,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
                 type="button"
                 className="cs-btn"
                 onClick={() => onDispatch({ type: 'restartGame' })}
-                style={{ width: '100%', padding: 12, borderRadius: 4, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 15 }}
+                style={{ width: '100%', padding: 12, borderRadius: 10, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 15 }}
               >
                 🔄 Jugar de nuevo
               </button>
@@ -150,7 +150,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
                 type="button"
                 className="cs-btn"
                 onClick={() => onDispatch({ type: 'toLobby' })}
-                style={{ width: '100%', padding: 10, borderRadius: 4, background: COLORS.panelSoft, color: COLORS.cream, border: `1px solid ${COLORS.panelBorder}`, fontWeight: 600, fontSize: 14 }}
+                style={{ width: '100%', padding: 10, borderRadius: 10, background: COLORS.panelSoft, color: COLORS.cream, border: `1px solid ${COLORS.panelBorder}`, fontWeight: 600, fontSize: 14 }}
               >
                 🏠 Volver a la sala de espera
               </button>
@@ -239,7 +239,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
                             type="button"
                             className="cs-btn"
                             onClick={() => handlePensadorClick('Café')}
-                            style={{ flex: 1, padding: 14, borderRadius: 6, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 16 }}
+                            style={{ flex: 1, padding: 14, borderRadius: 12, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 16 }}
                           >
                             ☕ Café
                           </button>
@@ -247,7 +247,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
                             type="button"
                             className="cs-btn"
                             onClick={() => handlePensadorClick('Té')}
-                            style={{ flex: 1, padding: 14, borderRadius: 6, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 16 }}
+                            style={{ flex: 1, padding: 14, borderRadius: 12, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 16 }}
                           >
                             🍵 Té
                           </button>
@@ -263,7 +263,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
                             type="button"
                             className="cs-btn"
                             onClick={() => handlePensadorClick(myTeamState.currentFixed)}
-                            style={{ flex: 1, padding: 14, borderRadius: 6, background: COLORS.panelSoft, color: COLORS.cream, border: `1px solid ${COLORS.panelBorder}`, fontWeight: 700, fontSize: 15 }}
+                            style={{ flex: 1, padding: 14, borderRadius: 12, background: COLORS.panelSoft, color: COLORS.cream, border: `1px solid ${COLORS.panelBorder}`, fontWeight: 700, fontSize: 15 }}
                           >
                             {myTeamState.currentFixed}
                           </button>
@@ -272,7 +272,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
                             type="button"
                             className="cs-btn"
                             onClick={() => handlePensadorClick(myTeamState.currentProposed)}
-                            style={{ flex: 1, padding: 14, borderRadius: 6, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 15 }}
+                            style={{ flex: 1, padding: 14, borderRadius: 12, background: COLORS.gold, color: COLORS.ink, fontWeight: 700, fontSize: 15 }}
                           >
                             {myTeamState.currentProposed}
                           </button>
@@ -297,7 +297,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
                       Opción elegida hasta ahora: <strong style={{ color: COLORS.gold }}>"{myTeamState.currentFixed}"</strong>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <div style={{ background: COLORS.panelSoft, padding: '10px 12px', borderRadius: 4, color: COLORS.gold, fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>
+                      <div style={{ background: COLORS.panelSoft, padding: '10px 12px', borderRadius: 10, color: COLORS.gold, fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>
                         {myTeamState.currentFixed} o
                       </div>
                       <input
@@ -312,7 +312,7 @@ export default function CafeOTeBoard({ room, me, onDispatch, onLeave }) {
                         type="submit"
                         className="cs-btn"
                         disabled={!adivinadorInput.trim()}
-                        style={{ padding: '10px 16px', borderRadius: 4, background: COLORS.blue, color: COLORS.blueText, fontWeight: 700, fontSize: 14 }}
+                        style={{ padding: '10px 16px', borderRadius: 10, background: COLORS.blue, color: COLORS.blueText, fontWeight: 700, fontSize: 14 }}
                       >
                         Enviar
                       </button>

@@ -1,5 +1,4 @@
 import React from 'react';
-import { COLORS, TEAM_BG, ghostButton } from '../theme.js';
 
 export default function LobbyLayout({
   code,
@@ -20,64 +19,34 @@ export default function LobbyLayout({
       : '');
 
   return (
-    <div className="cs-root" style={{ background: TEAM_BG.lobby, padding: '32px 16px 32px', minHeight: '100vh' }}>
+    <div className="cs-root tf-lobby" style={{ padding: '28px 16px 40px' }}>
       <div style={{ maxWidth: 840, margin: '0 auto' }}>
         {banners}
 
-        {/* Encabezado estándar del lobby */}
-        <div style={{ textAlign: 'center', marginBottom: 26 }}>
-          <div
-            className="cs-mono"
-            style={{
-              fontSize: 12,
-              color: COLORS.gold,
-              textTransform: 'uppercase',
-              letterSpacing: 1,
-            }}
-          >
-            {gameTitle}
+        {/* Encabezado estándar del lobby: el código grande, para dictarlo o mostrarlo */}
+        <div className="tf-lobby-head">
+          <p className="tf-eyebrow">{gameTitle}</p>
+          <div className="tf-code-tiles" aria-label={`Código de sala ${displayCode}`}>
+            {displayCode.split('').map((letter, i) => <span key={i}>{letter}</span>)}
           </div>
-
-          <div
-            className="cs-mono"
-            style={{
-              fontSize: 44,
-              letterSpacing: 8,
-              color: COLORS.cream,
-              margin: '6px 0',
-            }}
-          >
-            {displayCode}
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div className="tf-lobby-actions">
             {onCopyInvite && (
-              <button type="button" className="cs-btn" onClick={onCopyInvite} style={ghostButton}>
+              <button type="button" className="tf-btn tf-btn-primary" onClick={onCopyInvite}>
                 {copied ? '¡Link copiado!' : 'Copiar link de invitación'}
               </button>
             )}
             {onLeave && (
-              <button
-                type="button"
-                className="cs-btn"
-                onClick={onLeave}
-                style={{ ...ghostButton, color: COLORS.muted }}
-              >
+              <button type="button" className="tf-btn tf-btn-soft" onClick={onLeave}>
                 {leaveText}
               </button>
             )}
           </div>
-
-          {subtitle && (
-            <p style={{ color: COLORS.muted, fontSize: 13, marginTop: 10 }}>
-              {subtitle}
-            </p>
-          )}
+          {subtitle && <p className="tf-lobby-subtitle">{subtitle}</p>}
         </div>
 
         {/* Jugadores sin equipo asignado */}
         {unassignedPlayers && unassignedPlayers.length > 0 && (
-          <div style={{ marginBottom: 16, fontSize: 13, color: COLORS.muted, textAlign: 'center' }}>
+          <div className="tf-lobby-unassigned">
             Sin equipo: {unassignedPlayers.map((p) => p.name).join(', ')}
           </div>
         )}

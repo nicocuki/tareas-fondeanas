@@ -7,7 +7,8 @@ import * as network from './storage.js';
 import Task from './Task.jsx';
 import Reveal from './Reveal.jsx';
 import './gartic.css';
-const AVATARS=['🐸','🦊','🐼','🐙','🐨','🦄','🐱','🐧'];
+import GameHero from '../ui/GameHero.jsx';
+import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
 const urlCode=()=>new URLSearchParams(location.search).get('sala')?.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)||'';
 function savedSession(){try{return JSON.parse(sessionStorage.getItem('gartic:session'));}catch{return null;}}
 function remember(code,uid){
@@ -17,7 +18,7 @@ function remember(code,uid){
   history.replaceState(null,'',url);
 }
 export default function GarticApp({onBackToMenu}){
-  const [uid,setUid]=useState(null),[name,setName]=useState(loadName),[avatar,setAvatar]=useState(AVATARS[0]);
+  const [uid,setUid]=useState(null),[name,setName]=useState(loadName),[avatar,setAvatar]=useState(()=>getProfile().avatar);
   const [joinCode,setJoinCode]=useState(urlCode),[code,setCode]=useState(''),[room,setRoom]=useState(null);
   const [connected,setConnected]=useState({}),[ready,setReady]=useState({}),[readyKey,setReadyKey]=useState(''),[own,setOwn]=useState(null),[previous,setPrevious]=useState(null);
   const [ownLoaded,setOwnLoaded]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[copied,setCopied]=useState('');
@@ -101,6 +102,7 @@ export default function GarticApp({onBackToMenu}){
       remember('',uid);setCode('');setRoom(null);setJoinCode('');
     });
   }
+  useRegisterRoom('gartic', room ? code : '', () => { leave(); });
   async function copy(link){
     const url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('juego','gartic');url.searchParams.set('sala',code);
     const value=link?url.toString():code;
@@ -108,13 +110,12 @@ export default function GarticApp({onBackToMenu}){
   }
   const banners=<>{!online && code && <div className="gp-notice" role="status">Reconectando… Tu tarea sigue guardada.</div>}{error && <div className="gp-error" role="alert">{error}</div>}</>;
   if(!code)return <div className="gp-root"><main className="gp-home">
-    <button onClick={()=>{const u=new URL(location.href);u.searchParams.delete('juego');u.searchParams.delete('sala');history.replaceState(null,'',u);onBackToMenu();}}>← Volver a los juegos</button>
-    <div className="gp-hero"><span>🎨</span><p className="gp-eyebrow">TELÉFONO DESCOMPUESTO VISUAL</p><h1>Trazo Loco</h1><p>Una idea, muchas manos.<br/>El desastre se descubre al final.</p></div>
+    <GameHero gameId="gartic" onBack={onBackToMenu}/>
     {banners}<section className="gp-card"><label>Tu nombre<input value={name} maxLength={24} autoComplete="nickname" placeholder="¿Cómo te llamás?" onChange={(e)=>setName(e.target.value)}/></label>
-    <div className="gp-avatar-picker">{AVATARS.map((a)=><button aria-label={'Avatar '+a} aria-pressed={avatar===a} className={avatar===a?'selected':''} key={a} onClick={()=>setAvatar(a)}>{a}</button>)}</div>
+    <div className="gp-avatar-picker">{AVATARS.map((a)=><button aria-label={'Avatar '+a} aria-pressed={avatar===a} className={avatar===a?'selected':''} key={a} onClick={()=>{setAvatar(a);setProfile({avatar:a});}}>{a}</button>)}</div>
     <button className="gp-primary gp-wide" disabled={busy || !uid} onClick={()=>enter(true)}>Crear sala</button>
     <form className="gp-row" onSubmit={(e)=>{e.preventDefault();enter(false);}}><input aria-label="Código de sala" placeholder="ABCD" maxLength={4} autoCapitalize="characters" value={joinCode} onChange={(e)=>setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z]/g,''))}/><button disabled={busy || !uid}>Unirme</button></form></section>
-    <section className="gp-how"><h2>¿Cómo jugar?</h2><p>💬 Escribí una frase → 🎨 alguien la dibuja → 👀 otra persona la interpreta → 🔁 la cadena sigue → 🎉 revelamos todo.</p><small>De 3 a 20 jugadores. Cada uno desde su pantalla.</small></section>
+    <section className="gp-how"><p>💬 Escribí una frase → 🎨 alguien la dibuja → 👀 otro la interpreta → 🔁 la cadena sigue → 🎉 se revela todo.</p></section>
   </main></div>;
   if(!room)return <div className="gp-root"><main className="gp-home">{banners}<p>Entrando a la sala…</p><button onClick={leave}>Cancelar</button></main></div>;
   const host=room.hostId===uid;

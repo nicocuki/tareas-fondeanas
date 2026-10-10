@@ -12,9 +12,11 @@ function parse(raw) {
   }
 }
 
-export function loadSession(urlCode) {
+// `game` evita que la sesión de un juego se abra en otro (todos comparten la misma clave).
+export function loadSession(urlCode, game) {
   try {
     const tab = parse(sessionStorage.getItem(SESSION_KEY));
+    if (tab && game && tab.game && tab.game !== game) return null;
     return tab && (!urlCode || tab.code === urlCode) ? tab : null;
   } catch {
     return null;
