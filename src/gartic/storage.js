@@ -1,19 +1,9 @@
-import { initializeAuth, connectAuthEmulator, browserSessionPersistence, signInAnonymously } from 'firebase/auth';
-import { ref, get, set, update, remove, onValue, onDisconnect, runTransaction, serverTimestamp } from 'firebase/database';
-import { firebaseApp, database } from '../firebase.js';
+import { ref, get, set, update, remove, onValue, onDisconnect, runTransaction, serverTimestamp } from '../realtime.js';
 import { cleanName, makeState, nextState, stepType, MAX_DRAWING, MAX_TEXT } from './game.js';
 
-let auth;
-let signingIn;
-export function identity() {
-  if (!signingIn) {
-    if (!auth) { auth = initializeAuth(firebaseApp(), { persistence: browserSessionPersistence }); if (import.meta.env?.VITE_FIREBASE_EMULATORS === 'true') connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true }); }
-    signingIn = auth.authStateReady().then(() => auth.currentUser || signInAnonymously(auth).then((r) => r.user));
-    signingIn.catch(() => { signingIn = null; });
-  }
-  return signingIn;
-}
-const at = (path) => ref(database(), path);
+// Cada pestaña tiene su identidad (sin cuentas): el servidor la verifica con un secreto propio.
+export { identity } from '../realtime.js';
+const at = (path) => ref(path);
 const roomPath = (code) => 'garticRooms/' + code;
 export const watch = (path, callback, onError) => onValue(at(path), (s) => callback(s.val()), onError);
 export const watchRoom = (code, callback, onError) => watch(roomPath(code), callback, onError);
@@ -56,7 +46,7 @@ export async function createRoom(uid, name, avatar) {
       hostId: uid, mode: 'normal', settings: { maxPlayers: 12, seconds: 90 },
       players: { [uid]: { name: cleanName(name), avatar, index: 0 } }, slots: { 0: uid },
       state: { phase: 'lobby', match: 'none', round: 0 },
-    }, { applyLocally: false });
+    });
     if (result.committed) return code;
   }
   throw new Error('No encontramos un código libre. Intentá otra vez.');
@@ -108,13 +98,13 @@ export async function start(code, room, connected) {
   await runTransaction(at(roomPath(code) + '/state'), (current) => {
     if (!current || current.phase !== 'lobby') return undefined;
     return makeState(players, room.mode, room.settings.seconds, match, serverTimestamp());
-  }, { applyLocally: false });
+  });
 }
 export async function advance(code, state, readyCount, now) {
   return runTransaction(at(roomPath(code) + '/state'), (current) => {
     if (!current || current.match !== state.match || current.round !== state.round) return undefined;
     return nextState(current, readyCount, now, serverTimestamp()) || undefined;
-  }, { applyLocally: false });
+  });
 }
 export async function saveStep(code, state, uid, content) {
   const type = stepType(state.mode, state.round, state.count);
@@ -130,6 +120,6 @@ export async function transferHost(code, room, connected) {
   if (connected[room.hostId]) return;
   const next = Object.keys(room.players || {}).sort().find((id) => connected[id]);
   if (!next) return;
-  await runTransaction(at(roomPath(code) + '/hostId'), (host) => host === room.hostId ? next : undefined, { applyLocally: false });
+  await runTransaction(at(roomPath(code) + '/hostId'), (host) => host === room.hostId ? next : undefined);
 }
 export const rematch = (code) => set(at(roomPath(code) + '/state'), { phase: 'lobby', match: 'none', round: 0 });

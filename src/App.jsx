@@ -230,11 +230,6 @@ export default function App() {
 
   const banners = (
     <>
-      {backend.isLocal && (
-        <div style={{ ...panelStyle, borderColor: COLORS.gold, padding: '8px 12px', marginBottom: 16, fontSize: 13, color: COLORS.muted, textAlign: 'center' }}>
-          Modo local: las salas solo se comparten entre pestañas de este navegador.
-        </div>
-      )}
       {!online && (
         <div role="status" style={{ ...panelStyle, borderColor: COLORS.error, padding: '8px 12px', marginBottom: 16, fontSize: 13, color: COLORS.error, textAlign: 'center' }}>
           Sin conexión. Reconectando…

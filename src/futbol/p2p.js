@@ -4,9 +4,9 @@
 // llegaba en ráfagas. Por un canal directo entre las dos pantallas tarda lo que tarda la red entre
 // ellas (unos pocos ms en la misma red, 20 a 80 por internet) y no hay servidor en el medio.
 //
-// Firebase se sigue usando para presentar a las pantallas (la «señalización»: oferta, respuesta y
-// candidatos) y como respaldo: si con alguien no se puede armar el canal directo (hay redes que lo
-// bloquean), las fotos para esa persona siguen yendo por Firebase como antes.
+// El servidor de salas (WebSocket a Cloudflare) se usa para presentar a las pantallas (la
+// «señalización»: oferta, respuesta y candidatos) y como respaldo: si con alguien no se puede armar
+// el canal directo (hay redes que lo bloquean), las fotos para esa persona van por el servidor.
 //
 // Cada par de pantallas arma un solo canal: lo inicia la de id menor, así nunca se cruzan dos
 // ofertas. Cada montaje tiene una sesión (`sid`) nueva; los mensajes llevan la sesión de origen y
@@ -15,7 +15,7 @@
 // Servidores públicos para que cada navegador descubra su dirección vista desde internet.
 const ICE_SERVERS = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
 const CONNECT_TIMEOUT_MS = 8000; // si el canal no abre en este tiempo, se reintenta
-const MAX_ATTEMPTS = 4;          // después se deja a esa persona por Firebase
+const MAX_ATTEMPTS = 4;          // después se deja a esa persona por el servidor
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
 
@@ -23,7 +23,7 @@ export function p2pSupported() {
   return typeof RTCPeerConnection !== 'undefined';
 }
 
-// `signaling` viene de storage-firebase.js. `onMessage(id, dato)` recibe lo que manda cada uno.
+// `signaling` viene de storage.js. `onMessage(id, dato)` recibe lo que manda cada uno.
 export function createMesh({ signaling, myId, onMessage }) {
   if (!signaling || !myId || !p2pSupported()) return null;
   const sid = randomId();
@@ -87,7 +87,7 @@ export function createMesh({ signaling, myId, onMessage }) {
     if (closed || peers.get(id) !== peer) return;
     if (peer.attempts + 1 >= MAX_ATTEMPTS) {
       clearTimeout(peer.timer);
-      return; // se queda por Firebase
+      return; // se queda por el servidor
     }
     connect(id, peer.sid, peer.attempts + 1);
   }
@@ -151,7 +151,7 @@ export function createMesh({ signaling, myId, onMessage }) {
 
   function onPeers(list) {
     if (closed) return;
-    const known = { ...list }; // id → sid anunciados en Firebase
+    const known = { ...list }; // id → sid anunciados en el servidor
     delete known[myId];
     for (const id of [...peers.keys()]) {
       if (!(id in known)) drop(id);
@@ -179,13 +179,13 @@ export function createMesh({ signaling, myId, onMessage }) {
         try {
           peer.dc.send(text);
         } catch {
-          // un canal que se está cerrando: esa foto va por Firebase
+          // un canal que se está cerrando: esa foto va por el servidor
         }
       }
     },
     // ¿Estos jugadores reciben por conexión directa? Se pregunta por los de la sala y no por los
     // anunciados: alguien cuyo navegador no puede usar WebRTC nunca se anuncia, y a ese hay que
-    // seguir mandándole todo por Firebase.
+    // seguir mandándole todo por el servidor.
     isOpen(id) {
       return Boolean(peers.get(id)?.open);
     },

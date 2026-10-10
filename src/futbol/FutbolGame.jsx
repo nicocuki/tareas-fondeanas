@@ -5,7 +5,7 @@ import {
   FIELD, PLAYER_CONFIG, CAR_CONFIG, BALL_CONFIG, CAR_BALL_CONFIG, advanceBall, createGameState, resetPositions, stepPhysics,
 } from './physics.js';
 import {
-  BALL_SMOOTH_MS, CLAIM_COOLDOWN_MS, FIREBASE_BACKUP_MS, FIRST_COUNTDOWN_MS, HEARTBEAT_MS, P2P_SEND_INTERVAL_MS,
+  BALL_SMOOTH_MS, CLAIM_COOLDOWN_MS, SERVER_BACKUP_MS, FIRST_COUNTDOWN_MS, HEARTBEAT_MS, P2P_SEND_INTERVAL_MS,
   PHYSICS_STEP_MS, REMOTE_SMOOTH_MS, SEND_INTERVAL_MS,
   applyPlayerSnapshot, claimBeats, createRemote, fixedSteps, goalMatch, initialMatch, latestWriter, matchPhase,
   packBall, packPlayer, receiveSnapshot, sameMotion, sampleRemote, switchToDirect, unpackInput, updateDelay,
@@ -18,11 +18,11 @@ const TEAM_COLOR = {
   white: '#ffffff',
 };
 const TEAM_NAME = { red: 'ROJO', blue: 'AZUL', white: 'ENTRENAMIENTO' };
-const LINK_LABEL = { directo: '● conexión directa', mixto: '● conexión mixta', firebase: '● conexión lenta' };
+const LINK_LABEL = { directo: '● conexión directa', mixto: '● conexión mixta', servidor: '● por el servidor' };
 const LINK_HINT = {
   directo: 'Las jugadas van directo de pantalla a pantalla.',
   mixto: 'Con algunos jugadores no se pudo conectar directo: sus jugadas pasan por el servidor y llegan más tarde.',
-  firebase: 'No se pudo conectar directo con nadie (puede ser la red): las jugadas pasan por el servidor y llegan más tarde.',
+  servidor: 'No se pudo conectar directo con nadie (puede ser la red): las jugadas pasan por el servidor y llegan un poco más tarde.',
 };
 
 // ─── Constantes de render ──────────────────────────────────────────────────
@@ -64,7 +64,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
 
   // HUD: se actualiza solo cuando cambia lo que se ve, no en cada cuadro.
   const [hud, setHud] = useState({ time: formatTime(initialTimeMs), red: room.score.red, blue: room.score.blue });
-  // Cómo llegan las fotos de los demás: 'directo' (WebRTC), 'mixto' o 'firebase'. Vacío si juego solo.
+  // Cómo llegan las fotos de los demás: 'directo' (WebRTC), 'mixto' o 'servidor'. Vacío si juego solo.
   const [link, setLink] = useState('');
   const [showMenu, setShowMenu] = useState(false);
 
@@ -164,7 +164,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
 
   // ─── Red + bucle del partido ─────────────────────────────────────────────
   // Mi jugador: tecla → movimiento → dibujo, todo en el mismo cuadro; a la red va una foto por
-  // cuadro por conexión directa (o cada 50 ms por Firebase, si la directa no se pudo armar).
+  // cuadro por conexión directa (o cada 50 ms por el servidor, si la directa no se pudo armar).
   // La física corre a paso fijo, así la pelota se comporta igual en todas las pantallas.
   // Los demás: foto → búfer → interpolación → dibujo suave, un poco en el pasado.
   // La pelota la simula quien la tocó último; mientras la tiene otro, se interpola como a él.
@@ -312,8 +312,8 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
     const sendPlayer = latestWriter((snap) => channel.publishPlayer(meId, snap));
     const sendBall = latestWriter((snap) => channel.publishBall(snap));
 
-    // Canal directo con cada pantalla. Firebase solo los presenta; si con alguien no se puede,
-    // sus fotos siguen yendo y viniendo por Firebase.
+    // Canal directo con cada pantalla. El servidor solo los presenta; si con alguien no se puede,
+    // sus fotos siguen yendo y viniendo por el servidor.
     const mesh = createMesh({
       signaling: channel.signaling,
       myId: meId ?? `v${Math.random().toString(36).slice(2, 10)}`,
@@ -347,7 +347,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       }
     });
 
-    // Lo mismo llega por los dos caminos: por conexión directa y por Firebase. La copia repetida o
+    // Lo mismo llega por los dos caminos: por conexión directa y por el servidor. La copia repetida o
     // más vieja se descarta sola (una foto con hora anterior a la última no entra al búfer).
     const handlers = {
       onPlayer(id, snap, direct = false) {
@@ -359,7 +359,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
           net.remotes.set(id, remote);
         }
         if (direct) switchToDirect(remote);
-        // Con el canal directo abierto, lo que llega por Firebase es el respaldo de una vez por
+        // Con el canal directo abierto, lo que llega por el servidor es el respaldo de una vez por
         // segundo. Si el jugador está quieto, esa copia a veces es más nueva que el último latido
         // directo y entra; si además contara su demora (~400 ms), al arrancar se lo dibujaba
         // varios segundos atrasado.
@@ -427,7 +427,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
     }
 
     // Cada foto sale por dos caminos con su propio ritmo: por conexión directa, una por cuadro; por
-    // Firebase cada 50 ms, o una por segundo de respaldo si todos ya reciben directo.
+    // el servidor cada 50 ms, o una por segundo de respaldo si todos ya reciben directo.
     function due(now, snap, lastSnap, lastAt, interval) {
       if (now - lastAt < interval) return false;
       return !sameMotion(snap, lastSnap) || now - lastAt >= HEARTBEAT_MS;
@@ -442,7 +442,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
         mesh.broadcast({ c: kind, d: snap });
         net.stats.sentDirect += 1;
       }
-      const interval = allDirect ? FIREBASE_BACKUP_MS : SEND_INTERVAL_MS;
+      const interval = allDirect ? SERVER_BACKUP_MS : SEND_INTERVAL_MS;
       if (force || due(now, snap, net[slowSnap], net[slowAt], interval)) {
         net[slowSnap] = snap;
         net[slowAt] = now;
@@ -472,7 +472,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
         return goalMatch(current, team, serverNow(), timed, goalsToWin);
       }).then(({ committed, match }) => {
         if (!committed) return;
-        // Los demás se enteran del gol por el canal directo, sin esperar a que Firebase se lo avise.
+        // Los demás se enteran del gol por el canal directo, sin esperar a que el servidor se lo avise.
         if (match) mesh?.broadcast({ c: 'm', d: match });
         callbacksRef.current.onGoal(team, k);
       }).catch(() => {});
@@ -503,7 +503,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       lastLinkCheck = ts;
       const others = otherIds();
       const direct = others.filter((id) => mesh?.isOpen(id)).length;
-      let value = 'firebase';
+      let value = 'servidor';
       if (others.length === 0) value = '';
       else if (direct === others.length) value = 'directo';
       else if (direct > 0) value = 'mixto';

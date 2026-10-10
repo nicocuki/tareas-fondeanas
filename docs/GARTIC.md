@@ -1,6 +1,6 @@
 # Trazo Loco
 
-Nuevo juego integrado al menú existente mediante `?juego=gartic`. Las invitaciones agregan `&sala=ABCD`. Usa React/JSX, la misma app y conexión Firebase que los otros juegos y el nombre guardado de la plataforma. Reutiliza LobbyLayout y Credits. La sesión de dibujo tiene su propia clave para no sobrescribir la sesión de Código Secreto.
+Nuevo juego integrado al menú existente mediante `?juego=gartic`. Las invitaciones agregan `&sala=ABCD`. Usa React/JSX, el mismo servidor de salas que los otros juegos y el nombre guardado de la plataforma. Reutiliza LobbyLayout y Credits. La sesión de dibujo tiene su propia clave para no sobrescribir la sesión de Código Secreto.
 
 ## Modos disponibles
 
@@ -11,24 +11,24 @@ Nuevo juego integrado al menú existente mediante `?juego=gartic`. Las invitacio
 
 Las once modalidades restantes aparecen con candado. Una partida requiere de 3 a 20 participantes conectados. Cada participante inicia una cadena y todas las cadenas rotan una posición por ronda. La partida dura tantas rondas como participantes, de modo que nadie vuelve a recibir su propia cadena.
 
-## Firebase y privacidad
+## Datos y privacidad
 
-`src/firebase.js` centraliza la app existente; no se crea otro proyecto Firebase. Los otros juegos conservan sus ramas y reglas originales. Trazo Loco no usa el JSON público de `rooms/`: ese formato no permite proteger contenidos privados ni soporta dibujos grandes.
+Todo vive en el Durable Object de la sala (ver `src/realtime.js` y `worker/`). Trazo Loco no usa el JSON público de `rooms/`: ese formato no permite proteger contenidos privados ni soporta dibujos grandes.
 
 - `garticRooms/{code}`: anfitrión, jugadores, lugares del lobby, modo, configuración y estado público.
 - `garticPresence/{code}/{uid}/{connection}`: conexiones; se eliminan con onDisconnect.
 - `garticSteps/{code}/{match}/{round}/{uid}`: borrador/entrega privada, con tipo, contenido, autor y orden.
 - `garticReady/{code}/{match}/{round}/{uid}`: confirmación individual.
 
-El UID proviene de Firebase Authentication anónimo con persistencia por pestaña; el jugador no completa un registro. **Habilitá el proveedor Anónimo en Firebase Console → Authentication → Sign-in method.**
+El UID es propio de cada pestaña, sin registro: la pestaña guarda un secreto al azar en `sessionStorage` y su UID es el hash de ese secreto. El servidor recalcula el hash al conectarse, así nadie puede hacerse pasar por otro jugador.
 
-Las reglas impiden leer la colección de entregas durante la partida. Cada jugador puede leer sus propias entregas y, durante su tarea, la entrega anterior del participante que le corresponde. La lectura del conjunto se habilita solo en la revelación de esa partida. El contenido enviado queda inmóvil al confirmar. Los cambios de configuración solo se admiten al anfitrión en el lobby. Los lugares se reclaman atómicamente para validar el máximo de participantes incluso cuando se unen a la vez.
+Las reglas están en `worker/rules.js`. Nadie puede leer la colección de entregas durante la partida. Cada jugador lee sus propias entregas y, durante su tarea, la entrega anterior del participante que le corresponde. La lectura del conjunto se habilita solo en la revelación de esa partida. Solo el autor escribe su entrega, y queda inmóvil al confirmarla. Cada uno marca solo su propia conexión y su propia confirmación.
 
-El reloj usa serverTimestamp y .info/serverTimeOffset. El servidor valida cada avance: todos confirmaron o venció el plazo más cinco segundos de margen para envíos. Un participante conectado coordina el avance; si se desconecta, otro toma esa tarea. Una conexión perdida conserva el participante, la tarea y el último borrador recibido por Firebase. El borrador local permite recuperar cambios después de recargar; si el navegador se queda sin espacio, eso no bloquea el envío.
+El reloj usa `serverTimestamp()` (lo reemplaza el servidor al escribir) y `.info/serverTimeOffset` (se estima con `/api/hora`). Un participante conectado coordina el avance; si se desconecta, otro toma esa tarea. Una conexión perdida conserva el participante, la tarea y el último borrador recibido. El borrador local permite recuperar cambios después de recargar.
 
 Como cualquier contenido que ya se entregó a un navegador, una referencia de Imitación podría conservarse fuera de la interfaz. El modo la oculta al terminar la memorización; no pretende borrar algo que el jugador ya vio.
 
-No hay un servidor ejecutando rondas cuando todos están desconectados: al volver un participante, se procesa el plazo vencido y la partida continúa. Los datos de partidas quedan guardados; una política de retención de salas antiguas puede agregarse por separado.
+No hay un servidor ejecutando rondas cuando todos están desconectados: al volver un participante, se procesa el plazo vencido y la partida continúa. Una sala sin escrituras durante tres días se borra sola.
 
 ## Editor y resultados
 
@@ -36,32 +36,6 @@ Lienzo de 960 × 600 con eventos Pointer para mouse y touch. Incluye lápiz, gom
 
 La revelación presenta progresivamente los pasos y permite anterior/siguiente, reproducir/pausar y abrir los álbumes completos. El anfitrión puede preparar una revancha. Las capturas de la prueba están en `docs/gartic/`.
 
-## Verificación local
+## Verificación
 
-Necesitás Java 21 o superior para Firebase Emulator Suite. Las pruebas no requieren credenciales de producción.
-
-1. `npm install`
-2. `npx firebase-tools emulators:start --only database,auth --project demo-secreto`
-3. `npm run test:gartic:rules`
-4. En otra terminal de Windows: `set VITE_FIREBASE_EMULATORS=true&& npm run dev -- --host 127.0.0.1 --port 5187`
-5. `npm run test:gartic:browser`
-
-La prueba de navegador usa Microsoft Edge instalado en Windows en modo headless. Carga las mismas reglas en la base emulada, abre contextos separados (uno móvil), completa los cuatro modos y elimina su sala local al terminar. No escribe en la base publicada.
-
-`npm test` incluye las pruebas puras de reparto, secuencias, reloj, álbumes y balde, además de los tests existentes. `npm run build` genera la versión de producción sin conexión a emuladores.
-
-## Publicación
-
-Esta incorporación requiere **hosting y las nuevas reglas**, además del proveedor Anónimo. Antes de publicar las reglas, descargá las reglas vigentes del proyecto y conservá cualquier diferencia de las ramas existentes; agregá únicamente las ramas nuevas de Trazo Loco. No publiques reglas locales sobre reglas vigentes sin esa comparación.
-
-Después de iniciar sesión con `npx firebase-tools login`, comparar/fusionar las reglas y habilitar Anónimo:
-
-```sh
-npm test
-npm run build
-npx firebase-tools deploy --only database,hosting --project secreto-aed7e
-```
-
-El código y las reglas se publicaron el 08/10/2026 en https://secreto-aed7e.web.app/?juego=gartic. Las reglas vigentes de los otros juegos fueron comparadas y se conservaron. Queda pendiente inicializar Authentication desde Firebase Console y habilitar Anónimo: la API pública de inicialización exige facturación, que no se habilitó. El usuario pidió continuar ese paso en otra sesión; el estado completo está en ../CONTINUAR_GARTIC.md.
-
-Referencias: [reglas de acceso](https://firebase.google.com/docs/database/security/core-syntax), [presencia y hora del servidor](https://firebase.google.com/docs/database/web/offline-capabilities), [autenticación anónima](https://firebase.google.com/docs/auth/web/anonymous-auth).
+`npm test` incluye las pruebas puras de reparto, secuencias, reloj, álbumes y balde, y las de privacidad de las entregas contra el servidor de salas (`tests/realtime.test.js`). Para probar una partida de verdad hacen falta tres pantallas: `npm run servidor` y tres navegadores o ventanas privadas distintas en http://localhost:8787/?juego=gartic (cada pestaña es un jugador).

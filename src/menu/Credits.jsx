@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const APP_VERSION = 'v0.11.0';
+export const APP_VERSION = 'v0.12.0';
 
 export default function Credits({ inline = false }) {
   if (inline) return <footer style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 20px', background: '#f7f5fc', color: '#756d87', fontFamily: 'Arial, sans-serif', fontSize: 11 }}><span>Nicolas Cukier · Alan Vitas</span><span>{APP_VERSION}</span></footer>;

@@ -1,4 +1,4 @@
-// Sincronización en tiempo real del Fútbol. Lógica pura: sin React ni Firebase, para poder testearla.
+// Sincronización en tiempo real del Fútbol. Lógica pura: sin React ni red, para poder testearla.
 //
 // Cada pantalla es dueña de su jugador: lo mueve al instante con sus teclas y publica una foto
 // compacta unas 20 veces por segundo. Los jugadores ajenos se dibujan interpolando entre las fotos
@@ -6,10 +6,10 @@
 // La pelota la simula quien la tocó último; los demás la interpolan igual que a su dueño.
 // El host no tiene ningún rol especial en el movimiento.
 
-export const SEND_INTERVAL_MS = 50;   // 20 fotos por segundo por Firebase mientras hay movimiento
+export const SEND_INTERVAL_MS = 50;   // 20 fotos por segundo por el servidor mientras hay movimiento
 export const P2P_SEND_INTERVAL_MS = 15; // por conexión directa: una foto por cuadro (~60 por segundo)
-// Si todos reciben por conexión directa, Firebase queda como respaldo y recibe una foto por segundo.
-export const FIREBASE_BACKUP_MS = 1000;
+// Si todos reciben por conexión directa, el servidor queda como respaldo y recibe una foto por segundo.
+export const SERVER_BACKUP_MS = 1000;
 export const HEARTBEAT_MS = 500;      // quieto, igual avisa que sigue ahí
 export const MIN_DELAY_MS = 35;       // retraso con que se dibuja a un remoto antes de tener demoras medidas
 // Paso fijo de la física: todas las pantallas simulan igual, tengan 60 o 144 cuadros por segundo.
@@ -136,7 +136,7 @@ export function createRemote() {
   return { snaps: [], lags: [], delay: null };
 }
 
-// `countLag: false` para una copia de respaldo que llegó por Firebase cuando con ese jugador hay
+// `countLag: false` para una copia de respaldo que llegó por el servidor cuando con ese jugador hay
 // conexión directa: la foto puede entrar al búfer, pero su demora no es la del camino que se está
 // usando y no tiene que decidir cuánto atrasar el dibujo.
 export function receiveSnapshot(remote, snap, serverNow, countLag = true) {
@@ -161,14 +161,14 @@ export function receiveSnapshot(remote, snap, serverNow, countLag = true) {
   // La ventana es por tiempo y no por cantidad: con el jugador quieto llega una foto cada medio
   // segundo, y un pico viejo no tiene que seguir pesando medio minuto después.
   if (!countLag) return true;
-  // `gap` es cada cuánto manda fotos: por conexión directa, mucho más seguido que por Firebase.
+  // `gap` es cada cuánto manda fotos: por conexión directa, mucho más seguido que por el servidor.
   const gap = last ? snap.t - last.t : SEND_INTERVAL_MS;
   remote.lags.push({ lag: serverNow - snap.t, at: serverNow, gap });
   while (remote.lags.length > LAG_KEEP_MIN && remote.lags[0].at < serverNow - LAG_WINDOW_MS) remote.lags.shift();
   return true;
 }
 
-// Primera foto que llega por conexión directa: lo medido hasta ahí vino por Firebase, con mucha más
+// Primera foto que llega por conexión directa: lo medido hasta ahí vino por el servidor, con mucha más
 // demora. Si no se olvida, con el jugador quieto (una foto cada medio segundo) esas demoras viejas
 // seguían mandando varios segundos y se lo dibujaba con 400 ms de atraso en vez de 50.
 export function switchToDirect(remote) {

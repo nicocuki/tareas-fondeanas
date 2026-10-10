@@ -2,7 +2,7 @@
 
 Codenames online y en castellano, para jugar con amigos cada uno desde su pantalla.
 
-**👉 Jugá acá: https://secreto-aed7e.web.app**
+**👉 Jugá acá: https://tareas-fondeanas.nicocukier.workers.dev**
 
 No hace falta cuenta ni instalar nada: alguien crea una sala, comparte el link y el resto entra.
 
@@ -42,36 +42,36 @@ Hace falta Node 20.19 o más nuevo (lo pide Vite).
 
 ```bash
 npm install
-npm run dev     # abre el juego en http://localhost:5173
-npm test        # tests de la lógica del juego
+npm test            # tests de la lógica de los juegos y del servidor de salas
+npm run servidor    # arma la página y levanta todo junto en http://localhost:8787
 ```
 
-> **Ojo:** tal como está, `npm run dev` usa la misma base de Firebase que el sitio publicado, así
-> que las salas que crees son reales. Para probar sin tocarla, dejá vacío `databaseURL` en
-> `src/firebaseConfig.js`: el juego pasa a un modo local donde las salas se comparten entre
-> pestañas del mismo navegador.
+`npm run servidor` usa `wrangler dev`: corre el servidor de salas en tu compu, con su propia base
+local, así que las salas de prueba no tocan las del sitio publicado. Para tocar la interfaz con
+recarga automática, dejá `npm run servidor` corriendo y en otra terminal `npm run dev`
+(http://localhost:5173): Vite le pasa `/api` al servidor local.
 
 ### Publicar
 
-```bash
-npx firebase-tools@latest login     # la primera vez
-npm run build && npx firebase-tools@latest deploy --only hosting
-```
+No hace falta hacer nada: **cada `git push` a `master` lo publica solo** (Cloudflare Workers Builds
+corre `npm run build` y `npx wrangler deploy`). El estado de cada publicación se ve en GitHub, al
+lado del commit, y en el panel de Cloudflare → Workers & Pages → tareas-fondeanas.
 
 ## Cómo está hecho
 
 - **React 19 + Vite** para la interfaz.
-- **Firebase Realtime Database** guarda el estado de cada sala, y **Firebase Hosting** sirve el sitio.
-- Toda la lógica del juego vive en [`src/game.js`](src/game.js): es un reducer puro, sin React ni
-  red, que corre dentro de las transacciones de Firebase. Así, si dos jugadores tocan algo al mismo
-  tiempo, no se pisan.
+- **Cloudflare Workers** sirve el sitio y el servidor de salas, en el plan gratis.
+- Cada sala (código de 4 letras) es un **Durable Object**: un mini servidor con su propia base,
+  al que cada pantalla se conecta por **WebSocket**. Cuando nadie juega, se duerme y no gasta.
+  El cliente ([`src/realtime.js`](src/realtime.js)) tiene la misma forma que Firebase Realtime
+  Database, que era lo que se usaba antes, así que los juegos casi no cambiaron.
+- Toda la lógica de cada juego es un reducer puro, sin React ni red, que corre dentro de una
+  transacción: si dos jugadores tocan algo al mismo tiempo, no se pisan.
+- En Fútbol las jugadas van **directo entre navegadores** (WebRTC); el servidor solo presenta a
+  las pantallas y hace de respaldo.
 
 El detalle de la arquitectura, las decisiones de diseño y las cosas que ya dieron problemas está
 en [`CLAUDE.md`](CLAUDE.md).
-
-La `apiKey` de [`src/firebaseConfig.js`](src/firebaseConfig.js) no es un secreto: las claves web
-de Firebase son públicas por diseño y viajan igual en el código del sitio. Lo que protege la base
-son las reglas de [`database.rules.json`](database.rules.json).
 
 ## Autores
 
@@ -81,4 +81,4 @@ Hecho por **Nicolas Cukier** y **Uriel Suti**.
 
 Nuevo juego de dibujo y teléfono descompuesto en el menú: Normal, Imitación, Historia y Sandwich. Salas para 3 a 20 jugadores con editor táctil, cadenas privadas, revelación y álbumes.
 
-La configuración de Authentication, la estructura de datos, las pruebas y los pasos de publicación están en [docs/GARTIC.md](docs/GARTIC.md).
+La estructura de datos, la privacidad de las entregas y las pruebas están en [docs/GARTIC.md](docs/GARTIC.md).

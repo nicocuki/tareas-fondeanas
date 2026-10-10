@@ -1,6 +1,7 @@
 node_modules
 dist
-.firebase
+.wrangler
+.dev.vars
 *.log
 .DS_Store
 .claude/settings.local.json

@@ -149,7 +149,7 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 0.11.0 = Trazo Loco: teléfono descompuesto visual multijugador integrado a Tareas Veganas.
+0.11.0 = Trazo Loco: teléfono descompuesto visual multijugador integrado a Tareas Veganas.
 - Salas Firebase con códigos e invitaciones, avatares, anfitrión, máximo configurable y reconexión.
 - Modos Normal, Imitación, Historia y Sandwich con secuencias propias; las demás tarjetas tienen candado.
 - Editor táctil con figuras, balde, colores, grosor, goma, limpiar, deshacer y rehacer.
@@ -158,3 +158,14 @@ LATEST 0.11.0 = Trazo Loco: teléfono descompuesto visual multijugador integrado
 - Revelación progresiva, reproducción, álbumes y revancha.
 - Pruebas de lógica, seguridad en emulador y partidas completas en navegadores separados.
 - Hosting y nuevas reglas publicados el 08/10/2026; se conservan las reglas vigentes de los demás juegos. Pendiente inicializar Authentication y habilitar Anónimo desde Firebase Console. El usuario pidió retomar ese paso en otra sesión; continuidad guardada en CONTINUAR_GARTIC.md.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 0.12.0 = Mudanza de Firebase a Cloudflare (gratis)
+- La página y las salas ahora viven en Cloudflare: https://tareas-fondeanas.nicocukier.workers.dev
+- Cada sala es un servidor propio con WebSocket (Durable Object): las jugadas llegan en decenas de milisegundos, no en 200 a 1.200 como con Firebase.
+- Cada git push publica la página solo; ya no hace falta instalar ni configurar nada para subir cambios.
+- Trazo Loco ya funciona: no necesita más el acceso anónimo de Firebase. Cada pestaña tiene su identidad y el servidor mantiene privadas las entregas hasta la revelación.
+- Fútbol: sigue jugándose por conexión directa entre navegadores; cuando no se puede, el respaldo va por el servidor nuevo, mucho más rápido que antes.
+- Las salas sin uso se borran solas a los tres días.
+- Se sacaron Firebase y todos sus archivos del proyecto. Tests nuevos para el servidor de salas (127 en total).

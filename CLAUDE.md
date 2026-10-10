@@ -9,10 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   Los identificadores del código quedan en inglés (`currentTeam`, `spymaster`), los textos visibles en español.
 - **Mantené el repo limpio**: si un archivo deja de usarse, borralo en vez de dejarlo al costado.
   Ya se eliminó un prototipo viejo (`codigo-secreto.jsx`) por esto. No dejes archivos de respaldo,
-  `.old`, ni código muerto. `dist/` y `.firebase/` son artefactos: no se versionan ni se dejan en el árbol.
-- **Siempre subí los cambios a Firebase.** Todo cambio termina desplegado (ver *Desplegar*),
-  aunque el pedido no lo diga y sin preguntar. Un cambio que no está publicado no está terminado.
-  El orden es: tests → navegador → deploy → borrar las salas de prueba → borrar `dist/` y `.firebase/`.
+  `.old`, ni código muerto. `dist/` y `.wrangler/` son artefactos: no se versionan ni se dejan en el árbol.
+- **Siempre publicá los cambios.** Todo cambio termina desplegado (ver *Desplegar*), aunque el
+  pedido no lo diga y sin preguntar. Un cambio que no está publicado no está terminado.
+  El orden es: tests → navegador → commit y push (eso publica) → revisar el sitio → borrar `dist/` y `.wrangler/`.
 - **Verificá en un navegador de verdad**, no solo con los tests. Varias cosas del juego (votación,
   chat por equipo, revelado diferido) necesitan varios jugadores simultáneos para probarse.
 
@@ -29,11 +29,14 @@ El autor usa estos nombres; la interfaz los refleja:
 
 ```bash
 npm install
-npm run dev          # servidor de desarrollo (Vite)
-npm test             # tests de la lógica del juego
+npm test             # tests de la lógica de los juegos y del servidor de salas
+npm run servidor     # build + wrangler dev: página y salas juntas en http://localhost:8787
+npm run dev          # Vite con recarga (necesita `npm run servidor` corriendo: le pasa /api)
 npm run build        # genera dist/
-npm run preview      # sirve dist/ localmente
 ```
+
+`npm run servidor` corre el Durable Object en la compu, con una base local en `.wrangler/`:
+no toca las salas publicadas.
 
 Un test solo (el patrón matchea contra el nombre del test, en español):
 
@@ -43,23 +46,17 @@ node --test-name-pattern="la pista N da exactamente N intentos" --test tests/gam
 
 ### Desplegar
 
-`firebase` no está instalado globalmente, pero las credenciales sí están guardadas en
-`~/.config/configstore/firebase-tools.json`. **Siempre buildear antes**, porque `dist/` no existe
-en un árbol limpio:
+**Un `git push` a `master` publica solo.** El repo (`nicocuki/tareas-fondeanas`) está conectado a
+Cloudflare Workers Builds: corre `npm run build` y `npx wrangler deploy` con lo que diga
+`wrangler.jsonc`. El resultado se ve como check en el commit de GitHub y en el panel de Cloudflare
+(Workers & Pages → tareas-fondeanas → Deployments).
 
-```bash
-npm run build && npx firebase-tools@latest deploy --only hosting --non-interactive
-```
+Sitio: https://tareas-fondeanas.nicocukier.workers.dev · Cuenta de Cloudflare: la de Nico.
 
-Proyecto: `secreto-aed7e` · Sitio: https://secreto-aed7e.web.app
+`npm run deploy` publica a mano desde una compu con `npx wrangler login` hecho; normalmente no hace falta.
 
-Desplegá **solo hosting**. `database.rules.json` casi nunca cambia y mandarlo pisaría las reglas vivas.
-
-Para borrar una sala de prueba de la base:
-
-```bash
-curl -X DELETE https://secreto-aed7e-default-rtdb.firebaseio.com/rooms/ABCD.json
-```
+No hay base aparte que limpiar: una sala sin escrituras durante tres días se borra sola (alarma
+del Durable Object). Las salas de prueba con códigos al azar no molestan a nadie.
 
 ## De qué se trata el juego
 
@@ -134,8 +131,8 @@ Todo el juego es un **reducer sin React ni red**. `applyAction(room, action, { r
 devuelve la sala nueva, o `null` si la acción no es válida para ese estado. No lee el reloj ni
 el random por su cuenta: los recibe, y por eso se puede testear con valores fijos.
 
-Esto importa porque el reducer **corre dentro de la transacción de Firebase**
-(`runTransaction` en `storage-firebase.js`): si dos jugadores mandan una jugada al mismo tiempo,
+Esto importa porque el reducer **corre dentro de una transacción**
+(`runTransaction` en `storage.js`, ver *El servidor de salas*): si dos jugadores mandan una jugada al mismo tiempo,
 la segunda se reaplica sobre el estado ya actualizado. Consecuencias al tocar el código:
 
 - Nada de `Math.random()`, `Date.now()`, `fetch` ni estado de React dentro de `game.js`.
@@ -146,12 +143,13 @@ la segunda se reaplica sobre el estado ya actualizado. Consecuencias al tocar el
 
 ### La sala entera es un string JSON
 
-Firebase guarda cada sala como **un solo string** en `rooms/<CÓDIGO>`, no como un objeto.
-Es a propósito: Realtime Database borra los arrays vacíos y los `null`, y eso rompía el tablero.
+Cada sala se guarda como **un solo string** en `rooms/<CÓDIGO>`, no como un objeto.
+Es a propósito: el servidor (igual que Firebase, que se usaba antes) borra los arrays vacíos y los
+`null`, y eso rompía el tablero.
 `serializeRoom` / `parseRoom` hacen la conversión.
 
-`database.rules.json` limita cada sala a **30.000 caracteres**. Si una escritura lo pasa,
-Firebase la rechaza, y como todo vive en la misma sala **se traba la partida entera**, no solo
+`worker/rules.js` limita cada sala a **30.000 caracteres**. Si una escritura lo pasa,
+el servidor la rechaza, y como todo vive en la misma sala **se traba la partida entera**, no solo
 ese campo. El peor caso hoy (4 equipos, 20 jugadores, los cuatro chats de equipo llenos de
 texto con comillas, bitácora llena) da ~19.500. Hay un test que lo verifica.
 
@@ -176,9 +174,15 @@ por una versión anterior siga abriéndose sin romper.
 | `src/App.jsx` | Pantalla principal, enrutador de juegos y estado local |
 | `src/codigo-secreto/Options.jsx` `Chat.jsx` `Rules.jsx` `Players.jsx` | Paneles de la interfaz de Código Secreto |
 | `src/theme.js` | Colores y estilos compartidos |
-| `src/storage.js` | Elige el backend según haya o no Firebase configurado |
-| `src/storage-firebase.js` | Transacciones y suscripciones contra Realtime Database |
-| `src/storage-local.js` | Backend de desarrollo en localStorage, solo entre pestañas |
+| `src/gartic/` | Componentes y lógica de Trazo Loco (ver `docs/GARTIC.md`) |
+| `src/storage.js` | Salas (`rooms/`) y canal del fútbol sobre el servidor de salas |
+| `src/realtime.js` | Cliente del servidor de salas, con la misma forma que Firebase Realtime Database |
+| `worker/index.js` | Worker de Cloudflare: `/api/hora`, `/api/sala/ABCD` (WebSocket) y la página |
+| `worker/sala.js` | Durable Object de una sala: WebSockets que hibernan y SQLite propio |
+| `worker/core.js` | El servidor de una sala sin nada de Cloudflare (se prueba con `node --test`) |
+| `worker/rules.js` | Quién lee y escribe cada rama, qué se guarda en disco y qué no |
+| `worker/tree.js` | Árbol de datos compartido por servidor y cliente: rutas, nulls, poda, `push` |
+| `wrangler.jsonc` | Configuración de Cloudflare |
 | `src/session.js` | Quién sos: `sessionStorage` por pestaña, `localStorage` por dispositivo |
 
 La partida tiene tres columnas: jugadores a la izquierda (cada nombre del color de su equipo),
@@ -189,8 +193,29 @@ celular va todo apilado con el tablero primero.
 `docs/captura.png` es la imagen del README: una partida armada a mano con `game.js`, escrita en
 la base y abierta como el espía rojo. Si la interfaz cambia mucho, conviene rehacerla.
 
-Si `firebaseConfig.databaseURL` queda vacío, la app arranca en modo local automáticamente y
-avisa con un cartel. Sirve para desarrollar sin tocar la base real.
+### El servidor de salas (Cloudflare)
+
+Antes todo iba por Firebase Realtime Database. Ahora cada código de sala es un **Durable Object**
+(`worker/sala.js`) y cada pantalla tiene un WebSocket con la sala en la que está. `src/realtime.js`
+imita la parte de Firebase que se usaba (`ref`, `onValue`, `onChild*`, `set`, `update`, `push`,
+`runTransaction`, `onDisconnect`, `serverTimestamp`, `.info/connected`, `.info/serverTimeOffset`),
+así los juegos siguieron casi iguales. **Para un juego nuevo, usá esas mismas funciones.**
+
+- **La ruta elige la sala**: el segundo tramo es el código (`rooms/ABCD`, `futbol/ABCD/ball`,
+  `garticSteps/ABCD/…`). Solo se aceptan las raíces de `ROOTS` en `worker/rules.js`: **un juego
+  nuevo tiene que agregar la suya ahí** o el servidor rechaza todo.
+- **Las transacciones son optimistas**, como en Firebase: el cliente corre el `updater` con el
+  valor que conoce y manda el resultado junto con ese valor (en texto canónico). Si en el servidor
+  ya había otra cosa, le devuelve lo actual y el cliente reintenta (hasta 50 veces).
+- **Las escrituras se avisan después de aplicarse en el servidor**, no al instante en la pantalla
+  que escribe (Firebase sí lo hacía). En la práctica es una ida y vuelta: decenas de ms.
+- **Las fotos del fútbol (`players`, `ball`, `signal`, `peers`) no se guardan en disco**
+  (`isEphemeral`): si la sala se duerme se pierden, y está bien. Lo demás se guarda por unidades
+  (`unitDepth`): cada sala entera, cada rama del fútbol, cada entrega de Trazo Loco.
+- **Identidad sin cuentas**: cada pestaña guarda un secreto en `sessionStorage` y su uid es el hash
+  (`uidFromSecret`). Lo usa Trazo Loco para las reglas de privacidad.
+- **Plan gratis**: 100.000 pedidos por día, y cada 20 mensajes de WebSocket entrantes cuentan como
+  uno. Por eso el fútbol sigue yendo directo entre navegadores y no por el servidor.
 
 ### Acciones del reducer
 
@@ -230,11 +255,11 @@ Todo en `src/futbol/net.js` (lógica pura, con tests en `tests/futbol-net.test.j
 (conexión directa) y el bucle de `FutbolGame.jsx`.
 
 **Las fotos van directo entre navegadores (WebRTC DataChannel, sin orden ni reenvíos)**, una por cuadro.
-El hosting es estático, así que no hay servidor WebSocket propio; y por Firebase cada foto tardaba de
-200 a 1.200 ms. Firebase queda para tres cosas: la señalización (presentar a las pantallas), el partido
-(`match`, con transacción) y el **respaldo**: si con alguien no se arma el canal directo (redes que lo
-bloquean; no hay servidor TURN), las fotos para esa persona siguen yendo por Firebase cada 50 ms. Si
-todos reciben directo, igual se escribe en Firebase una foto por segundo. Lo mismo puede llegar por los
+Por conexión directa tarda lo que tarda la red entre las dos pantallas; por Firebase (antes) cada
+foto tardaba de 200 a 1.200 ms. El servidor de salas queda para tres cosas: la señalización (presentar
+a las pantallas), el partido (`match`, con transacción) y el **respaldo**: si con alguien no se arma el
+canal directo (redes que lo bloquean; no hay servidor TURN), las fotos para esa persona van por el
+WebSocket cada 50 ms. Si todos reciben directo, igual se escribe una foto por segundo. Lo mismo puede llegar por los
 dos caminos: la copia más vieja se descarta sola en `receiveSnapshot` (hora anterior a la última).
 
 - Cada par de pantallas arma un solo canal y **lo inicia la de id menor**. Cada montaje tiene una
@@ -242,7 +267,7 @@ dos caminos: la copia más vieja se descarta sola en `receiveSnapshot` (hora ant
   (hasta 4 veces, si no abre en 8 s).
 - «¿Todos reciben directo?» se pregunta por **los jugadores de la sala**, no por los anunciados: alguien
   sin WebRTC nunca se anuncia, y si se lo contara por los anunciados se le dejaría de mandar por Firebase.
-- El HUD muestra el estado bajo el reloj (`data-link`: `directo`, `mixto` o `firebase`).
+- El HUD muestra el estado bajo el reloj (`data-link`: `directo`, `mixto` o `servidor`).
 - Por el canal viajan `{ c: 'p' | 'b' | 'm' | 'u', d }`: jugador, pelota, partido (tras un gol) y turbo.
 
 **La física corre a paso fijo** (`PHYSICS_STEP_MS`, 1/120 s, con `fixedSteps`), online y en el 1v1
@@ -262,7 +287,7 @@ muchas veces por segundo y no pasan por el reducer ni por el tope de 30.000 cara
 | `peers/{id}` | solo ese jugador | Su sesión, para armar la conexión directa. Se borra al desconectarse |
 | `signal/{id}` | cualquiera | Buzón de oferta, respuesta y candidatos WebRTC para ese jugador. Se borra al leerse |
 
-Las reglas de `database.rules.json` ya permiten `futbol/{4 letras}`; sin eso el online no anda.
+`worker/rules.js` permite `futbol/{código}`; sin eso el online no anda.
 
 **La regla central: cada pantalla es dueña de su jugador.** Lo mueve con la física local en el mismo
 cuadro en que se aprieta la tecla, y publica una foto por cuadro por el canal directo (quieto, cada 500 ms). **Nunca** se
@@ -316,7 +341,7 @@ jugador en la versión anterior, donde el host corregía a todos hacia su propia
   cierra la pestaña y ninguna página lo puede frenar**: por eso en coches hay un `beforeunload`.
 - **Para probar con dos jugadores en un navegador automatizado, usá dos navegadores separados**, no
   dos pestañas del mismo: la pestaña de fondo recibe menos cuadros y las demoras medidas salen
-  infladas (daba ~300 ms donde en realidad había 50). Para probar el respaldo por Firebase, borrá
+  infladas (daba ~300 ms donde en realidad había 50). Para probar el respaldo por el servidor, borrá
   `window.RTCPeerConnection` antes de cargar la página en uno de los dos.
 - Para medir fluidez hay un gancho **solo en desarrollo**: `window.__futbol` (`stateRef`, `meId`,
   `net` con los búferes, retrasos y contadores, `mesh` con `isOpen(id)`). Vite lo saca del build de producción. La métrica
