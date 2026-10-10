@@ -1,7 +1,7 @@
 # Tareas Fondeanas
 
-Juegos multijugador para jugar con los del fondo, cada uno desde su pantalla: **Trazo Loco**,
-**Código Secreto**, **Café o Té** y **Fútbol**. Gratis, sin cuentas y sin instalar nada.
+Juegos multijugador para jugar con los del fondo, cada uno desde su pantalla: **La Mecha**,
+**Trazo Loco**, **Código Secreto**, **Café o Té** y **Fútbol**. Gratis, sin cuentas y sin instalar nada.
 
 **👉 Jugá acá: https://tareas-fondeanas.nicocukier.workers.dev**
 

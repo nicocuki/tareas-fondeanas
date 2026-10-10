@@ -172,7 +172,7 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.0.0 = Tareas Fondeanas: diseño nuevo para toda la página
+1.0.0 = Tareas Fondeanas: diseño nuevo para toda la página
 - Nuevo nombre y logo: Tareas Fondeanas, juegos para jugar con los del fondo.
 - Header fijo en todas las pantallas, con el código de la sala en la que estás (tocalo para copiar la invitación) y tu avatar.
 - Menú hamburguesa: unirse con código a cualquier juego, lista de juegos, tu perfil (nombre y avatar), cómo jugar cada juego, novedades, ajustes y salir de la partida actual.
@@ -180,3 +180,14 @@ LATEST 1.0.0 = Tareas Fondeanas: diseño nuevo para toda la página
 - Tema oscuro y tema claro (o el del sistema), y opción para reducir animaciones.
 - Los cuatro juegos comparten el mismo estilo: entradas, salas de espera con el código en grande, botones, campos y colores.
 - Arreglado: la sesión de un juego ya no se abre por error en otro.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.1.0 = Juego nuevo: La Mecha 💣
+- La bomba pasa de mano en mano con 2, 3 o 4 letras: escribí una palabra que las tenga antes de que explote.
+- El anfitrión elige si las letras van en cualquier parte o al principio, la dificultad, las vidas y el largo de la mecha.
+- La mecha explota en un momento al azar; si te explota a vos, perdés una vida. El último que queda, gana.
+- Se ve en vivo lo que escribe el que tiene la bomba, y la última palabra de cada uno.
+- Las tildes no hacen falta, no se pueden repetir palabras y, si usás todas las letras del abecedario, ganás una vida.
+- Diccionario de español de Argentina con más de 586.000 palabras (con conjugaciones y voseo), del proyecto libre RLA-ES, más algo de lunfardo.
+- Anda en compu y en celular, de 2 a 16 jugadores.

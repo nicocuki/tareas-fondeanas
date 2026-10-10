@@ -202,7 +202,7 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-section-head h2 { margin: 0; font-size: clamp(24px, 3vw, 32px); }
 .tf-section-head p { margin: 0; color: var(--text-2); }
 
-.tf-game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.tf-game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 16px; }
 .tf-game-card { position: relative; display: flex; flex-direction: column; border-radius: var(--radius-xl); overflow: hidden; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); transition: transform 0.22s var(--ease), box-shadow 0.22s, border-color 0.22s; }
 .tf-game-card:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--chip-color) 55%, var(--border)); box-shadow: 0 18px 40px color-mix(in srgb, var(--chip-color) 18%, transparent); }
 .tf-game-card-hit { position: absolute; inset: 0; z-index: 2; border: 0; background: none; cursor: pointer; border-radius: inherit; }

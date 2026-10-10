@@ -176,6 +176,8 @@ por una versión anterior siga abriéndose sin romper.
 | `src/codigo-secreto/Options.jsx` `Chat.jsx` `Rules.jsx` `Players.jsx` | Paneles de la interfaz de Código Secreto |
 | `src/theme.js` | Colores y estilos para los estilos en línea de los juegos (apuntan a las variables de `src/ui/tokens.css`) |
 | `src/gartic/` | Componentes y lógica de Trazo Loco (ver `docs/GARTIC.md`) |
+| `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
+| `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
 | `src/storage.js` | Salas (`rooms/`) y canal del fútbol sobre el servidor de salas |
 | `src/realtime.js` | Cliente del servidor de salas, con la misma forma que Firebase Realtime Database |
 | `worker/index.js` | Worker de Cloudflare: `/api/hora`, `/api/sala/ABCD` (WebSocket) y la página |
@@ -267,6 +269,31 @@ Notas sobre algunas:
   «la primera casilla roja sin destapar» va a encontrar otra vez la que ya eligió. Pasó.
 - **Los atributos `data-pick`, `data-opt`, `data-chat-list` y `data-players`** existen para poder
   manejar la app desde un navegador automatizado. No los saques.
+
+## La Mecha
+
+Bomba de palabras: la bomba muestra una sílaba y el que la tiene escribe una palabra que la
+contenga (`mode: 'anywhere'`) o que empiece con ella (`'start'`) antes de que explote.
+
+- **Mismo patrón que Código Secreto**: la sala es un string en `rooms/{código}` con
+  `gameType: 'la-mecha'`, y `applyAction(room, action, { now, rand, dict })` corre dentro de la
+  transacción. **El diccionario entra por `ctx.dict`**: el reducer valida la palabra en la pantalla
+  que la manda. Entre amigos alcanza; no es a prueba de trampas.
+- **La mecha**: `fuse.deadline` es un momento al azar entre los valores de `FUSES` desde que se
+  enciende. Pasar la bomba no la reinicia, pero el que la recibe tiene al menos `MIN_TURN_MS`.
+  Cualquier pantalla manda `explode` cuando ve el reloj en cero (con la hora del servidor); el
+  reducer exige `now >= deadline` y el `turn` actual, así entra uno solo.
+- **Lo que se escribe en vivo** va por `mecha/{código}/typing`, fuera de la sala y sin guardarse en
+  disco (`isEphemeral`).
+- **El diccionario** (`public/mecha/palabras.txt`, ~586.000 palabras normalizadas: minúsculas, sin
+  tildes, con ñ) se baja una vez en el navegador (~1,4 MB comprimido) y se busca por bisección
+  sobre un solo texto, para no ocupar memoria en celulares. Se arma con `npm run diccionario` desde
+  `diccionario/` (ver `diccionario/LEEME.md`, licencia MPL 1.1). Palabras extra: `diccionario/agregadas.txt`.
+- **Las sílabas** (`src/mecha/syllables.js`, generado) son solo las que tienen cientos de palabras,
+  ordenadas de más a menos comunes; la dificultad elige de qué tramo sacar (`POOLS` en `game.js`).
+- `used` (palabras ya dichas) tiene tope `MAX_USED`, por el límite de 30.000 caracteres de la sala.
+- Con tres jugadores la flecha de la bomba queda a 0°, 120° y 240°: por eso el triángulo es
+  angosto. Uno equilátero se ve igual rotado 120° y parecía que no giraba.
 
 ## Fútbol: sincronización en tiempo real
 

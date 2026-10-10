@@ -7,7 +7,8 @@
     "servidor": "npm run build && npx wrangler@4 dev",
     "build": "vite build",
     "preview": "npm run servidor",
-    "deploy": "npm run build && npx wrangler@4 deploy"
+    "deploy": "npm run build && npx wrangler@4 deploy",
+    "diccionario": "node scripts/armar-diccionario.mjs"
   },
   "type": "module",
   "dependencies": {

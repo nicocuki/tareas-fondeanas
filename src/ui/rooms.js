@@ -13,7 +13,7 @@ export async function findRoomGame(code) {
   if (!room.exists()) return null;
   try {
     const data = JSON.parse(room.val());
-    if (data?.gameType === 'cafe-o-te' || data?.gameType === 'futbol') return data.gameType;
+    if (['cafe-o-te', 'futbol', 'la-mecha'].includes(data?.gameType)) return data.gameType;
   } catch {}
   return 'codigo-secreto';
 }

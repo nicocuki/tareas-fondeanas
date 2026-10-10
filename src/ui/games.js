@@ -2,6 +2,26 @@
 // Para sumar un juego nuevo: agregalo acá, en el enrutador de App.jsx y en ROOTS (worker/rules.js).
 export const GAMES = [
   {
+    id: 'la-mecha',
+    title: 'La Mecha',
+    emoji: '💣',
+    color: 'var(--game-mecha)',
+    onColor: '#2a1205',
+    tagline: 'Escribí antes de que explote',
+    description: 'La bomba pasa de mano en mano con unas letras. Escribí una palabra que las tenga antes de que se termine la mecha… y que no te explote a vos.',
+    players: '2 a 16',
+    duration: '5–10 min',
+    input: 'Teclado o celular',
+    badge: 'Nuevo',
+    howTo: [
+      'Todos están en ronda y la bomba pasa de uno a otro.',
+      'Cuando te toca, la bomba muestra unas letras (por ejemplo «CAR»).',
+      'Escribí una palabra real que las tenga (o que empiece con ellas, según el modo) y apretá Enter.',
+      'Si la mecha se termina mientras la tenés vos, perdés una vida. El último que queda, gana.',
+      'Las tildes no hacen falta y no se pueden repetir palabras. Si usás todas las letras del abecedario, ganás una vida.',
+    ],
+  },
+  {
     id: 'gartic',
     title: 'Trazo Loco',
     emoji: '🎨',
@@ -12,7 +32,6 @@ export const GAMES = [
     players: '3 a 20',
     duration: '10–20 min',
     input: 'Mouse o dedo',
-    badge: 'Nuevo',
     howTo: [
       'Cada uno escribe una frase para empezar su cadena.',
       'La frase pasa al siguiente, que la tiene que dibujar.',

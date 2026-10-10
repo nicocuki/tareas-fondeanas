@@ -8,12 +8,13 @@ import { previousAuthor } from '../src/gartic/game.js';
 import { MAX_DRAWING, MAX_TEXT } from '../src/gartic/game.js';
 import { getAt } from './tree.js';
 
-export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps'];
+export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps', 'mecha'];
 
 // Fotos del fútbol: cambian muchas veces por segundo y no hace falta guardarlas en disco.
 // Si la sala se duerme (nadie conectado) se pierden, y está bien.
 const EPHEMERAL_FUTBOL = new Set(['players', 'ball', 'signal', 'peers']);
-export const isEphemeral = (segs) => segs[0] === 'futbol' && EPHEMERAL_FUTBOL.has(segs[2]);
+// Lo mismo con lo que se va escribiendo en La Mecha (`mecha/{sala}/typing`).
+export const isEphemeral = (segs) => (segs[0] === 'futbol' && EPHEMERAL_FUTBOL.has(segs[2])) || segs[0] === 'mecha';
 
 // Cada cuánto se parte el árbol para guardarlo: cada dibujo de Trazo Loco va aparte, porque
 // pueden pesar cientos de KB y un solo valor guardado no puede pasar de 2 MB.

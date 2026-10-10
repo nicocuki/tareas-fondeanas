@@ -1,3 +1,7 @@
 # Los archivos de /assets llevan un hash en el nombre: se pueden guardar para siempre.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# El diccionario de La Mecha cambia poco: un día en caché.
+/mecha/*
+  Cache-Control: public, max-age=86400

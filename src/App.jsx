@@ -9,8 +9,10 @@ import CodigoSecretoApp from './codigo-secreto/CodigoSecretoApp.jsx';
 import CafeOTeApp from './cafeote/CafeOTeApp.jsx';
 import FutbolApp from './futbol/FutbolApp.jsx';
 import GarticApp from './gartic/GarticApp.jsx';
+import MechaApp from './mecha/MechaApp.jsx';
 
 const SCREENS = {
+  'la-mecha': MechaApp,
   'codigo-secreto': CodigoSecretoApp,
   'cafe-o-te': CafeOTeApp,
   futbol: FutbolApp,
