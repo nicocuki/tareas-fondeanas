@@ -183,7 +183,7 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.1.0 = Juego nuevo: La Mecha 💣
+1.1.0 = Juego nuevo: La Mecha 💣
 - La bomba pasa de mano en mano con 2, 3 o 4 letras: escribí una palabra que las tenga antes de que explote.
 - El anfitrión elige si las letras van en cualquier parte o al principio, la dificultad, las vidas y el largo de la mecha.
 - La mecha explota en un momento al azar; si te explota a vos, perdés una vida. El último que queda, gana.
@@ -191,3 +191,13 @@ LATEST 1.1.0 = Juego nuevo: La Mecha 💣
 - Las tildes no hacen falta, no se pueden repetir palabras y, si usás todas las letras del abecedario, ganás una vida.
 - Diccionario de español de Argentina con más de 586.000 palabras (con conjugaciones y voseo), del proyecto libre RLA-ES, más algo de lunfardo.
 - Anda en compu y en celular, de 2 a 16 jugadores.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.2.0 = Juego nuevo: Armá el Meme 🖼️
+- A cada uno le toca una plantilla de meme y tiene un rato para escribirle los textos. Después se votan todos con estrellas.
+- Dos modos: «Normal» (cada uno con un meme distinto, y lo podés cambiar una vez) y «Todos el mismo» (la misma plantilla para todos, gana el más gracioso).
+- Los textos se arrastran a donde quieras y se agrandan o achican; letra de meme de verdad, blanca con borde negro.
+- Votación de 1 a 5 estrellas (tu propio meme no lo votás), podio al final de cada ronda y ranking final con los mejores memes de la partida.
+- El anfitrión elige el modo, la cantidad de rondas (1 a 5) y el tiempo para armar (45 s a 2 min).
+- Unas 100 plantillas populares, sacadas de Imgflip. Anda en compu y en celular, de 2 a 12 jugadores.

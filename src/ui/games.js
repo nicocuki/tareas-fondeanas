@@ -2,6 +2,26 @@
 // Para sumar un juego nuevo: agregalo acá, en el enrutador de App.jsx y en ROOTS (worker/rules.js).
 export const GAMES = [
   {
+    id: 'meme',
+    title: 'Armá el Meme',
+    emoji: '🖼️',
+    color: 'var(--game-meme)',
+    onColor: '#ffffff',
+    tagline: 'Memes en vivo y a votar',
+    description: 'Te toca una plantilla, le ponés el texto más gracioso que se te ocurra y después todos votan. Con modo «todos el mismo meme».',
+    players: '2 a 12',
+    duration: '10–20 min',
+    input: 'Cualquier pantalla',
+    badge: 'Nuevo',
+    howTo: [
+      'Cada ronda te toca una plantilla de meme (en el modo «todos el mismo», la misma para todos).',
+      'Escribí los textos y arrastralos donde quieras. En el modo normal podés cambiar la plantilla una vez.',
+      'Cuando todos terminan (o se acaba el tiempo), se muestran los memes de a uno, sin decir de quién son.',
+      'Votás cada meme con 1 a 5 estrellas. El tuyo no lo podés votar.',
+      'Las estrellas se suman: después de la última ronda gana el que tiene más.',
+    ],
+  },
+  {
     id: 'la-mecha',
     title: 'La Mecha',
     emoji: '💣',

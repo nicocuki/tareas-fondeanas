@@ -10,8 +10,10 @@ import CafeOTeApp from './cafeote/CafeOTeApp.jsx';
 import FutbolApp from './futbol/FutbolApp.jsx';
 import GarticApp from './gartic/GarticApp.jsx';
 import MechaApp from './mecha/MechaApp.jsx';
+import MemeApp from './meme/MemeApp.jsx';
 
 const SCREENS = {
+  meme: MemeApp,
   'la-mecha': MechaApp,
   'codigo-secreto': CodigoSecretoApp,
   'cafe-o-te': CafeOTeApp,
