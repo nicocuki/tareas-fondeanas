@@ -9,7 +9,7 @@ import { gameUrl } from '../ui/games.js';
 import {
   GAME_TYPE, MAX_PLAYERS, MAX_TEXT, MIN_PLAYERS, STARS, applyAction, cleanName, findPlayer, makeId, newRoom, pointsFor, ranking,
 } from './game.js';
-import { defaultTexts } from './templates.js';
+import { CATALOG, boxLabel, defaultTexts, findTemplate, toRoomTemplate } from './catalog.js';
 import MemeView from './MemeView.jsx';
 import './meme.css';
 
@@ -21,19 +21,11 @@ function codeFromUrl() {
 }
 const setUrlCode = (code) => window.history.replaceState(null, '', gameUrl(GAME, code));
 
-// Plantillas de /api/memes, una sola vez por pestaña.
-let templatesPromise = null;
-function loadTemplates() {
-  templatesPromise ||= fetch('/api/memes')
-    .then((r) => r.json())
-    .then((d) => { if (!d.templates?.length) throw new Error(d.error || 'Sin memes'); return d.templates; })
-    .catch((e) => { templatesPromise = null; throw e; });
-  return templatesPromise;
-}
-function samplePool(templates, n = 40) {
-  const a = [...templates];
+// Plantillas para una ronda, mezcladas (las elige la pantalla que arranca la ronda).
+function samplePool(n = 40) {
+  const a = [...CATALOG];
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-  return a.slice(0, n);
+  return a.slice(0, n).map(toRoomTemplate);
 }
 
 function Clock({ endsAt, now, total }) {
@@ -81,7 +73,7 @@ function Entry({ onCreate, onJoin, busy, error, onBack }) {
 }
 
 // ─── Sala de espera ──────────────────────────────────────────────────────────
-function Lobby({ room, me, code, templates, onDispatch, onLeave, onCopy, copied }) {
+function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   const opts = room.options;
   const set = (patch) => onDispatch({ type: 'setOptions', options: patch });
@@ -113,26 +105,25 @@ function Lobby({ room, me, code, templates, onDispatch, onLeave, onCopy, copied 
       </LobbyOptions>
       <div className="mm-start">
         {host ? (
-          <button type="button" className="tf-btn tf-btn-primary mm-start-btn" disabled={!enough || !templates} onClick={() => onDispatch({ type: 'start', pool: samplePool(templates) })}>
+          <button type="button" className="tf-btn tf-btn-primary mm-start-btn" disabled={!enough} onClick={() => onDispatch({ type: 'start', pool: samplePool() })}>
             🖼️ ¡A memear!
           </button>
         ) : <p>Esperando que el anfitrión arranque…</p>}
         {!enough && <p className="mm-hint">Hacen falta al menos {MIN_PLAYERS} jugadores. Pasales el código.</p>}
-        {!templates && <p className="mm-hint">Cargando memes…</p>}
       </div>
     </LobbyLayout>
   );
 }
 
 // ─── Armado ──────────────────────────────────────────────────────────────────
-function Making({ room, me, now, templates, onDispatch }) {
+function Making({ room, me, now, onDispatch }) {
   const template = room.templates[me.id];
   const submitted = Boolean(room.memes[me.id]);
-  const [texts, setTexts] = useState(() => defaultTexts(template?.boxes || 2));
+  const [texts, setTexts] = useState(() => defaultTexts(template));
   const [active, setActive] = useState(0);
   const sent = useRef(false);
   const tplKey = template ? `${template.id}:${room.round}` : '';
-  useEffect(() => { setTexts(defaultTexts(template?.boxes || 2)); setActive(0); sent.current = false; }, [tplKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setTexts(defaultTexts(template)); setActive(0); sent.current = false; }, [tplKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const left = room.phaseEndsAt - now;
   function submit() {
@@ -165,13 +156,13 @@ function Making({ room, me, now, templates, onDispatch }) {
       </div>
     );
   }
-  const canReroll = room.options.mode === 'normal' && !room.rerolled[me.id] && templates;
+  const canReroll = room.options.mode === 'normal' && !room.rerolled[me.id];
   return (
     <div className="cs-root mm-page">
       {header}
       <div className="mm-editor">
         <div className="mm-editor-preview">
-          <MemeView template={template} texts={texts} editable active={active} onSelect={setActive} onMove={(i, x, y) => update(i, { x: Math.round(x), y: Math.round(y) })} />
+          <MemeView template={template} texts={texts} labels={texts.map((_, i) => boxLabel(template, i))} editable active={active} onSelect={setActive} onMove={(i, x, y) => update(i, { x: Math.round(x), y: Math.round(y) })} />
           <p className="mm-hint mm-tip">Arrastrá los textos para acomodarlos.</p>
         </div>
         <div className="mm-editor-side">
@@ -181,7 +172,7 @@ function Making({ room, me, now, templates, onDispatch }) {
                 className="tf-input"
                 value={t.t}
                 maxLength={MAX_TEXT}
-                placeholder={`Texto ${i + 1}`}
+                placeholder={boxLabel(template, i)}
                 aria-label={`Texto ${i + 1}`}
                 onFocus={() => setActive(i)}
                 onChange={(e) => update(i, { t: e.target.value })}
@@ -189,6 +180,7 @@ function Making({ room, me, now, templates, onDispatch }) {
               <div className="mm-size">
                 <button type="button" aria-label="Achicar texto" onClick={() => update(i, { s: Math.max(3, t.s - 1) })}>A−</button>
                 <button type="button" aria-label="Agrandar texto" onClick={() => update(i, { s: Math.min(16, t.s + 1) })}>A+</button>
+                <button type="button" aria-label={t.k ? 'Letra blanca' : 'Letra negra'} title={t.k ? 'Letra blanca' : 'Letra negra'} onClick={() => update(i, { k: t.k ? 0 : 1 })}>{t.k ? '⚪' : '⚫'}</button>
               </div>
             </div>
           ))}
@@ -199,9 +191,9 @@ function Making({ room, me, now, templates, onDispatch }) {
                 className="tf-btn tf-btn-soft"
                 onClick={() => {
                   const used = new Set(Object.values(room.templates).map((x) => x.id));
-                  const options = templates.filter((x) => !used.has(x.id));
-                  const pick = options[Math.floor(Math.random() * options.length)] || templates[0];
-                  onDispatch({ type: 'reroll', round: room.round, template: pick });
+                  const options = CATALOG.filter((x) => !used.has(x.id));
+                  const pick = options[Math.floor(Math.random() * options.length)] || CATALOG[0];
+                  onDispatch({ type: 'reroll', round: room.round, template: toRoomTemplate(pick) });
                 }}
               >
                 🔄 Cambiar meme (1 vez)
@@ -209,7 +201,10 @@ function Making({ room, me, now, templates, onDispatch }) {
             )}
             <button type="button" className="tf-btn tf-btn-primary" disabled={!texts.some((t) => t.t.trim())} onClick={submit}>¡Listo!</button>
           </div>
-          <p className="mm-hint">{template?.name}</p>
+          <div className="mm-about">
+            <strong>{findTemplate(template?.id)?.name || template?.name}</strong>
+            {findTemplate(template?.id)?.hint && <p>💡 {findTemplate(template.id).hint}</p>}
+          </div>
         </div>
       </div>
     </div>
@@ -331,7 +326,6 @@ export default function MemeApp({ onBackToMenu }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [templates, setTemplates] = useState(null);
   const [offset, setOffset] = useState(0);
   const [tick, setTick] = useState(Date.now());
   const code = session?.code;
@@ -341,7 +335,6 @@ export default function MemeApp({ onBackToMenu }) {
   useRegisterRoom(GAME, code, () => handleLeave());
 
   useEffect(() => {
-    loadTemplates().then(setTemplates).catch(() => setError('No se pudieron cargar los memes. Probá recargar en un rato.'));
     return backend.subscribeServerOffset(setOffset);
   }, []);
 
@@ -371,7 +364,7 @@ export default function MemeApp({ onBackToMenu }) {
     const key = `${room.round}:${room.phase}:${room.voteIndex}`;
     if (tickSent.current === key) return;
     tickSent.current = key;
-    dispatch({ type: 'tick', round: room.round, phase: room.phase, index: room.voteIndex, pool: room.phase === 'results' && templates ? samplePool(templates) : undefined });
+    dispatch({ type: 'tick', round: room.round, phase: room.phase, index: room.voteIndex, pool: room.phase === 'results' ? samplePool() : undefined });
   });
 
   function enterRoom(next) {
@@ -383,7 +376,7 @@ export default function MemeApp({ onBackToMenu }) {
 
   async function dispatch(action) {
     if (!session) return null;
-    const full = action.withPool ? { ...action, pool: templates ? samplePool(templates) : [] } : action;
+    const full = action.withPool ? { ...action, pool: samplePool() } : action;
     try {
       return await backend.updateRoom(session.code, (current) => applyAction(current, { ...full, playerId: session.playerId }, { now: Date.now() + offset, rand: Math.random }));
     } catch {
@@ -455,8 +448,8 @@ export default function MemeApp({ onBackToMenu }) {
     );
   }
   const view = {
-    lobby: () => <Lobby room={room} me={me} code={code} templates={templates} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} />,
-    making: () => <Making room={room} me={me} now={now} templates={templates} onDispatch={dispatch} />,
+    lobby: () => <Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} />,
+    making: () => <Making room={room} me={me} now={now} onDispatch={dispatch} />,
     voting: () => <Voting room={room} me={me} now={now} onDispatch={dispatch} />,
     results: () => <Results room={room} now={now} />,
     final: () => <Final room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />,

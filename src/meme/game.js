@@ -1,12 +1,12 @@
 // Armá el Meme: reducer puro (mismo patrón que Código Secreto y La Mecha). Corre dentro de la
 // transacción de la sala con `ctx = { now, rand }`. Las plantillas las elige la pantalla que manda
-// la acción (de la lista de /api/memes) y viajan en la acción como `pool` o `template`.
-import { MAX_BOXES } from './templates.js';
+// la acción (del catálogo de `catalog.js`) y viajan en la acción como `pool` o `template`.
 
 export const GAME_TYPE = 'meme';
 export const MAX_PLAYERS = 12;
 export const MIN_PLAYERS = 2;
 export const MAX_TEXT = 80;
+export const MAX_BOXES = 5;
 export const VOTE_MS = 12000;     // cuánto se muestra cada meme para votar
 export const RESULTS_MS = 9000;   // resultados de la ronda antes de la siguiente
 export const STARS = [1, 2, 3, 4, 5];
@@ -58,12 +58,15 @@ export function cleanTexts(texts, boxes) {
   const list = Array.isArray(texts) ? texts.slice(0, boxes) : [];
   return Array.from({ length: boxes }, (_, i) => {
     const t = list[i] || {};
-    return {
+    const clean = {
       t: String(t.t || '').replace(/\s+/g, ' ').slice(0, MAX_TEXT),
       x: Math.round(clamp(t.x, 0, 100, 50)),
       y: Math.round(clamp(t.y, 0, 100, 50)),
+      w: Math.round(clamp(t.w, 10, 100, 92)),
       s: Math.round(clamp(t.s, 3, 16, 8) * 10) / 10,
     };
+    if (t.k) clean.k = 1; // letra negra
+    return clean;
   });
 }
 

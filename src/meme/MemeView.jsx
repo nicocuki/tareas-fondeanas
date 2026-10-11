@@ -2,7 +2,7 @@
 // Si es editable, cada texto se puede arrastrar con el mouse o el dedo.
 import React, { useRef } from 'react';
 
-export default function MemeView({ template, texts, editable = false, active = -1, onMove, onSelect, className = '', maxHeight }) {
+export default function MemeView({ template, texts, labels, editable = false, active = -1, onMove, onSelect, className = '', maxHeight }) {
   const box = useRef(null);
   const drag = useRef(null);
 
@@ -37,11 +37,11 @@ export default function MemeView({ template, texts, editable = false, active = -
       {texts.map((t, i) => (
         <div
           key={i}
-          className={`mm-text${active === i ? ' is-active' : ''}${!t.t && editable ? ' is-empty' : ''}`}
-          style={{ left: `${t.x}%`, top: `${t.y}%`, fontSize: `${t.s}cqw` }}
+          className={`mm-text${t.k ? ' is-dark' : ''}${active === i ? ' is-active' : ''}${!t.t && editable ? ' is-empty' : ''}`}
+          style={{ left: `${t.x}%`, top: `${t.y}%`, width: `${t.w ?? 92}%`, fontSize: `${t.s}cqw` }}
           onPointerDown={(e) => start(e, i)}
         >
-          {t.t || (editable ? `Texto ${i + 1}` : '')}
+          {t.t || (editable ? labels?.[i] || `Texto ${i + 1}` : '')}
         </div>
       ))}
     </div>

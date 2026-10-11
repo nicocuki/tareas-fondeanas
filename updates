@@ -194,10 +194,18 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.2.0 = Juego nuevo: Armá el Meme 🖼️
+1.2.0 = Juego nuevo: Armá el Meme 🖼️
 - A cada uno le toca una plantilla de meme y tiene un rato para escribirle los textos. Después se votan todos con estrellas.
 - Dos modos: «Normal» (cada uno con un meme distinto, y lo podés cambiar una vez) y «Todos el mismo» (la misma plantilla para todos, gana el más gracioso).
 - Los textos se arrastran a donde quieras y se agrandan o achican; letra de meme de verdad, blanca con borde negro.
 - Votación de 1 a 5 estrellas (tu propio meme no lo votás), podio al final de cada ronda y ranking final con los mejores memes de la partida.
 - El anfitrión elige el modo, la cantidad de rondas (1 a 5) y el tiempo para armar (45 s a 2 min).
 - Unas 100 plantillas populares, sacadas de Imgflip. Anda en compu y en celular, de 2 a 12 jugadores.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.2.1 = Armá el Meme: memes con contexto
+- Ahora hay 78 plantillas elegidas a mano: se sacaron las que no se entendían, las que tenían texto en inglés pegado y las de política yanqui.
+- Cada meme tiene su nombre en castellano y una explicación de cómo se usa.
+- Los textos arrancan donde van (en cada viñeta, en cada personaje) y dicen qué escribir ahí ("Lo que no", "Lo que sí", "Vos"…).
+- En los fondos blancos la letra viene negra, y con el botón ⚫/⚪ se cambia el color de cada texto.

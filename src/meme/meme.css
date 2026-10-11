@@ -32,6 +32,7 @@
 .mm-meme.is-editable .mm-text { cursor: grab; border: 2px dashed transparent; border-radius: 8px; padding: 2px 4px; }
 .mm-meme.is-editable .mm-text:hover, .mm-meme.is-editable .mm-text.is-active { border-color: rgba(255, 255, 255, 0.7); background: rgba(0, 0, 0, 0.12); }
 .mm-text.is-empty { opacity: 0.55; }
+.mm-text.is-dark { color: #111; text-shadow: 0 0 2px #fff, 0.04em 0.04em 0 #fff, -0.04em -0.04em 0 #fff, 0.04em -0.04em 0 #fff, -0.04em 0.04em 0 #fff; }
 
 .mm-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .mm-round { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
@@ -87,3 +88,6 @@
   .mm-stars button small { display: none; }
   .mm-stars button span { font-size: 11px; }
 }
+.mm-about { margin-top: 14px; padding: 12px 14px; border-radius: var(--radius-lg); background: var(--surface-2); border: 1px solid var(--border); }
+.mm-about strong { font-family: var(--font-display); }
+.mm-about p { margin: 4px 0 0; color: var(--text-2); font-size: 14px; }

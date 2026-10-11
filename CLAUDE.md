@@ -177,12 +177,11 @@ por una versión anterior siga abriéndose sin romper.
 | `src/theme.js` | Colores y estilos para los estilos en línea de los juegos (apuntan a las variables de `src/ui/tokens.css`) |
 | `src/gartic/` | Componentes y lógica de Trazo Loco (ver `docs/GARTIC.md`) |
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
-| `src/meme/` | Armá el Meme: reducer (`game.js`), plantillas (`templates.js`), el meme con textos (`MemeView.jsx`), pantallas |
-| `worker/memes.js` | `/api/memes`: la lista de plantillas de Imgflip, guardada 6 horas en memoria |
+| `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
 | `src/storage.js` | Salas (`rooms/`) y canal del fútbol sobre el servidor de salas |
 | `src/realtime.js` | Cliente del servidor de salas, con la misma forma que Firebase Realtime Database |
-| `worker/index.js` | Worker de Cloudflare: `/api/hora`, `/api/memes`, `/api/sala/ABCD` (WebSocket) y la página |
+| `worker/index.js` | Worker de Cloudflare: `/api/hora`, `/api/sala/ABCD` (WebSocket) y la página |
 | `worker/sala.js` | Durable Object de una sala: WebSockets que hibernan y SQLite propio |
 | `worker/core.js` | El servidor de una sala sin nada de Cloudflare (se prueba con `node --test`) |
 | `worker/rules.js` | Quién lee y escribe cada rama, qué se guarda en disco y qué no |
@@ -306,14 +305,19 @@ todos, uno por uno, de 1 a 5 estrellas.
   `applyAction(room, action, { now, rand })`. Fases: `lobby` → `making` → `voting` → `results` →
   (otra ronda o) `final`. Los relojes los cierra cualquier pantalla con `tick` (lleva `round`,
   `phase` y, en la votación, `index`).
-- **Las plantillas salen de Imgflip** (`get_memes`, gratis y sin clave, ~100 memes populares) por
-  `/api/memes` en el Worker. El reducer no las busca: la pantalla del anfitrión manda un `pool` al
-  arrancar (y en el `tick` que abre la ronda siguiente), y `reroll` trae la plantilla nueva.
-  `cleanTemplate` solo acepta URLs de `https://i.imgflip.com/`.
+- **Las plantillas son un catálogo propio** (`src/meme/catalog.js`, ~80): elegidas a mano entre las
+  más usadas de Imgflip, sin las que no se entienden, las que traen texto en inglés pegado ni las de
+  política yanqui. Las imágenes se cargan de `i.imgflip.com`. Cada una tiene nombre en castellano,
+  `hint` (cómo se usa) y sus cajas: posición, ancho, tamaño, `k: 1` (letra negra) y `label` (qué va
+  ahí). **Para agregar una**, mirala con las cajas encima antes de publicar: los `x/y` a ojo fallan.
+  Antes se pedía la lista entera a la API de Imgflip (`/api/memes`) y había muchas sin contexto.
+- El reducer no conoce el catálogo: la pantalla que arranca la ronda manda un `pool` (y en el `tick`
+  que abre la siguiente), y `reroll` trae la plantilla nueva. En la sala viaja `toRoomTemplate`
+  (id, url, tamaño, cantidad de cajas); `cleanTemplate` solo acepta URLs de `https://i.imgflip.com/`.
 - **Modos** (`options.mode`): `normal` reparte una plantilla distinta a cada uno y deja cambiarla una
   vez; `same` le da la misma a todos y no deja cambiarla.
-- **Los textos no se dibujan en la imagen**: se guardan como `{ t, x, y, s }` (texto, posición en %
-  y tamaño en `cqw`) y `MemeView` los pone encima con CSS, en Anton con borde negro. Así no hace
+- **Los textos no se dibujan en la imagen**: se guardan como `{ t, x, y, w, s, k }` (texto, posición y
+  ancho en %, tamaño en `cqw`, letra negra) y `MemeView` los pone encima con CSS, en Anton con borde negro. Así no hace
   falta subir imágenes a ningún lado.
 - Un meme sin texto no entra a la votación. Nadie vota el suyo; cuando votaron todos, pasa al siguiente.
 - `history` guarda solo el mejor meme de cada ronda (últimos 5). El peor caso de sala da ~20.000

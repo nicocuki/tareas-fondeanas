@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   MAX_PLAYERS, RESULTS_MS, VOTE_MS, applyAction, cleanTemplate, cleanTexts, findPlayer, newRoom, pointsFor, ranking,
 } from '../src/meme/game.js';
-import { defaultTexts, parseImgflip } from '../src/meme/templates.js';
+import { CATALOG, boxLabel, defaultTexts, findTemplate, toRoomTemplate } from '../src/meme/catalog.js';
 
 const tpl = (i, boxes = 2) => ({ id: `t${i}`, name: `Meme ${i}`, url: `https://i.imgflip.com/m${i}.jpg`, w: 600, h: 400, boxes });
 const POOL = Array.from({ length: 10 }, (_, i) => tpl(i));
@@ -21,15 +21,24 @@ function submitAll(room, now = 2000) {
   return room;
 }
 
-test('meme: la lista de Imgflip se limpia y cada meme arranca con textos arriba y abajo', () => {
-  const parsed = parseImgflip({ success: true, data: { memes: [
-    { id: '181913649', name: 'Drake', url: 'https://i.imgflip.com/30b1gx.jpg', width: 1200, height: 1200, box_count: 2 },
-    { id: 'x', name: 'Raro', url: 'http://otro.com/a.jpg', width: 10, height: 10, box_count: 0 },
-  ] } });
-  assert.deepEqual(parsed, [{ id: '181913649', name: 'Drake', url: 'https://i.imgflip.com/30b1gx.jpg', w: 1200, h: 1200, boxes: 2 }]);
-  assert.deepEqual(parseImgflip({ success: false }), []);
-  assert.equal(defaultTexts(2)[1].y, 88);
-  assert.equal(defaultTexts(4).length, 4);
+test('meme: cada plantilla del catálogo es válida y trae sus cajas de texto ubicadas', () => {
+  assert.ok(CATALOG.length >= 60, `${CATALOG.length}`);
+  assert.equal(new Set(CATALOG.map((t) => t.id)).size, CATALOG.length);
+  for (const t of CATALOG) {
+    const room = toRoomTemplate(t);
+    assert.deepEqual(cleanTemplate(room), room, t.name);
+    assert.ok(t.hint && t.name, t.id);
+    assert.ok(t.boxes.length >= 1 && t.boxes.length <= 5, t.name);
+    for (const b of t.boxes) {
+      assert.ok(b.x >= 0 && b.x <= 100 && b.y >= 0 && b.y <= 100, t.name);
+      assert.ok(b.w >= 10 && b.w <= 100 && b.s >= 3 && b.s <= 16, t.name);
+    }
+    assert.deepEqual(cleanTexts(defaultTexts(room), room.boxes), defaultTexts(room), t.name);
+  }
+  const drake = findTemplate('181913649');
+  assert.equal(defaultTexts(toRoomTemplate(drake))[0].x, 75);
+  assert.equal(boxLabel(drake, 1), 'Lo que sí');
+  assert.equal(boxLabel({ id: 'otra' }, 0), 'Texto 1');
   assert.equal(cleanTemplate({ ...tpl(1), url: 'https://malicioso.com/x.jpg' }), null);
 });
 
@@ -59,6 +68,8 @@ test('meme: los textos se limpian (tope de largo, cantidad de cajas, posiciones 
   assert.equal(texts[0].x, 100);
   assert.equal(texts[0].y, 0);
   assert.equal(texts[0].s, 16);
+  assert.equal(texts[0].w, 92);
+  assert.equal(cleanTexts([{ t: 'a', w: 3 }], 1)[0].w, 10);
 });
 
 test('meme: cuando todos entregan arranca la votación, en orden mezclado y sin memes vacíos', () => {
@@ -150,7 +161,7 @@ test('meme: una sala llena con textos largos no pasa el tope de 30.000 caractere
   const names = Array.from({ length: MAX_PLAYERS }, (_, i) => `Jugador${i}`);
   let room = start(lobby(names, { rounds: 5 }));
   room.templates = Object.fromEntries(room.players.map((p) => [p.id, tpl(p.id, 5)]));
-  for (const p of room.players) room = applyAction(room, { type: 'submit', playerId: p.id, round: room.round, texts: Array.from({ length: 5 }, () => ({ t: '"'.repeat(80), x: 50, y: 50, s: 8 })) }, { now: 2000 });
+  for (const p of room.players) room = applyAction(room, { type: 'submit', playerId: p.id, round: room.round, texts: Array.from({ length: 5 }, () => ({ t: '"'.repeat(80), x: 50, y: 50, w: 48, s: 8 })) }, { now: 2000 });
   for (const author of room.order) room.votes[author] = Object.fromEntries(room.players.map((p) => [p.id, 5]));
   room.history = Array.from({ length: 5 }, (_, i) => ({ round: i, author: 'a', points: 50, template: tpl(i, 5), texts: room.memes.a }));
   const size = JSON.stringify(room).length;
