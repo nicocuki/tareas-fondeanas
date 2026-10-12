@@ -1,85 +1,73 @@
-# Tareas Fondeanas
+# 🎮 Tareas Fondeanas
 
-Juegos multijugador para jugar con los del fondo, cada uno desde su pantalla: **Armá el Meme**, **La Mecha**,
-**Trazo Loco**, **Código Secreto**, **Café o Té** y **Fútbol**. Gratis, sin cuentas y sin instalar nada.
+**Juegos multijugador para jugar con los del fondo.** Armá una sala, compartí el código y jueguen desde sus propios dispositivos: gratis, sin cuentas y sin instalar nada.
 
-**👉 Jugá acá: https://tareas-fondeanas.nicocukier.workers.dev**
+👉 **[Entrar a Tareas Fondeanas](https://tareas-fondeanas.nicocukier.workers.dev)**
 
-No hace falta cuenta ni instalar nada: alguien crea una sala, comparte el link y el resto entra.
+## 🕹️ Juegos disponibles
 
-![Partida en curso: jugadores a la izquierda, tablero con colores al medio, reglas y chat a la derecha](docs/captura.png)
+- **Armá el Meme:** completá una plantilla con el texto más gracioso y voten las mejores respuestas. También pueden jugar en modo «todos el mismo meme».
+- **La Mecha:** la bomba pasa de jugador en jugador. Escribí una palabra que contenga las letras indicadas antes de que se termine el tiempo.
+- **Trazo Loco:** teléfono descompuesto con dibujos. Escribí, dibujá y descubrí cómo fue cambiando la idea. Tiene modos Normal, Imitación, Historia y Sandwich.
+- **Código Secreto:** juego de palabras, pistas y equipos. El espía da una pista de una palabra y un número para ayudar a su equipo a encontrar las palabras correctas sin tocar una bomba.
+- **Café o Té:** juego de asociación y adivinanza por eliminación, en formato 2 contra 2: Pensadores y Adivinadores.
+- **Fútbol:** partido de fútbol 2D con física, dos equipos y controles de teclado.
 
-*Así ve la partida el espía del equipo rojo. Los agentes ven las mismas palabras, pero sin los colores.*
+## 🚀 Cómo empezar a jugar
 
-## Cómo se juega
+1. Entrá a [la página](https://tareas-fondeanas.nicocukier.workers.dev).
+2. Elegí un juego y creá una sala.
+3. Compartí el código o el enlace de la sala con tus amigos.
+4. Cada persona entra desde su propio dispositivo y ¡a jugar!
 
-- Se arman equipos. Cada uno tiene un **espía** (el líder) y uno o más **agentes** (los miembros).
-- En el tablero hay palabras de cada equipo, casillas **neutrales** y **bombas**. Solo los espías
-  saben de quién es cada una.
-- En su turno, el espía da una pista de **una sola palabra** y un número. «Playa 3» quiere decir
-  «hay tres palabras de nuestro equipo que tienen que ver con playa».
-- Los agentes eligen casillas. El número de la pista es la cantidad de intentos.
-- Gana el equipo que descubre todas sus palabras. El que toca una bomba queda afuera.
+No hace falta crear una cuenta ni instalar una aplicación.
 
-La pista no puede ser una palabra del tablero, y durante la partida no se puede hacer señas ni
-dar información de más: las reglas completas están en el juego.
+## 🧑‍💻 Desarrollo local
 
-## Qué tiene
+### Requisitos
 
-- **De 2 a 4 equipos** (rojo, azul, amarillo y verde). Con más equipos, el tablero crece.
-- **Modificadores** que elige quien crea la sala:
-  - cuántas bombas hay;
-  - si tocar una casilla neutral o del rival corta el turno o no;
-  - reloj para el espía y para los agentes;
-  - si el color de cada casilla se ve al instante o recién al terminar el turno.
-- **Votación** cuando hay varios agentes en un equipo: una casilla se elige cuando la vota la mayoría.
-- **Chat global** con mensajes rápidos, y **chat de equipo** escrito solo entre agentes, sin el espía.
-- **Pausa** para toda la mesa, y un botón para que el espía oculte los colores si alguien le mira la pantalla.
-- **Unas 980 palabras** distintas.
+- **Node.js 20.19 o superior**.
+- **npm**.
 
-## Para desarrollar
+### Instalación
 
-Hace falta Node 20.19 o más nuevo (lo pide Vite).
+Cloná el repositorio e instalá las dependencias:
 
 ```bash
+git clone https://github.com/nicocuki/tareas-fondeanas.git
+cd tareas-fondeanas
 npm install
-npm test            # tests de la lógica de los juegos y del servidor de salas
-npm run servidor    # arma la página y levanta todo junto en http://localhost:8787
 ```
 
-`npm run servidor` usa `wrangler dev`: corre el servidor de salas en tu compu, con su propia base
-local, así que las salas de prueba no tocan las del sitio publicado. Para tocar la interfaz con
-recarga automática, dejá `npm run servidor` corriendo y en otra terminal `npm run dev`
-(http://localhost:5173): Vite le pasa `/api` al servidor local.
+### Comandos
 
-### Publicar
+| Comando | Para qué sirve |
+| --- | --- |
+| `npm test` | Ejecuta los tests de la lógica de los juegos y del servidor de salas. |
+| `npm run servidor` | Compila la página y levanta el sitio junto con el servidor local de salas en `http://localhost:8787`. |
+| `npm run dev` | Inicia Vite con recarga automática en `http://localhost:5173`. Requiere tener `npm run servidor` ejecutándose para que las llamadas a `/api` se dirijan al servidor local. |
+| `npm run build` | Genera la versión de producción en `dist/`. |
+| `npm run deploy` | Compila y despliega manualmente en Cloudflare; requiere haber iniciado sesión con Wrangler. |
 
-No hace falta hacer nada: **cada `git push` a `master` lo publica solo** (Cloudflare Workers Builds
-corre `npm run build` y `npx wrangler deploy`). El estado de cada publicación se ve en GitHub, al
-lado del commit, y en el panel de Cloudflare → Workers & Pages → tareas-fondeanas.
+El servidor local usa su propia base de Durable Objects, por lo que las salas de prueba no afectan las partidas del sitio publicado.
 
-## Cómo está hecho
+## 🧱 Tecnologías y arquitectura
 
-- **React 19 + Vite** para la interfaz.
-- **Cloudflare Workers** sirve el sitio y el servidor de salas, en el plan gratis.
-- Cada sala (código de 4 letras) es un **Durable Object**: un mini servidor con su propia base,
-  al que cada pantalla se conecta por **WebSocket**. Cuando nadie juega, se duerme y no gasta.
-  El cliente ([`src/realtime.js`](src/realtime.js)) tiene la misma forma que Firebase Realtime
-  Database, que era lo que se usaba antes, así que los juegos casi no cambiaron.
-- Toda la lógica de cada juego es un reducer puro, sin React ni red, que corre dentro de una
-  transacción: si dos jugadores tocan algo al mismo tiempo, no se pisan.
-- En Fútbol las jugadas van **directo entre navegadores** (WebRTC); el servidor solo presenta a
-  las pantallas y hace de respaldo.
+- **React 19** para la interfaz.
+- **Vite** para desarrollo y compilación.
+- **Cloudflare Workers** para servir la aplicación y gestionar las salas online.
+- **Durable Objects** para mantener el estado de cada sala y coordinar a los jugadores mediante WebSockets.
+- **WebRTC** para la conexión entre navegadores durante los partidos de Fútbol, con el servidor como apoyo.
+- **Node.js Test Runner** para las pruebas automatizadas.
 
-El detalle de la arquitectura, las decisiones de diseño y las cosas que ya dieron problemas está
-en [`CLAUDE.md`](CLAUDE.md).
+La lógica de los juegos está separada de la interfaz para poder probar las reglas sin depender de React ni de la conexión de red.
 
-## Autores
+## 📦 Despliegue
+
+El repositorio está conectado a **Cloudflare Workers Builds**. Los cambios que se suben a la rama `master` se publican automáticamente mediante el proceso de build y despliegue configurado.
+
+Para comprobar el estado de una publicación, revisá el check del commit en GitHub o la sección **Workers & Pages → tareas-fondeanas → Deployments** en Cloudflare.
+
+## 👥 Autores
 
 Hecho por **Nicolas Cukier** y **Uriel Suti**.
-
-## Trazo Loco
-
-Nuevo juego de dibujo y teléfono descompuesto en el menú: Normal, Imitación, Historia y Sandwich. Salas para 3 a 20 jugadores con editor táctil, cadenas privadas, revelación y álbumes.
-
-La estructura de datos, la privacidad de las entregas y las pruebas están en [docs/GARTIC.md](docs/GARTIC.md).
