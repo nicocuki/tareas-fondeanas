@@ -70,4 +70,4 @@ Para comprobar el estado de una publicación, revisá el check del commit en Git
 
 ## 👥 Autores
 
-Hecho por **Nicolas Cukier** y **Uriel Suti**.
+Hecho por **Nicolas Cukier** y **Alan Vitas**.
