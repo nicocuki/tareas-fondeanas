@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { LobbyLayout } from '../lobby/index.js';
 import { loadName } from '../session.js';
 import { backend } from '../storage.js';
-import { MODES, cleanName, previousAuthor } from './game.js';
+import { MODES, TIME_CHOICES, MIN_SECONDS, MAX_SECONDS, cleanName, cleanSeconds, previousAuthor, roomSettings } from './game.js';
 import * as network from './storage.js';
 import Task from './Task.jsx';
 import Reveal from './Reveal.jsx';
+import Icon from './Icon.jsx';
+import { PublicCheckbox, PublicSwitch } from '../lobby/PublicRoom.jsx';
 import './gartic.css';
-import GameHero from '../ui/GameHero.jsx';
 import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
 const urlCode=()=>new URLSearchParams(location.search).get('sala')?.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)||'';
 function savedSession(){try{return JSON.parse(sessionStorage.getItem('gartic:session'));}catch{return null;}}
@@ -17,12 +17,34 @@ function remember(code,uid){
   else{url.searchParams.delete('sala');sessionStorage.removeItem('gartic:session');}
   history.replaceState(null,'',url);
 }
+const Logo=({small})=><div className={'gp-logo'+(small?' is-small':'')} aria-label="Trazo Loco"><span className="gp-logo-top">Trazo</span><span className="gp-logo-main">LOCO</span><span className="gp-logo-base" aria-hidden="true"/></div>;
+function Frame({onBack,backLabel='Volver',children,wide}){
+  return <div className="gp-root"><div className={'gp-frame'+(wide?' is-wide':'')}>
+    <header className="gp-head"><button type="button" className="gp-btn-ghost" onClick={onBack}><Icon name="back" size={20}/>{backLabel}</button><Logo small={wide}/><span className="gp-head-spacer"/></header>
+    {children}
+  </div></div>;
+}
+// Tiempo por ronda: los de siempre o uno escrito a mano.
+function TimeField({label,value,disabled,onChange}){
+  const preset=TIME_CHOICES.includes(value);
+  const [custom,setCustom]=useState(!preset),[text,setText]=useState(String(value));
+  useEffect(()=>{setText(String(value));if(!TIME_CHOICES.includes(value))setCustom(true);},[value]);
+  const commit=()=>{const n=cleanSeconds(text,value);setText(String(n));if(n!==value)onChange(n);};
+  const label2=(n)=>n<60?n+' s':n%60?Math.floor(n/60)+' min '+n%60+' s':n/60+' min';
+  return <div className="gp-field"><span className="gp-field-label">{label}</span><div className="gp-field-row">
+    <select disabled={disabled} value={custom?'custom':value} onChange={(e)=>{if(e.target.value==='custom'){setCustom(true);return;}setCustom(false);onChange(Number(e.target.value));}}>
+      {TIME_CHOICES.map((n)=><option key={n} value={n}>{label2(n)}</option>)}<option value="custom">Personalizado…</option>
+    </select>
+    {custom && <label className="gp-custom-time"><input type="number" min={MIN_SECONDS} max={MAX_SECONDS} disabled={disabled} value={text} onChange={(e)=>setText(e.target.value)} onBlur={commit} onKeyDown={(e)=>{if(e.key==='Enter')commit();}} aria-label={label+' en segundos'}/><span>seg</span></label>}
+  </div></div>;
+}
 export default function GarticApp({onBackToMenu}){
   const [uid,setUid]=useState(null),[name,setName]=useState(loadName),[avatar,setAvatar]=useState(()=>getProfile().avatar);
   const [joinCode,setJoinCode]=useState(urlCode),[code,setCode]=useState(''),[room,setRoom]=useState(null);
   const [connected,setConnected]=useState({}),[ready,setReady]=useState({}),[readyKey,setReadyKey]=useState(''),[own,setOwn]=useState(null),[previous,setPrevious]=useState(null);
   const [ownLoaded,setOwnLoaded]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[copied,setCopied]=useState('');
   const [online,setOnline]=useState(false),[offset,setOffset]=useState(0),[tick,setTick]=useState(Date.now());
+  const [tab,setTab]=useState('modes');
   const stopPresence=useRef(null),advancing=useRef(false);
   useEffect(()=>{
     let active=true;
@@ -109,21 +131,107 @@ export default function GarticApp({onBackToMenu}){
     try{await navigator.clipboard.writeText(value);setCopied(link?'link':'code');setTimeout(()=>setCopied(''),2000);}catch{window.prompt('Copiá la invitación:',value);}
   }
   const banners=<>{!online && code && <div className="gp-notice" role="status">Reconectando… Tu tarea sigue guardada.</div>}{error && <div className="gp-error" role="alert">{error}</div>}</>;
-  if(!code)return <div className="gp-root"><main className="gp-home">
-    <GameHero gameId="gartic" onBack={onBackToMenu}/>
-    {banners}<section className="gp-card"><label>Tu nombre<input value={name} maxLength={24} autoComplete="nickname" placeholder="¿Cómo te llamás?" onChange={(e)=>setName(e.target.value)}/></label>
-    <div className="gp-avatar-picker">{AVATARS.map((a)=><button aria-label={'Avatar '+a} aria-pressed={avatar===a} className={avatar===a?'selected':''} key={a} onClick={()=>{setAvatar(a);setProfile({avatar:a});}}>{a}</button>)}</div>
-    <button className="gp-primary gp-wide" disabled={busy || !uid} onClick={()=>enter(true)}>Crear sala</button>
-    <form className="gp-row" onSubmit={(e)=>{e.preventDefault();enter(false);}}><input aria-label="Código de sala" placeholder="ABCD" maxLength={4} autoCapitalize="characters" value={joinCode} onChange={(e)=>setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z]/g,''))}/><button disabled={busy || !uid}>Unirme</button></form></section>
-    <section className="gp-how"><p>💬 Escribí una frase → 🎨 alguien la dibuja → 👀 otro la interpreta → 🔁 la cadena sigue → 🎉 se revela todo.</p></section>
-  </main></div>;
-  if(!room)return <div className="gp-root"><main className="gp-home">{banners}<p>Entrando a la sala…</p><button onClick={leave}>Cancelar</button></main></div>;
+  if(!code)return <Frame onBack={onBackToMenu} backLabel="Juegos">
+    {banners}
+    <div className="gp-home">
+      <section className="gp-col">
+        <h2 className="gp-title">Elegí tu personaje</h2>
+        <div className="gp-panel gp-profile">
+          <span className="gp-avatar gp-avatar-xl">{avatar}</span>
+          <div className="gp-avatar-picker">{AVATARS.map((a)=><button type="button" aria-label={'Avatar '+a} aria-pressed={avatar===a} className={avatar===a?'is-on':''} key={a} onClick={()=>{setAvatar(a);setProfile({avatar:a});}}>{a}</button>)}</div>
+          <input className="gp-name" value={name} maxLength={24} autoComplete="nickname" placeholder="Tu nombre" aria-label="Tu nombre" onChange={(e)=>setName(e.target.value)}/>
+        </div>
+      </section>
+      <section className="gp-col">
+        <h2 className="gp-title">Cómo se juega</h2>
+        <div className="gp-panel gp-howto">
+          <ol>
+            <li><span>✍️</span>Cada uno escribe una frase loca.</li>
+            <li><span>🎨</span>Le llega la frase de otro y la tiene que dibujar.</li>
+            <li><span>🤔</span>Otro ve solo el dibujo y escribe qué es.</li>
+            <li><span>🔁</span>Así hasta que cada cadena pasa por todos.</li>
+            <li><span>📒</span>Al final se ven los álbumes, todos juntos.</li>
+          </ol>
+        </div>
+      </section>
+    </div>
+    <div className="gp-actions">
+      <form className="gp-join" onSubmit={(e)=>{e.preventDefault();enter(false);}}>
+        <input aria-label="Código de sala" placeholder="CÓDIGO" maxLength={4} autoCapitalize="characters" value={joinCode} onChange={(e)=>setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z]/g,''))}/>
+        <button className="gp-btn" disabled={busy || !uid || joinCode.length!==4}>Unirme</button>
+      </form>
+      <button type="button" className="gp-btn gp-btn-go gp-btn-big" disabled={busy || !uid} onClick={()=>enter(true)}><Icon name="play"/>Crear sala</button>
+    </div>
+    <PublicCheckbox/>
+  </Frame>;
+  if(!room)return <Frame onBack={leave} backLabel="Cancelar">{banners}<p className="gp-loading">Entrando a la sala…</p></Frame>;
   const host=room.hostId===uid;
-  const roster=<aside className="gp-card"><h2>Jugadores <small>{Object.keys(room.players).length}</small></h2>{Object.entries(room.players).map(([id,p])=><div className="gp-player" key={id}><span className="gp-avatar">{p.avatar}</span><div><strong>{p.name} {id===room.hostId?'👑':''} {id===uid?'(vos)':''}</strong><small>{connected[id]?(currentReady[id] && phase==='playing'?'✓ Listo':'Conectado'):'Reconectando…'}</small></div><i className={connected[id]?'online':''}/></div>)}</aside>;
-  if(phase==='lobby')return <div className="gp-root gp-lobby"><LobbyLayout code={code} host={host} players={Object.keys(room.players).length} gameTitle="Trazo Loco · Sala de espera" subtitle={host?'Elegí un modo e invitá a tus amigos.':'El anfitrión elige el modo. Prepará tu imaginación.'} copied={copied==='link'} onCopyInvite={()=>copy(true)} onLeave={leave} banners={banners}>
-    <div className="gp-lobby-grid">{roster}<section className="gp-card"><h2>Modos de juego</h2><div className="gp-modes">{MODES.map((mode)=><button key={mode.id} disabled={!host || !mode.available || busy} className={'gp-mode '+(room.mode===mode.id?'selected':'')} aria-pressed={room.mode===mode.id} onClick={()=>run(()=>network.configure(code,'mode',mode.id))}><span>{mode.icon}</span><strong>{mode.name}</strong><p>{mode.description}</p><small>{mode.kind}</small>{!mode.available && <small>🔒 No disponible aún</small>}</button>)}</div>
-    <div className="gp-settings"><label>Máximo de jugadores<select disabled={!host || busy} value={room.settings.maxPlayers} onChange={(e)=>run(()=>network.configure(code,'settings',{...room.settings,maxPlayers:Number(e.target.value)}))}>{[3,4,6,8,10,12,16,20].filter((n)=>n>=Math.max(...Object.values(room.players).map((p)=>p.index))+1).map((n)=><option key={n}>{n}</option>)}</select></label><label>Tiempo inicial<select disabled={!host || busy} value={room.settings.seconds} onChange={(e)=>run(()=>network.configure(code,'settings',{...room.settings,seconds:Number(e.target.value)}))}>{[45,60,90,120].map((n)=><option key={n} value={n}>{n} segundos</option>)}</select></label></div>
-    <div className="gp-row"><button onClick={()=>copy(false)}>{copied==='code'?'¡Código copiado!':'Copiar código'}</button><button onClick={()=>copy(true)}>Invitar</button>{host && <button className="gp-primary" disabled={busy || !online || Object.keys(connected).length<3} onClick={()=>run(()=>network.start(code,room,connected))}>Iniciar partida →</button>}</div><p>{host?'Necesitan al menos 3 jugadores conectados.':'Esperando que el anfitrión inicie la partida…'}</p></section></div>
-  </LobbyLayout></div>;
-  return <div className="gp-root"><main className="gp-play"><header className="gp-row"><h1>🎨 Trazo Loco</h1><span>Sala {code} · {MODES.find((m)=>m.id===state.mode)?.name}</span><button onClick={leave}>Salir</button></header>{banners}<div className="gp-game-grid">{roster}<div>{phase==='reveal'?<Reveal code={code} room={room} host={host} run={run}/>:state.positions?.[uid]===undefined?<section className="gp-card">La partida ya empezó. Esperá a la próxima.</section>:ownLoaded===taskKey?<Task key={taskKey} code={code} state={state} uid={uid} initial={own} previous={previous} ready={!!currentReady[uid]} readyCount={readyCount} now={now} onError={setError}/>:<section className="gp-card">Preparando tu tarea…</section>}</div></div></main></div>;
+  const settings=roomSettings(room.settings);
+  // Cada ajuste por separado: dos cambios seguidos no se pisan.
+  const saveSettings=(patch)=>run(()=>Promise.all(Object.entries(patch).map(([key,value])=>network.configure(code,'settings/'+key,value))));
+  const playerCount=Object.keys(room.players).length;
+  if(phase==='lobby'){
+    const minMax=Math.max(3,...Object.values(room.players).map((p)=>p.index+1));
+    const slots=Array.from({length:settings.maxPlayers},(_,i)=>room.slots?.[i]);
+    return <Frame onBack={leave} backLabel="Salir">
+      {banners}
+      <div className="gp-lobby">
+        <aside className="gp-col">
+          <h2 className="gp-title">Jugadores {playerCount}/{settings.maxPlayers}</h2>
+          <select className="gp-select-big" aria-label="Máximo de jugadores" disabled={!host || busy} value={settings.maxPlayers} onChange={(e)=>saveSettings({maxPlayers:Number(e.target.value)})}>
+            {[3,4,5,6,8,10,12,14,16,20].filter((n)=>n>=minMax).map((n)=><option key={n} value={n}>{n} jugadores</option>)}
+          </select>
+          <div className="gp-panel gp-list" data-players>
+            {slots.map((id,i)=>{
+              const p=id&&room.players[id];
+              if(!p)return <div className="gp-slot is-empty" key={'e'+i}><span className="gp-avatar">🙂</span><strong>Vacío</strong></div>;
+              return <div className={'gp-slot'+(id===uid?' is-me':'')} key={id}>
+                <span className="gp-avatar">{p.avatar}{!connected[id] && <i className="gp-offline" title="Reconectando…"/>}</span>
+                <strong>{p.name}{id===uid?' (vos)':''}</strong>
+                {id===room.hostId && <i className="gp-crown" title="Anfitrión"><Icon name="crown" size={16}/></i>}
+              </div>;
+            })}
+          </div>
+        </aside>
+        <section className="gp-col gp-col-wide">
+          <div className="gp-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={tab==='modes'} className={tab==='modes'?'is-on':''} onClick={()=>setTab('modes')}>Modos</button>
+            <button type="button" role="tab" aria-selected={tab==='settings'} className={tab==='settings'?'is-on':''} onClick={()=>setTab('settings')}>Ajustes</button>
+          </div>
+          <div className="gp-panel gp-tab-panel">
+            {tab==='modes'?<div className="gp-modes">{MODES.map((mode)=><button type="button" key={mode.id} data-opt={'mode-'+mode.id} disabled={!host || !mode.available || busy} className={'gp-mode'+(room.mode===mode.id?' is-on':'')+(mode.available?'':' is-locked')} aria-pressed={room.mode===mode.id} title={mode.description} onClick={()=>run(()=>network.configure(code,'mode',mode.id))}>
+              <span className="gp-mode-icon">{mode.available?mode.icon:'🔒'}</span><strong>{mode.name}</strong><small>{mode.available?mode.description:'Próximamente'}</small>
+            </button>)}</div>
+            :<div className="gp-settings">
+              <TimeField label="Tiempo para escribir" value={settings.writeSeconds} disabled={!host || busy || room.mode==='imitation'} onChange={(n)=>saveSettings({writeSeconds:n})}/>
+              <TimeField label={room.mode==='imitation'?'Tiempo para dibujar (baja 10 s por ronda)':'Tiempo para dibujar'} value={settings.seconds} disabled={!host || busy || room.mode==='story'} onChange={(n)=>saveSettings({seconds:n})}/>
+              <div className="gp-field"><span className="gp-field-label">Al final de la partida</span>
+                <div className="gp-switch" role="group" aria-label="Cómo se muestran los álbumes">
+                  <button type="button" data-opt="autoShow-on" disabled={!host || busy} className={settings.autoShow?'is-on':''} aria-pressed={settings.autoShow} onClick={()=>saveSettings({autoShow:true})}>Mostrar automático</button>
+                  <button type="button" data-opt="autoShow-off" disabled={!host || busy} className={!settings.autoShow?'is-on':''} aria-pressed={!settings.autoShow} onClick={()=>saveSettings({autoShow:false})}>El anfitrión pasa</button>
+                </div>
+                <small>{settings.autoShow?'Los álbumes se van mostrando solos, a todos a la vez y en el mismo orden. El anfitrión puede pausar.':'Todos ven lo mismo, pero cada paso aparece cuando el anfitrión toca «Siguiente».'}</small>
+              </div>
+              {!host && <p className="gp-note">Solo el anfitrión cambia los ajustes.</p>}
+            </div>}
+          </div>
+        </section>
+      </div>
+      <div className="gp-actions">
+        <button type="button" className="gp-btn" onClick={()=>copy(true)}><Icon name="link"/>{copied==='link'?'¡Copiado!':'Invitar'}</button>
+        <button type="button" className="gp-btn gp-btn-code" onClick={()=>copy(false)} title="Copiar código">{copied==='code'?'¡Copiado!':code}</button>
+        {host?<button type="button" className="gp-btn gp-btn-go" disabled={busy || !online || Object.keys(connected).length<3} onClick={()=>run(()=>network.start(code,room,connected))}><Icon name="play"/>Empezar</button>
+          :<p className="gp-note">Esperando que el anfitrión empiece…</p>}
+      </div>
+      {host && Object.keys(connected).length<3 && <p className="gp-note gp-center">Hacen falta al menos 3 jugadores conectados.</p>}
+      <PublicSwitch code={code} host={host} players={playerCount} className="gp-public"/>
+    </Frame>;
+  }
+  return <Frame onBack={leave} backLabel="Salir" wide>
+    {banners}
+    {phase==='reveal'?<Reveal code={code} room={room} host={host} run={run} now={now}/>
+      :state.positions?.[uid]===undefined?<p className="gp-loading">La partida ya empezó. Esperá a la próxima.</p>
+      :ownLoaded===taskKey?<Task key={taskKey} code={code} state={state} uid={uid} initial={own} previous={previous} ready={!!currentReady[uid]} readyMap={currentReady} players={room.players} now={now} onError={setError}/>
+      :<p className="gp-loading">Preparando tu tarea…</p>}
+  </Frame>;
 }

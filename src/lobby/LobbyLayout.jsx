@@ -1,44 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { setRoomPublic, usePublicFlag } from '../ui/publicas.js';
-import { usePrefs } from '../ui/store.js';
-
-const SEEN_KEY = 'tf:salas-vistas';
-// La primera vez que el anfitrión ve su sala recién creada, se aplica «Crear la sala como pública».
-function firstLook(code) {
-  try {
-    const seen = JSON.parse(sessionStorage.getItem(SEEN_KEY) || '[]');
-    if (seen.includes(code)) return false;
-    sessionStorage.setItem(SEEN_KEY, JSON.stringify([...seen, code].slice(-20)));
-  } catch {}
-  return true;
-}
-
-// Pública (en la lista de la portada) o privada (solo con el código). La cambia el anfitrión.
-function PublicSwitch({ code, host, players }) {
-  const isPublic = usePublicFlag(code);
-  const { publicRooms } = usePrefs();
-  const checked = useRef(false);
-  useEffect(() => {
-    if (checked.current || !host || isPublic === undefined) return;
-    checked.current = true;
-    if (firstLook(code) && publicRooms && !isPublic && players === 1) setRoomPublic(code, true).catch(() => {});
-  }, [code, host, isPublic, publicRooms, players]);
-  if (isPublic === undefined || (!host && !isPublic)) return null;
-  const text = isPublic ? 'Aparece en la portada: cualquiera puede entrar sin el código.' : 'Solo entra quien tenga el código o el link.';
-  return (
-    <div className="tf-public-switch">
-      {host ? (
-        <button type="button" role="switch" aria-checked={isPublic} className={`tf-switch${isPublic ? ' is-on' : ''}`} data-public-switch onClick={() => setRoomPublic(code, !isPublic).catch(() => {})}>
-          <span className="tf-switch-knob" aria-hidden="true" />
-          {isPublic ? '🌐 Sala pública' : '🔒 Sala privada'}
-        </button>
-      ) : (
-        <strong>🌐 Sala pública</strong>
-      )}
-      <small>{text}</small>
-    </div>
-  );
-}
+import React from 'react';
+import { PublicSwitch } from './PublicRoom.jsx';
 
 export default function LobbyLayout({
   code,

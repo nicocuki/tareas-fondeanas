@@ -279,11 +279,11 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-lobby-subtitle { color: var(--text-2); font-size: 14px; margin: 14px 0 0; }
 .tf-public-switch { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 14px; }
 .tf-public-switch small { color: var(--text-2); font-size: 12.5px; }
-.tf-switch { display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; }
-.tf-switch-knob { position: relative; width: 38px; height: 22px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border-strong); transition: background 0.18s; }
-.tf-switch-knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--text-3); transition: transform 0.18s var(--ease), background 0.18s; }
-.tf-switch.is-on .tf-switch-knob { background: var(--accent); border-color: var(--accent); }
-.tf-switch.is-on .tf-switch-knob::after { transform: translateX(16px); background: var(--on-accent); }
+.tf-public-toggle { display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; }
+.tf-public-knob { position: relative; width: 38px; height: 22px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border-strong); transition: background 0.18s; }
+.tf-public-knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--text-3); transition: transform 0.18s var(--ease), background 0.18s; }
+.tf-public-toggle.is-on .tf-public-knob { background: var(--accent); border-color: var(--accent); }
+.tf-public-toggle.is-on .tf-public-knob::after { transform: translateX(16px); background: var(--on-accent); }
 .tf-lobby-unassigned { margin: 0 auto 16px; width: fit-content; max-width: 100%; padding: 6px 14px; border-radius: 999px; background: var(--surface-2); border: 1px dashed var(--border-strong); font-size: 13px; color: var(--text-2); text-align: center; }
 
 /* En celular, con una sala abierta, el código manda: el nombre del sitio queda solo como logo. */

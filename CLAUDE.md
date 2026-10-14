@@ -175,7 +175,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/ui/` | Marco común: header, menú hamburguesa, portada, catálogo de juegos, perfil, temas y novedades (ver *Diseño*) |
 | `src/codigo-secreto/Options.jsx` `Chat.jsx` `Rules.jsx` `Players.jsx` | Paneles de la interfaz de Código Secreto |
 | `src/theme.js` | Colores y estilos para los estilos en línea de los juegos (apuntan a las variables de `src/ui/tokens.css`) |
-| `src/gartic/` | Componentes y lógica de Trazo Loco (ver `docs/GARTIC.md`) |
+| `src/gartic/` | Trazo Loco: lógica (`game.js`), trazos y balde (`drawing.js`), red (`storage.js`), pantallas (ver `docs/GARTIC.md`) |
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), física (`sim.js`), dibujo (`render.js`), pelea en tiempo real (`TirosGame.jsx`) |
@@ -207,7 +207,8 @@ Todo pasa por **variables CSS** en `src/ui/tokens.css`: tema oscuro (pizarrón c
 claro (hoja con birome roja), elegidos en Ajustes y guardados en `tf:preferencias`. `theme.js`
 traduce `COLORS` a esas variables, así los estilos en línea viejos cambian de tema solos.
 **No escribas colores fijos en un componente**: usá `COLORS` o `var(--…)`. Las excepciones son los
-colores de equipo, las casillas de Código Secreto y la cancha del fútbol, que son iguales en los dos temas.
+colores de equipo, las casillas de Código Secreto, la cancha del fútbol y Trazo Loco (copia el look
+de Gartic Phone, con sus variables `--gp-*` en `src/gartic/gartic.css`), que son iguales en los dos temas.
 
 - `games.js` es el catálogo (nombre, emoji, color, jugadores, «cómo jugar»). **Un juego nuevo se
   agrega ahí, en `SCREENS` de `App.jsx` y en `ROOTS` de `worker/rules.js`.**
@@ -249,8 +250,9 @@ La portada muestra, arriba de los juegos, las salas que el anfitrión marcó com
 con un clic (lleva a `?juego=…&sala=ABCD`, igual que un link de invitación).
 
 - **La marca va aparte de la sala**: `publica/{código}` = `true` o nada (root en `ROOTS`), así
-  ningún reducer tuvo que cambiar. La escribe el interruptor de `LobbyLayout` (solo el anfitrión, que
-  recibe `host` y `players` de cada juego). «Crear la sala como pública» (en `GameHero`) es la
+  ningún reducer tuvo que cambiar. La escribe `PublicSwitch` (`src/lobby/PublicRoom.jsx`, solo el anfitrión), que va dentro de
+  `LobbyLayout` (recibe `host` y `players` de cada juego); Trazo Loco, con su diseño propio, lo pone a
+  mano. «Crear la sala como pública» (`PublicCheckbox`, en `GameHero` y en Trazo Loco) es la
   preferencia `publicRooms`: se aplica la primera vez que el anfitrión ve su sala con un solo jugador.
 - **Decide el servidor**: después de cada escritura en `rooms`, `garticRooms` o `publica`, y al
   abrirse o cerrarse un WebSocket, `Sala.publish()` calcula `roomListing` (pública, en

@@ -8,6 +8,7 @@ import { MAX_PLAYERS as MAX_CODIGO } from '../src/codigo-secreto/game.js';
 import { MAX_PLAYERS as MAX_MECHA } from '../src/mecha/game.js';
 import { MAX_PLAYERS as MAX_MEME } from '../src/meme/game.js';
 import { MAX_PLAYERS as MAX_TIROS } from '../src/tiros/game.js';
+import { roomSettings } from '../src/gartic/game.js';
 
 // Topes de cada juego, para no listar una sala llena. Fútbol no tiene tope.
 const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS };
@@ -24,7 +25,7 @@ export function roomListing(tree, code, connections) {
   if (gartic) {
     if (gartic.state?.phase !== 'lobby') return null;
     const players = Object.keys(gartic.players || {}).length;
-    const max = Number(gartic.settings?.maxPlayers) || null;
+    const max = Number(roomSettings(gartic.settings).maxPlayers) || null;
     if (!players || (max && players >= max)) return null;
     return { code, game: 'gartic', host: gartic.players?.[gartic.hostId]?.name || '', players, max };
   }
