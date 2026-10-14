@@ -178,7 +178,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/gartic/` | Trazo Loco: lógica (`game.js`), trazos y balde (`drawing.js`), red (`storage.js`), pantallas (ver `docs/GARTIC.md`) |
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
-| `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), física (`sim.js`), dibujo (`render.js`), pelea en tiempo real (`TirosGame.jsx`) |
+| `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), pelea en tiempo real (`TirosGame.jsx`) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
@@ -386,12 +386,32 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
   Nico: que caerse siga haciendo daño y lanzando para arriba. Ojo con el salto corto (soltar el salto
   corta la subida a la mitad): `jumpCut` arranca en `true` y se pone en `true` al lanzar, si no
   también cortaba el lanzamiento.
-- **El dibujo está en `render.js`** (sin estado de juego): fondo, haces de luz, sombras y bloques se
-  pintan una vez por pelea en un canvas aparte (`background`); personajes, balas con estela,
-  explosiones y chispas (`burst`, partículas que no viajan por la red) cada cuadro. Los colores de
-  cada mapa están en `THEMES` de `maps.js`; tipos de bloque: `'b'` color, `'d'` pilar oscuro, `'r'`
-  colgado de una soga. El estilo imita las capturas que mandó Nico del original, sin copiar sus
-  personajes.
+- **Movimiento y balas medidos de videos del original** (720 px de alto = 36 unidades): gravedad 110,
+  salto 38, frenada exponencial (`MOVE_RESPONSE`), agarrarse de la pared (`WALL_SLIDE` 1,2), bala
+  común a 37 u/s con gravedad 64; las cartas de velocidad de bala dividen la gravedad por el cuadrado
+  del multiplicador. El salto lo subió Nico a pedido («más alto»).
+- **Los mapas son copia de 4 capturas que mandó Nico** (1920 px = 64 unidades: 30 px cada una). Pidió
+  solo esos cuatro. Las piezas no son solo rectángulos: `shapes.js` tiene polígonos convexos y
+  círculos (y con eso arma `rect`, `poly`, `capsule` y `group`, una pieza compuesta que se pinta de un
+  solo color). `hitSolid` es el choque de un círculo (jugador, bala) contra un sólido. Contra el piso
+  (normal hacia arriba) al jugador se lo sube derecho y, bajando una rampa caminando, se lo pega al
+  piso: si no, en las rampas de 45° se resbalaba quieto y bajando iba a los saltitos. `decor` son
+  pilares de fondo que no chocan.
+- **Cajas sueltas** (`boxes.js`, en el Castillo son los postes de las U y las de los pedestales):
+  cuadrados con masa y giro, impulsos acumulados (resolverlos sueltos hacía girar una caja apoyada),
+  y se duermen quietas. Las simula la pantalla del último que las tocó o les pegó un tiro (`claimBox`:
+  sube `s`; gana el `s` mayor y si empatan el id mayor, como la pelota del fútbol) y van en su foto
+  (`bx`, `encodeBox`/`applyBox`); las demás pantallas las siguen con la última velocidad. El jugador
+  las empuja con la velocidad que *quiere* tener (`pushVx`): la que le queda después de chocar ya
+  viene frenada y apenas las movía.
+- **El dibujo está en `render.js`** (sin estado de juego): fondo, haces de luz, sombras y piezas se
+  pintan una vez por pelea en un canvas aparte (`background`); cajas, personajes, balas (una rayita,
+  como en el original), explosiones y chispas (`burst`, partículas que no viajan por la red) cada
+  cuadro. Las sombras salen de un punto de luz (`LIGHT`, arriba al medio) y se pintan juntas en otra
+  capa para no oscurecer dos veces. Cada parte de una pieza se recorta por separado: recortarlas
+  todas juntas anulaba donde se superponen (salían medias lunas negras en las cápsulas). Los colores
+  de cada mapa están en `THEMES` de `maps.js`. Mientras sube lanzado después de caerse, el jugador
+  lleva un anillo punteado y una estela blanca, como en el original.
 - `window.__tiros` (el estado de la pelea) y `data-tiros-canvas`, `data-card` existen para manejar el
   juego desde un navegador automatizado. Para probar el respaldo por el servidor, borrá
   `window.RTCPeerConnection` antes de cargar la página en uno de los navegadores.

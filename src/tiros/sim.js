@@ -3,6 +3,7 @@
 // todas las pantallas a partir del disparo (posición, ángulo, hora y semilla), así no hace falta
 // mandarlas por la red: con las cartas del que tiró alcanza para saber cómo se mueven.
 import { WORLD_H, WORLD_W } from './maps.js';
+import { hitSolid } from './shapes.js';
 
 export const STEP = 1 / 120;
 export const PLAYER_R = 1.1;
@@ -24,10 +25,11 @@ export const JUMP_COOLDOWN = 0.1;  // segundos entre saltos (sinceJump del origi
 export const WALL_COYOTE = 0.1;    // se puede saltar de la pared hasta este tiempo después de soltarla
 export const WALL_SLIDE = 1.2;     // apretando hacia la pared casi no se cae: queda agarrado
 export const MAX_FALL = 42;
-export const BULLET_SPEED = 62;
-// Las balas comunes caen bastante; con cartas de velocidad de bala la gravedad se divide por el
-// cuadrado del multiplicador, así que esas van casi derechas.
-export const BULLET_GRAVITY = 36;
+// Medido de un video del original: la bala común va a ~37 u/s y cae con ~64 u/s² (en media pantalla
+// baja unas 6 unidades). Con cartas de velocidad de bala la gravedad se divide por el cuadrado del
+// multiplicador, así que esas van casi derechas.
+export const BULLET_SPEED = 37;
+export const BULLET_GRAVITY = 64;
 export const BULLET_R = 0.32;
 export const BULLET_LIFE = 6;
 export const BURST_GAP = 0.08;    // segundos entre balas de una ráfaga
@@ -51,25 +53,6 @@ export function seeded(seed) {
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-// Choque de un círculo contra un rectángulo: devuelve la normal (hacia afuera) y cuánto se mete.
-export function circleRect(x, y, r, [rx, ry, rw, rh]) {
-  const cx = clamp(x, rx, rx + rw);
-  const cy = clamp(y, ry, ry + rh);
-  let dx = x - cx;
-  let dy = y - cy;
-  const d2 = dx * dx + dy * dy;
-  if (d2 > r * r) return null;
-  if (d2 > 1e-9) {
-    const d = Math.sqrt(d2);
-    return { nx: dx / d, ny: dy / d, depth: r - d };
-  }
-  // El centro quedó adentro: sale por el lado más cercano.
-  const left = x - rx, right = rx + rw - x, top = y - ry, bottom = ry + rh - y;
-  const m = Math.min(left, right, top, bottom);
-  if (m === top) { dx = 0; dy = -1; } else if (m === bottom) { dx = 0; dy = 1; } else if (m === left) { dx = -1; dy = 0; } else { dx = 1; dy = 0; }
-  return { nx: dx, ny: dy, depth: m + r };
-}
-
 export function newPlayerState(x, y, stats) {
   return {
     x, y, vx: 0, vy: 0, onGround: false, wall: 0, jumpWas: false, jumpCut: true,
@@ -82,8 +65,8 @@ export function newPlayerState(x, y, stats) {
 }
 
 // Un paso de movimiento del jugador propio. `input`: { left, right, jump } (teclas apretadas).
-// `opts`: { rects, stats, now, enemyX } → devuelve eventos ({ out: true } si se salió del mundo).
-export function stepPlayer(p, input, dt, { rects, stats, now, enemyX }) {
+// `opts`: { solids (los del mapa y las cajas, ver shapes.js), stats, now, enemyX } → devuelve eventos ({ out: true } si se salió del mundo).
+export function stepPlayer(p, input, dt, { solids, stats, now, enemyX }) {
   const events = {};
   const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   let mult = 1;
@@ -130,23 +113,47 @@ export function stepPlayer(p, input, dt, { rects, stats, now, enemyX }) {
   p.vy = Math.min(MAX_FALL, p.vy + GRAVITY * dt);
   if (p.wall && p.vy > WALL_SLIDE && dir === p.wall) p.vy = WALL_SLIDE; // agarrado de la pared
 
+  // Lo que empuja contra las cajas: la velocidad que quiere tener (si aprieta para un lado), no la que
+  // le queda después de chocar con la caja, que ya viene frenada.
+  p.pushVx = dir ? target : p.vx;
+  p.pushVy = p.vy;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
+  const wasGround = p.onGround;
   p.onGround = false;
   p.wall = 0;
+  p.touching = null;
   // Mientras sale disparado para arriba atraviesa los bloques (si no, debajo de un piso que llega
   // al borde rebotaría contra él y se caería una y otra vez).
   if (p.launching && p.vy >= 0) p.launching = false;
-  for (const rect of rects) {
+  for (const solid of solids) {
     if (p.launching) break;
-    const hit = circleRect(p.x, p.y, PLAYER_R, rect);
+    const hit = hitSolid(p.x, p.y, PLAYER_R, solid);
     if (!hit) continue;
+    if (solid.boxIndex !== undefined) (p.touching ||= []).push(solid.boxIndex);
+    if (hit.ny < -0.6) {
+      // Piso (también en rampa o encima de un círculo): se lo sube derecho, así no se resbala
+      // estando quieto, y subiendo una rampa no pierde velocidad.
+      p.y -= hit.depth / -hit.ny;
+      if (p.vy > 0) p.vy = 0;
+      p.onGround = true;
+      continue;
+    }
     p.x += hit.nx * hit.depth;
     p.y += hit.ny * hit.depth;
     const vn = p.vx * hit.nx + p.vy * hit.ny;
     if (vn < 0) { p.vx -= vn * hit.nx; p.vy -= vn * hit.ny; }
-    if (hit.ny < -0.6) p.onGround = true;
-    else if (Math.abs(hit.nx) > 0.6) p.wall = hit.nx > 0 ? -1 : 1;
+    if (Math.abs(hit.nx) > 0.6) p.wall = hit.nx > 0 ? -1 : 1;
+  }
+  // Bajando una rampa caminando, se lo pega al piso en vez de dejarlo saltando en el aire.
+  if (wasGround && !p.onGround && !p.launching && p.vy >= 0 && p.sinceJump > JUMP_COOLDOWN) {
+    const probe = Math.abs(p.vx) * dt * 1.5 + 0.05;
+    let lift = null;
+    for (const solid of solids) {
+      const hit = hitSolid(p.x, p.y + probe, PLAYER_R, solid);
+      if (hit && hit.ny < -0.6) lift = Math.min(lift ?? Infinity, probe - hit.depth / -hit.ny);
+    }
+    if (lift !== null && lift >= 0) { p.y += lift; p.vy = 0; p.onGround = true; }
   }
 
   // Fuera del mundo (como en el original): el que se cae sale disparado para arriba, casi hasta el
@@ -208,9 +215,10 @@ function steer(b, tx, ty, rate, dt) {
   b.vy = Math.sin(a) * speed;
 }
 
-// Un paso de una bala. `ctx`: { rects, stats, aim (mouse del dueño), targets: [{ x, y, id }] }.
+// Un paso de una bala. `ctx`: { solids, stats, aim (mouse del dueño), targets: [{ x, y, id }], onBox }.
+// `onBox(índice, bala)` avisa cuando pega (o rebota) en una caja, para empujarla.
 // Devuelve { impact: { x, y } } si pegó en una pared sin rebotes, o null.
-export function stepBullet(b, dt, { rects, stats, aim, targets }) {
+export function stepBullet(b, dt, { solids, stats, aim, targets, onBox }) {
   if (b.done || b.stuckAt) return null;
   b.age += dt;
   if (b.age > BULLET_LIFE) { b.done = true; return null; }
@@ -232,10 +240,11 @@ export function stepBullet(b, dt, { rects, stats, aim, targets }) {
     b.x += b.vx * h;
     b.y += b.vy * h;
     b.dist += speed * h;
-    for (const rect of rects) {
-      const hit = circleRect(b.x, b.y, b.r, rect);
+    for (const solid of solids) {
+      const hit = hitSolid(b.x, b.y, b.r, solid);
       if (!hit) continue;
       if (b.drillLeft > 0) { b.drillLeft -= speed * h; continue; }
+      if (solid.boxIndex !== undefined) onBox?.(solid.boxIndex, b);
       if (b.bouncesLeft > 0) {
         b.x += hit.nx * hit.depth;
         b.y += hit.ny * hit.depth;
@@ -260,12 +269,12 @@ export function stepBullet(b, dt, { rects, stats, aim, targets }) {
 export const touches = (b, x, y, r = PLAYER_R) => Math.hypot(b.x - x, b.y - y) < r + b.r;
 
 // Hacia dónde apunta la teletransportación: hasta 10 unidades, frenando antes de una pared.
-export function teleportTarget(p, angle, rects) {
+export function teleportTarget(p, angle, solids) {
   let x = p.x, y = p.y;
   for (let d = 0; d < 10; d += 0.25) {
     const nx = p.x + Math.cos(angle) * d;
     const ny = p.y + Math.sin(angle) * d;
-    if (rects.some((r) => circleRect(nx, ny, PLAYER_R, r))) break;
+    if (solids.some((sol) => hitSolid(nx, ny, PLAYER_R, sol))) break;
     if (nx < 0 || nx > WORLD_W || ny < -5 || ny > WORLD_H) break;
     x = nx; y = ny;
   }

@@ -5,11 +5,13 @@
 // último que pasó (disparos, golpes recibidos, escudos). Las balas no viajan: cada pantalla las
 // simula a partir del disparo y de las cartas del que tiró (ver `sim.js`).
 // La foto va directo entre navegadores (WebRTC); si con alguien no se puede, va por el servidor.
+// Las cajas sueltas las simula la pantalla del último que las tocó y van en su foto (ver `boxes.js`).
 import React, { useEffect, useMemo, useRef } from 'react';
 import { backend } from '../storage.js';
 import { createMesh } from '../futbol/p2p.js';
 import { MAPS, WORLD_H, WORLD_W } from './maps.js';
 import { burst, drawScene } from './render.js';
+import { applyBox, boxSolid, claimBox, driftBoxes, encodeBox, newBoxes, pushBox, stepBoxes } from './boxes.js';
 import { statsFor } from './cards.js';
 import {
   BLOCK_TIME, FX_RADIUS, OUT_DAMAGE, PLAYER_R, STEP, bulletDamage, bulletsForShot, newPlayerState, stepBullet, stepPlayer,
@@ -44,7 +46,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   const sim = useRef(null);
   if (!sim.current) {
     sim.current = {
-      n: 0, rects: [], local: null, bullets: new Map(), seen: new Set(), remotes: new Map(),
+      n: 0, mapSolids: [], solids: [], boxes: [], local: null, bullets: new Map(), seen: new Set(), remotes: new Map(),
       explosions: [], clouds: [], fields: [], particles: [], shake: 0, myShots: [], myHits: [], myFx: [], seq: 0, lastBy: null,
       input: { left: false, right: false, jump: false, shoot: false, block: false, blockWas: false }, aim: { x: 32, y: 18 },
       sentAt: 0, serverAt: 0, deathSent: false, goneSent: new Set(), msg: '', msgUntil: 0,
@@ -59,7 +61,9 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     const map = MAPS[battle.map];
     const [x, y] = map.spawns[battle.spawns[me.id] ?? 0];
     s.n = battle.n;
-    s.rects = map.rects;
+    s.mapSolids = map.solids;
+    s.boxes = newBoxes(map.boxes);
+    s.solids = map.solids;
     s.local = newPlayerState(x, y, statsRef.current[me.id]);
     s.bullets.clear();
     s.remotes.clear();
@@ -123,6 +127,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       if (hb) hb.done = true;
       if (hit.o === me.id && hit.dm > 0) onMyHitLanded(s, hit.dm, now);
     }
+    for (const e of snap.bx || []) applyBox(s.boxes, e, id, now);
     for (const ev of snap.fx || []) {
       if (s.seen.has(ev.k)) continue;
       s.seen.add(ev.k);
@@ -152,7 +157,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       if (now >= b.stuckAt + 0.5) { b.done = true; onImpact(s, b, b.x, b.y, now, false); }
       return;
     }
-    const res = stepBullet(b, dt, { rects: s.rects, stats: bst, aim, targets });
+    const res = stepBullet(b, dt, { solids: s.solids, stats: bst, aim, targets, onBox: (i, bl) => hitBox(s, i, bl, bst) });
     if (res?.impact) { onImpact(s, b, res.impact.x, res.impact.y, now, false); return; }
     if (b.done) return;
     if (b.owner !== me.id && active && alive && touches(b, p.x, p.y)) {
@@ -183,6 +188,17 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
         return;
       }
     }
+  }
+
+  // Una bala pegó en una caja: si es mía la reclamo, y si la simulo yo, la empujo.
+  function hitBox(s, i, b, bst) {
+    const box = s.boxes[i];
+    if (!box || box.gone) return;
+    if (b.owner === me.id) claimBox(box, me.id);
+    if (box.o !== me.id) return;
+    const sp = Math.hypot(b.vx, b.vy) || 1;
+    const k = Math.min(14, (bulletDamage(b, bst) / 55) * 5 * bst.knock);
+    pushBox(box, b.x, b.y, (b.vx / sp) * k, (b.vy / sp) * k);
   }
 
   function onMyHitLanded(s, dm, now) {
@@ -229,6 +245,12 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     burst(s.particles, x, y, { n: 28, color: '#ffc94d', speed: 26, life: 0.7 });
     burst(s.particles, x, y, { n: 10, color: '#ff7a2e', speed: 14, life: 0.9, size: 0.4 });
     s.shake = Math.max(s.shake, Math.min(1.2, radius * 0.15));
+    for (const box of s.boxes) {
+      const d = Math.hypot(box.x - x, box.y - y);
+      if (box.gone || d > radius + box.h) continue;
+      if (owner === me.id) claimBox(box, me.id);
+      if (box.o === me.id) pushBox(box, x, y, ((box.x - x) / Math.max(0.5, d)) * 10, ((box.y - y) / Math.max(0.5, d)) * 10 - 4);
+    }
     const p = s.local;
     if (!p || p.dead || skipMe || owner === me.id || !isActive(now)) return;
     const d = Math.hypot(p.x - x, p.y - y);
@@ -243,7 +265,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   function onImpact(s, b, x, y, now, skipMe) {
     const st = statsRef.current[b.owner];
     if (!st) return;
-    burst(s.particles, x, y, { n: 6, color: '#fff1c9', speed: 14, life: 0.35, size: 0.18 });
+    burst(s.particles, x, y, { n: 7, color: '#ffe066', speed: 16, life: 0.3, size: 0.16 });
     if (st.explode) explode(s, x, y, st.explode, b.owner, bulletDamage(b, st), b.k, skipMe, now);
     if (st.cloud) s.clouds.push({ x, y, until: now + 5, owner: b.owner, r: 4.5 });
   }
@@ -267,10 +289,14 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       const targets = [{ id: me.id, x: p.x, y: p.y }, ...[...s.remotes].filter(([, v]) => !v.snap.d).map(([id, v]) => ({ id, x: v.x, y: v.y }))];
       const enemy = targets.filter((t) => t.id !== me.id).sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
 
+      // Sólidos de este paso: el mapa y las cajas donde están ahora.
+      s.solids = s.boxes.some((bx) => !bx.gone) ? [...s.mapSolids, ...s.boxes.filter((bx) => !bx.gone).map(boxSolid)] : s.mapSolids;
       // En la cuenta regresiva solo cae al piso: todavía no se mueve ni tira.
-      if (!active && alive && r.phase === 'fight') stepPlayer(p, {}, STEP, { rects: s.rects, stats: st, now: 0 });
+      if (!active && alive && r.phase === 'fight') stepPlayer(p, {}, STEP, { solids: s.solids, stats: st, now: 0 });
       if (active && alive) {
-        const ev = stepPlayer(p, s.input, STEP, { rects: s.rects, stats: st, now, enemyX: enemy?.x });
+        const ev = stepPlayer(p, s.input, STEP, { solids: s.solids, stats: st, now, enemyX: enemy?.x });
+        // Tocar una caja la reclama: desde ahora la simula esta pantalla.
+        for (const i of p.touching || []) claimBox(s.boxes[i], me.id);
         if (ev.out) {
           damageMe(s, OUT_DAMAGE * p.maxHp, s.lastBy, null, now);
           burst(s.particles, p.x, Math.min(p.y, WORLD_H), { n: 26, color: colorOf(me.id), speed: 24, life: 0.7, up: 12 });
@@ -307,7 +333,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
           const ev2 = { k: `${me.id}:b${s.seq++}`, t: now, x: p.x, y: p.y, a, mh: p.maxHp };
           s.myFx.push(ev2);
           s.seen.add(ev2.k);
-          if (st.blockFx.includes('teleport')) Object.assign(p, teleportTarget(p, a, s.rects));
+          if (st.blockFx.includes('teleport')) Object.assign(p, teleportTarget(p, a, s.solids));
           if (st.blockFx.includes('reload')) { p.ammo = st.ammo; p.reloadAt = 0; }
           if (st.blockFx.includes('heal')) s.fields.push({ x: p.x, y: p.y, until: now + 3, owner: me.id });
         }
@@ -326,6 +352,17 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
         if (!b.done && now >= b.t0) bulletTick(s, b, now, STEP, targets);
       }
       for (const [k, b] of s.bullets) if (b.done) s.bullets.delete(k);
+
+      // Cajas: las mías con física (las de otros, quietas para ellas); las de otros, con su última velocidad.
+      if (s.boxes.length) {
+        const mine = (bx) => bx.o === me.id;
+        const fixed = [...s.mapSolids, ...s.boxes.filter((bx) => !bx.gone && !mine(bx)).map(boxSolid)];
+        const pushers = [];
+        if (alive) pushers.push({ x: p.x, y: p.y, vx: p.pushVx || 0, vy: p.pushVy || 0 });
+        for (const v of s.remotes.values()) if (!v.snap.d) pushers.push({ x: v.x, y: v.y, vx: v.snap.vx, vy: v.snap.vy });
+        stepBoxes(s.boxes, STEP, fixed, pushers, mine);
+        driftBoxes(s.boxes, STEP, mine, now);
+      }
 
       // Muerte (con Fénix se revive una vez).
       if (alive && p.hp <= 0 && active) {
@@ -358,8 +395,20 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
         a: round(Math.atan2(s.aim.y - p.y, s.aim.x - p.x)), am: { x: round(s.aim.x), y: round(s.aim.y) },
         hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, d: p.dead ? 1 : 0, bl: round(p.blockUntil),
         am2: p.ammo, rl: p.reloadAt ? round(p.reloadAt) : 0,
-        sh: s.myShots, hi: s.myHits, fx: s.myFx,
+        sh: s.myShots, hi: s.myHits, fx: s.myFx, ln: p.launching ? 1 : 0, bx: myBoxes(now),
       };
+    }
+
+    // Las cajas que simulo: las que se mueven, y las quietas una vez por segundo (por si alguien llegó tarde).
+    function myBoxes(now) {
+      const out = [];
+      for (const bx of s.boxes) {
+        if (bx.o !== me.id) continue;
+        if (bx.sleep && now - (bx.sentAt || 0) < 1) continue;
+        bx.sentAt = now;
+        out.push(encodeBox(bx));
+      }
+      return out;
     }
 
     function frame() {
@@ -430,13 +479,9 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       s.explosions = s.explosions.filter((e) => now - e.t < 0.45);
       s.fields = s.fields.filter((f) => now < f.until);
       s.clouds = s.clouds.filter((c) => now < c.until);
-      // Estelas de las balas.
       const bullets = [];
       for (const bl of s.bullets.values()) {
         if (now < bl.t0) continue;
-        bl.trail = bl.trail || [];
-        bl.trail.push([bl.x, bl.y]);
-        if (bl.trail.length > 7) bl.trail.shift();
         bl.glow = bl.glow || lighten(colorOf(bl.owner));
         bullets.push(bl);
       }
@@ -448,7 +493,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
           const p = s.local;
           if (!p || p.dead) continue;
           characters.push({
-            name: pl.name, color: pl.color, mine: true, x: p.x, y: p.y, vx: p.vx, onGround: p.onGround,
+            name: pl.name, color: pl.color, mine: true, x: p.x, y: p.y, vx: p.vx, onGround: p.onGround, launching: Boolean(p.launching),
             angle: Math.atan2(s.aim.y - p.y, s.aim.x - p.x), hp: p.hp, maxHp: p.maxHp, blocking: now < p.blockUntil,
             cdLeft: Math.max(0, (p.blockReadyAt - now) / st.blockCooldown), ammo: p.ammo, maxAmmo: st.ammo, reloading: Boolean(p.reloadAt), hurtUntil: p.hurtUntil || 0,
           });
@@ -456,7 +501,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
           const v = s.remotes.get(pl.id);
           if (!v || v.snap.d || b?.dead?.[pl.id]) continue;
           characters.push({
-            name: pl.name, color: pl.color, mine: false, x: v.x, y: v.y, vx: v.snap.vx, onGround: Math.abs(v.snap.vy) < 0.5,
+            name: pl.name, color: pl.color, mine: false, x: v.x, y: v.y, vx: v.snap.vx, onGround: Math.abs(v.snap.vy) < 0.5, launching: Boolean(v.snap.ln),
             angle: v.snap.a, hp: v.snap.hp, maxHp: v.snap.mh, blocking: v.snap.bl > now, cdLeft: 0,
             ammo: v.snap.am2 ?? st.ammo, maxAmmo: st.ammo, reloading: Boolean(v.snap.rl), hurtUntil: v.hurt || 0,
           });
@@ -477,7 +522,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       };
       drawScene(canvas.getContext('2d'), canvas, {
         map: MAPS[b?.map ?? 0], mapIndex: b?.map ?? 0, now, dt, bullets, explosions: s.explosions, clouds: s.clouds, fields: s.fields,
-        particles: s.particles, characters, aim: s.aim, hud, texts, shake: s.shake,
+        particles: s.particles, characters, aim: s.aim, hud, texts, shake: s.shake, boxes: s.boxes,
       });
     }
 

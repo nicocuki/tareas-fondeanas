@@ -291,7 +291,18 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.7.4 = Mario vs Luigi con servidores propios 🏠
+1.7.4 = Mario vs Luigi con servidores propios 🏠
 - El online usa nuestra propia app de Photon: las salas son solo de la gente de Tareas Fondeanas.
 - Todos juegan en el servidor de Sudamérica (São Paulo), el más cercano: menos lag y se ven las salas entre todos.
 - Entran hasta 20 jugadores conectados a la vez.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.8.0 = A los Tiros: mapas del original y cajas que se caen 📦
+- Cuatro mapas nuevos, copiados del juego original: el Valle (rampas rosas con rombos), Burbujas (círculos y cápsulas), Copas (verde agua) y el Castillo. Se sacaron los mapas anteriores.
+- Las piezas ya no son solo rectángulos: hay rampas, círculos y formas redondeadas, y se puede caminar y pararse sobre todas.
+- En el Castillo, los postes de las plataformas y las cajas de los pedestales están sueltos: los empujás caminando, los tirás de un tiro, se caen girando y se apilan. Todos ven las cajas en el mismo lugar.
+- El disparo común es como en el original: más lento, cae en arco bien marcado y se ve como una rayita. Con cartas de velocidad de bala va casi derecho.
+- Al pegar, la bala tira chispitas amarillas.
+- Cuando te caés del mapa y salís disparado para arriba, ahora tenés un anillo punteado y una estela blanca.
+- Sombras que salen de la luz de arriba y se abren hacia abajo, como en las capturas.

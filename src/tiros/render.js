@@ -1,7 +1,8 @@
 // Dibujo de A los Tiros en un canvas, con el estilo del juego en el que se inspira: fondo oscuro con
 // haces de luz desde arriba, bloques de color con facetas y sombra, personajes de color con brazos y
 // piernas, balas que brillan y dejan estela, explosiones con chispas. Todo en unidades del mundo.
-import { WORLD_H, WORLD_W, kindOf, themeOf } from './maps.js';
+import { LIGHT, WORLD_H, WORLD_W, themeOf } from './maps.js';
+import { compileShape, outline } from './shapes.js';
 import { PLAYER_R } from './sim.js';
 import { CARDS } from './cards.js';
 
@@ -83,59 +84,114 @@ function background(map, mapIndex, scale) {
     ctx.fill();
   }
   ctx.globalCompositeOperation = 'source-over';
-  // Sombras: cada bloque tapa la luz de arriba y deja una franja oscura hacia abajo.
-  for (const [x, y, w, h] of map.rects) {
-    const sg = ctx.createLinearGradient(0, y + h, 0, y + h + 14);
-    sg.addColorStop(0, 'rgba(0,0,0,0.38)');
-    sg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = sg;
-    ctx.beginPath();
-    ctx.moveTo(x, y + h);
-    ctx.lineTo(x + w, y + h);
-    ctx.lineTo(x + w + w * 0.25 + 1, y + h + 14);
-    ctx.lineTo(x - w * 0.25 - 1, y + h + 14);
-    ctx.closePath();
-    ctx.fill();
+  // Sombras: cada pieza tapa la luz (un punto arriba y al medio) y deja una franja oscura que se abre
+  // hacia abajo. Se pintan juntas en otra capa y se aplican una sola vez, así no se oscurecen dos veces.
+  const shadow = document.createElement('canvas');
+  shadow.width = canvas.width; shadow.height = canvas.height;
+  const sh = shadow.getContext('2d');
+  sh.setTransform(scale, 0, 0, scale, 0, 0);
+  sh.fillStyle = th.shadow[0];
+  const far = 30;
+  for (const solid of map.solids) {
+    const pts = outline(solid);
+    pts.forEach((p, i) => {
+      const q = pts[(i + 1) % pts.length];
+      const pr = (v) => [v[0] + (v[0] - LIGHT[0]) * far, v[1] + (v[1] - LIGHT[1]) * far];
+      const [p2, q2] = [pr(p), pr(q)];
+      sh.beginPath(); sh.moveTo(p[0], p[1]); sh.lineTo(q[0], q[1]); sh.lineTo(q2[0], q2[1]); sh.lineTo(p2[0], p2[1]); sh.closePath(); sh.fill();
+    });
   }
-  // Sogas de los bloques colgados.
-  ctx.strokeStyle = 'rgba(255,255,255,0.13)';
-  ctx.lineWidth = 0.08;
-  for (const r of map.rects) {
-    if (kindOf(r) !== 'r') continue;
-    ctx.beginPath();
-    ctx.moveTo(r[0] + r[2] / 2, 0);
-    ctx.lineTo(r[0] + r[2] / 2, r[1]);
-    ctx.stroke();
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = th.shadow[1];
+  ctx.drawImage(shadow, 0, 0);
+  ctx.restore();
+  // Pilares de fondo (no chocan).
+  for (const shape of map.decor) {
+    ctx.fillStyle = th.dark || '#1d2633';
+    for (const solid of compileShape(shape)) { solidPath(ctx, solid); ctx.fill(); }
   }
-  // Bloques: color plano con facetas (triángulos un poco más claros u oscuros) y la cara de arriba iluminada.
-  map.rects.forEach((r, i) => {
-    const [x, y, w, h] = r;
-    const kind = kindOf(r);
-    const base = kind === 'd' ? th.dark : th.block;
-    ctx.fillStyle = base;
-    ctx.fillRect(x, y, w, h);
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x, y, w, h);
-    ctx.clip();
-    for (let f = 0; f < 3; f++) {
-      const a = hash(i, f), b = hash(f, i + 7);
-      ctx.fillStyle = shade(base.startsWith('#') ? base : '#888888', (a - 0.5) * 0.16);
-      ctx.beginPath();
-      ctx.moveTo(x + w * a, y);
-      ctx.lineTo(x + w, y + h * b);
-      ctx.lineTo(x + w * (1 - b), y + h);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
-    if (kind !== 'd') {
-      ctx.fillStyle = th.top;
-      ctx.fillRect(x, y, w, Math.min(0.35, h * 0.3));
+  // Piezas: color (o degradé) y textura recortada a la forma.
+  map.shapes.forEach((shape, i) => {
+    const solids = compileShape(shape);
+    const [x0, y0, x1, y1] = solids.reduce((bb, sd) => [Math.min(bb[0], sd.box[0]), Math.min(bb[1], sd.box[1]), Math.max(bb[2], sd.box[2]), Math.max(bb[3], sd.box[3])], [Infinity, Infinity, -Infinity, -Infinity]);
+    // Cada parte por separado (recortar todas juntas anula donde se superponen), con el color de la pieza entera.
+    const fill = pieceFill(ctx, th, i, x0, y0, x1, y1);
+    for (const sd of solids) {
+      ctx.save();
+      solidPath(ctx, sd);
+      ctx.clip();
+      ctx.fillStyle = fill;
+      ctx.fillRect(x0 - 1, y0 - 1, x1 - x0 + 2, y1 - y0 + 2);
+      texture(ctx, th, i, x0, y0, x1, y1);
+      ctx.restore();
     }
   });
   backCache.set(key, canvas);
   return canvas;
+}
+
+// El contorno de un sólido.
+function solidPath(ctx, solid) {
+  ctx.beginPath();
+  if (solid.t === 'c') { ctx.moveTo(solid.x + solid.r, solid.y); ctx.arc(solid.x, solid.y, solid.r, 0, Math.PI * 2); return; }
+  ctx.moveTo(solid.v[0][0], solid.v[0][1]);
+  for (const [x, y] of solid.v.slice(1)) ctx.lineTo(x, y);
+  ctx.closePath();
+}
+
+// Color de una pieza: plano, o un degradé en diagonal entre dos colores del mapa (uno distinto por pieza).
+function pieceFill(ctx, th, i, x0, y0, x1, y1) {
+  if (th.fill.length === 1) return th.fill[0];
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, th.fill[i % th.fill.length]);
+  g.addColorStop(1, th.fill[(i + 1) % th.fill.length]);
+  return g;
+}
+
+// Facetas (triángulos un poco más claros u oscuros) o manchas de pintura de otro color.
+function texture(ctx, th, i, x0, y0, x1, y1) {
+  const w = x1 - x0, h = y1 - y0;
+  if (th.texture === 'facets') {
+    const n = Math.max(3, Math.round((w * h) / 18));
+    for (let f = 0; f < n; f++) {
+      const a = hash(i, f), b = hash(f, i + 7), c = hash(i + 3, f + 11);
+      ctx.fillStyle = shade(th.fill[0], (a - 0.5) * 0.22);
+      ctx.beginPath();
+      ctx.moveTo(x0 + w * a, y0 + h * c);
+      ctx.lineTo(x0 + w * b, y0 + h * a);
+      ctx.lineTo(x0 + w * c, y0 + h * b);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (th.texture === 'paint') {
+    const n = Math.max(2, Math.round((w * h) / 10));
+    for (let f = 0; f < n; f++) {
+      const a = hash(i, f), b = hash(f + 5, i), c = hash(i + 9, f + 2);
+      ctx.fillStyle = hexA(th.paint, 0.08 + c * 0.16);
+      ctx.beginPath();
+      ctx.ellipse(x0 + w * a, y0 + h * b, 0.6 + c * Math.min(4, w * 0.3), 0.25 + a * 0.8, -0.5 + b, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// Las cajas sueltas: se dibujan en cada cuadro (se mueven y giran), del color del mapa.
+function drawBoxes(ctx, boxes, th) {
+  for (const b of boxes) {
+    if (b.gone) continue;
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.a);
+    ctx.fillStyle = th.fill[b.i % th.fill.length];
+    ctx.fillRect(-b.h, -b.h, b.h * 2, b.h * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(-b.h, b.h * 0.55, b.h * 2, b.h * 0.45);
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+    ctx.lineWidth = 0.06;
+    ctx.strokeRect(-b.h + 0.03, -b.h + 0.03, b.h * 2 - 0.06, b.h * 2 - 0.06);
+    ctx.restore();
+  }
 }
 
 // ─── Personaje ───────────────────────────────────────────────────────────────
@@ -207,6 +263,22 @@ function drawCharacter(ctx, c, now) {
   ctx.restore();
   ctx.fillStyle = '#f4f1ea';
   circle(ctx, hx, hy, 0.3); ctx.fill();
+  // Saliendo disparado desde abajo (después de caerse): anillo punteado que gira y estela blanca.
+  if (c.launching) {
+    const tg = ctx.createLinearGradient(x, y, x, y + 5);
+    tg.addColorStop(0, 'rgba(255,255,255,0.75)');
+    tg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.strokeStyle = tg;
+    ctx.lineWidth = 0.22;
+    ctx.beginPath(); ctx.moveTo(x, y + PLAYER_R); ctx.lineTo(x, y + 5); ctx.stroke();
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 0.16;
+    ctx.setLineDash([0.45, 0.3]);
+    ctx.lineDashOffset = -now * 3;
+    circle(ctx, x, y, PLAYER_R + 0.55); ctx.stroke();
+    ctx.restore();
+  }
   // Escudo.
   if (c.blocking) {
     ctx.globalCompositeOperation = 'lighter';
@@ -250,7 +322,7 @@ function drawCharacter(ctx, c, now) {
 }
 
 // ─── Escena completa ─────────────────────────────────────────────────────────
-// `v`: { map, mapIndex, now, dt, bullets, explosions, clouds, fields, particles, characters, aim,
+// `v`: { map, mapIndex, now, dt, bullets, boxes, explosions, clouds, fields, particles, characters, aim,
 //        hud: { players, rounds, battles }, texts: [{ text, size, y }], shake }
 export function drawScene(ctx, canvas, v) {
   const k = canvas.width / WORLD_W;
@@ -278,30 +350,28 @@ export function drawScene(ctx, canvas, v) {
   // Personajes.
   for (const c of v.characters) drawCharacter(ctx, c, v.now);
 
-  // Balas: estela y núcleo que brillan.
-  ctx.globalCompositeOperation = 'lighter';
+  // Cajas sueltas.
+  if (v.boxes?.length) drawBoxes(ctx, v.boxes, themeOf(v.map));
+
+  // Balas: una rayita corta en la dirección en que van (como en el original), con un brillo apenas.
+  ctx.lineCap = 'round';
   for (const b of v.bullets) {
     const glow = b.glow || '#ffd27a';
-    if (b.trail?.length > 1) {
-      ctx.lineCap = 'round';
-      for (let i = 1; i < b.trail.length; i++) {
-        ctx.strokeStyle = hexA(glow, (i / b.trail.length) * 0.5);
-        ctx.lineWidth = b.r * 1.6 * (i / b.trail.length);
-        ctx.beginPath();
-        ctx.moveTo(b.trail[i - 1][0], b.trail[i - 1][1]);
-        ctx.lineTo(b.trail[i][0], b.trail[i][1]);
-        ctx.stroke();
-      }
-    }
-    const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3.2);
-    g.addColorStop(0, hexA(glow, 0.7));
-    g.addColorStop(1, hexA(glow, 0));
-    ctx.fillStyle = g;
-    circle(ctx, b.x, b.y, b.r * 3.2); ctx.fill();
+    const sp = Math.hypot(b.vx, b.vy) || 1;
+    const len = Math.max(0.45, Math.min(1.1, sp * 0.014));
+    const tx = b.x - (b.vx / sp) * len, ty = b.y - (b.vy / sp) * len;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = hexA(glow, 0.35);
+    ctx.lineWidth = b.r * 1.9;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = glow;
+    ctx.lineWidth = b.r * 0.9;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.strokeStyle = '#fffbe8';
+    ctx.lineWidth = b.r * 0.45;
+    ctx.beginPath(); ctx.moveTo(b.x - (b.vx / sp) * len * 0.4, b.y - (b.vy / sp) * len * 0.4); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = '#fffaf0';
-  for (const b of v.bullets) { circle(ctx, b.x, b.y, b.r); ctx.fill(); }
 
   // Explosiones: una bola de luz que crece y se apaga.
   ctx.globalCompositeOperation = 'lighter';
