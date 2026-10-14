@@ -1,5 +1,5 @@
 import { ref, get, set, update, remove, onValue, onDisconnect, runTransaction, serverTimestamp } from '../realtime.js';
-import { cleanName, makeState, nextState, stepType, MAX_DRAWING, MAX_TEXT } from './game.js';
+import { cleanName, makeState, nextState, roomSettings, showPosition, stepType, DEFAULT_SETTINGS, MAX_DRAWING, MAX_STROKES, MAX_TEXT } from './game.js';
 
 // Cada pestaña tiene su identidad (sin cuentas): el servidor la verifica con un secreto propio.
 export { identity } from '../realtime.js';
@@ -43,7 +43,7 @@ export async function createRoom(uid, name, avatar) {
     const bytes = crypto.getRandomValues(new Uint8Array(4));
     const code = Array.from(bytes, (b) => String.fromCharCode(65 + b % 26)).join('');
     const result = await runTransaction(at(roomPath(code)), (room) => room ? undefined : {
-      hostId: uid, mode: 'normal', settings: { maxPlayers: 12, seconds: 90 },
+      hostId: uid, mode: 'normal', settings: { ...DEFAULT_SETTINGS },
       players: { [uid]: { name: cleanName(name), avatar, index: 0 } }, slots: { 0: uid },
       state: { phase: 'lobby', match: 'none', round: 0 },
     });
@@ -57,11 +57,11 @@ export async function joinRoom(code, uid, name, avatar) {
   if (!room) throw new Error('No encontramos esa sala.');
   if (room.players?.[uid]) return;
   if (room.state.phase !== 'lobby') throw new Error('La partida ya empezó. Podés entrar cuando vuelvan al lobby.');
-  if (Object.keys(room.players || {}).length >= room.settings.maxPlayers) throw new Error('La sala está llena.');
+  if (Object.keys(room.players || {}).length >= roomSettings(room.settings).maxPlayers) throw new Error('La sala está llena.');
   for (let attempt = 0; attempt < 5; attempt++) {
     const fresh = (await get(at(roomPath(code)))).val();
     if (fresh.players?.[uid]) return;
-    const index = Array.from({ length: fresh.settings.maxPlayers }, (_, i) => i).find((i) => !fresh.slots?.[i]);
+    const index = Array.from({ length: roomSettings(fresh.settings).maxPlayers }, (_, i) => i).find((i) => !fresh.slots?.[i]);
     if (index === undefined) throw new Error('La sala está llena.');
     try {
       await update(at(roomPath(code)), { ['players/' + uid]: { name: cleanName(name), avatar, index }, ['slots/' + index]: uid });
@@ -97,7 +97,8 @@ export async function start(code, room, connected) {
   const match = crypto.randomUUID();
   await runTransaction(at(roomPath(code) + '/state'), (current) => {
     if (!current || current.phase !== 'lobby') return undefined;
-    return makeState(players, room.mode, room.settings.seconds, match, serverTimestamp());
+    const settings = roomSettings(room.settings);
+    return makeState(players, room.mode, { draw: settings.seconds, write: settings.writeSeconds }, match, serverTimestamp(), settings.autoShow);
   });
 }
 export async function advance(code, state, readyCount, now) {
@@ -106,14 +107,17 @@ export async function advance(code, state, readyCount, now) {
     return nextState(current, readyCount, now, serverTimestamp()) || undefined;
   });
 }
-export async function saveStep(code, state, uid, content) {
+export async function saveStep(code, state, uid, content, strokes = '') {
   const type = stepType(state.mode, state.round, state.count);
   if (type === 'drawing' && content.length > MAX_DRAWING) throw new Error('El dibujo es demasiado grande para enviarlo.');
   if (type === 'text') content = content.slice(0, MAX_TEXT);
-  await set(at('garticSteps/' + code + '/' + state.match + '/' + state.round + '/' + uid), { type, content, authorId: uid, order: state.round });
+  const step = { type, content, authorId: uid, order: state.round };
+  // Los trazos sirven para ver el dibujo haciéndose en el álbum; si pesan demasiado, se mandan sin ellos.
+  if (type === 'drawing' && strokes && strokes.length <= MAX_STROKES) step.strokes = strokes;
+  await set(at('garticSteps/' + code + '/' + state.match + '/' + state.round + '/' + uid), step);
 }
-export async function submit(code, state, uid, content) {
-  await saveStep(code, state, uid, content);
+export async function submit(code, state, uid, content, strokes) {
+  await saveStep(code, state, uid, content, strokes);
   await set(at('garticReady/' + code + '/' + state.match + '/' + state.round + '/' + uid), true);
 }
 export async function transferHost(code, room, connected) {
@@ -121,5 +125,21 @@ export async function transferHost(code, room, connected) {
   const next = Object.keys(room.players || {}).sort().find((id) => connected[id]);
   if (!next) return;
   await runTransaction(at(roomPath(code) + '/hostId'), (host) => host === room.hostId ? next : undefined);
+}
+// Presentación del final: solo el anfitrión la mueve. `now` es la hora del servidor estimada.
+export function showControl(code, state, durations, now, command) {
+  const { index } = showPosition(state.show, now, durations);
+  const last = durations.length - 1;
+  const perAlbum = state.count;
+  let next;
+  if (command === 'play') next = { index: index >= last ? 0 : index, playing: true };
+  else if (command === 'pause') next = { index, playing: false };
+  else if (command === 'next') next = { index: Math.min(last, index + 1), playing: state.show?.playing === true };
+  else if (command === 'prev') next = { index: Math.max(0, index - 1), playing: false };
+  else if (command === 'nextAlbum') next = { index: Math.min(last, (Math.floor(index / perAlbum) + 1) * perAlbum), playing: state.show?.playing === true };
+  else if (command === 'prevAlbum') next = { index: Math.max(0, (Math.floor(index / perAlbum) - 1) * perAlbum), playing: false };
+  else if (command === 'end') next = { index: last, playing: false };
+  else return Promise.resolve();
+  return set(at(roomPath(code) + '/state/show'), { ...next, at: serverTimestamp() });
 }
 export const rematch = (code) => set(at(roomPath(code) + '/state'), { phase: 'lobby', match: 'none', round: 0 });

@@ -5,7 +5,7 @@
 // privacidad que tenían en Firebase: durante la partida nadie lee las entregas de los demás,
 // salvo la que le toca continuar.
 import { previousAuthor } from '../src/gartic/game.js';
-import { MAX_DRAWING, MAX_TEXT } from '../src/gartic/game.js';
+import { MAX_DRAWING, MAX_STROKES, MAX_TEXT } from '../src/gartic/game.js';
 import { getAt } from './tree.js';
 
 export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps', 'mecha', 'tiros'];
@@ -65,6 +65,8 @@ export function writeError(segs, uid, value, tree) {
     if (getAt(tree, ['garticReady', ...segs.slice(1, 5)]) !== null) return 'Esa entrega ya se confirmó.';
     const content = segs.length === 5 ? value?.content : null;
     if (typeof content === 'string' && content.length > MAX_DRAWING + MAX_TEXT) return 'La entrega es demasiado grande.';
+    const strokes = segs.length === 5 ? value?.strokes : null;
+    if (typeof strokes === 'string' && strokes.length > MAX_STROKES) return 'Los trazos del dibujo pesan demasiado.';
     return null;
   }
   return null;

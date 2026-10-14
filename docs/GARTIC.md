@@ -32,9 +32,13 @@ No hay un servidor ejecutando rondas cuando todos están desconectados: al volve
 
 ## Editor y resultados
 
-Lienzo de 960 × 600 con eventos Pointer para mouse y touch. Incluye lápiz, goma, línea, rectángulo/círculo con y sin relleno, balde, color, grosor, limpiar y veinte niveles de deshacer/rehacer. Las entregas son PNG con un máximo de 600.000 caracteres por dibujo; los textos tienen un máximo de 300.
+Lienzo de 960 × 600 con eventos Pointer para mouse y touch. Incluye lápiz, goma, línea, rectángulo/círculo con y sin relleno, balde, color, grosor, limpiar y veinte niveles de deshacer/rehacer (Ctrl+Z / Ctrl+Y, y una letra por herramienta). Las entregas son PNG con un máximo de 600.000 caracteres por dibujo; los textos tienen un máximo de 300.
 
-La revelación presenta progresivamente los pasos y permite anterior/siguiente, reproducir/pausar y abrir los álbumes completos. El anfitrión puede preparar una revancha. Las capturas de la prueba están en `docs/gartic/`.
+Además del PNG, cada dibujo guarda sus **trazos** (`strokes`, texto JSON, hasta `MAX_STROKES`): una operación por paso del historial, `[herramienta, color, grosor, ...coordenadas]` (ver `drawing.js`). Deshacer saca la última, rehacer la devuelve. En el álbum `makeReplayer` los vuelve a dibujar en `REPLAY_MS` y después se muestra el PNG, que es el exacto. Si los trazos no están (un borrador recuperado sin ellos, o pesan demasiado), se muestra la imagen sola.
+
+Los tiempos son dos (`settings.writeSeconds` para escribir, `settings.seconds` para dibujar), de `TIME_CHOICES` o uno escrito a mano entre 5 y 600 s. Las salas viejas, con un solo `seconds`, pasan por `roomSettings`.
+
+**La presentación del final es una sola para todos.** `state.show = { index, playing, at }`: los pasos de todos los álbumes van en fila y `showPosition` calcula, con la hora del servidor, en cuál está cada pantalla. Si `playing`, avanza sola según `showDurations` (más tiempo en los dibujos, por la reproducción, y una pausa entre álbumes); si no, se queda en `index`. Solo el anfitrión la mueve (`showControl`: automático, pausa, paso y álbum siguiente/anterior). `settings.autoShow` decide si arranca sola al terminar la última ronda. Cuando termina, cada uno puede abrir el álbum que quiera tocando un jugador. El anfitrión puede preparar una revancha. Las capturas de la prueba están en `docs/gartic/`.
 
 ## Verificación
 

@@ -233,7 +233,17 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.4.0 = Juego nuevo: Mario vs Luigi 🍄
+1.4.0 = Juego nuevo: Mario vs Luigi 🍄
 - El Mario vs Luigi de New Super Mario Bros (el remake de la comunidad, de ipodtouch0218), tal cual, adentro de la página.
 - De 2 a 10 jugadores online, con todos los poderes y los niveles del juego. Las salas se arman desde el menú del juego.
 - Botón de pantalla completa y para abrirlo aparte. La primera vez tarda en cargar (son unos 55 MB).
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.5.0 = Trazo Loco renovado 🎨
+- Diseño nuevo, igual al de Gartic Phone: fondo violeta, logo, lista de jugadores con lugares vacíos, modos en fichas y botones grandes.
+- Para dibujar: la hoja con anillos, paleta de colores a la izquierda, herramientas a la derecha (con atajos de teclado) y grosores abajo.
+- Ajustes nuevos: tiempo para escribir y tiempo para dibujar por separado, con opción de poner uno personalizado (de 5 segundos a 10 minutos).
+- Al final, el anfitrión muestra los álbumes y todos ven lo mismo, en el mismo orden y al mismo tiempo. Se puede elegir que se muestren solos o que el anfitrión los vaya pasando.
+- En el álbum los dibujos se ven haciéndose, trazo por trazo.
+- Arriba de cada ronda se ve quién ya terminó.
