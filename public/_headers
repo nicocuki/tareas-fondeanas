@@ -7,5 +7,12 @@
   Cache-Control: public, max-age=86400
 
 # Mario vs Luigi (compilación de Unity): los nombres no cambian entre versiones, un día en caché.
-/mvl/*
+# La página (/mvl/) no: lleva el puente a Photon y tiene que llegar al toque cuando cambia.
+/mvl/Build/*
   Cache-Control: public, max-age=86400
+/mvl/StreamingAssets/*
+  Cache-Control: public, max-age=86400
+/mvl/TemplateData/*
+  Cache-Control: public, max-age=86400
+/mvl/
+  Cache-Control: no-cache

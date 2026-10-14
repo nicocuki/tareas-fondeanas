@@ -287,3 +287,4 @@ LATEST 1.7.3 = Mario vs Luigi anda en redes que bloquean Photon 🍄
 - El juego ya no se conecta directo a los servidores de Photon ni al de sus creadores: todo pasa por la página (Cloudflare), que hace de puente.
 - En las compus del cole, donde Photon está bloqueado, el online debería andar: la página de Cloudflare sí abre ahí.
 - Todo lo demás sigue igual: mismas salas y mismos jugadores que la versión oficial.
+- La página del juego ya no queda guardada un día en el navegador: los arreglos llegan apenas se publican.
