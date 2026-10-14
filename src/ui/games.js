@@ -2,6 +2,26 @@
 // Para sumar un juego nuevo: agregalo acá, en el enrutador de App.jsx y en ROOTS (worker/rules.js).
 export const GAMES = [
   {
+    id: 'tiros',
+    title: 'A los Tiros',
+    emoji: '🎯',
+    color: 'var(--game-tiros)',
+    onColor: '#ffffff',
+    tagline: 'Tiros, saltos y cartas',
+    description: 'Duelos a los tiros en mapas chiquitos. El que pierde la ronda elige una carta y se vuelve más fuerte. Inspirado en ROUNDS.',
+    players: '2 a 4',
+    duration: '10–20 min',
+    input: 'Teclado y mouse',
+    badge: 'Nuevo',
+    howTo: [
+      'Cada uno maneja una bolita armada: A y D para moverse, W o Espacio para saltar (también de pared en pared).',
+      'Apuntás con el mouse, disparás con el clic izquierdo y te cubrís con el clic derecho (o Shift): el escudo frena las balas, pero tarda en volver.',
+      'Gana la pelea el último que queda vivo. Ganando 2 peleas te llevás la ronda (un punto).',
+      'Los que pierden la ronda eligen una de 5 cartas: más daño, balas que rebotan o explotan, más vida, escudos con efectos y mucho más.',
+      'Al principio eligen todos una carta. Gana la partida el primero que llega a los puntos.',
+    ],
+  },
+  {
     id: 'meme',
     title: 'Armá el Meme',
     emoji: '🖼️',
@@ -32,7 +52,6 @@ export const GAMES = [
     players: '2 a 16',
     duration: '5–10 min',
     input: 'Teclado o celular',
-    badge: 'Nuevo',
     howTo: [
       'Todos están en ronda y la bomba pasa de uno a otro.',
       'Cuando te toca, la bomba muestra unas letras (por ejemplo «CAR»).',

@@ -11,9 +11,11 @@ import FutbolApp from './futbol/FutbolApp.jsx';
 import GarticApp from './gartic/GarticApp.jsx';
 import MechaApp from './mecha/MechaApp.jsx';
 import MemeApp from './meme/MemeApp.jsx';
+import TirosApp from './tiros/TirosApp.jsx';
 
 const SCREENS = {
   meme: MemeApp,
+  tiros: TirosApp,
   'la-mecha': MechaApp,
   'codigo-secreto': CodigoSecretoApp,
   'cafe-o-te': CafeOTeApp,

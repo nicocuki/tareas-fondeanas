@@ -178,8 +178,9 @@ por una versión anterior siga abriéndose sin romper.
 | `src/gartic/` | Componentes y lógica de Trazo Loco (ver `docs/GARTIC.md`) |
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
+| `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), física (`sim.js`), pelea en tiempo real (`TirosGame.jsx`) |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
-| `src/storage.js` | Salas (`rooms/`) y canal del fútbol sobre el servidor de salas |
+| `src/storage.js` | Salas (`rooms/`) y canales en tiempo real del fútbol y de A los Tiros sobre el servidor de salas |
 | `src/realtime.js` | Cliente del servidor de salas, con la misma forma que Firebase Realtime Database |
 | `worker/index.js` | Worker de Cloudflare: `/api/hora`, `/api/sala/ABCD` (WebSocket) y la página |
 | `worker/sala.js` | Durable Object de una sala: WebSockets que hibernan y SQLite propio |
@@ -323,6 +324,36 @@ todos, uno por uno, de 1 a 5 estrellas.
 - `history` guarda solo el mejor meme de cada ronda (últimos 5). El peor caso de sala da ~20.000
   caracteres: hay un test.
 - `data-opt` y `data-stars` existen para manejar la app desde un navegador automatizado.
+
+## A los Tiros
+
+Inspirado en ROUNDS (de Landfall): duelos de 2 a 4 con bolitas armadas. Los nombres de las cartas son
+nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del original.
+
+- **Lo que es por turnos va en la sala** (`rooms/{código}`, `gameType: 'tiros'`, reducer `game.js`):
+  `lobby` → `picking` (todos eligen una carta al empezar) → `fight` → `battleEnd` → otra pelea, o
+  `picking` de los que perdieron la ronda, o `final`. Cada pelea tiene número (`battle.n`), mapa,
+  lugares y `startsAt` (cuenta regresiva de 3 s). Gana la pelea el último vivo; `options.battles`
+  peleas ganadas = un punto; `options.rounds` puntos = partida.
+- **La pelea va en tiempo real, fuera del reducer**, con el mismo esquema que el fútbol: WebRTC
+  directo (`futbol/p2p.js`, se reusa tal cual) y respaldo por `tiros/{código}/p/{id}` (texto JSON, sin
+  guardarse en disco: `isEphemeral`). La señalización usa `signalingAt` de `storage.js`, compartida
+  con el fútbol.
+- **Cada pantalla es dueña de su jugador**: lo mueve, decide si una bala le pegó y cuánta vida le
+  queda, y avisa a la sala con `died` cuando muere. El anfitrión puede mandar `died` con `target` por
+  alguien que dejó de mandar fotos 8 s (pestaña cerrada sin salir).
+- **Las balas no viajan por la red**: la foto lleva los disparos de los últimos 1,5 s
+  (`{ k, t, x, y, a, sd }`) y cada pantalla las simula con `bulletsForShot` + `stepBullet` y las
+  cartas del que tiró (`statsFor`). La semilla `sd` hace que el abanico y el desvío salgan iguales en
+  todas. Una bala que llega tarde se adelanta **revisando si me pega en el camino** (`bulletTick`): sin
+  eso, de cerca, el tiro atravesaba al otro sin hacerle nada.
+- La foto también lleva los golpes recibidos (`hi`, para robo de vida, Carroñero, Sed de sangre del
+  que tiró) y los escudos usados (`fx`, para los efectos sobre los demás). Todo se deduplica por `k`.
+- Física a paso fijo (`STEP` 1/120 s). Mundo de 64 × 36; fuera de él no hay paredes: el que se sale
+  vuelve rebotando y pierde el 20 % de la vida (`OUT_DAMAGE`).
+- `window.__tiros` (el estado de la pelea) y `data-tiros-canvas`, `data-card` existen para manejar el
+  juego desde un navegador automatizado. Para probar el respaldo por el servidor, borrá
+  `window.RTCPeerConnection` antes de cargar la página en uno de los navegadores.
 
 ## Fútbol: sincronización en tiempo real
 

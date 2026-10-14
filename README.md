@@ -6,6 +6,7 @@
 
 ## 🕹️ Juegos disponibles
 
+- **A los Tiros:** duelos de 2 a 4 a los tiros y saltos. El que pierde la ronda elige una carta que lo hace más fuerte. Inspirado en ROUNDS.
 - **Armá el Meme:** completá una plantilla con el texto más gracioso y voten las mejores respuestas. También pueden jugar en modo «todos el mismo meme».
 - **La Mecha:** la bomba pasa de jugador en jugador. Escribí una palabra que contenga las letras indicadas antes de que se termine el tiempo.
 - **Trazo Loco:** teléfono descompuesto con dibujos. Escribí, dibujá y descubrí cómo fue cambiando la idea. Tiene modos Normal, Imitación, Historia y Sandwich.

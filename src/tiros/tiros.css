@@ -1,0 +1,84 @@
+/* A los Tiros. Colores de src/ui/tokens.css; el del juego es --game-tiros. */
+.tt-page { --tt: var(--game-tiros); padding: 22px 16px 40px; max-width: 1180px; margin: 0 auto; }
+.tt-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow); padding: 22px; margin-bottom: 20px; }
+.tt-card h2 { margin: 0 0 10px; font-size: 20px; }
+.tt-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.tt-card-head h2 { margin: 0; }
+.tt-card-head span { color: var(--text-2); font-size: 14px; }
+.tt-entry { max-width: 460px; margin: 0 auto; }
+.tt-or { display: flex; align-items: center; gap: 10px; margin: 18px 0 12px; color: var(--text-3); font-size: 13px; }
+.tt-or::before, .tt-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.tt-error { margin: 10px 0; padding: 10px 14px; border-radius: var(--radius); background: var(--danger-soft); color: var(--danger); font-size: 14px; }
+.tt-banner { max-width: 1180px; margin: 16px auto 0; }
+.tt-hint { color: var(--text-2); font-size: 14px; margin: 8px 0 0; }
+.tt-center { text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 520px; margin: 30px auto; }
+.tt-eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; font-weight: 800; color: var(--tt); }
+.tt-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #23222b; flex: none; vertical-align: -2px; }
+
+.tt-players { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.tt-players li { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--radius-lg); background: var(--surface-2); border: 1px solid var(--border); }
+.tt-players li.is-me { border-color: color-mix(in srgb, var(--tt) 55%, var(--border)); }
+.tt-players strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-players small { color: var(--text-3); font-size: 12px; }
+.tt-controls ul { margin: 0; padding-left: 18px; color: var(--text-2); line-height: 1.9; }
+kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--border); border-bottom-width: 2px; background: var(--surface-2); font: 600 12px/1.6 Inter, sans-serif; text-align: center; color: var(--text); }
+.tt-start { text-align: center; margin: 10px 0 20px; }
+.tt-start-btn { min-height: 54px; padding: 0 34px; font-size: 18px; background: var(--tt); color: #fff; box-shadow: 0 10px 26px color-mix(in srgb, var(--tt) 35%, transparent); }
+
+/* Marcador */
+.tt-score { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 14px; }
+.tt-score-player { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; }
+.tt-score-player.is-me { border-color: color-mix(in srgb, var(--tt) 60%, var(--border)); }
+.tt-score-player.is-dead { opacity: 0.5; }
+.tt-points, .tt-wins { display: inline-flex; gap: 4px; }
+.tt-points i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--text-3); }
+.tt-points i.is-on { border-color: #23222b; }
+.tt-wins { padding-left: 6px; border-left: 1px solid var(--border); }
+.tt-wins i { width: 8px; height: 8px; border-radius: 2px; background: var(--border); }
+.tt-wins i.is-on { background: var(--text); }
+
+/* Pelea */
+.tt-fight { max-width: 1280px; }
+.tt-stage { width: 100%; max-width: calc((100dvh - 200px) * 16 / 9); min-width: min(100%, 640px); margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); background: #f4e3c8; }
+.tt-canvas { display: block; width: 100%; cursor: none; touch-action: none; user-select: none; }
+.tt-keys { text-align: center; }
+.tt-decks { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.tt-deck { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.tt-deck-name { font-weight: 700; margin-right: 4px; }
+.tt-chip { padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); cursor: help; }
+.tt-chip.is-uncommon { border-color: #3d8fe0; }
+.tt-chip.is-rare { border-color: #a463d9; background: color-mix(in srgb, #a463d9 12%, var(--surface-2)); }
+
+/* Cartas */
+.tt-pick-head { text-align: center; margin: 8px 0 18px; }
+.tt-pick-head h1 { margin: 6px 0 0; font-size: clamp(24px, 4vw, 34px); }
+.tt-hand { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .tt-hand { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tt-cardpick {
+  display: flex; flex-direction: column; gap: 8px; text-align: left; min-height: 250px; padding: 16px; border-radius: 18px;
+  background: var(--surface); color: var(--text); border: 2px solid var(--border); box-shadow: var(--shadow); font: inherit;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s, border-color 0.15s;
+}
+button.tt-cardpick { cursor: pointer; }
+button.tt-cardpick:hover:not(:disabled) { transform: translateY(-6px) rotate(-1deg); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18); }
+button.tt-cardpick:disabled { opacity: 0.6; cursor: default; }
+.tt-cardpick.is-common { border-color: #d9b45a; }
+.tt-cardpick.is-uncommon { border-color: #3d8fe0; }
+.tt-cardpick.is-rare { border-color: #a463d9; background: color-mix(in srgb, #a463d9 8%, var(--surface)); }
+.tt-cardpick-kind { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.tt-cardpick strong { font-family: var(--font-display); font-size: 21px; line-height: 1.15; }
+.tt-cardpick ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.tt-cardpick li { padding: 6px 9px; border-radius: 10px; background: var(--surface-2); }
+.tt-cardpick li.is-good { color: #6fd895; }
+.tt-cardpick li.is-bad { color: #ff8a78; }
+.tt-cardpick li.is-fx { color: var(--text); }
+:root[data-theme='light'] .tt-cardpick li.is-good { color: #2b8a4f; }
+:root[data-theme='light'] .tt-cardpick li.is-bad { color: #c2412f; }
+
+/* Final */
+.tt-final { max-width: 560px; margin: 10px auto 20px; text-align: center; }
+.tt-final h1 { margin: 6px 0 16px; }
+.tt-ranking { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.tt-ranking li { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-radius: var(--radius-lg); background: var(--surface-2); }
+.tt-ranking li.is-me { outline: 2px solid color-mix(in srgb, var(--tt) 60%, transparent); }
+.tt-final-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }

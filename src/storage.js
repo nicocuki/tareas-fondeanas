@@ -46,6 +46,26 @@ function subscribeConnection(onChange) {
   });
 }
 
+// Señalización WebRTC (ver futbol/p2p.js) sobre `peers/` y `signal/` de una rama.
+function signalingAt(at) {
+  return {
+    async announce(id, sid) {
+      await remove(at(`signal/${id}`)); // mensajes de una sesión anterior
+      await onDisconnect(at(`peers/${id}`)).remove();
+      await onDisconnect(at(`signal/${id}`)).remove();
+      await set(at(`peers/${id}`), sid);
+    },
+    leave: (id) => Promise.all([remove(at(`peers/${id}`)), remove(at(`signal/${id}`))]),
+    send: (to, msg) => push(at(`signal/${to}`), msg),
+    onPeers: (cb) => onValue(at('peers'), (snap) => cb(snap.val() || {})),
+    // Cada mensaje se borra apenas se lee: el buzón no crece.
+    listen: (id, cb) => onChildAdded(at(`signal/${id}`), (snap) => {
+      cb(snap.val());
+      remove(snap.ref).catch(() => {});
+    }),
+  };
+}
+
 // ─── Fútbol en tiempo real ───────────────────────────────────────────────────
 // Fuera del reducer de salas: son fotos que se pisan muchas veces por segundo. Cada rama se escucha
 // por separado, así la foto de un jugador no obliga a volver a bajar y armar todo lo demás.
@@ -71,22 +91,7 @@ function futbolChannel(code) {
       return { committed: result.committed, match: result.snapshot.val() };
     },
     // El servidor solo presenta a las pantallas entre sí; después las fotos van directo de una a otra.
-    signaling: {
-      async announce(id, sid) {
-        await remove(at(`signal/${id}`)); // mensajes de una sesión anterior
-        await onDisconnect(at(`peers/${id}`)).remove();
-        await onDisconnect(at(`signal/${id}`)).remove();
-        await set(at(`peers/${id}`), sid);
-      },
-      leave: (id) => Promise.all([remove(at(`peers/${id}`)), remove(at(`signal/${id}`))]),
-      send: (to, msg) => push(at(`signal/${to}`), msg),
-      onPeers: (cb) => onValue(at('peers'), (snap) => cb(snap.val() || {})),
-      // Cada mensaje se borra apenas se lee: el buzón no crece.
-      listen: (id, cb) => onChildAdded(at(`signal/${id}`), (snap) => {
-        cb(snap.val());
-        remove(snap.ref).catch(() => {});
-      }),
-    },
+    signaling: signalingAt(at),
     subscribe({ onPlayer, onPlayerGone, onBall, onMatch, onPickups }) {
       const players = at('players');
       const offs = [
@@ -102,11 +107,34 @@ function futbolChannel(code) {
   };
 }
 
+// ─── A los Tiros en tiempo real ──────────────────────────────────────────────
+// Igual que el fútbol: la pelea va directo entre navegadores (WebRTC) y por acá solo pasan la
+// señalización y, si con alguien no se arma el canal directo, la foto de respaldo de cada jugador.
+//   tiros/{sala}/p/{id}       foto de respaldo de cada jugador (la escribe solo su dueño)
+//   tiros/{sala}/peers, signal  como en el fútbol
+function tirosChannel(code) {
+  const at = (path) => ref(`tiros/${code}/${path}`);
+  return {
+    signaling: signalingAt(at),
+    publish: (id, snap) => set(at(`p/${id}`), snap),
+    leaveOnDisconnect: (id) => onDisconnect(at(`p/${id}`)).remove(),
+    remove: (id) => remove(at(`p/${id}`)),
+    subscribe(onSnap) {
+      const list = at('p');
+      const offs = [
+        onChildAdded(list, (snap) => onSnap(snap.key, snap.val())),
+        onChildChanged(list, (snap) => onSnap(snap.key, snap.val())),
+      ];
+      return () => offs.forEach((off) => off());
+    },
+  };
+}
+
 // Diferencia entre este reloj y el del servidor: con eso todas las pantallas comparten la misma hora.
 function subscribeServerOffset(onOffset) {
   return onValue(ref('.info/serverTimeOffset'), (snap) => onOffset(Number(snap.val()) || 0));
 }
 
 export const backend = {
-  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, subscribeServerOffset,
+  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, subscribeServerOffset,
 };

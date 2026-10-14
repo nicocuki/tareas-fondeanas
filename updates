@@ -204,8 +204,18 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.2.1 = Armá el Meme: memes con contexto
+1.2.1 = Armá el Meme: memes con contexto
 - Ahora hay 78 plantillas elegidas a mano: se sacaron las que no se entendían, las que tenían texto en inglés pegado y las de política yanqui.
 - Cada meme tiene su nombre en castellano y una explicación de cómo se usa.
 - Los textos arrancan donde van (en cada viñeta, en cada personaje) y dicen qué escribir ahí ("Lo que no", "Lo que sí", "Vos"…).
 - En los fondos blancos la letra viene negra, y con el botón ⚫/⚪ se cambia el color de cada texto.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.3.0 = Juego nuevo: A los Tiros 🎯
+- Duelos a los tiros en mapas chiquitos, de 2 a 4 jugadores, inspirado en ROUNDS.
+- Te movés con A y D, saltás con W o Espacio (también de pared en pared), apuntás con el mouse, disparás con el clic izquierdo y te cubrís con el clic derecho o Shift.
+- Gana la pelea el último que queda vivo; con 2 peleas ganadas te llevás la ronda. Los que pierden la ronda eligen una de 5 cartas para hacerse más fuertes.
+- 41 cartas: balas que rebotan, explotan, envenenan, frenan o siguen al mouse; escopeta, ráfagas, lluvia de balas; escudos que empujan, atraen, curan o teletransportan; más vida, robo de vida, Fénix y más.
+- 7 mapas. Las balas caen con la gravedad, así que hay que apuntar un poco más arriba de lejos.
+- La pelea va directo entre las compus (como el fútbol) para que no haya lag; si no se puede, va por el servidor.
