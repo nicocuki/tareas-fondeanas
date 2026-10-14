@@ -112,6 +112,7 @@ function futbolChannel(code) {
 // señalización y, si con alguien no se arma el canal directo, la foto de respaldo de cada jugador.
 //   tiros/{sala}/p/{id}       foto de respaldo de cada jugador (la escribe solo su dueño)
 //   tiros/{sala}/peers, signal  como en el fútbol
+//   tiros/{sala}/elige        a qué carta apunta el que está eligiendo: { k: turno, i: carta }
 function tirosChannel(code) {
   const at = (path) => ref(`tiros/${code}/${path}`);
   return {
@@ -119,6 +120,8 @@ function tirosChannel(code) {
     publish: (id, snap) => set(at(`p/${id}`), snap),
     leaveOnDisconnect: (id) => onDisconnect(at(`p/${id}`)).remove(),
     remove: (id) => remove(at(`p/${id}`)),
+    pointAt: (value) => set(at('elige'), value),
+    subscribePoint: (cb) => onValue(at('elige'), (snap) => cb(snap.val())),
     subscribe(onSnap) {
       const list = at('p');
       const offs = [

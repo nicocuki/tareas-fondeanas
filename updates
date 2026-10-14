@@ -250,8 +250,17 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.6.0 = Salas públicas 🌐
+1.6.0 = Salas públicas 🌐
 - En el inicio, arriba de los juegos, aparecen las salas abiertas: tocás una y entrás sin necesidad del código.
 - Al crear una sala podés marcarla como pública; en la sala de espera el anfitrión la pasa de pública a privada cuando quiera.
 - La lista se actualiza sola: muestra el juego, de quién es la sala y cuántos hay. Una sala deja de aparecer cuando empieza la partida, se llena o se van todos.
 - Anda con todos los juegos de la página (Mario vs Luigi tiene sus propias salas).
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.7.0 = A los Tiros: las cartas se eligen como en el original 🃏
+- Ahora se elige de a uno: todos ven en vivo cómo elige cada jugador y esperan su turno.
+- Las cinco cartas suben en arco y tu personaje aparece abajo, señalando con el brazo la carta a la que apuntás.
+- Te movés entre las cartas con A y D (o las flechas) o con el mouse, y elegís con clic, Espacio o Enter. En el celular, un toque apunta y otro elige.
+- Al elegir, las demás cartas se caen; la tuya queda un segundo arriba y después se va con tu personaje.
+- Cartas nuevas, oscuras y con esquinas que brillan, como las del juego original. Cada uno tiene 20 segundos; si no elige, le toca una al azar.

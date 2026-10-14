@@ -7,6 +7,11 @@
 // Como en el original: una pelea termina cuando queda uno solo vivo; el que gana `options.battles`
 // peleas gana la ronda (un punto); los que no ganaron la ronda eligen una carta; gana la partida el
 // primero que llega a `options.rounds` puntos. Al principio eligen todos.
+//
+// Las cartas se eligen de a uno, como en el original: `picking` = { order, at, hand, chosen, chosenAt }.
+// Le toca a `order[at]`, que ve las cinco de `hand`; al elegir, `chosen` queda un momento a la vista
+// de todos (`REVEAL_MS`) y el `tick` pasa al siguiente. Hacia qué carta apunta el que elige no pasa por
+// acá: va en vivo por `tiros/{sala}/elige` (ver TirosApp.jsx).
 import { MAPS } from './maps.js';
 import { dealCards, CARDS } from './cards.js';
 
@@ -15,7 +20,8 @@ export const MAX_PLAYERS = 4;
 export const MIN_PLAYERS = 2;
 export const COUNTDOWN_MS = 3000;   // cuenta regresiva antes de cada pelea
 export const BATTLE_END_MS = 2500;  // cuánto se muestra quién ganó la pelea
-export const PICK_MS = 30000;       // tiempo para elegir carta
+export const PICK_MS = 20000;       // tiempo de cada uno para elegir carta
+export const REVEAL_MS = 1800;      // la carta elegida se ve 1 s y después se va con el jugador
 export const MAX_BATTLE_MS = 120000; // si una pelea se estira tanto, se repite
 export const COLORS = ['#f28c28', '#3d8fe0', '#3fb36b', '#a463d9'];
 
@@ -36,7 +42,7 @@ export function newRoom(hostId, hostName, avatar, now = Date.now()) {
     options: { ...DEFAULT_OPTIONS },
     players: [newPlayer(hostId, hostName, avatar, COLORS[0])],
     battle: null,
-    picking: {},
+    picking: null,
     phaseEndsAt: 0,
     roundWinner: null,
     champion: null,
@@ -62,9 +68,23 @@ function shuffle(list, rand) {
 
 function startPicking(room, pickers, now, rand) {
   room.phase = 'picking';
-  room.phaseEndsAt = now + PICK_MS;
-  room.picking = Object.fromEntries(pickers.map((p) => [p.id, dealCards(rand)]));
+  room.picking = { order: pickers.map((p) => p.id), at: -1, hand: [], chosen: null, chosenAt: 0 };
+  nextPicker(room, now, rand);
 }
+
+// Le pasa el turno al siguiente que tenga que elegir, o arranca la pelea si ya eligieron todos.
+function nextPicker(room, now, rand) {
+  const pick = room.picking;
+  pick.at += 1;
+  while (pick.at < pick.order.length && !findPlayer(room, pick.order[pick.at])?.inGame) pick.at += 1;
+  if (pick.at >= pick.order.length) { startBattle(room, now, rand); return; }
+  pick.hand = dealCards(rand);
+  pick.chosen = null;
+  pick.chosenAt = 0;
+  room.phaseEndsAt = now + PICK_MS;
+}
+
+export const currentPicker = (room) => (room?.phase === 'picking' && room.picking?.order ? room.picking.order[room.picking.at] : null);
 
 function startBattle(room, now, rand) {
   const previous = room.battle?.map ?? -1;
@@ -72,7 +92,7 @@ function startBattle(room, now, rand) {
   if (map === previous) map = (map + 1) % MAPS.length;
   const order = shuffle(inGame(room).map((p) => p.id), rand);
   room.phase = 'fight';
-  room.picking = {};
+  room.picking = null;
   room.battle = {
     n: (room.battle?.n || 0) + 1,
     map,
@@ -111,19 +131,18 @@ function afterBattle(room, now, rand) {
   startPicking(room, inGame(room).filter((p) => p.id !== winner.id), now, rand);
 }
 
-function pickFor(room, id, card) {
-  const hand = room.picking[id];
-  const p = findPlayer(room, id);
-  if (!hand || !p || !hand.includes(card)) return false;
-  p.cards.push(card);
-  delete room.picking[id];
-  return true;
+function choose(room, card, now) {
+  const pick = room.picking;
+  findPlayer(room, pick.order[pick.at])?.cards.push(card);
+  pick.chosen = card;
+  pick.chosenAt = now;
+  room.phaseEndsAt = now + REVEAL_MS;
 }
 
 function backToLobby(room) {
   room.phase = 'lobby';
   room.phaseEndsAt = 0;
-  room.picking = {};
+  room.picking = null;
   room.battle = null;
   room.players.forEach((p) => { p.inGame = false; });
 }
@@ -153,10 +172,10 @@ export function applyAction(room, action, ctx = {}) {
       next.players = next.players.filter((p) => p.id !== me.id);
       if (!next.players.length) return next;
       if (next.hostId === me.id) next.hostId = next.players[0].id;
-      delete next.picking[me.id];
+      const wasPicking = currentPicker(room) === me.id && !room.picking.chosen;
       if (next.phase !== 'lobby' && next.phase !== 'final' && inGame(next).length < MIN_PLAYERS) { backToLobby(next); return next; }
       if (next.phase === 'fight') checkBattleEnd(next, now);
-      if (next.phase === 'picking' && !Object.keys(next.picking).length) startBattle(next, now, rand);
+      if (wasPicking) nextPicker(next, now, rand);
       return next;
     }
 
@@ -180,9 +199,10 @@ export function applyAction(room, action, ctx = {}) {
     }
 
     case 'pick': {
-      if (next.phase !== 'picking' || !me || !CARDS[action.card]) return null;
-      if (!pickFor(next, me.id, action.card)) return null;
-      if (!Object.keys(next.picking).length) startBattle(next, now, rand);
+      // Solo el que tiene el turno, una vez, una de sus cinco cartas.
+      if (currentPicker(next) !== me?.id || action.turn !== next.picking.at || next.picking.chosen) return null;
+      if (!CARDS[action.card] || !next.picking.hand.includes(action.card)) return null;
+      choose(next, action.card, now);
       return next;
     }
 
@@ -201,8 +221,11 @@ export function applyAction(room, action, ctx = {}) {
       // Cualquier pantalla lo manda cuando ve el reloj en cero; la transacción deja pasar uno.
       if (action.phase !== next.phase || now < next.phaseEndsAt) return null;
       if (next.phase === 'picking') {
-        for (const [id, hand] of Object.entries(next.picking)) pickFor(next, id, hand[0]);
-        startBattle(next, now, rand);
+        // Salas de antes de elegir por turnos: se va directo a la pelea.
+        if (!Array.isArray(next.picking?.order)) { startBattle(next, now, rand); return next; }
+        // Se le acabó el tiempo sin elegir: le toca una al azar. Si ya eligió, pasa el siguiente.
+        if (!next.picking.chosen) choose(next, next.picking.hand[Math.floor(rand() * next.picking.hand.length)], now);
+        else nextPicker(next, now, rand);
         return next;
       }
       if (next.phase === 'battleEnd') {

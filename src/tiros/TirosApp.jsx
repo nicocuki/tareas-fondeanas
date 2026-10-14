@@ -6,15 +6,15 @@ import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/inde
 import GameHero from '../ui/GameHero.jsx';
 import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
 import { gameUrl } from '../ui/games.js';
-import { CARDS, KINDS, RARITIES } from './cards.js';
+import { CARDS } from './cards.js';
 import {
-  GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, makeId, newRoom, ranking,
+  GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, currentPicker, findPlayer, makeId, newRoom, ranking,
 } from './game.js';
 import TirosGame from './TirosGame.jsx';
+import PickStage from './PickStage.jsx';
 import './tiros.css';
 
 const GAME = 'tiros';
-const ICONS = { bullet: '💥', block: '🛡️', player: '❤️' };
 
 function codeFromUrl() {
   return (new URLSearchParams(window.location.search).get('sala') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
@@ -105,7 +105,7 @@ function Scoreboard({ room, me }) {
   return (
     <div className="tt-score" data-score>
       {room.players.filter((p) => p.inGame).map((p) => (
-        <div key={p.id} className={`tt-score-player${p.id === me.id ? ' is-me' : ''}${room.battle?.dead?.[p.id] ? ' is-dead' : ''}`}>
+        <div key={p.id} className={`tt-score-player${p.id === me.id ? ' is-me' : ''}${room.battle?.dead?.[p.id] ? ' is-dead' : ''}${currentPicker(room) === p.id ? ' is-picking' : ''}`}>
           <span className="tt-dot" style={{ background: p.color }} />
           <strong>{p.name}</strong>
           <span className="tt-points" title="Puntos">
@@ -119,25 +119,6 @@ function Scoreboard({ room, me }) {
         </div>
       ))}
     </div>
-  );
-}
-
-function CardView({ id, onPick, disabled }) {
-  const card = CARDS[id];
-  if (!card) return null;
-  const Tag = onPick ? 'button' : 'div';
-  return (
-    <Tag type={onPick ? 'button' : undefined} className={`tt-cardpick is-${card.rarity} is-${card.kind}`} data-card={id} disabled={disabled} onClick={onPick ? () => onPick(id) : undefined}>
-      <span className="tt-cardpick-icon" aria-hidden="true">{ICONS[card.kind]}</span>
-      <span className="tt-cardpick-kind">{KINDS[card.kind]} · {RARITIES[card.rarity].label}</span>
-      <strong>{card.name}</strong>
-      <ul>
-        {card.lines.map((line) => {
-          const sign = line[0];
-          return <li key={line} className={sign === '+' ? 'is-good' : sign === '-' ? 'is-bad' : 'is-fx'}>{line.slice(2)}</li>;
-        })}
-      </ul>
-    </Tag>
   );
 }
 
@@ -158,28 +139,13 @@ function MyCards({ room }) {
 }
 
 // ─── Elegir carta ────────────────────────────────────────────────────────────
-function Picking({ room, me, now, onDispatch }) {
-  const hand = room.picking[me.id];
-  const [sent, setSent] = useState(false);
-  useEffect(() => { setSent(false); }, [hand?.join(',')]);
-  const waiting = room.players.filter((p) => room.picking[p.id]);
-  const left = Math.max(0, Math.ceil((room.phaseEndsAt - now) / 1000));
-  const winner = findPlayer(room, room.roundWinner);
+function Picking({ room, me, code, now, onDispatch }) {
   return (
     <div className="cs-root tt-page">
-      <div className="tt-pickzone">
       <Scoreboard room={room} me={me} />
-      <div className="tt-pick-head">
-        {winner ? <p className="tt-eyebrow">{winner.name} ganó la ronda</p> : <p className="tt-eyebrow">¡Arranca la partida!</p>}
-        <h1>{hand ? 'Elegí una carta' : `Eligiendo: ${waiting.map((p) => p.name).join(', ')}`}</h1>
-        <p className="tt-hint">{left} s</p>
-      </div>
-      {hand ? (
-        <div className="tt-hand">
-          {hand.map((id) => <CardView key={id} id={id} disabled={sent} onPick={(card) => { setSent(true); onDispatch({ type: 'pick', card }); }} />)}
-        </div>
-      ) : <p className="tt-hint tt-center">Los que perdieron la ronda eligen una carta para hacerse más fuertes.</p>}
-      </div>
+      {Array.isArray(room.picking?.order)
+        ? <PickStage room={room} me={me} code={code} now={now} onPick={(card, turn) => onDispatch({ type: 'pick', card, turn })} />
+        : <p className="tt-hint tt-center">Preparando las cartas…</p>}
       <MyCards room={room} />
     </div>
   );
@@ -339,7 +305,7 @@ export default function TirosApp({ onBackToMenu }) {
     );
   }
   if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} /></>;
-  if (room.phase === 'picking') return <>{banner}<Picking room={room} me={me} now={now} onDispatch={dispatch} /></>;
+  if (room.phase === 'picking') return <>{banner}<Picking room={room} me={me} code={code} now={now} onDispatch={dispatch} /></>;
   if (room.phase === 'final') return <>{banner}<Final room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} /></>;
   if (!me.inGame) return <div className="cs-root tt-page"><Scoreboard room={room} me={me} /><p className="tt-hint tt-center">La partida ya empezó: vas a poder jugar en la próxima.</p></div>;
   return (

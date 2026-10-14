@@ -358,6 +358,12 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
   `picking` de los que perdieron la ronda, o `final`. Cada pelea tiene número (`battle.n`), mapa,
   lugares y `startsAt` (cuenta regresiva de 3 s). Gana la pelea el último vivo; `options.battles`
   peleas ganadas = un punto; `options.rounds` puntos = partida.
+- **Las cartas se eligen de a uno**, como en el original: `picking = { order, at, hand, chosen, chosenAt }`.
+  Le toca a `order[at]` (`currentPicker`); `pick` lleva `turn` (= `at`) y deja `chosen` a la vista
+  `REVEAL_MS`; el `tick` pasa al siguiente (o, si se le acabó `PICK_MS`, le da una al azar). La pantalla
+  es `PickStage.jsx`: lienzo de 1600 × 900 unidades (cartas en %, personaje y brazo en un SVG con el
+  mismo viewBox, textos en `cqw`). **A qué carta apunta el que elige no pasa por la sala**: va por
+  `tiros/{código}/elige` (`{ k: turno, i }`, efímero), así se ve en vivo sin transacciones.
 - **La pelea va en tiempo real, fuera del reducer**, con el mismo esquema que el fútbol: WebRTC
   directo (`futbol/p2p.js`, se reusa tal cual) y respaldo por `tiros/{código}/p/{id}` (texto JSON, sin
   guardarse en disco: `isEphemeral`). La señalización usa `signalingAt` de `storage.js`, compartida

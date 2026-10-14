@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BATTLE_END_MS, COUNTDOWN_MS, PICK_MS, applyAction, findPlayer, newRoom } from '../src/tiros/game.js';
+import { BATTLE_END_MS, COUNTDOWN_MS, PICK_MS, REVEAL_MS, applyAction, currentPicker, findPlayer, newRoom } from '../src/tiros/game.js';
 import { CARDS, CARD_IDS, dealCards, statsFor } from '../src/tiros/cards.js';
 import { MAPS, WORLD_H, WORLD_W } from '../src/tiros/maps.js';
 import { PLAYER_R, STEP, bulletDamage, bulletsForShot, circleRect, newPlayerState, seeded, stepBullet, stepPlayer, touches } from '../src/tiros/sim.js';
@@ -11,22 +11,28 @@ function lobby(names = ['Ana', 'Beto']) {
   names.slice(1).forEach((n, i) => { room = applyAction(room, { type: 'join', playerId: 'bcd'[i], name: n }, { now: 0 }); });
   return room;
 }
+// Eligen de a uno: el de turno elige la primera carta y, pasado el momento en que se ve, sigue el otro.
 function pickAll(room, now) {
-  for (const [id, hand] of Object.entries(room.picking)) room = applyAction(room, { type: 'pick', playerId: id, card: hand[0] }, { now, rand }) || room;
+  while (room.phase === 'picking') {
+    room = applyAction(room, { type: 'pick', playerId: currentPicker(room), turn: room.picking.at, card: room.picking.hand[0] }, { now, rand });
+    now += REVEAL_MS;
+    room = applyAction(room, { type: 'tick', phase: 'picking' }, { now, rand });
+  }
   return room;
 }
 const kill = (room, id, now) => applyAction(room, { type: 'died', playerId: id, battle: room.battle.n }, { now, rand });
 
-test('tiros: al empezar eligen todos una carta y después arranca la pelea con cuenta regresiva', () => {
+test('tiros: al empezar eligen todos una carta, de a uno, y después arranca la pelea con cuenta regresiva', () => {
   let room = applyAction(lobby(), { type: 'start', playerId: 'a' }, { now: 1000, rand });
   assert.equal(room.phase, 'picking');
-  assert.equal(Object.keys(room.picking).length, 2);
-  assert.equal(room.picking.a.length, 5);
-  assert.equal(new Set(room.picking.a).size, 5);
-  assert.equal(applyAction(room, { type: 'pick', playerId: 'a', card: 'noexiste' }, { now: 1100 }), null);
+  assert.deepEqual(room.picking.order, ['a', 'b']);
+  assert.equal(currentPicker(room), 'a');
+  assert.equal(room.picking.hand.length, 5);
+  assert.equal(new Set(room.picking.hand).size, 5);
+  assert.equal(applyAction(room, { type: 'pick', playerId: 'a', turn: 0, card: 'noexiste' }, { now: 1100 }), null);
   room = pickAll(room, 2000);
   assert.equal(room.phase, 'fight');
-  assert.equal(room.battle.startsAt, 2000 + COUNTDOWN_MS);
+  assert.equal(room.battle.startsAt, 2000 + 2 * REVEAL_MS + COUNTDOWN_MS);
   assert.equal(findPlayer(room, 'a').cards.length, 1);
   assert.deepEqual(Object.values(room.battle.spawns).sort(), [0, 1]);
 });
@@ -53,7 +59,7 @@ test('tiros: con 2 peleas ganadas se gana la ronda y eligen carta solo los que p
     room = applyAction(room, { type: 'tick', phase: 'battleEnd', battle: room.battle.n }, { now: t + BATTLE_END_MS, rand });
   }
   assert.equal(room.phase, 'picking');
-  assert.deepEqual(Object.keys(room.picking).sort(), ['b', 'c']);
+  assert.deepEqual(room.picking.order, ['b', 'c']);
   assert.equal(findPlayer(room, 'a').points, 1);
   assert.ok(room.players.every((p) => p.wins === 0));
   assert.equal(room.roundWinner, 'a');
@@ -73,17 +79,37 @@ test('tiros: el primero en llegar a los puntos gana la partida', () => {
   assert.equal(findPlayer(room, 'a').cards.length, 3); // la del principio + una por cada ronda perdida
 });
 
-test('tiros: si se acaba el tiempo de elegir se elige sola la primera carta; si alguien se va, sigue sin él', () => {
+test('tiros: solo elige el de turno, una vez; la elegida se ve un momento y pasa el siguiente', () => {
   let room = applyAction(lobby(['Ana', 'Beto', 'Caro']), { type: 'start', playerId: 'a' }, { now: 0, rand });
-  room = applyAction(room, { type: 'pick', playerId: 'a', card: room.picking.a[2] }, { now: 10, rand });
+  const card = room.picking.hand[2];
+  assert.equal(applyAction(room, { type: 'pick', playerId: 'b', turn: 0, card }, { now: 10, rand }), null);
+  assert.equal(applyAction(room, { type: 'pick', playerId: 'a', turn: 1, card }, { now: 10, rand }), null);
+  room = applyAction(room, { type: 'pick', playerId: 'a', turn: 0, card }, { now: 10, rand });
+  assert.equal(room.picking.chosen, card);
+  assert.deepEqual(findPlayer(room, 'a').cards, [card]);
+  assert.equal(applyAction(room, { type: 'pick', playerId: 'a', turn: 0, card: room.picking.hand[0] }, { now: 20, rand }), null);
+  assert.equal(applyAction(room, { type: 'tick', phase: 'picking' }, { now: 10 + REVEAL_MS - 1, rand }), null);
+  room = applyAction(room, { type: 'tick', phase: 'picking' }, { now: 10 + REVEAL_MS, rand });
+  assert.equal(currentPicker(room), 'b');
+  assert.equal(room.picking.chosen, null);
+  assert.equal(room.phaseEndsAt, 10 + REVEAL_MS + PICK_MS);
+});
+
+test('tiros: si se acaba el tiempo de elegir le toca una al azar; si alguien se va, sigue sin él', () => {
+  let room = applyAction(lobby(['Ana', 'Beto', 'Caro']), { type: 'start', playerId: 'a' }, { now: 0, rand });
+  const hand = room.picking.hand;
   assert.equal(applyAction(room, { type: 'tick', phase: 'picking' }, { now: PICK_MS - 1, rand }), null);
-  const hand = room.picking.b;
   room = applyAction(room, { type: 'tick', phase: 'picking' }, { now: PICK_MS, rand });
+  assert.ok(hand.includes(room.picking.chosen));
+  assert.deepEqual(findPlayer(room, 'a').cards, [room.picking.chosen]);
+  room = applyAction(room, { type: 'tick', phase: 'picking' }, { now: PICK_MS + REVEAL_MS, rand });
+  assert.equal(currentPicker(room), 'b');
+  room = applyAction(room, { type: 'leave', playerId: 'b' }, { now: PICK_MS + REVEAL_MS + 5, rand }); // se va el que elegía
+  assert.equal(currentPicker(room), 'c');
+  room = pickAll(room, PICK_MS * 2);
   assert.equal(room.phase, 'fight');
-  assert.deepEqual(findPlayer(room, 'b').cards, [hand[0]]);
+  assert.deepEqual(Object.keys(room.battle.spawns).sort(), ['a', 'c']);
   room = applyAction(room, { type: 'leave', playerId: 'c' }, { now: room.battle.startsAt + 1, rand });
-  assert.equal(room.phase, 'fight');
-  room = applyAction(room, { type: 'leave', playerId: 'b' }, { now: room.battle.startsAt + 2, rand });
   assert.equal(room.phase, 'lobby'); // queda uno solo
 });
 
