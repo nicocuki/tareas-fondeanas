@@ -170,7 +170,93 @@ test('tiros: saltar, chocar contra la pared y saltar de la pared', () => {
   stepPlayer(p, { right: true }, STEP, { rects, stats, now: 0 });
   assert.equal(p.wall, 1);
   stepPlayer(p, { right: true, jump: true }, STEP, { rects, stats, now: 0 });
-  assert.ok(p.vx < -10 && p.vy < -20);
+  assert.ok(p.vx < -8 && p.vy < -18, `${p.vx} ${p.vy}`);
+});
+
+// Un jugador en el aire pegado a la pared derecha (x = 30), apretando hacia ella.
+function onWall(vy) {
+  const rects = [[0, 30, 64, 2], [30, 0, 2, 30]];
+  const stats = statsFor([]);
+  const p = newPlayerState(28.9, 10, stats);
+  stepPlayer(p, { right: true }, STEP, { rects, stats, now: 0 });
+  assert.equal(p.wall, 1);
+  p.vy = vy;
+  return { p, rects, stats, now: 0 };
+}
+
+test('tiros: el salto de la pared sale más para arriba que para el costado, como en ROUNDS', () => {
+  const { p, rects, stats } = onWall(0);
+  stepPlayer(p, { right: true, jump: true }, STEP, { rects, stats, now: 0 });
+  assert.ok(p.vx < 0, 'se aleja de la pared');
+  assert.ok(-p.vy > 1.8 * -p.vx, `sube ${-p.vy} y se aleja ${-p.vx}`);
+  // Apretando hacia la pared vuelve a ella y trepa saltando de nuevo.
+  const startY = p.y;
+  let top = startY; // mantiene el salto y lo suelta un instante cada 0,3 s, como alguien trepando
+  for (let i = 0; i < 240; i++) { stepPlayer(p, { right: true, jump: i % 36 !== 0 }, STEP, { rects, stats, now: 0 }); top = Math.min(top, p.y); }
+  assert.ok(top < startY - 6, `trepó de ${startY} a ${top}`);
+  // Hasta un ratito después de despegarse de la pared, todavía se puede saltar de ella.
+  const late = onWall(5).p;
+  stepPlayer(late, {}, STEP, { rects, stats, now: 0 });
+  late.x -= 0.3; // ya no la toca
+  stepPlayer(late, {}, STEP, { rects, stats, now: 0 });
+  assert.equal(late.wall, 0);
+  stepPlayer(late, { jump: true }, STEP, { rects, stats, now: 0 });
+  assert.ok(late.vy < -15 && late.vx < 0, `${late.vx} ${late.vy}`);
+});
+
+test('tiros: saltar corta la caída en seco y si ya subía, suma', () => {
+  // Cayendo rápido por la pared: el salto no descuenta la caída, sale con el empujón entero.
+  const fast = onWall(30);
+  stepPlayer(fast.p, { right: true, jump: true }, STEP, fast);
+  const slow = onWall(0);
+  stepPlayer(slow.p, { right: true, jump: true }, STEP, slow);
+  assert.ok(Math.abs(fast.p.vy - slow.p.vy) < 1e-9, `${fast.p.vy} contra ${slow.p.vy}`);
+  // Subiendo, el empujón se suma (con tope).
+  const up = onWall(-10);
+  stepPlayer(up.p, { right: true, jump: true }, STEP, up);
+  assert.ok(up.p.vy < slow.p.vy - 9);
+  const rocket = onWall(-60);
+  stepPlayer(rocket.p, { right: true, jump: true }, STEP, rocket);
+  assert.ok(rocket.p.vy >= -40, `${rocket.p.vy}`);
+  // No se puede saltar dos veces seguidas en el mismo instante.
+  const twice = onWall(0);
+  stepPlayer(twice.p, { right: true, jump: true }, STEP, twice);
+  stepPlayer(twice.p, { right: true }, STEP, twice);
+  const vy = twice.p.vy;
+  stepPlayer(twice.p, { right: true, jump: true }, STEP, twice);
+  assert.ok(twice.p.vy > vy, 'el segundo salto no hizo nada');
+});
+
+test('tiros: el impulso de costado depende de cómo venías moviéndote', () => {
+  const rects = [[0, 20, 64, 2]];
+  const stats = statsFor([]);
+  const run = (input) => {
+    const p = newPlayerState(10, 18.8, stats);
+    for (let i = 0; i < 60; i++) stepPlayer(p, input, STEP, { rects, stats, now: 0 });
+    assert.ok(p.onGround);
+    return p;
+  };
+  // Corriendo, el salto suma velocidad de costado; quieto, no.
+  const runner = run({ right: true });
+  const before = runner.vx;
+  stepPlayer(runner, { right: true, jump: true }, STEP, { rects, stats, now: 0 });
+  assert.ok(runner.vx > before * 1.2, `${before} → ${runner.vx}`);
+  const still = run({});
+  stepPlayer(still, { jump: true }, STEP, { rects, stats, now: 0 });
+  assert.equal(still.vx, 0);
+  // En el aire ese extra se gasta de a poco: sigue arriba de la velocidad normal un rato.
+  for (let i = 0; i < 30; i++) stepPlayer(runner, { right: true, jump: true }, STEP, { rects, stats, now: 0 });
+  assert.ok(runner.vx > 15, `${runner.vx}`);
+  // Sin apretar nada tampoco se frena de golpe; apretando para el otro lado, sí.
+  const coast = run({ right: true });
+  stepPlayer(coast, { right: true, jump: true }, STEP, { rects, stats, now: 0 });
+  const brake = structuredClone(coast);
+  for (let i = 0; i < 40; i++) {
+    stepPlayer(coast, { jump: true }, STEP, { rects, stats, now: 0 });
+    stepPlayer(brake, { left: true, jump: true }, STEP, { rects, stats, now: 0 });
+  }
+  assert.ok(coast.vx > 14, `${coast.vx}`);
+  assert.ok(brake.vx < 0, `${brake.vx}`);
 });
 
 test('tiros: el que se cae del mapa sale disparado para arriba hasta cerca del techo y avisa para restar vida', () => {

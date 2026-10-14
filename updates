@@ -258,9 +258,17 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.7.0 = A los Tiros: las cartas se eligen como en el original 🃏
+1.7.0 = A los Tiros: las cartas se eligen como en el original 🃏
 - Ahora se elige de a uno: todos ven en vivo cómo elige cada jugador y esperan su turno.
 - Las cinco cartas suben en arco y tu personaje aparece abajo, señalando con el brazo la carta a la que apuntás.
 - Te movés entre las cartas con A y D (o las flechas) o con el mouse, y elegís con clic, Espacio o Enter. En el celular, un toque apunta y otro elige.
 - Al elegir, las demás cartas se caen; la tuya queda un segundo arriba y después se va con tu personaje.
 - Cartas nuevas, oscuras y con esquinas que brillan, como las del juego original. Cada uno tiene 20 segundos; si no elige, le toca una al azar.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.7.1 = A los Tiros: moverse se siente como en ROUNDS 🦘
+- Saltar de una pared te manda mucho más para arriba que para el costado: apretando hacia la pared y saltando de nuevo, la trepás.
+- El salto corta la caída en seco: no importa lo rápido que vengas cayendo, sale con el empujón entero. Si ya venías subiendo, se suma.
+- Saltar corriendo te da un poco más de velocidad de costado, y en el aire ese envión se gasta de a poco (apretando para el otro lado, frenás).
+- Tenés un instante para saltar de la pared aunque ya te hayas despegado.

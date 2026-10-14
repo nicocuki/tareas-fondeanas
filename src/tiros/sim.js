@@ -11,8 +11,16 @@ export const MOVE_SPEED = 14;
 export const GROUND_ACCEL = 140;
 export const AIR_ACCEL = 75;
 export const JUMP_SPEED = 26;
-export const WALL_JUMP_X = 17;
-export const WALL_JUMP_Y = 24;
+// Saltos como en ROUNDS (PlayerJump.Jump, en el PlayerJumpPatch de Rounds-Modding): el salto es un
+// empujón que se suma a la velocidad, pero antes anula la caída; el de la pared sale en la dirección
+// (0,4 hacia afuera, 0,8 para arriba), y el del piso suma una parte de la velocidad de costado.
+export const WALL_JUMP_X = 0.4 * JUMP_SPEED;
+export const WALL_JUMP_Y = 0.8 * JUMP_SPEED;
+export const JUMP_SIDE = 0.25;     // fracción de la velocidad de costado que suma el salto del piso
+export const AIR_DRAG = 1.5;       // por segundo: cómo se gasta en el aire lo que pasa de la velocidad normal
+export const MAX_RISE = 1.5 * JUMP_SPEED; // tope de subida al encadenar saltos de pared
+export const JUMP_COOLDOWN = 0.1;  // segundos entre saltos (sinceJump del original)
+export const WALL_COYOTE = 0.1;    // se puede saltar de la pared hasta este tiempo después de soltarla
 export const WALL_SLIDE = 7;
 export const MAX_FALL = 42;
 export const BULLET_SPEED = 62;
@@ -62,6 +70,7 @@ export function circleRect(x, y, r, [rx, ry, rw, rh]) {
 export function newPlayerState(x, y, stats) {
   return {
     x, y, vx: 0, vy: 0, onGround: false, wall: 0, jumpWas: false, jumpCut: true,
+    sinceJump: 1, sinceWall: 1, lastWall: 0,
     hp: stats.hp, maxHp: stats.hp, dead: false, phoenix: stats.phoenix,
     ammo: stats.ammo, reloadAt: 0, nextShotAt: 0, lastShotAt: 0, burstLeft: 0, burstAt: 0,
     blockUntil: 0, blockReadyAt: 0, slowUntil: 0, slowAmount: 0, rushUntil: 0, outUntil: 0,
@@ -80,18 +89,35 @@ export function stepPlayer(p, input, dt, { rects, stats, now, enemyX }) {
   if (stats.chase && enemyX != null && dir !== 0 && Math.sign(enemyX - p.x) === dir) mult *= 1.6;
   const target = dir * MOVE_SPEED * mult;
   const accel = (p.onGround ? GROUND_ACCEL : AIR_ACCEL) * Math.max(0.4, mult);
-  if (p.vx < target) p.vx = Math.min(target, p.vx + accel * dt);
+  const cap = MOVE_SPEED * mult;
+  if (!p.onGround && Math.abs(p.vx) > cap && dir !== -Math.sign(p.vx)) {
+    // Impulso de costado: en el aire, lo que pasa de la velocidad normal se gasta de a poco,
+    // salvo que se apriete para el otro lado.
+    const excess = (Math.abs(p.vx) - cap) * Math.max(0, 1 - AIR_DRAG * dt);
+    p.vx = Math.sign(p.vx) * (cap + excess);
+  } else if (p.vx < target) p.vx = Math.min(target, p.vx + accel * dt);
   else if (p.vx > target) p.vx = Math.max(target, p.vx - accel * dt);
 
   // Salto: en el piso, o desde una pared (se puede trepar saltando de pared en pared).
+  if (p.wall) { p.sinceWall = 0; p.lastWall = p.wall; } else p.sinceWall = (p.sinceWall ?? 1) + dt;
+  p.sinceJump = (p.sinceJump ?? 1) + dt;
   const pressed = input.jump && !p.jumpWas;
   p.jumpWas = Boolean(input.jump);
-  if (pressed) {
-    if (p.onGround) { p.vy = -JUMP_SPEED; p.jumpCut = false; } else if (p.wall) {
-      p.vy = -WALL_JUMP_Y;
-      p.vx = -p.wall * WALL_JUMP_X;
-      p.jumpCut = false;
+  const fromWall = !p.onGround && p.sinceWall < WALL_COYOTE;
+  if (pressed && p.sinceJump >= JUMP_COOLDOWN && (p.onGround || fromWall)) {
+    if (p.vy > 0) p.vy = 0; // el salto corta la caída en seco
+    if (fromWall) {
+      p.vy -= WALL_JUMP_Y;
+      p.vx -= p.lastWall * WALL_JUMP_X;
+      p.sinceWall = WALL_COYOTE;
+    } else {
+      p.vy -= JUMP_SPEED;
+      p.vx = clamp(p.vx * (1 + JUMP_SIDE), -2 * MOVE_SPEED, 2 * MOVE_SPEED);
     }
+    p.vy = Math.max(p.vy, -MAX_RISE);
+    p.sinceJump = 0;
+    p.onGround = false;
+    p.jumpCut = false;
   }
   if (!input.jump && p.vy < 0 && !p.jumpCut) { p.vy *= 0.55; p.jumpCut = true; } // salto corto si se suelta
 
