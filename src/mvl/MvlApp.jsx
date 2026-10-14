@@ -1,6 +1,6 @@
 // Mario vs Luigi: la compilación web (Unity WebGL) del juego de ipodtouch0218, tal cual, adentro de
-// un iframe. Vive en `public/mvl/` (ver CLAUDE.md, «Mario vs Luigi»). Las salas y el online son los
-// del juego, no los de Tareas Fondeanas.
+// un iframe. Vive en `public/mvl/` (ver CLAUDE.md, «Mario vs Luigi»). El online es el del juego
+// (Photon), con nuestra app y pasando por el Worker; no usa las salas de Tareas Fondeanas.
 import React, { useRef } from 'react';
 import './mvl.css';
 

@@ -24,15 +24,15 @@
       // En el cole bloquean los servidores de Photon (y quizás el de ipodtouch en Azure), pero
       // Cloudflare abre. Antes de que arranque Unity, las conexiones a esos servidores se desvían a
       // este mismo sitio (/api/photon/…, /api/mvl/…), y el Worker las reenvía (worker/photon.js).
-      // El App ID de Photon viaja en texto en los primeros mensajes de cada conexión: si `NEW_APP` no es
-      // el de ipodtouch (el que trae la compilación), se reemplaza ahí (mide lo mismo, 36 letras).
-      // Nuestra app de Photon Quantum 3 es OUR_APP; para usarla, en el panel de Photon tiene que tener
-      // la autenticación personalizada apuntando a https://tareas-fondeanas.nicocukier.workers.dev/api/photon-auth
-      // (el juego siempre pide autenticación «Custom» y una app sin ninguna configurada lo rechaza).
+      // Además se usa nuestra app de Photon Quantum 3 (NEW_APP) en vez de la de ipodtouch que trae la
+      // compilación (OLD_APP): el App ID viaja en texto en los primeros mensajes de cada conexión y se
+      // reemplaza ahí (mide lo mismo, 36 letras). Nuestra app tiene en el panel de Photon la
+      // autenticación personalizada apuntando a https://tareas-fondeanas.nicocukier.workers.dev/api/photon-auth:
+      // el juego siempre pide autenticación «Custom» y una app sin ninguna configurada lo rechaza.
+      // Para volver a la de ipodtouch alcanza con poner NEW_APP = OLD_APP.
       (() => {
         const OLD_APP = '6b4b72d0-57c3-4991-96c1-f3f36f9548e5';
-        const OUR_APP = '097c581c-ecbd-4e89-abfb-f988ad06ec5b';
-        const NEW_APP = OLD_APP; // pasar a OUR_APP cuando la app tenga la autenticación configurada
+        const NEW_APP = '097c581c-ecbd-4e89-abfb-f988ad06ec5b';
         const PHOTON = /(^|\.)(photonengine\.io|exitgames\.com)$/i;
         const MVL = 'mariovsluigi.azurewebsites.net';
         const wsBase = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/photon/`;

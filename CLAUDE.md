@@ -402,8 +402,8 @@ No es un juego nuestro: es la compilación web (Unity WebGL, Unity 6000.3.10f1) 
 [NSMB-MarioVsLuigi](https://github.com/ipodtouch0218/NSMB-MarioVsLuigi), sin cambios, en `public/mvl/`.
 `src/mvl/MvlApp.jsx` solo la muestra en un iframe (`/mvl/`) con pantalla completa.
 
-- **El online es el del juego** (Photon Quantum, con la clave que trae el proyecto): se juega en los
-  mismos servidores y salas que la versión oficial de itch.io, no en las salas de Tareas Fondeanas.
+- **El online es el de Photon Quantum, pero con nuestra app** (no la de ipodtouch): las salas son
+  solo nuestras, separadas de las de itch.io, y no pasan por las salas de Tareas Fondeanas.
 - **Todo pasa por nuestro Worker** (`worker/photon.js`), porque en el cole bloquean Photon pero
   Cloudflare abre. `public/mvl/index.html` reemplaza `WebSocket`, `fetch` y `XMLHttpRequest` antes de
   que arranque Unity: `wss://ns.photonengine.io/…` y `wss://gc….exitgames.com/Master|game/…` pasan a
@@ -412,13 +412,17 @@ No es un juego nuestro: es la compilación web (Unity WebGL, Unity 6000.3.10f1) 
   dos WebSocket sin que los mensajes pasen por nuestro código (no gasta CPU). Solo acepta hosts de
   Photon y esas rutas de Azure: no es un proxy abierto. **Para ver si anda**, en la pestaña Red no
   tiene que aparecer ninguna conexión a `photonengine.io`, `exitgames.com` ni `azurewebsites.net`.
-- **Nuestra app de Photon Quantum 3** (`097c581c-…`, de Nico) está lista para usarse sin recompilar:
-  el App ID viaja en texto en los primeros mensajes y `index.html` lo cambia ahí (`NEW_APP`). Hoy
-  sigue el de ipodtouch porque el juego siempre pide autenticación «Custom» y una app sin ninguna
-  configurada responde «Authentication type not supported (none configured)». En el panel de
-  Photon hay que poner autenticación personalizada con la URL `…/api/photon-auth` (deja pasar a todos).
-  Con la app propia el plan gratis permite 20 jugadores conectados a la vez y las salas quedan
-  separadas de las de itch.io.
+- **Nuestra app de Photon Quantum 3** («TF MVL», `097c581c-…`, de Nico) se usa sin recompilar: el
+  App ID viaja en texto en los primeros mensajes de cada conexión y `index.html` lo cambia ahí
+  (`OLD_APP` → `NEW_APP`). En su panel de Photon tiene:
+  - **Autenticación personalizada** con la URL `https://tareas-fondeanas.nicocukier.workers.dev/api/photon-auth`
+    (deja pasar a todos). El juego siempre pide autenticación «Custom»: sin proveedor, Photon
+    responde «Authentication type not supported (none configured)»; con la URL mal escrita
+    (pasó: `https://https://…`), «CustomAuth service error». Los cambios tardan unos minutos en llegar.
+  - **Solo la región `sa`** (Regions Allowlist). La «mejor región» se mide pasando por Cloudflare y
+    salía Asia; así todos caen en Sudamérica y se ven las salas entre ellos.
+  - Plan gratis: **20 jugadores conectados a la vez**.
+  Para volver a la app de ipodtouch alcanza con `NEW_APP = OLD_APP`.
 - **Cloudflare acepta archivos de hasta 25 MB** y `web-mvl.data.unityweb` pesa 43: está partido en
   `.part0` y `.part1` (`split -b 22000000 -d -a 1`) y `public/mvl/index.html` lo vuelve a juntar en el
   navegador (un Blob) antes de `createUnityInstance`. La compilación usa compresión Brotli con
