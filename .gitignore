@@ -6,3 +6,6 @@ dist
 .DS_Store
 .claude/settings.local.json
 Claude outputs/
+
+# Compilación web de Mario vs Luigi (la carpeta que arma Unity; la copia que se publica está en public/mvl)
+web-mvl/

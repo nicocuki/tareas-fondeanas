@@ -2,6 +2,26 @@
 // Para sumar un juego nuevo: agregalo acá, en el enrutador de App.jsx y en ROOTS (worker/rules.js).
 export const GAMES = [
   {
+    id: 'mvl',
+    title: 'Mario vs Luigi',
+    emoji: '🍄',
+    color: 'var(--game-mvl)',
+    onColor: '#ffffff',
+    tagline: 'El de la DS, online',
+    description: 'El modo Mario vs Luigi de New Super Mario Bros, de 2 a 10 jugadores: juntá estrellas, robale las del otro y usá los poderes. Es el juego original de la comunidad, tal cual.',
+    players: '2 a 10',
+    duration: '5–15 min',
+    input: 'Teclado o joystick',
+    badge: 'Nuevo',
+    howTo: [
+      'Moverse con WASD o las flechas, saltar con Espacio, correr con Shift.',
+      'Gana el primero que junta las estrellas que pide la partida. Pisá o golpeá a los demás para que suelten las suyas.',
+      'Los bloques ? dan poderes: flor de fuego, de hielo, hongo gigante, hélice, caparazón azul y más. E usa el poder, Q saca el de reserva.',
+      'El online es el del juego: desde su menú creás una sala o entrás a una con el código.',
+      'La primera vez tarda en cargar (son unos 55 MB).',
+    ],
+  },
+  {
     id: 'tiros',
     title: 'A los Tiros',
     emoji: '🎯',
@@ -32,7 +52,6 @@ export const GAMES = [
     players: '2 a 12',
     duration: '10–20 min',
     input: 'Cualquier pantalla',
-    badge: 'Nuevo',
     howTo: [
       'Cada ronda te toca una plantilla de meme (en el modo «todos el mismo», la misma para todos).',
       'Escribí los textos y arrastralos donde quieras. En el modo normal podés cambiar la plantilla una vez.',

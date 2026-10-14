@@ -179,6 +179,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), física (`sim.js`), dibujo (`render.js`), pelea en tiempo real (`TirosGame.jsx`) |
+| `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
 | `src/storage.js` | Salas (`rooms/`) y canales en tiempo real del fútbol y de A los Tiros sobre el servidor de salas |
 | `src/realtime.js` | Cliente del servidor de salas, con la misma forma que Firebase Realtime Database |
@@ -365,6 +366,28 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
 - `window.__tiros` (el estado de la pelea) y `data-tiros-canvas`, `data-card` existen para manejar el
   juego desde un navegador automatizado. Para probar el respaldo por el servidor, borrá
   `window.RTCPeerConnection` antes de cargar la página en uno de los navegadores.
+
+## Mario vs Luigi
+
+No es un juego nuestro: es la compilación web (Unity WebGL, Unity 6000.3.10f1) de
+[NSMB-MarioVsLuigi](https://github.com/ipodtouch0218/NSMB-MarioVsLuigi), sin cambios, en `public/mvl/`.
+`src/mvl/MvlApp.jsx` solo la muestra en un iframe (`/mvl/`) con pantalla completa.
+
+- **El online es el del juego** (Photon Quantum, con la clave que trae el proyecto): se juega en los
+  mismos servidores y salas que la versión oficial de itch.io, no en las salas de Tareas Fondeanas.
+  Para tener servidores propios hay que crear una app de Quantum en photonengine.com y poner la clave
+  en `Assets/QuantumUser/Resources/PhotonServerSettings.asset` antes de compilar.
+- **Cloudflare acepta archivos de hasta 25 MB** y `web-mvl.data.unityweb` pesa 43: está partido en
+  `.part0` y `.part1` (`split -b 22000000 -d -a 1`) y `public/mvl/index.html` lo vuelve a juntar en el
+  navegador (un Blob) antes de `createUnityInstance`. La compilación usa compresión Brotli con
+  «decompression fallback» (archivos `.unityweb`), así que no depende de los encabezados del servidor.
+- **Para actualizarlo**: compilar en Unity para Web en `web-mvl/` (está en `.gitignore`), copiar
+  `Build/`, `StreamingAssets/` y `TemplateData/` a `public/mvl/`, partir de nuevo el `.data` y revisar
+  que los nombres en `index.html` coincidan (`productVersion` incluido).
+- En Chromium de pruebas (Playwright) el audio tira «Unable to decode audio data»: le faltan los
+  códecs. En Chrome/Edge/Firefox normales anda.
+- Los dibujos y sonidos son de Nintendo: entre amigos está bien, pero si llegara un pedido de bajarlo,
+  se saca la entrada de `games.js` y la carpeta `public/mvl/`.
 
 ## Fútbol: sincronización en tiempo real
 

@@ -6,6 +6,7 @@
 
 ## 🕹️ Juegos disponibles
 
+- **Mario vs Luigi:** el modo de New Super Mario Bros DS, online de 2 a 10 (el remake de la comunidad, de ipodtouch0218, tal cual).
 - **A los Tiros:** duelos de 2 a 4 a los tiros y saltos. El que pierde la ronda elige una carta que lo hace más fuerte. Inspirado en ROUNDS.
 - **Armá el Meme:** completá una plantilla con el texto más gracioso y voten las mejores respuestas. También pueden jugar en modo «todos el mismo meme».
 - **La Mecha:** la bomba pasa de jugador en jugador. Escribí una palabra que contenga las letras indicadas antes de que se termine el tiempo.

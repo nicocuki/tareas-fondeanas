@@ -222,7 +222,7 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.3.1 = A los Tiros: nuevo look y caídas como el original
+1.3.1 = A los Tiros: nuevo look y caídas como el original
 - Si te caés del mapa, perdés el 20 % de la vida y salís disparado para arriba hasta casi el techo (atravesando los bloques en la subida). Por los costados te empuja de vuelta.
 - Todo el dibujo nuevo: fondo oscuro con haces de luz, bloques de color con facetas y sombra, pilares oscuros y bloques colgados de sogas.
 - Personajes con cara, brazos y piernas que caminan; ponen cara de enojo cuando les pegan.
@@ -230,3 +230,10 @@ LATEST 1.3.1 = A los Tiros: nuevo look y caídas como el original
 - Marcador arriba a la izquierda y las cartas de cada uno arriba a la derecha, dentro del juego.
 - La pantalla de elegir carta ahora es oscura, con cartas que brillan según la rareza.
 - Dos mapas nuevos: Colgados y Andamios (y uno de hielo). En la cuenta regresiva los jugadores ya caen al piso.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.4.0 = Juego nuevo: Mario vs Luigi 🍄
+- El Mario vs Luigi de New Super Mario Bros (el remake de la comunidad, de ipodtouch0218), tal cual, adentro de la página.
+- De 2 a 10 jugadores online, con todos los poderes y los niveles del juego. Las salas se arman desde el menú del juego.
+- Botón de pantalla completa y para abrirlo aparte. La primera vez tarda en cargar (son unos 55 MB).

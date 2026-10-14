@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mario vs Luigi · Tareas Fondeanas</title>
+    <link rel="icon" href="TemplateData/webmemd-icon.png">
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #fff; }
+      #unity-canvas { display: block; width: 100%; height: 100%; background: #000; outline: none; }
+      #carga { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #0b0f1a; }
+      #carga p { margin: 0; font-size: 15px; opacity: 0.85; }
+      #barra { width: min(360px, 70vw); height: 10px; border-radius: 99px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+      #barra i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #e3342f, #3fae49); transition: width 0.2s; }
+      #error { color: #ff9a8a; max-width: 480px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <!-- Compilación web (WebGL) de NSMB Mario vs Luigi de ipodtouch0218 y colaboradores:
+         https://github.com/ipodtouch0218/NSMB-MarioVsLuigi -->
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="carga"><p id="texto">Cargando Mario vs Luigi…</p><div id="barra"><i></i></div><p id="error" hidden></p></div>
+    <script src="Build/web-mvl.loader.js"></script>
+    <script>
+      // Cloudflare acepta archivos de hasta 25 MB, y el de datos pesa 43: está partido en dos
+      // (`.part0`, `.part1`) y acá se vuelve a juntar en el navegador antes de pasárselo a Unity.
+      const PARTS = ['Build/web-mvl.data.unityweb.part0', 'Build/web-mvl.data.unityweb.part1'];
+      const bar = document.querySelector('#barra i');
+      const show = (pct) => { bar.style.width = `${Math.round(pct * 100)}%`; };
+
+      async function loadParts() {
+        const sizes = new Array(PARTS.length).fill(0);
+        const done = new Array(PARTS.length).fill(0);
+        const chunks = await Promise.all(PARTS.map(async (url, i) => {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`No se pudo bajar ${url} (${res.status})`);
+          sizes[i] = Number(res.headers.get('content-length')) || 22000000;
+          const reader = res.body.getReader();
+          const parts = [];
+          for (;;) {
+            const { value, done: end } = await reader.read();
+            if (end) break;
+            parts.push(value);
+            done[i] += value.length;
+            show((0.6 * done.reduce((a, b) => a + b, 0)) / sizes.reduce((a, b) => a + b, 0));
+          }
+          return new Blob(parts);
+        }));
+        return URL.createObjectURL(new Blob(chunks));
+      }
+
+      loadParts().then((dataUrl) => createUnityInstance(document.querySelector('#unity-canvas'), {
+        arguments: [],
+        dataUrl,
+        frameworkUrl: 'Build/web-mvl.framework.js.unityweb',
+        codeUrl: 'Build/web-mvl.wasm.unityweb',
+        streamingAssetsUrl: 'StreamingAssets',
+        companyName: 'ipodtouch0218',
+        productName: 'NSMB-MarioVsLuigi',
+        productVersion: '2.2.0.1',
+      }, (p) => show(0.6 + 0.4 * p))).then(() => {
+        document.querySelector('#carga').remove();
+        document.querySelector('#unity-canvas').focus();
+      }).catch((e) => {
+        document.querySelector('#texto').textContent = 'No se pudo abrir el juego.';
+        const err = document.querySelector('#error');
+        err.hidden = false;
+        err.textContent = String(e?.message || e);
+      });
+    </script>
+  </body>
+</html>

@@ -5,3 +5,7 @@
 # El diccionario de La Mecha cambia poco: un día en caché.
 /mecha/*
   Cache-Control: public, max-age=86400
+
+# Mario vs Luigi (compilación de Unity): los nombres no cambian entre versiones, un día en caché.
+/mvl/*
+  Cache-Control: public, max-age=86400
