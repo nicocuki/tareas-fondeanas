@@ -14,6 +14,7 @@ import TirosGame from './TirosGame.jsx';
 import './tiros.css';
 
 const GAME = 'tiros';
+const ICONS = { bullet: '💥', block: '🛡️', player: '❤️' };
 
 function codeFromUrl() {
   return (new URLSearchParams(window.location.search).get('sala') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
@@ -127,6 +128,7 @@ function CardView({ id, onPick, disabled }) {
   const Tag = onPick ? 'button' : 'div';
   return (
     <Tag type={onPick ? 'button' : undefined} className={`tt-cardpick is-${card.rarity} is-${card.kind}`} data-card={id} disabled={disabled} onClick={onPick ? () => onPick(id) : undefined}>
+      <span className="tt-cardpick-icon" aria-hidden="true">{ICONS[card.kind]}</span>
       <span className="tt-cardpick-kind">{KINDS[card.kind]} · {RARITIES[card.rarity].label}</span>
       <strong>{card.name}</strong>
       <ul>
@@ -165,6 +167,7 @@ function Picking({ room, me, now, onDispatch }) {
   const winner = findPlayer(room, room.roundWinner);
   return (
     <div className="cs-root tt-page">
+      <div className="tt-pickzone">
       <Scoreboard room={room} me={me} />
       <div className="tt-pick-head">
         {winner ? <p className="tt-eyebrow">{winner.name} ganó la ronda</p> : <p className="tt-eyebrow">¡Arranca la partida!</p>}
@@ -176,6 +179,7 @@ function Picking({ room, me, now, onDispatch }) {
           {hand.map((id) => <CardView key={id} id={id} disabled={sent} onPick={(card) => { setSent(true); onDispatch({ type: 'pick', card }); }} />)}
         </div>
       ) : <p className="tt-hint tt-center">Los que perdieron la ronda eligen una carta para hacerse más fuertes.</p>}
+      </div>
       <MyCards room={room} />
     </div>
   );
@@ -341,7 +345,6 @@ export default function TirosApp({ onBackToMenu }) {
   return (
     <div className="cs-root tt-page tt-fight">
       {banner}
-      <Scoreboard room={room} me={me} />
       <TirosGame
         room={room}
         me={me}

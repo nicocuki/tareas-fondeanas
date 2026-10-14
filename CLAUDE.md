@@ -178,7 +178,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/gartic/` | Componentes y lógica de Trazo Loco (ver `docs/GARTIC.md`) |
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
-| `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), física (`sim.js`), pelea en tiempo real (`TirosGame.jsx`) |
+| `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), física (`sim.js`), dibujo (`render.js`), pelea en tiempo real (`TirosGame.jsx`) |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
 | `src/storage.js` | Salas (`rooms/`) y canales en tiempo real del fútbol y de A los Tiros sobre el servidor de salas |
 | `src/realtime.js` | Cliente del servidor de salas, con la misma forma que Firebase Realtime Database |
@@ -349,8 +349,19 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
   eso, de cerca, el tiro atravesaba al otro sin hacerle nada.
 - La foto también lleva los golpes recibidos (`hi`, para robo de vida, Carroñero, Sed de sangre del
   que tiró) y los escudos usados (`fx`, para los efectos sobre los demás). Todo se deduplica por `k`.
-- Física a paso fijo (`STEP` 1/120 s). Mundo de 64 × 36; fuera de él no hay paredes: el que se sale
-  vuelve rebotando y pierde el 20 % de la vida (`OUT_DAMAGE`).
+- Física a paso fijo (`STEP` 1/120 s). Mundo de 64 × 36; fuera de él no hay paredes. **El que se cae
+  pierde el 20 % de la vida (`OUT_DAMAGE`) y sale disparado para arriba (`OUT_LAUNCH`) hasta casi el
+  techo**, como en el original; mientras sube (`launching`) atraviesa los bloques, porque debajo de un
+  piso que llega al borde rebotaba contra él y se moría cayéndose una y otra vez. Pedido explícito de
+  Nico: que caerse siga haciendo daño y lanzando para arriba. Ojo con el salto corto (soltar el salto
+  corta la subida a la mitad): `jumpCut` arranca en `true` y se pone en `true` al lanzar, si no
+  también cortaba el lanzamiento.
+- **El dibujo está en `render.js`** (sin estado de juego): fondo, haces de luz, sombras y bloques se
+  pintan una vez por pelea en un canvas aparte (`background`); personajes, balas con estela,
+  explosiones y chispas (`burst`, partículas que no viajan por la red) cada cuadro. Los colores de
+  cada mapa están en `THEMES` de `maps.js`; tipos de bloque: `'b'` color, `'d'` pilar oscuro, `'r'`
+  colgado de una soga. El estilo imita las capturas que mandó Nico del original, sin copiar sus
+  personajes.
 - `window.__tiros` (el estado de la pelea) y `data-tiros-canvas`, `data-card` existen para manejar el
   juego desde un navegador automatizado. Para probar el respaldo por el servidor, borrá
   `window.RTCPeerConnection` antes de cargar la página en uno de los navegadores.

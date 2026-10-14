@@ -147,13 +147,25 @@ test('tiros: saltar, chocar contra la pared y saltar de la pared', () => {
   assert.ok(p.vx < -10 && p.vy < -20);
 });
 
-test('tiros: salirse del mundo te devuelve y avisa para restar vida', () => {
+test('tiros: el que se cae del mapa sale disparado para arriba hasta cerca del techo y avisa para restar vida', () => {
   const stats = statsFor([]);
   const p = newPlayerState(30, 37.5, stats);
   const ev = stepPlayer(p, {}, STEP, { rects: [], stats, now: 1 });
-  assert.ok(ev.out);
-  assert.ok(p.vy < -40);
+  assert.equal(ev.out, 'bottom');
   assert.ok(!stepPlayer(p, {}, STEP, { rects: [], stats, now: 1.1 }).out); // no dos veces seguidas
+  let top = p.y;
+  for (let i = 0; i < 240; i++) { stepPlayer(p, {}, STEP, { rects: [], stats, now: 1.2 + i * STEP }); top = Math.min(top, p.y); }
+  assert.ok(top < 6, `subió hasta ${top}`);
+  // Debajo de un piso que llega al borde de abajo, lo atraviesa y no se queda rebotando.
+  const under = newPlayerState(10, 37.5, stats);
+  const floor = [[0, 31, 18, 5]];
+  let outs = 0, best = 99;
+  for (let i = 0; i < 240; i++) { if (stepPlayer(under, {}, STEP, { rects: floor, stats, now: i * STEP }).out) outs++; best = Math.min(best, under.y); }
+  assert.equal(outs, 1);
+  assert.ok(best < 10);
+  const side = newPlayerState(-1.5, 10, stats);
+  assert.equal(stepPlayer(side, {}, STEP, { rects: [], stats, now: 1 }).out, 'left');
+  assert.ok(side.vx > 30);
 });
 
 test('tiros: la bala cae con la gravedad, rebota si tiene rebotes y si no pega en la pared', () => {

@@ -22,6 +22,8 @@ export const BULLET_LIFE = 6;
 export const BURST_GAP = 0.08;    // segundos entre balas de una ráfaga
 export const BLOCK_TIME = 0.3;    // cuánto dura el escudo
 export const OUT_DAMAGE = 0.2;    // fracción de la vida máxima que se pierde al salirse
+export const OUT_LAUNCH = 70;     // velocidad hacia arriba al caerse del mapa (llega cerca del techo)
+export const OUT_PUSH = 36;       // empujón de vuelta al salirse por un costado
 export const FX_RADIUS = 9;       // alcance de los efectos del escudo
 
 // Números al azar repetibles a partir de una semilla (mulberry32).
@@ -59,7 +61,7 @@ export function circleRect(x, y, r, [rx, ry, rw, rh]) {
 
 export function newPlayerState(x, y, stats) {
   return {
-    x, y, vx: 0, vy: 0, onGround: false, wall: 0, jumpWas: false, jumpCut: false,
+    x, y, vx: 0, vy: 0, onGround: false, wall: 0, jumpWas: false, jumpCut: true,
     hp: stats.hp, maxHp: stats.hp, dead: false, phoenix: stats.phoenix,
     ammo: stats.ammo, reloadAt: 0, nextShotAt: 0, lastShotAt: 0, burstLeft: 0, burstAt: 0,
     blockUntil: 0, blockReadyAt: 0, slowUntil: 0, slowAmount: 0, rushUntil: 0, outUntil: 0,
@@ -100,7 +102,11 @@ export function stepPlayer(p, input, dt, { rects, stats, now, enemyX }) {
   p.y += p.vy * dt;
   p.onGround = false;
   p.wall = 0;
+  // Mientras sale disparado para arriba atraviesa los bloques (si no, debajo de un piso que llega
+  // al borde rebotaría contra él y se caería una y otra vez).
+  if (p.launching && p.vy >= 0) p.launching = false;
   for (const rect of rects) {
+    if (p.launching) break;
     const hit = circleRect(p.x, p.y, PLAYER_R, rect);
     if (!hit) continue;
     p.x += hit.nx * hit.depth;
@@ -111,14 +117,14 @@ export function stepPlayer(p, input, dt, { rects, stats, now, enemyX }) {
     else if (Math.abs(hit.nx) > 0.6) p.wall = hit.nx > 0 ? -1 : 1;
   }
 
-  // Fuera del mundo: vuelve rebotando y pierde vida.
+  // Fuera del mundo (como en el original): el que se cae sale disparado para arriba, casi hasta el
+  // techo, y pierde vida; por los costados lo empuja de vuelta hacia adentro.
   if (now >= p.outUntil && (p.x < -1 || p.x > WORLD_W + 1 || p.y > WORLD_H + 1 || p.y < -10)) {
-    if (p.x < -1) p.vx = 32;
-    if (p.x > WORLD_W + 1) p.vx = -32;
-    if (p.y > WORLD_H + 1) p.vy = -48;
-    if (p.y < -10) p.vy = 12;
+    if (p.y > WORLD_H + 1) { p.vy = -OUT_LAUNCH; p.vx *= 0.4; p.launching = true; p.jumpCut = true; events.out = 'bottom'; }
+    if (p.x < -1) { p.vx = OUT_PUSH; p.vy = Math.min(p.vy, -18); events.out = 'left'; }
+    if (p.x > WORLD_W + 1) { p.vx = -OUT_PUSH; p.vy = Math.min(p.vy, -18); events.out = 'right'; }
+    if (p.y < -10) { p.vy = 14; events.out = 'top'; }
     p.outUntil = now + 0.35;
-    events.out = true;
   }
   return events;
 }

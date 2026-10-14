@@ -39,7 +39,7 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 6
 
 /* Pelea */
 .tt-fight { max-width: 1280px; }
-.tt-stage { width: 100%; max-width: calc((100dvh - 200px) * 16 / 9); min-width: min(100%, 640px); margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); background: #f4e3c8; }
+.tt-stage { width: 100%; max-width: calc((100dvh - 200px) * 16 / 9); min-width: min(100%, 640px); margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); background: #070f18; }
 .tt-canvas { display: block; width: 100%; cursor: none; touch-action: none; user-select: none; }
 .tt-keys { text-align: center; }
 .tt-decks { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
@@ -49,31 +49,35 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 6
 .tt-chip.is-uncommon { border-color: #3d8fe0; }
 .tt-chip.is-rare { border-color: #a463d9; background: color-mix(in srgb, #a463d9 12%, var(--surface-2)); }
 
-/* Cartas */
-.tt-pick-head { text-align: center; margin: 8px 0 18px; }
-.tt-pick-head h1 { margin: 6px 0 0; font-size: clamp(24px, 4vw, 34px); }
-.tt-hand { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+/* Cartas: zona oscura como la pelea, cartas con borde que brilla según la rareza. */
+.tt-pickzone { background: radial-gradient(ellipse at 50% 0%, #1d3550 0%, #0b1622 55%, #060c14 100%); border-radius: 22px; padding: 22px 18px 28px; color: #eef3f8; box-shadow: var(--shadow); }
+.tt-pickzone .tt-hint { color: rgba(238, 243, 248, 0.7); }
+.tt-pickzone .tt-score-player { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); color: #eef3f8; }
+.tt-pick-head { text-align: center; margin: 8px 0 22px; }
+.tt-pick-head h1 { margin: 6px 0 0; font-size: clamp(24px, 4vw, 34px); color: #fff; }
+.tt-hand { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; perspective: 900px; }
 @media (max-width: 900px) { .tt-hand { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .tt-cardpick {
-  display: flex; flex-direction: column; gap: 8px; text-align: left; min-height: 250px; padding: 16px; border-radius: 18px;
-  background: var(--surface); color: var(--text); border: 2px solid var(--border); box-shadow: var(--shadow); font: inherit;
-  transition: transform 0.15s var(--ease), box-shadow 0.15s, border-color 0.15s;
+  --glow: #d9b45a;
+  position: relative; display: flex; flex-direction: column; gap: 8px; text-align: left; min-height: 270px; padding: 16px; border-radius: 16px;
+  background: linear-gradient(180deg, #17233a 0%, #0d1524 100%); color: #eef3f8; border: 1.5px solid color-mix(in srgb, var(--glow) 55%, transparent);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 0 22px color-mix(in srgb, var(--glow) 12%, transparent); font: inherit;
+  transition: transform 0.18s var(--ease), box-shadow 0.18s, border-color 0.18s;
 }
 button.tt-cardpick { cursor: pointer; }
-button.tt-cardpick:hover:not(:disabled) { transform: translateY(-6px) rotate(-1deg); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18); }
-button.tt-cardpick:disabled { opacity: 0.6; cursor: default; }
-.tt-cardpick.is-common { border-color: #d9b45a; }
-.tt-cardpick.is-uncommon { border-color: #3d8fe0; }
-.tt-cardpick.is-rare { border-color: #a463d9; background: color-mix(in srgb, #a463d9 8%, var(--surface)); }
-.tt-cardpick-kind { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
-.tt-cardpick strong { font-family: var(--font-display); font-size: 21px; line-height: 1.15; }
+button.tt-cardpick:hover:not(:disabled), button.tt-cardpick:focus-visible { transform: translateY(-10px) scale(1.04) rotateX(4deg); border-color: var(--glow); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55), 0 0 28px color-mix(in srgb, var(--glow) 45%, transparent), inset 0 0 26px color-mix(in srgb, var(--glow) 18%, transparent); }
+button.tt-cardpick:disabled { opacity: 0.55; cursor: default; }
+.tt-cardpick.is-common { --glow: #e2c26b; }
+.tt-cardpick.is-uncommon { --glow: #4fb3ff; }
+.tt-cardpick.is-rare { --glow: #c27bff; }
+.tt-cardpick-icon { font-size: 30px; line-height: 1; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--glow) 60%, transparent)); }
+.tt-cardpick-kind { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--glow); }
+.tt-cardpick strong { font-family: var(--font-display); font-size: 21px; line-height: 1.15; color: #fff; }
 .tt-cardpick ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
-.tt-cardpick li { padding: 6px 9px; border-radius: 10px; background: var(--surface-2); }
-.tt-cardpick li.is-good { color: #6fd895; }
-.tt-cardpick li.is-bad { color: #ff8a78; }
-.tt-cardpick li.is-fx { color: var(--text); }
-:root[data-theme='light'] .tt-cardpick li.is-good { color: #2b8a4f; }
-:root[data-theme='light'] .tt-cardpick li.is-bad { color: #c2412f; }
+.tt-cardpick li { padding: 6px 9px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); }
+.tt-cardpick li.is-good { color: #8ff0ae; }
+.tt-cardpick li.is-bad { color: #ff9a8a; }
+.tt-cardpick li.is-fx { color: #eef3f8; }
 
 /* Final */
 .tt-final { max-width: 560px; margin: 10px auto 20px; text-align: center; }

@@ -9,6 +9,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { backend } from '../storage.js';
 import { createMesh } from '../futbol/p2p.js';
 import { MAPS, WORLD_H, WORLD_W } from './maps.js';
+import { burst, drawScene } from './render.js';
 import { statsFor } from './cards.js';
 import {
   BLOCK_TIME, FX_RADIUS, OUT_DAMAGE, PLAYER_R, STEP, bulletDamage, bulletsForShot, newPlayerState, stepBullet, stepPlayer,
@@ -20,7 +21,6 @@ const SERVER_EVERY = 1 / 20;    // fotos de respaldo por el servidor
 const EVENT_KEEP = 1.5;         // segundos que un evento sigue viajando en las fotos (por si se pierde una)
 const IDLE_RELOAD = 0.6;        // sin tirar este tiempo, empieza a recargar
 const GONE_AFTER = 8;           // sin fotos de alguien este tiempo, el anfitrión lo da por muerto
-const BG = ['#f4e3c8', '#d9e8f2', '#e6dcef', '#dcefdc', '#f2dcd9', '#efe8cf', '#d8e4ea'];
 
 const KEYS = {
   left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], jump: ['KeyW', 'ArrowUp', 'Space'], block: ['ShiftLeft', 'ShiftRight', 'KeyS', 'ArrowDown'],
@@ -45,7 +45,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   if (!sim.current) {
     sim.current = {
       n: 0, rects: [], local: null, bullets: new Map(), seen: new Set(), remotes: new Map(),
-      explosions: [], clouds: [], fields: [], myShots: [], myHits: [], myFx: [], seq: 0, lastBy: null,
+      explosions: [], clouds: [], fields: [], particles: [], shake: 0, myShots: [], myHits: [], myFx: [], seq: 0, lastBy: null,
       input: { left: false, right: false, jump: false, shoot: false, block: false, blockWas: false }, aim: { x: 32, y: 18 },
       sentAt: 0, serverAt: 0, deathSent: false, goneSent: new Set(), msg: '', msgUntil: 0,
     };
@@ -63,7 +63,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     s.local = newPlayerState(x, y, statsRef.current[me.id]);
     s.bullets.clear();
     s.remotes.clear();
-    s.explosions = []; s.clouds = []; s.fields = []; s.myShots = []; s.myHits = []; s.myFx = [];
+    s.explosions = []; s.clouds = []; s.fields = []; s.particles = []; s.myShots = []; s.myHits = []; s.myFx = [];
     s.deathSent = false;
     s.goneSent.clear();
     s.lastBy = null;
@@ -99,9 +99,14 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   function receive(s, id, snap) {
     if (snap.n !== s.n) return;
     const prev = s.remotes.get(id);
-    if (prev && !prev.snap.d && snap.d) s.explosions.push({ x: prev.x, y: prev.y, r: 4, t: serverNow(), color: colorOf(id) });
+    if (prev && !prev.snap.d && snap.d) {
+      s.explosions.push({ x: prev.x, y: prev.y, r: 5, t: serverNow() });
+      burst(s.particles, prev.x, prev.y, { n: 40, color: colorOf(id), speed: 26, life: 0.9, size: 0.35 });
+      s.shake = Math.max(s.shake, 0.6);
+    }
     if (!prev || snap.t > prev.snap.t) {
-      s.remotes.set(id, { snap, at: performance.now() / 1000, x: prev?.x ?? snap.x, y: prev?.y ?? snap.y });
+      const hurt = prev && snap.hp < prev.snap.hp ? performance.now() / 1000 + 0.6 : prev?.hurt || 0;
+      s.remotes.set(id, { snap, at: performance.now() / 1000, x: prev?.x ?? snap.x, y: prev?.y ?? snap.y, hurt });
     }
     const now = serverNow();
     const stats = statsRef.current[id];
@@ -159,6 +164,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
         s.myHits.push({ k: b.k, o: b.owner, dm: Math.round(dm), t: now });
         s.lastBy = b.owner;
       } else damageMe(s, dm, b.owner, b.k, now);
+      burst(s.particles, b.x, b.y, { n: 12, color: colorOf(me.id), speed: 18, life: 0.5 });
       if (bst.slow) { p.slowUntil = now + 1.5; p.slowAmount = Math.max(p.slowAmount, bst.slow * Math.min(1, dm / 55)); }
       const sp = Math.hypot(b.vx, b.vy) || 1;
       const push = Math.min(40, (dm / 55) * 9 * bst.knock);
@@ -172,6 +178,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       if (id === b.owner || v.snap.d || !active) continue;
       if (touches(b, v.x, v.y)) {
         b.done = true;
+        burst(s.particles, b.x, b.y, { n: 12, color: colorOf(id), speed: 18, life: 0.5 });
         if (!(v.snap.bl > now)) onImpact(s, b, b.x, b.y, now, false);
         return;
       }
@@ -191,11 +198,13 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     const p = s.local;
     if (!p || p.dead || dm <= 0) return;
     p.hp -= dm;
+    p.hurtUntil = performance.now() / 1000 + 0.6;
     if (by) s.lastBy = by;
     if (key) s.myHits.push({ k: key, o: by, dm: Math.round(dm), t: now });
   }
 
   function onRemoteBlock(s, id, ev, now) {
+    if (ev.o) { burst(s.particles, ev.x, ev.y, { n: 26, color: colorOf(id), speed: 24, life: 0.7, up: 12 }); return; }
     const owner = statsRef.current[id];
     if (!owner) return;
     if (owner.blockFx.includes('heal')) s.fields.push({ x: ev.x, y: ev.y, until: now + 3, owner: id });
@@ -216,7 +225,10 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   }
 
   function explode(s, x, y, radius, owner, dmg, key, skipMe, now) {
-    s.explosions.push({ x, y, r: radius, t: now, color: colorOf(owner) });
+    s.explosions.push({ x, y, r: radius, t: now });
+    burst(s.particles, x, y, { n: 28, color: '#ffc94d', speed: 26, life: 0.7 });
+    burst(s.particles, x, y, { n: 10, color: '#ff7a2e', speed: 14, life: 0.9, size: 0.4 });
+    s.shake = Math.max(s.shake, Math.min(1.2, radius * 0.15));
     const p = s.local;
     if (!p || p.dead || skipMe || owner === me.id || !isActive(now)) return;
     const d = Math.hypot(p.x - x, p.y - y);
@@ -231,6 +243,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   function onImpact(s, b, x, y, now, skipMe) {
     const st = statsRef.current[b.owner];
     if (!st) return;
+    burst(s.particles, x, y, { n: 6, color: '#fff1c9', speed: 14, life: 0.35, size: 0.18 });
     if (st.explode) explode(s, x, y, st.explode, b.owner, bulletDamage(b, st), b.k, skipMe, now);
     if (st.cloud) s.clouds.push({ x, y, until: now + 5, owner: b.owner, r: 4.5 });
   }
@@ -254,9 +267,18 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       const targets = [{ id: me.id, x: p.x, y: p.y }, ...[...s.remotes].filter(([, v]) => !v.snap.d).map(([id, v]) => ({ id, x: v.x, y: v.y }))];
       const enemy = targets.filter((t) => t.id !== me.id).sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
 
+      // En la cuenta regresiva solo cae al piso: todavía no se mueve ni tira.
+      if (!active && alive && r.phase === 'fight') stepPlayer(p, {}, STEP, { rects: s.rects, stats: st, now: 0 });
       if (active && alive) {
         const ev = stepPlayer(p, s.input, STEP, { rects: s.rects, stats: st, now, enemyX: enemy?.x });
-        if (ev.out) damageMe(s, OUT_DAMAGE * p.maxHp, s.lastBy, null, now);
+        if (ev.out) {
+          damageMe(s, OUT_DAMAGE * p.maxHp, s.lastBy, null, now);
+          burst(s.particles, p.x, Math.min(p.y, WORLD_H), { n: 26, color: colorOf(me.id), speed: 24, life: 0.7, up: 12 });
+          s.shake = Math.max(s.shake, 0.8);
+          const ev3 = { k: `${me.id}:o${s.seq++}`, t: now, x: p.x, y: Math.min(p.y, WORLD_H), o: 1 };
+          s.myFx.push(ev3);
+          s.seen.add(ev3.k);
+        }
         // Veneno: el daño entra de a poco.
         for (const po of p.poison) if (now < po.until) damageMe(s, po.dps * STEP, po.by, null, now);
         p.poison = p.poison.filter((po) => now < po.until);
@@ -268,6 +290,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
           const shot = { k: `${me.id}:${r.battle.n}:${s.seq++}`, t: now, x: p.x, y: p.y, a, sd: Math.floor(Math.random() * 2 ** 31) };
           s.seen.add(shot.k);
           s.myShots.push(shot);
+          burst(s.particles, p.x + Math.cos(a) * 2.6, p.y + Math.sin(a) * 2.6, { n: 3, color: '#ffe3a1', speed: 10, life: 0.18, size: 0.15, gravity: 0 });
           addBullets(s, bulletsForShot(shot, me.id, st), now);
           p.ammo -= 1;
           p.nextShotAt = now + st.cooldown;
@@ -314,7 +337,9 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
         } else {
           p.dead = true;
           p.hp = 0;
-          s.explosions.push({ x: p.x, y: p.y, r: 4, t: now, color: colorOf(me.id) });
+          s.explosions.push({ x: p.x, y: p.y, r: 5, t: now });
+          burst(s.particles, p.x, p.y, { n: 40, color: colorOf(me.id), speed: 26, life: 0.9, size: 0.35 });
+          s.shake = Math.max(s.shake, 0.6);
         }
       }
       if (p.dead && !s.deathSent && r.phase === 'fight') {
@@ -383,11 +408,12 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       draw(now);
     }
 
+    let lastDraw = performance.now() / 1000;
     function draw(now) {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const wrap = wrapRef.current;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
       const cssW = wrap.clientWidth;
       const cssH = Math.round((cssW * WORLD_H) / WORLD_W);
       if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
@@ -395,128 +421,64 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
         canvas.height = Math.round(cssH * dpr);
         canvas.style.height = `${cssH}px`;
       }
-      const ctx = canvas.getContext('2d');
-      const k = canvas.width / WORLD_W;
-      ctx.setTransform(k, 0, 0, k, 0, 0);
+      const rt = performance.now() / 1000;
+      const dt = Math.min(0.05, rt - lastDraw);
+      lastDraw = rt;
+      s.shake = Math.max(0, s.shake - dt * 3);
       const r = roomRef.current;
       const b = r.battle;
-      ctx.fillStyle = BG[(b?.map ?? 0) % BG.length];
-      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
-      // Campos y nubes.
-      for (const f of s.fields) if (now < f.until) { ctx.fillStyle = 'rgba(80,200,120,0.25)'; circle(ctx, f.x, f.y, 5); ctx.fill(); }
-      for (const c of s.clouds) if (now < c.until) { ctx.fillStyle = 'rgba(130,70,170,0.28)'; circle(ctx, c.x, c.y, c.r); ctx.fill(); }
+      s.explosions = s.explosions.filter((e) => now - e.t < 0.45);
       s.fields = s.fields.filter((f) => now < f.until);
       s.clouds = s.clouds.filter((c) => now < c.until);
-      // Mapa.
-      ctx.fillStyle = '#23222b';
-      for (const [x, y, w, h] of s.rects) roundRect(ctx, x, y, w, h, 0.4);
-      // Explosiones.
-      s.explosions = s.explosions.filter((e) => now - e.t < 0.35);
-      for (const e of s.explosions) {
-        const f = (now - e.t) / 0.35;
-        ctx.fillStyle = hexA(e.color, 0.45 * (1 - f));
-        circle(ctx, e.x, e.y, e.r * (0.5 + f * 0.6));
-        ctx.fill();
-      }
-      // Balas.
+      // Estelas de las balas.
+      const bullets = [];
       for (const bl of s.bullets.values()) {
         if (now < bl.t0) continue;
-        ctx.fillStyle = colorOf(bl.owner);
-        circle(ctx, bl.x, bl.y, bl.r);
-        ctx.fill();
-        ctx.lineWidth = 0.08;
-        ctx.strokeStyle = '#23222b';
-        ctx.stroke();
+        bl.trail = bl.trail || [];
+        bl.trail.push([bl.x, bl.y]);
+        if (bl.trail.length > 7) bl.trail.shift();
+        bl.glow = bl.glow || lighten(colorOf(bl.owner));
+        bullets.push(bl);
       }
-      // Jugadores.
-      const drawPlayer = (pl, x, y, hp, mh, angle, blocking, cdLeft, ammo, maxAmmo, reloading, mine) => {
-        ctx.save();
-        // Arma.
-        ctx.strokeStyle = '#23222b';
-        ctx.lineWidth = 0.42;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(x + Math.cos(angle) * 0.6, y + Math.sin(angle) * 0.6);
-        ctx.lineTo(x + Math.cos(angle) * 2, y + Math.sin(angle) * 2);
-        ctx.stroke();
-        ctx.fillStyle = pl.color;
-        circle(ctx, x, y, PLAYER_R);
-        ctx.fill();
-        ctx.lineWidth = 0.14;
-        ctx.strokeStyle = '#23222b';
-        ctx.stroke();
-        // Ojos que miran hacia donde apunta.
-        const ex = Math.cos(angle) * 0.35, ey = Math.sin(angle) * 0.3;
-        ctx.fillStyle = '#23222b';
-        circle(ctx, x - 0.35 + ex, y - 0.2 + ey, 0.16); ctx.fill();
-        circle(ctx, x + 0.35 + ex, y - 0.2 + ey, 0.16); ctx.fill();
-        if (blocking) {
-          ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-          ctx.lineWidth = 0.35;
-          circle(ctx, x, y, PLAYER_R + 0.55);
-          ctx.stroke();
-        }
-        // Enfriamiento del escudo.
-        if (cdLeft > 0) {
-          ctx.strokeStyle = hexA(pl.color, 0.55);
-          ctx.lineWidth = 0.18;
-          ctx.beginPath();
-          ctx.arc(x, y, PLAYER_R + 0.35, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - cdLeft));
-          ctx.stroke();
-        }
-        // Vida.
-        const w = 3.2;
-        ctx.fillStyle = 'rgba(35,34,43,0.35)';
-        roundRect(ctx, x - w / 2, y - 2.5, w, 0.42, 0.2);
-        ctx.fillStyle = hp / mh > 0.3 ? '#3fb36b' : '#e0443a';
-        roundRect(ctx, x - w / 2, y - 2.5, Math.max(0, (w * hp) / mh), 0.42, 0.2);
-        // Munición.
-        const n = Math.min(maxAmmo, 16);
-        for (let i = 0; i < n; i++) {
-          ctx.fillStyle = reloading ? 'rgba(35,34,43,0.25)' : i < ammo ? '#23222b' : 'rgba(35,34,43,0.2)';
-          circle(ctx, x - ((n - 1) * 0.42) / 2 + i * 0.42, y - 3.05, 0.13);
-          ctx.fill();
-        }
-        ctx.font = '0.9px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = mine ? '#23222b' : 'rgba(35,34,43,0.75)';
-        ctx.fillText(pl.name, x, y - 3.45);
-        ctx.restore();
-      };
+      const characters = [];
       for (const pl of r.players) {
         if (!pl.inGame) continue;
+        const st = statsRef.current[pl.id];
         if (pl.id === me.id) {
           const p = s.local;
           if (!p || p.dead) continue;
-          const st = statsRef.current[me.id];
-          const a = Math.atan2(s.aim.y - p.y, s.aim.x - p.x);
-          drawPlayer(pl, p.x, p.y, p.hp, p.maxHp, a, now < p.blockUntil, Math.max(0, (p.blockReadyAt - now) / st.blockCooldown), p.ammo, st.ammo, Boolean(p.reloadAt), true);
+          characters.push({
+            name: pl.name, color: pl.color, mine: true, x: p.x, y: p.y, vx: p.vx, onGround: p.onGround,
+            angle: Math.atan2(s.aim.y - p.y, s.aim.x - p.x), hp: p.hp, maxHp: p.maxHp, blocking: now < p.blockUntil,
+            cdLeft: Math.max(0, (p.blockReadyAt - now) / st.blockCooldown), ammo: p.ammo, maxAmmo: st.ammo, reloading: Boolean(p.reloadAt), hurtUntil: p.hurtUntil || 0,
+          });
         } else {
           const v = s.remotes.get(pl.id);
           if (!v || v.snap.d || b?.dead?.[pl.id]) continue;
-          const st = statsRef.current[pl.id];
-          drawPlayer(pl, v.x, v.y, v.snap.hp, v.snap.mh, v.snap.a, v.snap.bl > now, 0, v.snap.am2 ?? st.ammo, st.ammo, Boolean(v.snap.rl), false);
+          characters.push({
+            name: pl.name, color: pl.color, mine: false, x: v.x, y: v.y, vx: v.snap.vx, onGround: Math.abs(v.snap.vy) < 0.5,
+            angle: v.snap.a, hp: v.snap.hp, maxHp: v.snap.mh, blocking: v.snap.bl > now, cdLeft: 0,
+            ammo: v.snap.am2 ?? st.ammo, maxAmmo: st.ammo, reloading: Boolean(v.snap.rl), hurtUntil: v.hurt || 0,
+          });
         }
       }
-      // Mira.
-      ctx.strokeStyle = 'rgba(35,34,43,0.7)';
-      ctx.lineWidth = 0.12;
-      circle(ctx, s.aim.x, s.aim.y, 0.5);
-      ctx.stroke();
-      // Cuenta regresiva y avisos.
-      ctx.textAlign = 'center';
-      if (b && r.phase === 'fight' && now < b.startsAt / 1000) {
-        const left = Math.ceil(b.startsAt / 1000 - now);
-        bigText(ctx, String(left), 9);
-      } else if (b && r.phase === 'fight' && now < b.startsAt / 1000 + 0.7) {
-        bigText(ctx, '¡YA!', 9);
-      }
+      const texts = [];
+      if (b && r.phase === 'fight' && now < b.startsAt / 1000) texts.push({ text: String(Math.ceil(b.startsAt / 1000 - now)), size: 9, y: WORLD_H / 2 });
+      else if (b && r.phase === 'fight' && now < b.startsAt / 1000 + 0.7) texts.push({ text: '¡YA!', size: 9, y: WORLD_H / 2 });
       if (r.phase === 'battleEnd') {
         const w = r.players.find((p) => p.id === b?.winner);
-        bigText(ctx, w ? `${w.name} gana la pelea` : 'Empate', 4.2);
+        texts.push({ text: w ? `${w.name} gana la pelea` : 'Empate', size: 4.2, y: WORLD_H / 2 });
       }
-      if (s.local?.dead && r.phase === 'fight') bigText(ctx, 'Te mataron · mirando…', 2.6, 6);
-      if (now < s.msgUntil) bigText(ctx, s.msg, 3, 7);
+      if (s.local?.dead && r.phase === 'fight') texts.push({ text: 'Te mataron · mirando…', size: 2.4, y: 7 });
+      if (now < s.msgUntil) texts.push({ text: s.msg, size: 3, y: 9 });
+      const hud = {
+        rounds: r.options.rounds, battles: r.options.battles,
+        players: r.players.filter((p) => p.inGame).map((p) => ({ color: p.color, points: p.points, wins: p.wins, cards: p.cards })),
+      };
+      drawScene(canvas.getContext('2d'), canvas, {
+        map: MAPS[b?.map ?? 0], mapIndex: b?.map ?? 0, now, dt, bullets, explosions: s.explosions, clouds: s.clouds, fields: s.fields,
+        particles: s.particles, characters, aim: s.aim, hud, texts, shake: s.shake,
+      });
     }
 
     raf = requestAnimationFrame(frame);
@@ -580,17 +542,9 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   );
 }
 
-function circle(ctx, x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
-function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, Math.min(r, w / 2, h / 2)); ctx.fill(); }
-function hexA(hex, a) {
+// Color de la bala: el del jugador, más claro (brilla sobre el fondo oscuro).
+function lighten(hex) {
   const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
-}
-function bigText(ctx, text, size, y = WORLD_H / 2) {
-  ctx.font = `800 ${size}px 'Bricolage Grotesque', Inter, sans-serif`;
-  const w = ctx.measureText(text).width + size * 0.9;
-  ctx.fillStyle = 'rgba(255,255,255,0.82)';
-  roundRect(ctx, WORLD_W / 2 - w / 2, y - size * 0.62, w, size * 1.3, size * 0.3);
-  ctx.fillStyle = '#23222b';
-  ctx.fillText(text, WORLD_W / 2, y + size * 0.35);
+  const c = (v) => Math.round(v + (255 - v) * 0.45).toString(16).padStart(2, '0');
+  return `#${c((n >> 16) & 255)}${c((n >> 8) & 255)}${c(n & 255)}`;
 }
