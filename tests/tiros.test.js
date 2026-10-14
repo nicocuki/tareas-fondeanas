@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { BATTLE_END_MS, COUNTDOWN_MS, PICK_MS, REVEAL_MS, applyAction, currentPicker, findPlayer, newRoom } from '../src/tiros/game.js';
 import { CARDS, CARD_IDS, dealCards, statsFor } from '../src/tiros/cards.js';
 import { MAPS, WORLD_H, WORLD_W } from '../src/tiros/maps.js';
-import { PLAYER_R, STEP, bulletDamage, bulletsForShot, circleRect, newPlayerState, seeded, stepBullet, stepPlayer, touches } from '../src/tiros/sim.js';
+import { MAX_RISE, PLAYER_R, STEP, WALL_SLIDE, bulletDamage, bulletsForShot, circleRect, newPlayerState, seeded, stepBullet, stepPlayer, touches } from '../src/tiros/sim.js';
 
 const rand = seeded(7);
 function lobby(names = ['Ana', 'Beto']) {
@@ -217,7 +217,7 @@ test('tiros: saltar corta la caída en seco y si ya subía, suma', () => {
   assert.ok(up.p.vy < slow.p.vy - 9);
   const rocket = onWall(-60);
   stepPlayer(rocket.p, { right: true, jump: true }, STEP, rocket);
-  assert.ok(rocket.p.vy >= -40, `${rocket.p.vy}`);
+  assert.ok(rocket.p.vy >= -MAX_RISE, `${rocket.p.vy}`);
   // No se puede saltar dos veces seguidas en el mismo instante.
   const twice = onWall(0);
   stepPlayer(twice.p, { right: true, jump: true }, STEP, twice);
@@ -306,4 +306,49 @@ test('tiros: escopeta abre el abanico, ráfaga sale escalonada, igual en todas l
   const burst = bulletsForShot(shot, 'a', statsFor(['rafaga']));
   assert.deepEqual(burst.map((b) => b.t0), [10, 10.08, 10.16]);
   assert.ok(touches({ x: 0, y: 0, r: 0.3 }, 1, 0));
+});
+
+test('tiros: apretando hacia la pared queda agarrado y cae lentísimo; sin apretar, cae normal', () => {
+  const held = onWall(0);
+  const y0 = held.p.y;
+  for (let i = 0; i < 120; i++) stepPlayer(held.p, { right: true }, STEP, held);
+  assert.equal(held.p.wall, 1);
+  assert.ok(held.p.y - y0 < WALL_SLIDE * 1.05, `en un segundo bajó ${held.p.y - y0}`);
+  // Si venía cayendo rápido, al agarrarse se frena enseguida.
+  const fast = onWall(30);
+  stepPlayer(fast.p, { right: true }, STEP, fast);
+  assert.ok(fast.p.vy <= WALL_SLIDE);
+  const loose = onWall(0);
+  const y1 = loose.p.y;
+  for (let i = 0; i < 30; i++) stepPlayer(loose.p, {}, STEP, loose);
+  assert.ok(loose.p.y - y1 > 2, `sin agarrarse bajó ${loose.p.y - y1}`);
+});
+
+test('tiros: al soltar las teclas frena deslizando, no en seco', () => {
+  const rects = [[0, 20, 64, 2]];
+  const stats = statsFor([]);
+  const p = newPlayerState(10, 18.8, stats);
+  for (let i = 0; i < 90; i++) stepPlayer(p, { right: true }, STEP, { rects, stats, now: 0 });
+  assert.ok(p.onGround && p.vx > 13.5, `${p.vx}`);
+  const x0 = p.x;
+  for (let i = 0; i < 6; i++) stepPlayer(p, {}, STEP, { rects, stats, now: 0 });
+  assert.ok(p.vx > 6, `a los 0,05 s todavía va a ${p.vx}`);
+  for (let i = 0; i < 54; i++) stepPlayer(p, {}, STEP, { rects, stats, now: 0 });
+  assert.ok(p.vx < 0.1, `a los 0,5 s ya casi frenó: ${p.vx}`);
+  assert.ok(p.x - x0 > 0.8 && p.x - x0 < 2.5, `se deslizó ${p.x - x0}`);
+  // Arranca rápido: en 0,15 s ya va a más de las tres cuartas partes de la velocidad.
+  for (let i = 0; i < 18; i++) stepPlayer(p, { left: true }, STEP, { rects, stats, now: 0 });
+  assert.ok(p.vx < -0.75 * 14, `${p.vx}`);
+});
+
+test('tiros: la bala común cae bastante y la de las cartas de velocidad va casi derecha', () => {
+  const drop = (stats) => {
+    const [b] = bulletsForShot({ k: 's', t: 0, x: 2, y: 10, a: 0, sd: 1 }, 'a', stats);
+    while (b.x < 34 && !b.done) stepBullet(b, STEP, { rects: [], stats, targets: [] });
+    return b.y - 10;
+  };
+  const plain = drop(statsFor([]));
+  const fast = drop(statsFor(['tirorapido']));
+  assert.ok(plain > 4, `la común cayó ${plain} en media pantalla`);
+  assert.ok(fast < plain / 20, `la rápida cayó ${fast}`);
 });

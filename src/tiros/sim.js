@@ -6,11 +6,12 @@ import { WORLD_H, WORLD_W } from './maps.js';
 
 export const STEP = 1 / 120;
 export const PLAYER_R = 1.1;
-export const GRAVITY = 70;
+// Medido de un video de ROUNDS (720 px de alto = nuestras 36 unidades): cae con ~110 u/s², el salto
+// sube rápido (0,3 s) y, al soltar, la velocidad de costado se va a la mitad cada ~0,07 s.
+export const GRAVITY = 110;
 export const MOVE_SPEED = 14;
-export const GROUND_ACCEL = 140;
-export const AIR_ACCEL = 75;
-export const JUMP_SPEED = 26;
+export const MOVE_RESPONSE = 10;   // por segundo: qué tan rápido se acerca a la velocidad pedida (arranque y frenada)
+export const JUMP_SPEED = 38;
 // Saltos como en ROUNDS (PlayerJump.Jump, en el PlayerJumpPatch de Rounds-Modding): el salto es un
 // empujón que se suma a la velocidad, pero antes anula la caída; el de la pared sale en la dirección
 // (0,4 hacia afuera, 0,8 para arriba), y el del piso suma una parte de la velocidad de costado.
@@ -21,16 +22,18 @@ export const AIR_DRAG = 1.5;       // por segundo: cómo se gasta en el aire lo 
 export const MAX_RISE = 1.5 * JUMP_SPEED; // tope de subida al encadenar saltos de pared
 export const JUMP_COOLDOWN = 0.1;  // segundos entre saltos (sinceJump del original)
 export const WALL_COYOTE = 0.1;    // se puede saltar de la pared hasta este tiempo después de soltarla
-export const WALL_SLIDE = 7;
+export const WALL_SLIDE = 1.2;     // apretando hacia la pared casi no se cae: queda agarrado
 export const MAX_FALL = 42;
 export const BULLET_SPEED = 62;
-export const BULLET_GRAVITY = 22;
+// Las balas comunes caen bastante; con cartas de velocidad de bala la gravedad se divide por el
+// cuadrado del multiplicador, así que esas van casi derechas.
+export const BULLET_GRAVITY = 36;
 export const BULLET_R = 0.32;
 export const BULLET_LIFE = 6;
 export const BURST_GAP = 0.08;    // segundos entre balas de una ráfaga
 export const BLOCK_TIME = 0.3;    // cuánto dura el escudo
 export const OUT_DAMAGE = 0.2;    // fracción de la vida máxima que se pierde al salirse
-export const OUT_LAUNCH = 70;     // velocidad hacia arriba al caerse del mapa (llega cerca del techo)
+export const OUT_LAUNCH = 88;     // velocidad hacia arriba al caerse del mapa (llega cerca del techo)
 export const OUT_PUSH = 36;       // empujón de vuelta al salirse por un costado
 export const FX_RADIUS = 9;       // alcance de los efectos del escudo
 
@@ -88,15 +91,18 @@ export function stepPlayer(p, input, dt, { rects, stats, now, enemyX }) {
   if (stats.bloodRush && now < p.rushUntil) mult *= 1.5;
   if (stats.chase && enemyX != null && dir !== 0 && Math.sign(enemyX - p.x) === dir) mult *= 1.6;
   const target = dir * MOVE_SPEED * mult;
-  const accel = (p.onGround ? GROUND_ACCEL : AIR_ACCEL) * Math.max(0.4, mult);
   const cap = MOVE_SPEED * mult;
   if (!p.onGround && Math.abs(p.vx) > cap && dir !== -Math.sign(p.vx)) {
     // Impulso de costado: en el aire, lo que pasa de la velocidad normal se gasta de a poco,
     // salvo que se apriete para el otro lado.
     const excess = (Math.abs(p.vx) - cap) * Math.max(0, 1 - AIR_DRAG * dt);
     p.vx = Math.sign(p.vx) * (cap + excess);
-  } else if (p.vx < target) p.vx = Math.min(target, p.vx + accel * dt);
-  else if (p.vx > target) p.vx = Math.max(target, p.vx - accel * dt);
+  } else {
+    // Como en ROUNDS, se acerca a la velocidad pedida de a poco (en el piso y en el aire):
+    // arranca rápido y, al soltar, frena deslizando un poco en vez de pararse en seco.
+    p.vx += (target - p.vx) * Math.min(1, MOVE_RESPONSE * Math.max(0.4, mult) * dt);
+    if (Math.abs(p.vx - target) < 0.01) p.vx = target;
+  }
 
   // Salto: en el piso, o desde una pared (se puede trepar saltando de pared en pared).
   if (p.wall) { p.sinceWall = 0; p.lastWall = p.wall; } else p.sinceWall = (p.sinceWall ?? 1) + dt;
@@ -122,7 +128,7 @@ export function stepPlayer(p, input, dt, { rects, stats, now, enemyX }) {
   if (!input.jump && p.vy < 0 && !p.jumpCut) { p.vy *= 0.55; p.jumpCut = true; } // salto corto si se suelta
 
   p.vy = Math.min(MAX_FALL, p.vy + GRAVITY * dt);
-  if (p.wall && p.vy > WALL_SLIDE && dir === p.wall) p.vy = WALL_SLIDE;
+  if (p.wall && p.vy > WALL_SLIDE && dir === p.wall) p.vy = WALL_SLIDE; // agarrado de la pared
 
   p.x += p.vx * dt;
   p.y += p.vy * dt;
@@ -218,7 +224,7 @@ export function stepBullet(b, dt, { rects, stats, aim, targets }) {
     }
     if (best) steer(b, best.t.x, best.t.y, 6, dt);
   }
-  if (!stats.remote) b.vy += BULLET_GRAVITY * dt;
+  if (!stats.remote) b.vy += (BULLET_GRAVITY / Math.max(1, stats.speed) ** 2) * dt;
   const speed = Math.hypot(b.vx, b.vy);
   const steps = Math.max(1, Math.ceil((speed * dt) / 0.4));
   const h = dt / steps;
