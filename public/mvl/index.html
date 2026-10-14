@@ -20,6 +20,81 @@
          https://github.com/ipodtouch0218/NSMB-MarioVsLuigi -->
     <canvas id="unity-canvas" tabindex="-1"></canvas>
     <div id="carga"><p id="texto">Cargando Mario vs Luigi…</p><div id="barra"><i></i></div><p id="error" hidden></p></div>
+    <script>
+      // En el cole bloquean los servidores de Photon (y quizás el de ipodtouch en Azure), pero
+      // Cloudflare abre. Antes de que arranque Unity, las conexiones a esos servidores se desvían a
+      // este mismo sitio (/api/photon/…, /api/mvl/…), y el Worker las reenvía (worker/photon.js).
+      // El App ID de Photon viaja en texto en los primeros mensajes de cada conexión: si `NEW_APP` no es
+      // el de ipodtouch (el que trae la compilación), se reemplaza ahí (mide lo mismo, 36 letras).
+      // Nuestra app de Photon Quantum 3 es OUR_APP; para usarla, en el panel de Photon tiene que tener
+      // la autenticación personalizada apuntando a https://tareas-fondeanas.nicocukier.workers.dev/api/photon-auth
+      // (el juego siempre pide autenticación «Custom» y una app sin ninguna configurada lo rechaza).
+      (() => {
+        const OLD_APP = '6b4b72d0-57c3-4991-96c1-f3f36f9548e5';
+        const OUR_APP = '097c581c-ecbd-4e89-abfb-f988ad06ec5b';
+        const NEW_APP = OLD_APP; // pasar a OUR_APP cuando la app tenga la autenticación configurada
+        const PHOTON = /(^|\.)(photonengine\.io|exitgames\.com)$/i;
+        const MVL = 'mariovsluigi.azurewebsites.net';
+        const wsBase = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/photon/`;
+
+        const viaPhoton = (raw) => {
+          const u = new URL(raw);
+          if (!PHOTON.test(u.hostname)) return raw;
+          return wsBase + u.host + u.pathname + u.search.replace(`app=${OLD_APP.slice(0, 8)}`, `app=${NEW_APP.slice(0, 8)}`);
+        };
+        const viaMvl = (raw) => {
+          try {
+            const u = new URL(raw, location.href);
+            return u.hostname === MVL ? `${location.origin}/api/mvl${u.pathname}${u.search}` : raw;
+          } catch { return raw; }
+        };
+
+        const oldBytes = new TextEncoder().encode(OLD_APP);
+        const newBytes = new TextEncoder().encode(NEW_APP);
+        // Devuelve una copia con el App ID cambiado, o null si no estaba (lo que manda Unity es una
+        // vista de su propia memoria: no se toca).
+        const swapAppId = (bytes) => {
+          let out = null;
+          for (let i = 0; i + oldBytes.length <= bytes.length; i++) {
+            if (bytes[i] !== oldBytes[0]) continue;
+            let j = 1;
+            while (j < oldBytes.length && bytes[i + j] === oldBytes[j]) j++;
+            if (j === oldBytes.length) { out ??= bytes.slice(); out.set(newBytes, i); i += j - 1; }
+          }
+          return out;
+        };
+
+        const NativeWebSocket = window.WebSocket;
+        window.WebSocket = new Proxy(NativeWebSocket, {
+          construct(Target, [url, protocols]) {
+            const socket = protocols === undefined ? new Target(viaPhoton(String(url))) : new Target(viaPhoton(String(url)), protocols);
+            let checked = 0; // la autenticación va en los primeros mensajes; después no se revisa más
+            const send = socket.send;
+            socket.send = function (data) {
+              if (NEW_APP !== OLD_APP && checked < 40 && data && typeof data !== 'string') {
+                checked++;
+                const view = data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+                const swapped = swapAppId(view);
+                if (swapped) return send.call(this, swapped);
+              }
+              return send.call(this, data);
+            };
+            return socket;
+          },
+        });
+
+        // Solo se tocan los pedidos a Azure; todo lo demás (los archivos del juego) pasa intacto.
+        const nativeFetch = window.fetch.bind(window);
+        window.fetch = (input, init) => {
+          const url = input instanceof Request ? input.url : String(input);
+          const via = viaMvl(url);
+          if (via === url) return nativeFetch(input, init);
+          return nativeFetch(input instanceof Request ? new Request(via, input) : via, init);
+        };
+        const open = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (method, url, ...rest) { return open.call(this, method, viaMvl(String(url)), ...rest); };
+      })();
+    </script>
     <script src="Build/web-mvl.loader.js"></script>
     <script>
       // Cloudflare acepta archivos de hasta 25 MB, y el de datos pesa 43: está partido en dos

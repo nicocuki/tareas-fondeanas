@@ -275,8 +275,15 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.7.2 = A los Tiros: física como la del video de ROUNDS 🏃
+1.7.2 = A los Tiros: física como la del video de ROUNDS 🏃
 - Moverse es más ágil: la gravedad es más fuerte y el salto sube más alto y más rápido.
 - Al soltar las teclas frenás deslizando un poquito, en vez de pararte en seco.
 - Si avanzás contra una pared quedás agarrado: caés lentísimo, y desde ahí podés seguir saltando para trepar.
 - Las balas comunes caen más. Las cartas de velocidad de bala (Tiro rápido, Bola rápida, Pulso firme, A toda cuerda) les sacan casi toda la gravedad: van derechas.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.7.3 = Mario vs Luigi anda en redes que bloquean Photon 🍄
+- El juego ya no se conecta directo a los servidores de Photon ni al de sus creadores: todo pasa por la página (Cloudflare), que hace de puente.
+- En las compus del cole, donde Photon está bloqueado, el online debería andar: la página de Cloudflare sí abre ahí.
+- Todo lo demás sigue igual: mismas salas y mismos jugadores que la versión oficial.

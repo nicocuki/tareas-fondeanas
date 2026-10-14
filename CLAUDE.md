@@ -180,6 +180,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), física (`sim.js`), dibujo (`render.js`), pelea en tiempo real (`TirosGame.jsx`) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
+| `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
 | `src/storage.js` | Salas (`rooms/`) y canales en tiempo real del fútbol y de A los Tiros sobre el servidor de salas |
 | `src/realtime.js` | Cliente del servidor de salas, con la misma forma que Firebase Realtime Database |
@@ -403,8 +404,21 @@ No es un juego nuestro: es la compilación web (Unity WebGL, Unity 6000.3.10f1) 
 
 - **El online es el del juego** (Photon Quantum, con la clave que trae el proyecto): se juega en los
   mismos servidores y salas que la versión oficial de itch.io, no en las salas de Tareas Fondeanas.
-  Para tener servidores propios hay que crear una app de Quantum en photonengine.com y poner la clave
-  en `Assets/QuantumUser/Resources/PhotonServerSettings.asset` antes de compilar.
+- **Todo pasa por nuestro Worker** (`worker/photon.js`), porque en el cole bloquean Photon pero
+  Cloudflare abre. `public/mvl/index.html` reemplaza `WebSocket`, `fetch` y `XMLHttpRequest` antes de
+  que arranque Unity: `wss://ns.photonengine.io/…` y `wss://gc….exitgames.com/Master|game/…` pasan a
+  `/api/photon/<host>/…`, y `mariovsluigi.azurewebsites.net` (el token de ipodtouch y las novedades)
+  pasa a `/api/mvl/…`. El Worker devuelve la respuesta del `fetch` tal cual, así Cloudflare une los
+  dos WebSocket sin que los mensajes pasen por nuestro código (no gasta CPU). Solo acepta hosts de
+  Photon y esas rutas de Azure: no es un proxy abierto. **Para ver si anda**, en la pestaña Red no
+  tiene que aparecer ninguna conexión a `photonengine.io`, `exitgames.com` ni `azurewebsites.net`.
+- **Nuestra app de Photon Quantum 3** (`097c581c-…`, de Nico) está lista para usarse sin recompilar:
+  el App ID viaja en texto en los primeros mensajes y `index.html` lo cambia ahí (`NEW_APP`). Hoy
+  sigue el de ipodtouch porque el juego siempre pide autenticación «Custom» y una app sin ninguna
+  configurada responde «Authentication type not supported (none configured)». En el panel de
+  Photon hay que poner autenticación personalizada con la URL `…/api/photon-auth` (deja pasar a todos).
+  Con la app propia el plan gratis permite 20 jugadores conectados a la vez y las salas quedan
+  separadas de las de itch.io.
 - **Cloudflare acepta archivos de hasta 25 MB** y `web-mvl.data.unityweb` pesa 43: está partido en
   `.part0` y `.part1` (`split -b 22000000 -d -a 1`) y `public/mvl/index.html` lo vuelve a juntar en el
   navegador (un Blob) antes de `createUnityInstance`. La compilación usa compresión Brotli con

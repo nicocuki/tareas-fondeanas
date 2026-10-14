@@ -2,7 +2,12 @@
 //   /api/hora          → hora del servidor, para que todas las pantallas compartan el reloj
 //   /api/sala/ABCD     → WebSocket con el Durable Object de esa sala
 //   /api/salas         → salas públicas (WebSocket con la lista en vivo, o JSON)
+//   /api/photon/…      → puente a Photon para Mario vs Luigi (ver photon.js)
+//   /api/photon-auth   → autenticación de nuestra app de Photon (deja pasar a todos)
+//   /api/mvl/…         → puente al servidor de ipodtouch (autenticación y novedades de Mario vs Luigi)
 //   cualquier otra ruta → los archivos de la página
+import { photonAuth, proxyMvl, proxyPhoton } from './photon.js';
+
 export { Sala } from './sala.js';
 export { Directorio } from './directorio.js';
 
@@ -22,6 +27,9 @@ export default {
       const stub = env.SALA.get(env.SALA.idFromName(sala[1]));
       return stub.fetch(request);
     }
+    if (url.pathname === '/api/photon-auth') return photonAuth();
+    if (url.pathname.startsWith('/api/photon/')) return proxyPhoton(request, url);
+    if (url.pathname.startsWith('/api/mvl/')) return proxyMvl(request, url);
     if (url.pathname.startsWith('/api/')) return json({ error: 'No existe.' }, 404);
     return env.ASSETS.fetch(request);
   },
