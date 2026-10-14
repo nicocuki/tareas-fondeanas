@@ -188,6 +188,8 @@ por una versión anterior siga abriéndose sin romper.
 | `worker/core.js` | El servidor de una sala sin nada de Cloudflare (se prueba con `node --test`) |
 | `worker/rules.js` | Quién lee y escribe cada rama, qué se guarda en disco y qué no |
 | `worker/tree.js` | Árbol de datos compartido por servidor y cliente: rutas, nulls, poda, `push` |
+| `worker/publicas.js` `worker/directorio.js` | Salas públicas: qué sala se lista y el Durable Object con la lista (ver *Salas públicas*) |
+| `src/ui/publicas.js` | La lista en vivo de la portada y la marca de «pública» de cada sala |
 | `wrangler.jsonc` | Configuración de Cloudflare |
 | `src/session.js` | Quién sos: `sessionStorage` por pestaña, `localStorage` por dispositivo |
 
@@ -240,6 +242,24 @@ así los juegos siguieron casi iguales. **Para un juego nuevo, usá esas mismas 
   (`uidFromSecret`). Lo usa Trazo Loco para las reglas de privacidad.
 - **Plan gratis**: 100.000 pedidos por día, y cada 20 mensajes de WebSocket entrantes cuentan como
   uno. Por eso el fútbol sigue yendo directo entre navegadores y no por el servidor.
+
+### Salas públicas
+
+La portada muestra, arriba de los juegos, las salas que el anfitrión marcó como públicas; se entra
+con un clic (lleva a `?juego=…&sala=ABCD`, igual que un link de invitación).
+
+- **La marca va aparte de la sala**: `publica/{código}` = `true` o nada (root en `ROOTS`), así
+  ningún reducer tuvo que cambiar. La escribe el interruptor de `LobbyLayout` (solo el anfitrión, que
+  recibe `host` y `players` de cada juego). «Crear la sala como pública» (en `GameHero`) es la
+  preferencia `publicRooms`: se aplica la primera vez que el anfitrión ve su sala con un solo jugador.
+- **Decide el servidor**: después de cada escritura en `rooms`, `garticRooms` o `publica`, y al
+  abrirse o cerrarse un WebSocket, `Sala.publish()` calcula `roomListing` (pública, en
+  `phase: 'lobby'`, no llena, con alguien conectado) y, si cambió, se lo manda por RPC al
+  **Directorio**: un Durable Object único (`idFromName('portada')`).
+- La portada escucha `/api/salas` por WebSocket (hiberna; un GET devuelve el JSON). Una entrada sin
+  avisos en seis horas se descarta (`LISTING_TTL_MS`). **Un juego nuevo** que guarde la sala en
+  `rooms/` con `phase`, `hostId` y `players` se lista solo; si tiene tope, sumalo a `MAX` en
+  `worker/publicas.js`.
 
 ### Acciones del reducer
 

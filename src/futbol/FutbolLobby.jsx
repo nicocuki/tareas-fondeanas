@@ -31,6 +31,8 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
   return (
     <LobbyLayout
       code={code || room?.code}
+      host={host && !room?.isTrainingMode && !room?.isLocalGame}
+      players={room?.isTrainingMode || room?.isLocalGame ? 0 : room.players.length}
       gameTitle={gameTitle}
       subtitle={subtitle}
       copied={copied}

@@ -12,8 +12,14 @@
     "run_worker_first": ["/api/*"]
   },
   "durable_objects": {
-    "bindings": [{ "name": "SALA", "class_name": "Sala" }]
+    "bindings": [
+      { "name": "SALA", "class_name": "Sala" },
+      { "name": "DIRECTORIO", "class_name": "Directorio" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Sala"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Sala"] },
+    { "tag": "v2", "new_sqlite_classes": ["Directorio"] }
+  ],
   "observability": { "enabled": true }
 }

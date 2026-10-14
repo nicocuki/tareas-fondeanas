@@ -233,7 +233,15 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.4.0 = Juego nuevo: Mario vs Luigi 🍄
+1.4.0 = Juego nuevo: Mario vs Luigi 🍄
 - El Mario vs Luigi de New Super Mario Bros (el remake de la comunidad, de ipodtouch0218), tal cual, adentro de la página.
 - De 2 a 10 jugadores online, con todos los poderes y los niveles del juego. Las salas se arman desde el menú del juego.
 - Botón de pantalla completa y para abrirlo aparte. La primera vez tarda en cargar (son unos 55 MB).
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.5.0 = Salas públicas 🌐
+- En el inicio, arriba de los juegos, aparecen las salas abiertas: tocás una y entrás sin necesidad del código.
+- Al crear una sala podés marcarla como pública; en la sala de espera el anfitrión la pasa de pública a privada cuando quiera.
+- La lista se actualiza sola: muestra el juego, de quién es la sala y cuántos hay. Una sala deja de aparecer cuando empieza la partida, se llena o se van todos.
+- Anda con todos los juegos de la página (Mario vs Luigi tiene sus propias salas).

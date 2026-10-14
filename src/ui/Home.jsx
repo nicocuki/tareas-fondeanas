@@ -1,9 +1,10 @@
-// Portada: saludo, unirse con código, los juegos, cómo funciona y la última novedad.
+// Portada: saludo, unirse con código, las salas públicas, los juegos, cómo funciona y la última novedad.
 import React from 'react';
 import { GAMES, gameById } from './games.js';
 import { useLastRoom, useProfile } from './store.js';
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
+import { usePublicRooms } from './publicas.js';
 
 function GameCard({ game, onPlay }) {
   return (
@@ -27,6 +28,42 @@ function GameCard({ game, onPlay }) {
         </span>
       </div>
     </article>
+  );
+}
+
+// Salas que alguien marcó como públicas: se entra con un clic, sin el código.
+function PublicRooms({ onNavigate }) {
+  const rooms = usePublicRooms();
+  const listed = (rooms || []).filter((r) => gameById(r.game));
+  return (
+    <section className="tf-section" aria-labelledby="tf-salas">
+      <div className="tf-section-head">
+        <h2 id="tf-salas">Salas abiertas</h2>
+        <p>{rooms === null ? 'Buscando salas…' : listed.length ? `${listed.length} esperando jugadores` : 'Ahora no hay ninguna.'}</p>
+      </div>
+      {listed.length ? (
+        <ul className="tf-rooms" data-public-rooms>
+          {listed.map((r) => {
+            const game = gameById(r.game);
+            return (
+              <li key={r.code}>
+                <button type="button" className="tf-room" style={{ '--chip-color': game.color }} data-room={r.code} onClick={() => onNavigate(r.game, r.code)}>
+                  <span className="tf-room-emoji" aria-hidden="true">{game.emoji}</span>
+                  <span className="tf-room-info">
+                    <strong>{game.title}</strong>
+                    <small>{r.host ? `Sala de ${r.host}` : 'Sala'} · {r.code}</small>
+                  </span>
+                  <span className="tf-room-players">👥 {r.players}{r.max ? `/${r.max}` : ''}</span>
+                  <em>Entrar</em>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : rooms !== null && (
+        <p className="tf-rooms-empty">Creá una sala, marcala como <strong>pública</strong> y va a aparecer acá para que entre cualquiera.</p>
+      )}
+    </section>
   );
 }
 
@@ -68,6 +105,8 @@ export default function Home({ onNavigate }) {
           <p className="tf-hint">El código tiene 4 letras y aparece arriba en la pantalla de quien creó la sala.</p>
         </div>
       </section>
+
+      <PublicRooms onNavigate={onNavigate} />
 
       <section className="tf-section" aria-labelledby="tf-juegos">
         <div className="tf-section-head">

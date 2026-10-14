@@ -35,7 +35,8 @@ function write(key, value) {
 
 // ─── Preferencias ────────────────────────────────────────────────────────────
 const PREFS_KEY = 'tf:preferencias';
-const prefs = createStore({ theme: 'system', reducedMotion: false, ...read(PREFS_KEY, {}) });
+// publicRooms: las salas que creás arrancan públicas (aparecen en la portada).
+const prefs = createStore({ theme: 'system', reducedMotion: false, publicRooms: false, ...read(PREFS_KEY, {}) });
 
 function applyPrefs({ theme, reducedMotion }) {
   const dark = theme === 'dark' || (theme === 'system' && !window.matchMedia?.('(prefers-color-scheme: light)').matches);

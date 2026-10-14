@@ -79,6 +79,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   return (
     <LobbyLayout
       code={code}
+      host={host}
+      players={room.players.length}
       gameTitle="La Mecha · sala de espera"
       subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos.' : 'El anfitrión elige las reglas y arranca la partida.'}
       copied={copied}

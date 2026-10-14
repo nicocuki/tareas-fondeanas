@@ -38,12 +38,13 @@ const unitKey = (segs) => joinPath(segs.slice(0, unitDepth(segs[0])));
 export class SalaCore {
   // storage: { put(key, value), delete(key) } — se guarda con el prefijo 'd:'.
   // connections(): lista de conexiones; cada una con send(texto), att() y saveAtt(att).
-  constructor({ code, storage, connections, now = () => Date.now(), onPersist = () => {} }) {
+  constructor({ code, storage, connections, now = () => Date.now(), onPersist = () => {}, onWrite = () => {} }) {
     this.code = code;
     this.storage = storage;
     this.connections = connections;
     this.now = now;
     this.onPersist = onPersist;
+    this.onWrite = onWrite; // después de cada escritura aceptada, con las rutas tocadas
     this.tree = null;
     this.units = new Map(); // unidad guardada → tamaño aproximado
     this.stored = 0;
@@ -180,6 +181,7 @@ export class SalaCore {
     for (const [segs, value] of prepared) this.tree = setAt(this.tree, segs, value);
     this.broadcast(prepared.map(([segs]) => segs));
     this.persist(prepared.map(([segs]) => segs));
+    this.onWrite(prepared.map(([segs]) => segs));
     return null;
   }
 

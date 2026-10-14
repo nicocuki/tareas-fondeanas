@@ -8,7 +8,8 @@ import { previousAuthor } from '../src/gartic/game.js';
 import { MAX_DRAWING, MAX_TEXT } from '../src/gartic/game.js';
 import { getAt } from './tree.js';
 
-export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps', 'mecha', 'tiros'];
+export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps', 'mecha', 'tiros', 'publica'];
+// `publica/{sala}`: true si el anfitrión la quiere en la lista de la portada (ver publicas.js).
 
 // Fotos del fútbol: cambian muchas veces por segundo y no hace falta guardarlas en disco.
 // Si la sala se duerme (nadie conectado) se pierden, y está bien.
@@ -50,6 +51,10 @@ export function writeError(segs, uid, value, tree) {
   if (root === 'rooms') {
     if (segs.length !== 2) return 'Las salas se escriben enteras.';
     if (value !== null && (typeof value !== 'string' || value.length >= MAX_ROOM_STRING)) return 'La sala es demasiado grande.';
+    return null;
+  }
+  if (root === 'publica') {
+    if (segs.length !== 2 || (value !== true && value !== null)) return 'La sala es pública (true) o no (null).';
     return null;
   }
   if (root === 'garticPresence') {

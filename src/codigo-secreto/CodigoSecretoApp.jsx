@@ -362,6 +362,8 @@ export default function CodigoSecretoApp({ onBackToMenu }) {
     return (
       <LobbyLayout
         code={session.code}
+        host={host}
+        players={totalPlayers}
         gameTitle="sala de espera"
         subtitle={`Compartí el código o el link para que se unan tus amigos.${host ? ' Sos el anfitrión: los modificadores son tuyos.' : ''}`}
         copied={copied}

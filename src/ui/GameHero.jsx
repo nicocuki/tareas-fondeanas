@@ -1,9 +1,11 @@
 // Encabezado de la pantalla de entrada de cada juego: mismo formato para todos.
 import React from 'react';
 import { gameById } from './games.js';
+import { setPrefs, usePrefs } from './store.js';
 
 export default function GameHero({ gameId, onBack, children }) {
   const game = gameById(gameId);
+  const { publicRooms } = usePrefs();
   if (!game) return null;
   return (
     <div className="tf-game-hero" style={{ '--chip-color': game.color }}>
@@ -22,6 +24,13 @@ export default function GameHero({ gameId, onBack, children }) {
         <li>⏱ {game.duration}</li>
         <li>🎮 {game.input}</li>
       </ul>
+      <label className="tf-public-check">
+        <input type="checkbox" checked={publicRooms} onChange={(e) => setPrefs({ publicRooms: e.target.checked })} data-public-default />
+        <span>
+          <strong>Crear la sala como pública</strong>
+          <small>Aparece en la portada y cualquiera entra sin el código. Se puede cambiar en la sala de espera.</small>
+        </span>
+      </label>
       {children}
     </div>
   );

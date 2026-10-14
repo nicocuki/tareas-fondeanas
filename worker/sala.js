@@ -3,6 +3,10 @@
 // SQLite y las conexiones siguen abiertas (lo que cada una escucha va en su «attachment»).
 import { DurableObject } from 'cloudflare:workers';
 import { IDLE_CLEANUP_MS, SalaCore, newAttachment } from './core.js';
+import { roomListing } from './publicas.js';
+
+// Ramas que cambian lo que la sala muestra en la lista de salas públicas.
+const LISTING_ROOTS = new Set(['rooms', 'garticRooms', 'publica']);
 
 const ALARM_REFRESH_MS = 60 * 60 * 1000; // la alarma de limpieza se corre como mucho una vez por hora
 
@@ -15,6 +19,7 @@ export class Sala extends DurableObject {
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     ctx.blockConcurrencyWhile(async () => {
       this.code = (await ctx.storage.get('code')) || null;
+      this.listing = (await ctx.storage.get('listing')) ?? 'null'; // lo último que se le avisó al Directorio
       this.core = this.makeCore(this.code);
       this.core.load(await ctx.storage.list({ prefix: 'd:' }).then((m) => [...m].map(([k, v]) => [k.slice(2), v])));
     });
@@ -29,6 +34,7 @@ export class Sala extends DurableObject {
       },
       connections: () => this.ctx.getWebSockets().map((ws) => this.conn(ws)),
       onPersist: () => this.scheduleCleanup(),
+      onWrite: (changed) => { if (changed.some((segs) => LISTING_ROOTS.has(segs[0]))) this.publish(); },
     });
   }
 
@@ -51,6 +57,20 @@ export class Sala extends DurableObject {
     this.ctx.storage.setAlarm(now + IDLE_CLEANUP_MS);
   }
 
+  // Le avisa al Directorio si cambió lo que esta sala muestra en la portada.
+  // `closing`: el WebSocket que se está cerrando, que todavía figura entre los abiertos.
+  publish(closing = null) {
+    if (!this.code) return;
+    const open = this.ctx.getWebSockets().filter((ws) => ws !== closing).length;
+    const listing = roomListing(this.core.tree, this.code, open);
+    const text = JSON.stringify(listing);
+    if (text === this.listing) return;
+    this.listing = text;
+    this.ctx.storage.put('listing', text);
+    const directorio = this.env.DIRECTORIO.get(this.env.DIRECTORIO.idFromName('portada'));
+    this.ctx.waitUntil(directorio.publicar(this.code, listing).catch(() => {}));
+  }
+
   async fetch(request) {
     const code = new URL(request.url).pathname.split('/').pop();
     if (this.code !== code) {
@@ -64,6 +84,7 @@ export class Sala extends DurableObject {
     const att = newAttachment(code);
     server.serializeAttachment(att);
     this.atts.set(server, att);
+    this.publish();
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -74,12 +95,14 @@ export class Sala extends DurableObject {
 
   async webSocketClose(ws, code) {
     this.core.close(this.conn(ws));
+    this.publish(ws);
     const valid = code >= 1000 && code < 5000 && code !== 1005 && code !== 1006;
     try { ws.close(valid ? code : 1000, 'chau'); } catch {}
   }
 
   async webSocketError(ws) {
     this.core.close(this.conn(ws));
+    this.publish(ws);
   }
 
   // Tres días sin escrituras: se borra la sala entera.
