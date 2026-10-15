@@ -149,11 +149,11 @@ export const GAMES = [
     input: 'Teclado',
     badge: 'Beta',
     howTo: [
-      'Movete con WASD o con las flechas y pateá con Espacio o X. Mientras tenés la patada lista, tu borde se pone blanco.',
+      'Movete con WASD o con las flechas y pateá con Espacio, Shift o Control. Mientras tenés la patada lista, tu borde se pone blanco.',
       'El que recibió el gol saca: hasta que alguien toque la pelota, el otro equipo no entra al círculo central.',
       'En modo coches: W acelera, Shift es turbo, Control derrapa y Espacio salta.',
       'Gana el equipo con más goles al terminar el reloj (o el primero en llegar a la meta de goles).',
-      'También hay 1 contra 1 en la misma compu (el segundo usa flechas y Enter) y un modo entrenamiento.',
+      'También hay 1 contra 1 en la misma compu (el primero usa WASD y patea con Espacio, Shift o Control izquierdos; el segundo, flechas y Enter, Shift o Control derechos) y un modo entrenamiento.',
     ],
   },
 ];

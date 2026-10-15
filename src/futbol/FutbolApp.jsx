@@ -277,7 +277,7 @@ export default function FutbolApp({ onBackToMenu }) {
                   Practicá solo en la cancha con todas las opciones y modificadores del modo online. Tu auto es blanco.
                 </p>
                 <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '8px 10px', marginBottom: 12, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6 }}>
-                  <div>⚪ <b>Jugador Solo:</b> WASD + Espacio (en coches, Shift Izq turbo y Ctrl Izq derrape)</div>
+                  <div>⚪ <b>Jugador Solo:</b> WASD y patada con Espacio, Shift Izq o Ctrl Izq (en coches, Shift Izq es turbo y Ctrl Izq derrape)</div>
                 </div>
                 <button
                   type="button"
@@ -298,8 +298,8 @@ export default function FutbolApp({ onBackToMenu }) {
                   Enfrentate 1v1 contra un amigo en la misma computadora sin necesidad de internet.
                 </p>
                 <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '8px 10px', marginBottom: 12, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6 }}>
-                  <div>🔴 <b>Jugador 1:</b> WASD + Espacio (en coches, Shift Izq turbo y Ctrl Izq derrape)</div>
-                  <div>🔵 <b>Jugador 2:</b> Flechitas + Enter (en coches, Shift Der turbo y Ctrl Der derrape)</div>
+                  <div>🔴 <b>Jugador 1:</b> WASD y patada con Espacio, Shift Izq o Ctrl Izq (en coches, Shift Izq es turbo y Ctrl Izq derrape)</div>
+                  <div>🔵 <b>Jugador 2:</b> Flechitas y patada con Enter, Shift Der o Ctrl Der (en coches, Shift Der es turbo y Ctrl Der derrape)</div>
                 </div>
                 <button
                   type="button"

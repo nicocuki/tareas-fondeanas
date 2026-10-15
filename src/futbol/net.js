@@ -48,7 +48,7 @@ const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 // ─── Teclas ─────────────────────────────────────────────────────────────────
 // Viajan como un número de pocos bits. Sirven para seguir simulando a un remoto si sus fotos se
 // atrasan: con las teclas que tenía apretadas, la física adivina muy bien por dónde va.
-const INPUT_BITS = ['up', 'down', 'left', 'right', 'kick', 'shift', 'accelerate', 'brake', 'turnLeft', 'turnRight', 'boost', 'drift'];
+const INPUT_BITS = ['up', 'down', 'left', 'right', 'kick', 'accelerate', 'brake', 'turnLeft', 'turnRight', 'boost', 'drift'];
 
 export function packInput(input) {
   let bits = 0;

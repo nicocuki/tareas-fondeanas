@@ -349,6 +349,15 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.9.05 = La Mecha: el diccionario anda también en Windows 🐛
+1.9.05 = La Mecha: el diccionario anda también en Windows 🐛
 - En una compu con Windows, Git guardaba el diccionario con finales de línea de Windows y La Mecha rechazaba todas las palabras (en el sitio publicado no pasaba).
 - Ahora el diccionario siempre se guarda con finales normales, y aunque alguien lo guarde con los de Windows, se lee bien igual.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.9.1 = Fútbol: patear con Shift y Control 🎮
+- En el modo pelotas se patea con Espacio, Shift o Control (y te movés con WASD o las flechitas).
+- En el juego local, el jugador 1 se mueve con WASD y patea con Espacio, Shift izquierdo o Control izquierdo; el jugador 2 se mueve con las flechitas y patea con Enter, Shift derecho o Control derecho.
+- Si apretás dos teclas de patada y soltás una, la patada sigue lista.
+- Como Control + W cierra la pestaña, el navegador pregunta antes de cerrarla también en el modo pelotas.
+- Ya no queda nada de la estámina.

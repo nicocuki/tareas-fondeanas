@@ -102,7 +102,23 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
   }, [rosterKey]);
 
   // ─── Controles: solo tocan el input local. Nada de esto espera a la red. ─────
+  // Teclas apretadas ahora (por `e.code`): en pelotas patean varias, y soltar una no tiene que cortar
+  // la patada si otra sigue apretada.
+  const heldRef = useRef(new Set());
   useEffect(() => {
+    // En pelotas, la patada es «alguna de sus teclas apretada».
+    function syncKicks(e, pressed) {
+      if (isCarMode) return;
+      if (pressed) heldRef.current.add(e.code);
+      else heldRef.current.delete(e.code);
+      const held = (codes) => codes.some((c) => heldRef.current.has(c));
+      if (isLocalGame) {
+        p1InputRef.current.kick = held(KICK_P1);
+        p2InputRef.current.kick = held(KICK_P2);
+      } else {
+        myInputRef.current.kick = held(KICK_ONLINE);
+      }
+    }
     function onKeyDown(e) {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -112,9 +128,10 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Enter'].includes(e.key) || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         e.preventDefault();
       }
-      // Con Control apretado para derrapar, las teclas del juego no tienen que disparar atajos del
-      // navegador (Ctrl+D, Ctrl+S, Ctrl+A…). Ctrl+W no se puede frenar: para eso está el aviso al salir.
-      if (isCarMode && (e.key === 'Control' || (e.ctrlKey && isGameKey(e)))) {
+      // Con Control apretado (derrape en coches, patada en pelotas), las teclas del juego no tienen que
+      // disparar atajos del navegador (Ctrl+D, Ctrl+S, Ctrl+A…). Ctrl+W no se puede frenar: para eso
+      // está el aviso al salir.
+      if (e.key === 'Control' || (e.ctrlKey && isGameKey(e))) {
         e.preventDefault();
       }
 
@@ -124,6 +141,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
         const field = inputField(e.key, isCarMode);
         if (field) myInputRef.current[field] = true;
       }
+      syncKicks(e, true);
 
       if (e.key === 'q' || e.key === 'Q') zoomKeysRef.current.zoomOut = true;
       if (e.key === 'e' || e.key === 'E') zoomKeysRef.current.zoomIn = true;
@@ -141,6 +159,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
         const field = inputField(e.key, isCarMode);
         if (field) myInputRef.current[field] = false;
       }
+      syncKicks(e, false);
       if (e.key === 'q' || e.key === 'Q') zoomKeysRef.current.zoomOut = false;
       if (e.key === 'e' || e.key === 'E') zoomKeysRef.current.zoomIn = false;
     }
@@ -149,10 +168,11 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       myInputRef.current = {};
       p1InputRef.current = {};
       p2InputRef.current = {};
+      heldRef.current.clear();
       zoomKeysRef.current = { zoomIn: false, zoomOut: false };
     }
-    // En coches se acelera con W y se derrapa con Control: Ctrl+W cierra la pestaña y ninguna página
-    // puede evitarlo. Por lo menos el navegador pregunta antes de cerrarla.
+    // Con W se mueve (o acelera) y Control patea (o derrapa): Ctrl+W cierra la pestaña y ninguna
+    // página puede evitarlo. Por lo menos el navegador pregunta antes de cerrarla.
     function onBeforeUnload(e) {
       e.preventDefault();
       e.returnValue = '';
@@ -160,7 +180,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
-    if (isCarMode) window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('beforeunload', onBeforeUnload);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
@@ -1043,10 +1063,10 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       <div style={{ color: '#888', fontSize: 13, fontFamily: 'monospace', marginTop: 10, textAlign: 'center' }}>
         {isLocalGame ? (
           <>
-            <span style={{ color: '#e05050', fontWeight: 700 }}>🔴 J1 (Rojo):</span> WASD (mover) · <b>{isCarMode ? 'ESPACIO' : 'ESPACIO / X'}</b> (patada)
+            <span style={{ color: '#e05050', fontWeight: 700 }}>🔴 J1 (Rojo):</span> WASD (mover) · <b>{isCarMode ? 'ESPACIO' : 'ESPACIO / SHIFT Izq / CTRL Izq'}</b> (patada)
             {isCarMode && <> · <b>CTRL Izq</b> (derrape)</>}
             &nbsp;&nbsp;|&nbsp;&nbsp;
-            <span style={{ color: '#4a90d9', fontWeight: 700 }}>🔵 J2 (Azul):</span> Flechas (mover) · <b>ENTER</b> (patada)
+            <span style={{ color: '#4a90d9', fontWeight: 700 }}>🔵 J2 (Azul):</span> Flechas (mover) · <b>{isCarMode ? 'ENTER' : 'ENTER / SHIFT Der / CTRL Der'}</b> (patada)
             {isCarMode && <> · <b>CTRL Der</b> (derrape)</>}
             &nbsp;&nbsp;|&nbsp;&nbsp;
             <b>ESC</b> menú
@@ -1066,7 +1086,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
         ) : (
           <>
             Controles: <b>WASD</b> o <b>flechas</b> moverte &nbsp;·&nbsp;
-            <b>Espacio</b> o <b>X</b> patear &nbsp;·&nbsp;
+            <b>Espacio</b>, <b>Shift</b> o <b>Ctrl</b> patear &nbsp;·&nbsp;
             <b>Ruedita / Q / E</b> zoom &nbsp;·&nbsp;
             <b>ESC</b> menú
           </>
@@ -1204,6 +1224,12 @@ function blendBodies(state, prev, alpha) {
   return { ...state, players, ball };
 }
 
+// Pelotas: con qué teclas patea cada uno. Online, cualquiera de las dos manos; en el local, el
+// jugador 1 con las de la izquierda y el 2 con las de la derecha.
+const KICK_ONLINE = ['Space', 'KeyX', 'Enter', 'NumpadEnter', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight'];
+const KICK_P1 = ['Space', 'KeyX', 'ShiftLeft', 'ControlLeft'];
+const KICK_P2 = ['Enter', 'NumpadEnter', 'ShiftRight', 'ControlRight'];
+
 // Teclas que usa el juego, para no dejar que Control + tecla dispare un atajo del navegador.
 function isGameKey(e) {
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
@@ -1280,7 +1306,7 @@ function handleLocalKeyDown(e, isCarMode, p1Input, p2Input) {
   const key = e.key;
   const k = key.length === 1 ? key.toLowerCase() : key;
 
-  // Jugador 1: WASD, Space, ShiftLeft
+  // Jugador 1: WASD, Space, ShiftLeft, ControlLeft. En pelotas, la patada la arma `syncKicks`.
   if (isCarMode) {
     if (k === 'w' || code === 'KeyW') p1Input.accelerate = true;
     if (k === 's' || code === 'KeyS') p1Input.brake = true;
@@ -1294,10 +1320,9 @@ function handleLocalKeyDown(e, isCarMode, p1Input, p2Input) {
     if (k === 's' || code === 'KeyS') p1Input.down = true;
     if (k === 'a' || code === 'KeyA') p1Input.left = true;
     if (k === 'd' || code === 'KeyD') p1Input.right = true;
-    if (code === 'Space' || k === ' ' || k === 'x') p1Input.kick = true;
   }
 
-  // Jugador 2: Arrow keys, Enter, ShiftRight
+  // Jugador 2: Arrow keys, Enter, ShiftRight, ControlRight
   if (isCarMode) {
     if (code === 'ArrowUp' || k === 'ArrowUp') p2Input.accelerate = true;
     if (code === 'ArrowDown' || k === 'ArrowDown') p2Input.brake = true;
@@ -1311,7 +1336,6 @@ function handleLocalKeyDown(e, isCarMode, p1Input, p2Input) {
     if (code === 'ArrowDown' || k === 'ArrowDown') p2Input.down = true;
     if (code === 'ArrowLeft' || k === 'ArrowLeft') p2Input.left = true;
     if (code === 'ArrowRight' || k === 'ArrowRight') p2Input.right = true;
-    if (code === 'Enter' || k === 'Enter') p2Input.kick = true;
   }
 }
 
@@ -1334,7 +1358,6 @@ function handleLocalKeyUp(e, isCarMode, p1Input, p2Input) {
     if (k === 's' || code === 'KeyS') p1Input.down = false;
     if (k === 'a' || code === 'KeyA') p1Input.left = false;
     if (k === 'd' || code === 'KeyD') p1Input.right = false;
-    if (code === 'Space' || k === ' ' || k === 'x') p1Input.kick = false;
   }
 
   // Jugador 2
@@ -1351,15 +1374,14 @@ function handleLocalKeyUp(e, isCarMode, p1Input, p2Input) {
     if (code === 'ArrowDown' || k === 'ArrowDown') p2Input.down = false;
     if (code === 'ArrowLeft' || k === 'ArrowLeft') p2Input.left = false;
     if (code === 'ArrowRight' || k === 'ArrowRight') p2Input.right = false;
-    if (code === 'Enter' || k === 'Enter') p2Input.kick = false;
   }
 }
 
-// Qué acción del input local controla cada tecla.
+// Qué acción del input local controla cada tecla. En pelotas, la patada la arma `syncKicks`.
 function inputField(key, isCarMode) {
   const k = key.length === 1 ? key.toLowerCase() : key;
-  if (k === ' ' || k === 'Enter' || k === 'x') return 'kick';
   if (isCarMode) {
+    if (k === ' ' || k === 'Enter' || k === 'x') return 'kick';
     if (k === 'w' || k === 'ArrowUp') return 'accelerate';
     if (k === 's' || k === 'ArrowDown') return 'brake';
     if (k === 'a' || k === 'ArrowLeft') return 'turnLeft';

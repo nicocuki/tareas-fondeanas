@@ -24,7 +24,7 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
   const subtitle = room?.isTrainingMode
     ? 'Modo Entrenamiento: Practicá solo con todos los modificadores y opciones disponibles. Tu auto/jugador es blanco.'
     : room?.isLocalGame
-    ? 'Partida local 1v1 en una misma pantalla (J1: WASD + Espacio | J2: Flechitas + Enter). Configurá los modificadores y comenzá cuando quieras.'
+    ? 'Partida local 1v1 en una misma pantalla (J1: WASD + Espacio, Shift o Ctrl izquierdos | J2: Flechitas + Enter, Shift o Ctrl derechos). Configurá los modificadores y comenzá cuando quieras.'
     : `Compartí el código o el link para que se unan tus amigos.${host ? ' Sos el anfitrión: los modificadores son tuyos.' : ''}`;
 
   const gameTitle = room?.isTrainingMode ? 'modo entrenamiento' : (room?.isLocalGame ? 'partida local' : 'sala de espera');
@@ -73,7 +73,7 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
                 {me?.name || 'Jugador'} (Auto Blanco)
               </div>
               <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 2 }}>
-                Modo Solo / Entrenamiento · Controles: WASD + Espacio + Shift Izquierdo
+                Modo Solo / Entrenamiento · Controles: WASD + Espacio, Shift o Ctrl izquierdos
               </div>
             </div>
           </div>
