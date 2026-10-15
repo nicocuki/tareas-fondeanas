@@ -30,6 +30,11 @@ export const FIRST_COUNTDOWN_MS = 2000;
 export const GOAL_PAUSE_MS = 2000;
 export const KICKOFF_COUNTDOWN_MS = 1500;
 export const WIN_DELAY_MS = 1800;
+// En el modo pelotas, como en HaxBall: después del gol se sigue jugando 2,5 s (150 pasos) y el saque
+// es enseguida, sin cuenta regresiva.
+// Si con ese gol alguien gana, termina cuando se acaba el festejo.
+export const HAX_PAUSES = { goal: 2500, kickoff: 0, win: 2500 };
+const DEFAULT_PAUSES = { goal: GOAL_PAUSE_MS, kickoff: KICKOFF_COUNTDOWN_MS, win: WIN_DELAY_MS };
 
 const BUFFER_SIZE = 40;      // 2 s de fotos: alcanza aunque el retraso llegue al máximo
 const LAG_WINDOW_MS = 3000;  // para elegir el retraso se miran las demoras de los últimos 3 s...
@@ -81,7 +86,6 @@ export function packPlayer(p, isCar, m, k, t, input) {
     }
   } else {
     if (p.isKicking) snap.ki = 1;
-    if (p.stamina !== undefined && p.stamina < 100) snap.st = int(p.stamina);
   }
   return snap;
 }
@@ -111,7 +115,6 @@ export function applyPlayerSnapshot(target, snap, isCar) {
     target.speed = snap.vx * Math.cos(snap.a) + snap.vy * Math.sin(snap.a);
   } else {
     target.isKicking = Boolean(snap.ki);
-    target.stamina = snap.st ?? 100;
   }
 }
 
@@ -201,15 +204,16 @@ export function targetDelay(remote) {
 // Cuántos pasos fijos de física tocan en este cuadro. Lo que sobra queda para el cuadro siguiente,
 // y `alpha` dice cuánto se avanzó hacia el próximo paso (sirve para dibujar entre dos pasos).
 // Si la pestaña estuvo trabada, no se intenta recuperar todo: se descarta lo que pase del tope.
-export function fixedSteps(clock, dt) {
+// `stepMs`: el modo pelotas usa los pasos de HaxBall (1/60 s); los coches, `PHYSICS_STEP_MS`.
+export function fixedSteps(clock, dt, stepMs = PHYSICS_STEP_MS) {
   clock.acc = (clock.acc || 0) + dt;
-  let steps = Math.floor(clock.acc / PHYSICS_STEP_MS);
+  let steps = Math.floor(clock.acc / stepMs);
   if (steps > MAX_STEPS_PER_FRAME) {
     steps = MAX_STEPS_PER_FRAME;
-    clock.acc = PHYSICS_STEP_MS * steps;
+    clock.acc = stepMs * steps;
   }
-  clock.acc -= steps * PHYSICS_STEP_MS;
-  return { steps, alpha: clock.acc / PHYSICS_STEP_MS };
+  clock.acc -= steps * stepMs;
+  return { steps, alpha: clock.acc / stepMs };
 }
 
 // El retraso sube rápido (si faltan fotos, el remoto se vería congelado) y baja más despacio (para
@@ -308,7 +312,8 @@ export function latestWriter(write, maxInFlight = MAX_IN_FLIGHT) {
 // las cuentas regresivas pasan al mismo tiempo en todas las pantallas.
 //   m: número de partido · k: saque (sube con cada gol) · at: hora en que se juega
 //   c: reloj del partido en `at` (lo que queda, o lo transcurrido si es sin límite)
-//   g, gt: último gol · sr, sb: marcador · end: hora de fin si alguien llegó a los goles
+//   g, gt: último gol · gp: cuánto dura su festejo · sr, sb: marcador
+//   end: hora de fin si alguien llegó a los goles
 export function initialMatch(m, serverNow, clockMs) {
   return { m, k: 0, at: serverNow + FIRST_COUNTDOWN_MS, c: clockMs, g: '', gt: 0, sr: 0, sb: 0, end: 0 };
 }
@@ -318,7 +323,7 @@ export function clockAt(match, serverNow, timed) {
   return timed ? Math.max(0, match.c - played) : match.c + played;
 }
 
-export function goalMatch(match, team, serverNow, timed, goalsToWin) {
+export function goalMatch(match, team, serverNow, timed, goalsToWin, pauses = DEFAULT_PAUSES) {
   const sr = match.sr + (team === 'red' ? 1 : 0);
   const sb = match.sb + (team === 'blue' ? 1 : 0);
   const won = goalsToWin > 0 && (sr >= goalsToWin || sb >= goalsToWin);
@@ -327,18 +332,19 @@ export function goalMatch(match, team, serverNow, timed, goalsToWin) {
     k: match.k + 1,
     g: team,
     gt: serverNow,
-    at: serverNow + GOAL_PAUSE_MS + KICKOFF_COUNTDOWN_MS,
+    gp: pauses.goal,
+    at: serverNow + pauses.goal + pauses.kickoff,
     c: clockAt(match, serverNow, timed),
     sr,
     sb,
-    end: won ? serverNow + WIN_DELAY_MS : 0,
+    end: won ? serverNow + pauses.win : 0,
   };
 }
 
 // Qué pasa ahora: 'goal' (festejo), 'countdown', 'playing' o 'ended'.
 export function matchPhase(match, serverNow, timed) {
   if (match.end && serverNow >= match.end) return { phase: 'ended', clock: match.c };
-  if (match.gt && serverNow < match.gt + GOAL_PAUSE_MS) return { phase: 'goal', clock: match.c };
+  if (match.gt && serverNow < match.gt + (match.gp ?? GOAL_PAUSE_MS)) return { phase: 'goal', clock: match.c };
   if (serverNow < match.at) return { phase: 'countdown', clock: match.c, left: match.at - serverNow };
   const clock = clockAt(match, serverNow, timed);
   if (timed && clock <= 0) return { phase: 'ended', clock: 0 };

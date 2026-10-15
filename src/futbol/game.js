@@ -5,8 +5,8 @@
 export const DEFAULT_OPTIONS = {
   matchMinutes: 0,         // duración del partido en minutos (0 = ilimitado)
   goalsToWin: 0,           // goles para ganar (0 = ilimitado)
-  mapType: 'cancha3',      // 'cancha3', 'cancha5', 'cancha9', 'cancha11'
-  stamina: false,          // boolean: requiere usar shift para correr
+  mapType: 'cancha3',      // coches: 'cancha3', 'cancha5', 'cancha9', 'cancha11'
+  stadium: 'classic',      // pelotas: un estadio de HaxBall (STADIUMS en haxball.js)
   vehicleMode: 'pelotas',  // 'pelotas' | 'coches'
   infiniteBoost: false,    // boolean: boost infinito en coches (default false)
 };

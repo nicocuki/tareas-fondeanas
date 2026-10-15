@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  EXTRAP_MAX_MS, GOAL_PAUSE_MS, KICKOFF_COUNTDOWN_MS, MIN_DELAY_MS, PHYSICS_STEP_MS, SEND_INTERVAL_MS, fixedSteps,
+  EXTRAP_MAX_MS, GOAL_PAUSE_MS, HAX_PAUSES, KICKOFF_COUNTDOWN_MS, MIN_DELAY_MS, PHYSICS_STEP_MS, SEND_INTERVAL_MS, fixedSteps,
   applyPlayerSnapshot, claimBeats, createRemote, goalMatch, initialMatch, latestWriter, matchPhase, switchToDirect,
   packBall, packInput, packPlayer, receiveSnapshot, sameMotion, sampleRemote, targetDelay, unpackInput, updateDelay,
 } from '../src/futbol/net.js';
 import { advanceBall, createGameState, stepPhysics } from '../src/futbol/physics.js';
+import { TICK_MS } from '../src/futbol/haxball.js';
 import { applyAction, newRoom } from '../src/futbol/game.js';
 
 const snap = (t, x, extra = {}) => ({ m: 1, k: 0, t, x, y: 100, vx: 200, vy: 0, ...extra });
@@ -36,14 +37,13 @@ test('red: la foto de un auto es compacta y sirve para reconstruirlo', () => {
   assert.equal(back.isFlipping, false);
 });
 
-test('red: la foto de un jugador a pie lleva la patada y la estámina solo si hacen falta', () => {
-  const s = packPlayer({ x: 1, y: 2, vx: 0, vy: 0, isKicking: true, stamina: 100 }, false, 1, 0, 5, {});
+test('red: la foto de un jugador a pie lleva la patada solo si la tiene lista', () => {
+  const s = packPlayer({ x: 1, y: 2, vx: 0, vy: 0, isKicking: true }, false, 1, 0, 5, {});
   assert.equal(s.ki, 1);
-  assert.equal(s.st, undefined, 'con la estámina llena no hace falta mandarla');
   assert.equal(s.in, undefined, 'sin teclas no hace falta mandarlas');
+  assert.equal(packPlayer({ x: 1, y: 2, vx: 0, vy: 0 }, false, 1, 0, 5, {}).ki, undefined);
   const back = {};
   applyPlayerSnapshot(back, s, false);
-  assert.equal(back.stamina, 100);
   assert.equal(back.isKicking, true);
 });
 
@@ -187,10 +187,10 @@ test('red: gana el reclamo de la pelota con más cambios de dueño; si empatan, 
 
 test('red: la pelota adivinada rebota en la pared en vez de atravesarla', () => {
   const state = createGameState([{ id: 'a', team: 'red', name: 'A' }, { id: 'b', team: 'blue', name: 'B' }], {});
-  const ball = { x: state.field.width - 40, y: 60, vx: 500, vy: 0 };
+  const ball = { x: 0, y: 150, vx: 0, vy: 500 };
   advanceBall(ball, state.field, 300);
-  assert.ok(ball.x < state.field.width, `quedó adentro (${ball.x})`);
-  assert.ok(ball.vx < 0, 'rebotó');
+  assert.ok(ball.y < state.field.bg.height, `quedó adentro (${ball.y})`);
+  assert.ok(ball.vy < 0, 'rebotó');
 });
 
 // ─── escrituras sin cola ─────────────────────────────────────────────────────
@@ -325,6 +325,15 @@ test('red: con fotos por conexión directa (una por cuadro) el retraso baja much
   assert.ok(d < 80, `mucho menos que por Firebase (${d} contra ${targetDelay(firebase)})`);
 });
 
+test('partido: con los tiempos de HaxBall se sigue jugando 2,5 s después del gol y el saque es enseguida', () => {
+  const start = initialMatch(1, 0, 0);
+  const goal = goalMatch(start, 'red', start.at + 5_000, false, 0, HAX_PAUSES);
+  assert.equal(matchPhase(goal, goal.gt + 2_400, false).phase, 'goal');
+  assert.equal(matchPhase(goal, goal.gt + 2_501, false).phase, 'playing');
+  const won = goalMatch(start, 'red', start.at + 5_000, false, 1, HAX_PAUSES);
+  assert.equal(won.end, won.gt + 2_500, 'el que gana, gana al terminar el festejo');
+});
+
 test('física: el paso fijo simula lo mismo con 60 que con 144 cuadros por segundo', () => {
   const run = (frameMs, totalSteps) => {
     let state = createGameState([{ id: 'a', name: 'A', team: 'red' }], {});
@@ -333,16 +342,16 @@ test('física: el paso fijo simula lo mismo con 60 que con 144 cuadros por segun
     const clock = { acc: 0 };
     let done = 0;
     while (done < totalSteps) {
-      const { steps } = fixedSteps(clock, frameMs);
+      const { steps } = fixedSteps(clock, frameMs, TICK_MS);
       for (let i = 0; i < steps && done < totalSteps; i++, done++) {
-        state = stepPhysics(state, { a: { right: true } }, PHYSICS_STEP_MS, { local: ['a'] }).nextState;
+        state = stepPhysics(state, { a: { right: true } }, TICK_MS, { local: ['a'] }).nextState;
       }
     }
     return state;
   };
   // Un segundo de juego: la cantidad de pasos no depende de los cuadros por segundo de la pantalla.
-  const slow = run(1000 / 60, 120);
-  const fast = run(1000 / 144, 120);
+  const slow = run(1000 / 60, 60);
+  const fast = run(1000 / 144, 60);
   assert.ok(Math.abs(slow.ball.x - fast.ball.x) < 1e-6 && Math.abs(slow.ball.y - fast.ball.y) < 1e-6, 'la pelota termina en el mismo lugar');
   assert.ok(Math.abs(slow.players.a.x - fast.players.a.x) < 1e-6, 'el jugador también');
 });

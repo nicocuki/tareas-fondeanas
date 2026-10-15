@@ -168,7 +168,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/codigo-secreto/game.js` | Reducer, reglas, validaciones, generación del tablero de Código Secreto |
 | `src/codigo-secreto/words.js` | 980 palabras únicas del pozo |
 | `src/cafeote/` | Componentes y lógica del juego Café o Té |
-| `src/futbol/` | Componentes, física y lógica del juego Fútbol 2D |
+| `src/futbol/` | Fútbol: el motor de HaxBall (`haxball.js`) y su dibujo (`haxRender.js`), la física de coches (`physics.js`), la red y las pantallas (ver *Fútbol: HaxBall*) |
 | `src/lobby/` | Componentes unificados y reutilizables para las salas de espera de todos los juegos |
 | `src/App.jsx` | Enrutador: qué juego se muestra, dentro del marco común |
 | `src/codigo-secreto/CodigoSecretoApp.jsx` | Pantallas de Código Secreto (entrada, sala de espera, partida) |
@@ -471,6 +471,35 @@ No es un juego nuestro: es la compilación web (Unity WebGL, Unity 6000.3.10f1) 
 - Los dibujos y sonidos son de Nintendo: entre amigos está bien, pero si llegara un pedido de bajarlo,
   se saca la entrada de `games.js` y la carpeta `public/mvl/`.
 
+## Fútbol: HaxBall
+
+El modo pelotas es **HaxBall tal cual**: pedido de Nico, «que se vea exactamente igual y funcione igual
+que haxball». El modo coches es nuestro y no cambió.
+
+- **`src/futbol/haxball.js` es el motor de HaxBall copiado del original**, sacado de
+  [node-haxball](https://github.com/wxyz-abcd/node-haxball) (reconstruye el código de haxball.com; el
+  motor está en `src/api.js`, minificado, y el dibujo en `examples/renderers/defaultRenderer.js`). Mismos
+  números (`PLAYER_PHYSICS`, `BALL_PHYSICS`), mismo orden de las cuentas (`stepWorld` = `World.LM`:
+  todos avanzan y se frenan, después choques disco–disco y contra planos, segmentos y vértices), mismos
+  grupos de choque (`CF`) y los estadios por defecto (`STADIUMS`, armados como `Stadium.WG`). **No
+  «mejores» nada de ahí**: si algo se juega distinto que en HaxBall, compará contra node-haxball.
+- **Unidades de HaxBall**: píxeles y pasos de 1/60 s (`TICK_MS`), origen en el medio de la cancha. En el
+  estado y en las fotos de la red las velocidades van en píxeles **por segundo** (×60), como antes;
+  `stepPhysics` las convierte. Con `dt = TICK_MS` el paso es exacto; otro `dt` (adivinar a un remoto) es
+  aproximado.
+- **La patada** (`isKicking`, borde blanco): se arma al apretar, se gasta al pegarle (alcance: 4 entre
+  bordes) y no vuelve hasta soltar. Mientras está armada se acelera 0,07 en vez de 0,1.
+- **El saque** (`state.kickoff = { team, pending }`): saca el equipo al que le hicieron el gol
+  (`kickoffTeam` en `FutbolGame.jsx`). Mientras la pelota no se movió, los jugadores llevan en su máscara
+  la barrera del que saca (`playerMask`): la línea del medio y medio círculo central.
+- **Después del gol se sigue jugando 2,5 s** y el saque es enseguida: `goalMatch(..., HAX_PAUSES)`
+  guarda `gp` (cuánto dura el festejo) en el partido. Durante el festejo `stepOnline` no declara goles.
+- En red, **la pelota atraviesa a los jugadores remotos** (`fixed` en `stepWorld`): cada uno la toca en
+  su pantalla y la reclama, como antes.
+- `haxRender.js` es el dibujo del renderer por defecto de HaxBall: cámara que sigue al medio entre la
+  pelota y vos, halo en tu jugador, número en cada uno, flechas hacia lo que no se ve, carteles con
+  `Animator` (curvas de Hermite). El pasto es una textura propia parecida, no la imagen de HaxBall.
+
 ## Fútbol: sincronización en tiempo real
 
 Todo en `src/futbol/net.js` (lógica pura, con tests en `tests/futbol-net.test.js`), `src/futbol/p2p.js`
@@ -492,8 +521,8 @@ dos caminos: la copia más vieja se descarta sola en `receiveSnapshot` (hora ant
 - El HUD muestra el estado bajo el reloj (`data-link`: `directo`, `mixto` o `servidor`).
 - Por el canal viajan `{ c: 'p' | 'b' | 'm' | 'u', d }`: jugador, pelota, partido (tras un gol) y turbo.
 
-**La física corre a paso fijo** (`PHYSICS_STEP_MS`, 1/120 s, con `fixedSteps`), online y en el 1v1
-local. Con el paso igual al largo del cuadro, una pantalla de 144 Hz y otra de 60 Hz resolvían distinto
+**La física corre a paso fijo** (`fixedSteps`): 1/60 s en pelotas (`TICK_MS`, el de HaxBall) y 1/120 s
+en coches (`PHYSICS_STEP_MS`), online y en el 1v1 local. Con el paso igual al largo del cuadro, una pantalla de 144 Hz y otra de 60 Hz resolvían distinto
 los choques y las patadas, y cada una veía otra pelota. Lo propio se dibuja interpolado entre los dos
 últimos pasos (`captureBodies` / `blendBodies`), así no hay tirones.
 
@@ -502,7 +531,7 @@ muchas veces por segundo y no pasan por el reducer ni por el tope de 30.000 cara
 
 | Rama | Quién escribe | Qué es |
 |---|---|---|
-| `players/{id}` | solo ese jugador | Su foto: posición, velocidad, ángulo/turbo/flip o patada/estámina, y sus teclas en bits |
+| `players/{id}` | solo ese jugador | Su foto: posición, velocidad, ángulo/turbo/flip o patada, y sus teclas en bits |
 | `ball` | quien la tocó último | Posición y velocidad, con dueño `o` y cambios de dueño `s` |
 | `match` | cualquiera, con transacción | Saque `k`, hora del servidor en que se juega `at`, reloj `c`, marcador `sr`/`sb` |
 | `pickups/{i}` | quien agarró el turbo | Hora a la que reaparece (modo coches) |

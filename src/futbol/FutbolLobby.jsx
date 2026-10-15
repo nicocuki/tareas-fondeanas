@@ -1,6 +1,7 @@
 import React from 'react';
 import { COLORS, TEAM_BUTTON } from '../theme.js';
 import { isHost, canStart, MAX_PER_TEAM } from './game.js';
+import { STADIUMS } from './haxball.js';
 import {
   LobbyLayout,
   LobbyOptions,
@@ -127,7 +128,7 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
       <LobbyOptions title="modificadores de la partida" canEdit={host}>
         <OptionField
           title="Modificador de juego"
-          hint="Pelotas: clásico con patada directa. Coches: vehículos 2D con inercia, derrape, marcha atrás y colisión física."
+          hint="Pelotas: HaxBall tal cual, con su física, sus estadios y sus saques. Coches: vehículos 2D con inercia, derrape, marcha atrás y colisión física."
         >
           <Segmented
             name="vehicleMode"
@@ -253,36 +254,15 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
         ) : (
           <>
             <OptionField
-              title="Tamaño de cancha"
-              hint="Dimensiones y arcos adaptados para la cantidad de jugadores."
+              title="Estadio"
+              hint="Los estadios que trae HaxBall: Classic para 1v1 a 3v3, Big y Huge para equipos más grandes."
             >
               <Segmented
-                name="mapType"
-                value={options.mapType || 'cancha3'}
+                name="stadium"
+                value={options.stadium || 'classic'}
                 disabled={!host}
-                onChange={(val) => onDispatch({ type: 'setOptions', options: { mapType: val } })}
-                choices={[
-                  { value: 'cancha3', label: 'Cancha 3 (Pequeña)' },
-                  { value: 'cancha5', label: 'Cancha 5 (Chica)' },
-                  { value: 'cancha9', label: 'Cancha 9 (Grande)' },
-                  { value: 'cancha11', label: 'Cancha 11 (Muy grande)' },
-                ]}
-              />
-            </OptionField>
-
-            <OptionField
-              title="Estámina (Shift para correr)"
-              hint="Con estámina, correr consume barra de energía y caminar va a velocidad normal."
-            >
-              <Segmented
-                name="stamina"
-                value={Boolean(options.stamina)}
-                disabled={!host}
-                onChange={(val) => onDispatch({ type: 'setOptions', options: { stamina: val } })}
-                choices={[
-                  { value: false, label: 'Desactivada' },
-                  { value: true, label: 'Activada' },
-                ]}
+                onChange={(val) => onDispatch({ type: 'setOptions', options: { stadium: val } })}
+                choices={STADIUMS.map((s) => ({ value: s.id, label: s.name }))}
               />
             </OptionField>
           </>

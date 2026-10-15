@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
 import { COLORS, panelStyle, ghostButton } from '../theme.js';
 import {
-  FIELD, PLAYER_CONFIG, CAR_CONFIG, BALL_CONFIG, CAR_BALL_CONFIG, advanceBall, createGameState, resetPositions, stepPhysics,
+  CAR_CONFIG, CAR_BALL_CONFIG, advanceBall, createGameState, resetPositions, stepPhysics,
 } from './physics.js';
+import { TEAMS, TICK_MS } from './haxball.js';
+import { createBanner, drawHaxScene, updateHaxCamera } from './haxRender.js';
 import {
-  BALL_SMOOTH_MS, CLAIM_COOLDOWN_MS, SERVER_BACKUP_MS, FIRST_COUNTDOWN_MS, HEARTBEAT_MS, P2P_SEND_INTERVAL_MS,
+  BALL_SMOOTH_MS, CLAIM_COOLDOWN_MS, SERVER_BACKUP_MS, FIRST_COUNTDOWN_MS, HAX_PAUSES, HEARTBEAT_MS, P2P_SEND_INTERVAL_MS,
   PHYSICS_STEP_MS, REMOTE_SMOOTH_MS, SEND_INTERVAL_MS,
   applyPlayerSnapshot, claimBeats, createRemote, fixedSteps, goalMatch, initialMatch, latestWriter, matchPhase,
   packBall, packPlayer, receiveSnapshot, sameMotion, sampleRemote, switchToDirect, unpackInput, updateDelay,
@@ -18,6 +20,8 @@ const TEAM_COLOR = {
   white: '#ffffff',
 };
 const TEAM_NAME = { red: 'ROJO', blue: 'AZUL', white: 'ENTRENAMIENTO' };
+// HaxBall escribe «Blue Scores!» con un azul más oscuro que el de los jugadores.
+const BLUE_TEXT = '#098BC3';
 const LINK_LABEL = { directo: '● conexión directa', mixto: '● conexión mixta', servidor: '● por el servidor' };
 const LINK_HINT = {
   directo: 'Las jugadas van directo de pantalla a pantalla.',
@@ -37,6 +41,9 @@ const GOAL_RUNOFF_MARGIN = 70;
 export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackToLobby, onLeave }) {
   const isCarMode = room.options?.vehicleMode === 'coches';
   const isLocalGame = Boolean(room?.isLocalGame);
+  // Las pelotas son HaxBall: pasos de 1/60 s y sus tiempos de gol. Los coches, nuestra física.
+  const stepMs = isCarMode ? PHYSICS_STEP_MS : TICK_MS;
+  const pauses = isCarMode ? undefined : HAX_PAUSES;
   const matchMinutes = Number(room.options?.matchMinutes ?? 0);
   const timed = matchMinutes > 0;
   const initialTimeMs = timed ? matchMinutes * 60 * 1000 : 0;
@@ -55,7 +62,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
   const myInputRef = useRef({});
   const p1InputRef = useRef({});
   const p2InputRef = useRef({});
-  const camRef = useRef({ x: FIELD.width / 2, y: FIELD.height / 2 });
+  const camRef = useRef({ x: 0, y: 0 });
   const zoomScaleRef = useRef(1.0);
   const zoomKeysRef = useRef({ zoomIn: false, zoomOut: false });
   const [rotateCamera, setRotateCamera] = useState(isCarMode);
@@ -63,12 +70,12 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
   const skidRef = useRef(new Map()); // id → marcas de goma que deja al derrapar
 
   // HUD: se actualiza solo cuando cambia lo que se ve, no en cada cuadro.
-  const [hud, setHud] = useState({ time: formatTime(initialTimeMs), red: room.score.red, blue: room.score.blue });
+  const [hud, setHud] = useState({ time: formatTime(initialTimeMs, !isCarMode), red: room.score.red, blue: room.score.blue });
   // Cómo llegan las fotos de los demás: 'directo' (WebRTC), 'mixto' o 'servidor'. Vacío si juego solo.
   const [link, setLink] = useState('');
   const [showMenu, setShowMenu] = useState(false);
 
-  const [canvasSize, setCanvasSize] = useState({ w: FIELD.width, h: FIELD.height });
+  const [canvasSize, setCanvasSize] = useState({ w: 1050, h: 680 });
   const canvasSizeRef = useRef(canvasSize);
   canvasSizeRef.current = canvasSize;
 
@@ -170,6 +177,8 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
   // La pelota la simula quien la tocó último; mientras la tiene otro, se interpola como a él.
   useEffect(() => {
     stateRef.current = createGameState(roomRef.current.players, roomRef.current.options);
+    // El cartel animado que se está mostrando (lo usan el partido local y el online).
+    const banners = { key: '', current: null };
 
     if (isLocalGame) {
       let localKickoff = -1;
@@ -187,13 +196,13 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
 
       function applyLocalKickoff(k) {
         localKickoff = k;
-        stateRef.current = resetPositions(stateRef.current, roomRef.current.players);
+        stateRef.current = resetPositions(stateRef.current, roomRef.current.players, kickoffTeam(localMatch));
       }
 
       function declareLocalGoal(team, k) {
         goalSentFor = k;
         const goalsToWin = Number(roomRef.current.options?.goalsToWin || 0);
-        const updated = goalMatch(localMatch, team, Date.now(), timed, goalsToWin);
+        const updated = goalMatch(localMatch, team, Date.now(), timed, goalsToWin, pauses);
         Object.assign(localMatch, updated);
         callbacksRef.current.onGoal(team, k);
       }
@@ -231,9 +240,10 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
         }
 
         let state = stateRef.current;
-        const { steps, alpha } = fixedSteps(clock, dt);
+        const { steps, alpha } = fixedSteps(clock, dt, stepMs);
 
-        if (view.phase === 'playing') {
+        // En HaxBall, después del gol se sigue jugando hasta el saque.
+        if (view.phase === 'playing' || (!isCarMode && view.phase === 'goal')) {
           const inputs = {
             [p1Id]: p1InputRef.current,
           };
@@ -242,9 +252,9 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
           }
           for (let i = 0; i < steps; i++) {
             if (i === steps - 1) prev = captureBodies(state, localSet, true);
-            const result = stepPhysics(state, inputs, PHYSICS_STEP_MS, { local: localSet });
+            const result = stepPhysics(state, inputs, stepMs, { local: localSet });
             state = result.nextState;
-            if (result.goal && goalSentFor !== localMatch.k) {
+            if (result.goal && view.phase === 'playing' && goalSentFor !== localMatch.k) {
               // Stop the remaining physics steps so the same goal cannot be detected twice.
               declareLocalGoal(result.goal, localMatch.k);
               break;
@@ -261,13 +271,13 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
           callbacksRef.current.onTimeEnd();
         }
 
-        updateHud(formatTime(view.clock), localMatch.sr, localMatch.sb);
+        updateHud(formatTime(view.clock, !isCarMode), localMatch.sr, localMatch.sb);
 
         if (zoomKeysRef.current.zoomOut) zoomScaleRef.current = Math.max(0.4, zoomScaleRef.current - 0.02 * (dt / 16));
         if (zoomKeysRef.current.zoomIn) zoomScaleRef.current = Math.min(2.5, zoomScaleRef.current + 0.02 * (dt / 16));
 
         updateCamera(shown, dt);
-        renderScene(canvas.getContext('2d'), shown, shown.ball, overlayText(view, localMatch, ts - mountedAt));
+        renderScene(canvas.getContext('2d'), shown, shown.ball, view, localMatch, ts - mountedAt, dt);
       }
 
       raf = requestAnimationFrame(frame);
@@ -352,7 +362,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
     const handlers = {
       onPlayer(id, snap, direct = false) {
         if (id === meId || !snap || snap.m !== matchNumber) return;
-        if (net.match && snap.k < net.match.k) return; // foto de antes del último gol
+        if (snap.k < net.kickoff) return; // foto de antes del último saque
         let remote = net.remotes.get(id);
         if (!remote) {
           remote = createRemote();
@@ -407,7 +417,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
     // Saque nuevo (arranque o después de un gol): todos a su lugar y la pelota al medio.
     function applyKickoff(k) {
       net.kickoff = k;
-      stateRef.current = resetPositions(stateRef.current, roomRef.current.players);
+      stateRef.current = resetPositions(stateRef.current, roomRef.current.players, kickoffTeam(net.match));
       for (const remote of net.remotes.values()) {
         remote.snaps.length = 0;
         remote.guess = null;
@@ -469,7 +479,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       channel.updateMatch((current) => {
         if (current === null) return null;
         if (current.m !== matchNumber || current.k !== k) return undefined;
-        return goalMatch(current, team, serverNow(), timed, goalsToWin);
+        return goalMatch(current, team, serverNow(), timed, goalsToWin, pauses);
       }).then(({ committed, match }) => {
         if (!committed) return;
         // Los demás se enteran del gol por el canal directo, sin esperar a que el servidor se lo avise.
@@ -515,11 +525,12 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
 
     // Un paso fijo de física. Mi jugador se mueve con mis teclas; la pelota, solo si es mía o si la
     // acabo de tocar (entonces pasa a ser mía).
-    function stepOnline(state, now, ts, match, allDirect) {
+    // `canScore`: durante el festejo de un gol la pelota se sigue moviendo, pero no hay otro gol.
+    function stepOnline(state, now, ts, match, allDirect, canScore) {
       const ballIsMine = meId !== null && net.ball.o === meId;
       const seen = ballIsMine ? null : { ...state.ball };
       const inputs = meId ? { [meId]: myInputRef.current } : {};
-      const result = stepPhysics(state, inputs, PHYSICS_STEP_MS, { local: localSet });
+      const result = stepPhysics(state, inputs, stepMs, { local: localSet });
       const next = result.nextState;
       stateRef.current = next;
 
@@ -544,7 +555,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
         channel.publishPickup(index, taken).catch(() => {});
       }
 
-      if (result.goal && net.ball.o === meId && net.goalSentFor !== match.k) {
+      if (canScore && result.goal && net.ball.o === meId && net.goalSentFor !== match.k) {
         net.goalSentFor = match.k;
         declareGoal(result.goal, match.k);
       }
@@ -595,13 +606,14 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
         }
       }
 
-      // 3. Mi jugador: física local con mis teclas, a paso fijo (120 por segundo), en este mismo cuadro.
-      const { steps, alpha } = fixedSteps(net.clock, dt);
-      if (view.phase === 'playing') {
+      // 3. Mi jugador: física local con mis teclas, a paso fijo, en este mismo cuadro. En HaxBall,
+      //    después del gol se sigue jugando hasta el saque.
+      const { steps, alpha } = fixedSteps(net.clock, dt, stepMs);
+      if (view.phase === 'playing' || (!isCarMode && view.phase === 'goal')) {
         for (let i = 0; i < steps; i++) {
           if (i === steps - 1) net.prev = captureBodies(state, localSet, net.ball.o === meId);
           const goalBefore = net.goalSentFor;
-          state = stepOnline(state, now, ts, match, allDirect);
+          state = stepOnline(state, now, ts, match, allDirect, view.phase === 'playing');
           // stepOnline marca goalSentFor inmediatamente al declarar un gol.
           // No ejecutar mas pasos de este mismo frame con la pelota dentro del arco.
           if (net.goalSentFor !== goalBefore) break;
@@ -619,7 +631,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       }
 
       const score = match ? { red: match.sr, blue: match.sb } : roomRef.current.score;
-      updateHud(formatTime(view.clock), score.red, score.blue);
+      updateHud(formatTime(view.clock, !isCarMode), score.red, score.blue);
 
       if (zoomKeysRef.current.zoomOut) zoomScaleRef.current = Math.max(0.4, zoomScaleRef.current - 0.02 * (dt / 16));
       if (zoomKeysRef.current.zoomIn) zoomScaleRef.current = Math.min(2.5, zoomScaleRef.current + 0.02 * (dt / 16));
@@ -627,7 +639,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       // Entre dos pasos de física se dibuja lo propio a mitad de camino: con 144 Hz no hay tirones.
       const shown = blendBodies(state, net.prev, alpha);
       updateCamera(shown, dt);
-      renderScene(canvas.getContext('2d'), shown, smoothBall(shown.ball, dt), overlayText(view, match, ts - net.mountedAt));
+      renderScene(canvas.getContext('2d'), shown, smoothBall(shown.ball, dt), view, match, ts - net.mountedAt, dt);
     }
 
     // Sigue a un remoto más allá de su última foto con la física y las teclas que tenía apretadas.
@@ -704,6 +716,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
     }
 
     function updateCamera(state, dt) {
+      if (!isCarMode) return; // la de HaxBall se mueve en renderHax, que sabe cuánto se ve
       // En modo entrenamiento enfocar al jugador; en partida local 1v1 enfocar la pelota; en online a me / primer jugador
       const isTraining = Boolean(roomRef.current?.isTrainingMode);
       const target = isTraining
@@ -726,12 +739,67 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       }
     }
 
-    function renderScene(ctx, state, ball, overlayMessage) {
+    // Carteles de HaxBall: «¡Gol del Rojo!» al hacer un gol y quién ganó al terminar.
+    function haxBanner(view, match) {
+      const training = Boolean(roomRef.current?.isTrainingMode);
+      let key = '';
+      let lines = null;
+      let color = '#FFFFFF';
+      if (view.phase === 'goal' && match) {
+        key = `g${match.k}`;
+        lines = training ? ['¡Gol!'] : ['¡Gol del', match.g === 'blue' ? 'Azul!' : 'Rojo!'];
+        color = match.g === 'blue' ? BLUE_TEXT : TEAMS.red.color;
+      } else if (view.phase === 'ended' && match) {
+        key = 'fin';
+        if (training || match.sr === match.sb) {
+          lines = ['¡Fin del', 'partido!'];
+        } else {
+          const blueWon = match.sb > match.sr;
+          lines = ['¡Ganó el', blueWon ? 'Azul!' : 'Rojo!'];
+          color = blueWon ? BLUE_TEXT : TEAMS.red.color;
+        }
+      }
+      const now = performance.now();
+      if (key && key !== banners.key) {
+        banners.key = key;
+        banners.current = createBanner(lines, color, now);
+      }
+      if (banners.current?.done(now)) banners.current = null;
+      return banners.current;
+    }
+
+    function renderHax(ctx, state, ball, view, match, sinceMount, dt) {
+      const size = canvasSizeRef.current;
+      const zoom = zoomScaleRef.current;
+      const players = Object.values(state.players);
+      const follow = roomRef.current?.isTrainingMode ? players[0] : isLocalGame ? null : state.players[meId];
+      updateHaxCamera(camRef.current, state.field, ball, follow, size.w / zoom, size.h / zoom, dt);
+      const text = overlayText(view, match, sinceMount);
+      drawHaxScene(ctx, {
+        st: state.field,
+        players,
+        ball,
+        meId: isLocalGame ? null : meId,
+        cam: camRef.current,
+        zoom,
+        width: size.w,
+        height: size.h,
+        banner: haxBanner(view, match),
+        still: text && view.phase !== 'goal' && view.phase !== 'ended' ? { lines: [text], color: '#FFFFFF' } : null,
+      });
+    }
+
+    function renderScene(ctx, state, ball, view, match, sinceMount, dt) {
+      if (!isCarMode) {
+        renderHax(ctx, state, ball, view, match, sinceMount, dt);
+        return;
+      }
+      const overlayMessage = overlayText(view, match, sinceMount);
       const size = canvasSizeRef.current;
       ctx.clearRect(0, 0, size.w, size.h);
 
-      const field = state.field || FIELD;
-      const isRotatingCam = isCarMode && rotateCameraRef.current;
+      const field = state.field;
+      const isRotatingCam = rotateCameraRef.current;
       const myCar = (meId && state.players[meId]) || Object.values(state.players)[0];
 
       // Calcular zoom de la cámara teniendo en cuenta la orientación y modo de cámara
@@ -784,19 +852,13 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
 
       // Dibujar mundo
       drawField(ctx, field);
-      if (isCarMode && state.boostPickups) {
+      if (state.boostPickups) {
         drawBoostPickups(ctx, state.boostPickups);
       }
       drawGoals(ctx, field);
-      if (isCarMode) drawSkidMarks(ctx, state.players, skidRef.current, performance.now());
-      drawBall(ctx, ball, isCarMode);
-      Object.values(state.players).forEach((p) => {
-        if (isCarMode) {
-          drawCar(ctx, p);
-        } else {
-          drawPlayer(ctx, p, state.options?.stamina);
-        }
-      });
+      drawSkidMarks(ctx, state.players, skidRef.current, performance.now());
+      drawBall(ctx, ball);
+      Object.values(state.players).forEach((p) => drawCar(ctx, p));
 
       ctx.restore();
 
@@ -804,7 +866,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       drawOffscreenBallIndicator(ctx, ball, myCar, size, zoom, screenCenterX, screenCenterY, cx, cy, isRotatingCam);
 
       // HUD de Coches (Rocket League Boost Meter & Flip Status)
-      if (isCarMode && myCar) {
+      if (myCar) {
         drawCarHUD(ctx, myCar, size);
       }
 
@@ -835,12 +897,54 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       if (meId) channel.removePlayer(meId).catch(() => {});
       if (import.meta.env.DEV && window.__futbol?.net === net) delete window.__futbol;
     };
-  }, [code, meId, matchNumber, isCarMode, timed, initialTimeMs]);
+  }, [code, meId, matchNumber, isCarMode, timed, initialTimeMs, stepMs, pauses]);
 
   return (
     <div style={{ background: '#121212', minHeight: 'var(--page-h)', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
-      {/* HUD: ROJO  0 - 0  AZUL y tiempo visible */}
-      <div style={{
+      {/* HUD de HaxBall: cuadradito rojo, marcador, cuadradito azul y el reloj */}
+      {!isCarMode && (
+        <div style={{
+          width: canvasSize.w,
+          height: 40,
+          padding: '0 14px',
+          boxSizing: 'border-box',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: '#1A2125',
+          color: '#FFFFFF',
+          fontFamily: "'Arial Black', 'Arial Bold', Gadget, sans-serif",
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 20 }}>
+            <span style={{ width: 18, height: 18, background: TEAMS.red.color, borderRadius: 3 }} />
+            <span data-score>{room?.isTrainingMode ? hud.red + hud.blue : `${hud.red} - ${hud.blue}`}</span>
+            {!room?.isTrainingMode && <span style={{ width: 18, height: 18, background: TEAMS.blue.color, borderRadius: 3 }} />}
+            <span style={{ marginLeft: 18 }} data-clock>{hud.time}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'monospace' }}>
+            {link && (
+              <span
+                data-link={link}
+                title={LINK_HINT[link]}
+                style={{ color: link === 'directo' ? '#6fcf7f' : '#e0a050', fontSize: 11 }}
+              >
+                {LINK_LABEL[link]}
+              </span>
+            )}
+            <button
+              type="button"
+              className="cs-btn"
+              onClick={() => setShowMenu((prev) => !prev)}
+              style={{ ...ghostButton, padding: '4px 10px', fontSize: 12, fontFamily: 'monospace', cursor: 'pointer' }}
+            >
+              ⚙️ Menú (ESC)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* HUD de coches: ROJO  0 - 0  AZUL y tiempo visible */}
+      {isCarMode && <div style={{
         width: canvasSize.w,
         padding: '10px 20px',
         display: 'flex',
@@ -887,29 +991,27 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
               <div style={{ width: 14, height: 14, borderRadius: '50%', background: TEAM_COLOR.blue, boxShadow: `0 0 8px ${TEAM_COLOR.blue}` }} />
             </div>
           )}
-          {isCarMode && (
-            <button
-              type="button"
-              className="cs-btn"
-              onClick={() => setRotateCamera((prev) => {
-                const next = !prev;
-                rotateCameraRef.current = next;
-                return next;
-              })}
-              title="Presiona 'C' para alternar la cámara en cualquier momento"
-              style={{
-                ...ghostButton,
-                padding: '5px 10px',
-                fontSize: 12,
-                fontFamily: 'monospace',
-                cursor: 'pointer',
-                borderColor: rotateCamera ? '#ffd700' : '#444',
-                color: rotateCamera ? '#ffd700' : '#888',
-              }}
-            >
-              🎥 {rotateCamera ? 'Cám. Auto (C)' : 'Cám. Fija (C)'}
-            </button>
-          )}
+          <button
+            type="button"
+            className="cs-btn"
+            onClick={() => setRotateCamera((prev) => {
+              const next = !prev;
+              rotateCameraRef.current = next;
+              return next;
+            })}
+            title="Presiona 'C' para alternar la cámara en cualquier momento"
+            style={{
+              ...ghostButton,
+              padding: '5px 10px',
+              fontSize: 12,
+              fontFamily: 'monospace',
+              cursor: 'pointer',
+              borderColor: rotateCamera ? '#ffd700' : '#444',
+              color: rotateCamera ? '#ffd700' : '#888',
+            }}
+          >
+            🎥 {rotateCamera ? 'Cám. Auto (C)' : 'Cám. Fija (C)'}
+          </button>
           <button
             type="button"
             className="cs-btn"
@@ -925,26 +1027,26 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
             ⚙️ Menú (ESC)
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* Canvas */}
       <canvas
         ref={canvasRef}
         width={canvasSize.w}
         height={canvasSize.h}
-        style={{ display: 'block', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.6)', marginTop: 4 }}
+        style={isCarMode
+          ? { display: 'block', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.6)', marginTop: 4 }
+          : { display: 'block' }}
       />
 
       {/* Indicador de controles */}
       <div style={{ color: '#888', fontSize: 13, fontFamily: 'monospace', marginTop: 10, textAlign: 'center' }}>
         {isLocalGame ? (
           <>
-            <span style={{ color: '#e05050', fontWeight: 700 }}>🔴 J1 (Rojo):</span> WASD (mover) · <b>ESPACIO</b> (patada)
-            {room.options.stamina && <> · <b>SHIFT Izq</b> (correr)</>}
+            <span style={{ color: '#e05050', fontWeight: 700 }}>🔴 J1 (Rojo):</span> WASD (mover) · <b>{isCarMode ? 'ESPACIO' : 'ESPACIO / X'}</b> (patada)
             {isCarMode && <> · <b>CTRL Izq</b> (derrape)</>}
             &nbsp;&nbsp;|&nbsp;&nbsp;
             <span style={{ color: '#4a90d9', fontWeight: 700 }}>🔵 J2 (Azul):</span> Flechas (mover) · <b>ENTER</b> (patada)
-            {room.options.stamina && <> · <b>SHIFT Der</b> (correr)</>}
             {isCarMode && <> · <b>CTRL Der</b> (derrape)</>}
             &nbsp;&nbsp;|&nbsp;&nbsp;
             <b>ESC</b> menú
@@ -963,9 +1065,8 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
           </>
         ) : (
           <>
-            Controles: <b>WASD</b> moverte &nbsp;·&nbsp;
-            {room.options.stamina && <><b>Shift</b> correr &nbsp;·&nbsp;</>}
-            <b>Espacio</b> patear &nbsp;·&nbsp;
+            Controles: <b>WASD</b> o <b>flechas</b> moverte &nbsp;·&nbsp;
+            <b>Espacio</b> o <b>X</b> patear &nbsp;·&nbsp;
             <b>Ruedita / Q / E</b> zoom &nbsp;·&nbsp;
             <b>ESC</b> menú
           </>
@@ -1193,8 +1294,7 @@ function handleLocalKeyDown(e, isCarMode, p1Input, p2Input) {
     if (k === 's' || code === 'KeyS') p1Input.down = true;
     if (k === 'a' || code === 'KeyA') p1Input.left = true;
     if (k === 'd' || code === 'KeyD') p1Input.right = true;
-    if (code === 'Space' || k === ' ') p1Input.kick = true;
-    if (code === 'ShiftLeft') p1Input.shift = true;
+    if (code === 'Space' || k === ' ' || k === 'x') p1Input.kick = true;
   }
 
   // Jugador 2: Arrow keys, Enter, ShiftRight
@@ -1212,7 +1312,6 @@ function handleLocalKeyDown(e, isCarMode, p1Input, p2Input) {
     if (code === 'ArrowLeft' || k === 'ArrowLeft') p2Input.left = true;
     if (code === 'ArrowRight' || k === 'ArrowRight') p2Input.right = true;
     if (code === 'Enter' || k === 'Enter') p2Input.kick = true;
-    if (code === 'ShiftRight') p2Input.shift = true;
   }
 }
 
@@ -1235,8 +1334,7 @@ function handleLocalKeyUp(e, isCarMode, p1Input, p2Input) {
     if (k === 's' || code === 'KeyS') p1Input.down = false;
     if (k === 'a' || code === 'KeyA') p1Input.left = false;
     if (k === 'd' || code === 'KeyD') p1Input.right = false;
-    if (code === 'Space' || k === ' ') p1Input.kick = false;
-    if (code === 'ShiftLeft') p1Input.shift = false;
+    if (code === 'Space' || k === ' ' || k === 'x') p1Input.kick = false;
   }
 
   // Jugador 2
@@ -1254,7 +1352,6 @@ function handleLocalKeyUp(e, isCarMode, p1Input, p2Input) {
     if (code === 'ArrowLeft' || k === 'ArrowLeft') p2Input.left = false;
     if (code === 'ArrowRight' || k === 'ArrowRight') p2Input.right = false;
     if (code === 'Enter' || k === 'Enter') p2Input.kick = false;
-    if (code === 'ShiftRight') p2Input.shift = false;
   }
 }
 
@@ -1275,7 +1372,6 @@ function inputField(key, isCarMode) {
   if (k === 's' || k === 'ArrowDown') return 'down';
   if (k === 'a' || k === 'ArrowLeft') return 'left';
   if (k === 'd' || k === 'ArrowRight') return 'right';
-  if (k === 'Shift') return 'shift';
   return null;
 }
 
@@ -1285,20 +1381,26 @@ function countdownText(ms) {
   return String(sec);
 }
 
-function formatTime(ms) {
+// `hax`: como el reloj de HaxBall, con dos cifras en los minutos (00:41).
+function formatTime(ms, hax = false) {
   const total = Math.max(0, Math.ceil(ms / 1000));
   const m = Math.floor(total / 60);
   const s = total % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  return `${hax ? String(m).padStart(2, '0') : m}:${String(s).padStart(2, '0')}`;
+}
+
+// Saca el equipo al que le hicieron el último gol; al empezar, el rojo (como en HaxBall).
+function kickoffTeam(match) {
+  return match?.g === 'red' ? 'blue' : 'red';
 }
 
 // ─── Funciones de dibujo ───────────────────────────────────────────────────
 // ─── Funciones de dibujo ───────────────────────────────────────────────────
-function goalRunoffMargin(field = FIELD) {
+function goalRunoffMargin(field) {
   return Number(field.goalMargin ?? field.sideMargin ?? GOAL_RUNOFF_MARGIN);
 }
 
-function drawField(ctx, field = FIELD) {
+function drawField(ctx, field) {
   const w = field.width;
   const h = field.height;
   const sm = field.sideMargin || 0;
@@ -1367,71 +1469,10 @@ function drawField(ctx, field = FIELD) {
     ctx.strokeRect(cx - areaW / 2, wt, areaW, areaH);
     // Área inferior (defiende Rojo)
     ctx.strokeRect(cx - areaW / 2, h - wt - areaH, areaW, areaH);
-    return;
   }
-
-  // Área exterior completa del jugador, incluyendo las cuatro esquinas.
-  if (sm > 0 || gm > 0) {
-    ctx.fillStyle = '#1a3a1f';
-    ctx.fillRect(-gm, -sm, w + gm * 2, h + sm * 2);
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
-    ctx.lineWidth = 3;
-    ctx.setLineDash([]);
-    ctx.strokeRect(-gm, -sm, w + gm * 2, h + sm * 2);
-  }
-
-  // Fondo de césped con rayas verticales
-  ctx.fillStyle = GRASS_COLOR;
-  ctx.fillRect(0, 0, w, h);
-
-  const stripeW = 70;
-  ctx.fillStyle = GRASS_STRIPE;
-  for (let x = 0; x < w; x += stripeW * 2) {
-    ctx.fillRect(x, 0, stripeW, h);
-  }
-
-  const wt = field.wallThickness;
-
-  // Paredes exteriores
-  ctx.fillStyle = '#224a2b';
-  ctx.fillRect(0, 0, w, wt);               // arriba
-  ctx.fillRect(0, h - wt, w, wt);           // abajo
-  ctx.fillRect(0, wt, wt, h - wt * 2);      // izquierda
-  ctx.fillRect(w - wt, wt, wt, h - wt * 2); // derecha
-
-  // Líneas del campo
-  ctx.strokeStyle = LINE_COLOR;
-  ctx.lineWidth = LINE_WIDTH;
-  ctx.strokeRect(wt, wt, w - wt * 2, h - wt * 2);
-
-  // Línea del medio
-  const cx = w / 2;
-  const cy = h / 2;
-  ctx.beginPath();
-  ctx.moveTo(cx, wt);
-  ctx.lineTo(cx, h - wt);
-  ctx.stroke();
-
-  // Círculo central
-  ctx.beginPath();
-  ctx.arc(cx, cy, 80, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Punto central
-  ctx.fillStyle = LINE_COLOR;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Áreas de gol
-  const areaW = 120;
-  const areaH = field.goalHeight + 80;
-  ctx.strokeRect(wt, cy - areaH / 2, areaW, areaH);
-  ctx.strokeRect(w - wt - areaW, cy - areaH / 2, areaW, areaH);
 }
 
-function drawGoals(ctx, field = FIELD) {
+function drawGoals(ctx, field) {
   const w = field.width;
   const h = field.height;
   const wt = field.wallThickness;
@@ -1484,173 +1525,59 @@ function drawGoals(ctx, field = FIELD) {
     ctx.beginPath();
     ctx.arc(cx + goalHalf, h - wt, 5, 0, Math.PI * 2);
     ctx.fill();
-    return;
-  }
-
-  const goalHalf = field.goalHeight / 2;
-  const goalDepth = field.goalDepth || 28;
-
-  // Arco izquierdo (el equipo ROJO defiende este arco)
-  ctx.fillStyle = 'rgba(224, 80, 80, 0.18)';
-  ctx.fillRect(0, cy - goalHalf, wt + goalDepth, field.goalHeight);
-  ctx.strokeStyle = TEAM_COLOR.red;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(wt, cy - goalHalf);
-  ctx.lineTo(wt - goalDepth, cy - goalHalf);
-  ctx.lineTo(wt - goalDepth, cy + goalHalf);
-  ctx.lineTo(wt, cy + goalHalf);
-  ctx.stroke();
-
-  // Postes del arco izquierdo
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(wt, cy - goalHalf, 5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(wt, cy + goalHalf, 5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Arco derecho (el equipo AZUL defiende este arco)
-  ctx.fillStyle = 'rgba(74, 144, 217, 0.18)';
-  ctx.fillRect(w - wt - goalDepth, cy - goalHalf, wt + goalDepth, field.goalHeight);
-  ctx.strokeStyle = TEAM_COLOR.blue;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(w - wt, cy - goalHalf);
-  ctx.lineTo(w - wt + goalDepth, cy - goalHalf);
-  ctx.lineTo(w - wt + goalDepth, cy + goalHalf);
-  ctx.lineTo(w - wt, cy + goalHalf);
-  ctx.stroke();
-
-  // Postes del arco derecho
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(w - wt, cy - goalHalf, 5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(w - wt, cy + goalHalf, 5, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawPlayer(ctx, player, showStaminaBar = false) {
-  const color = TEAM_COLOR[player.team] || '#888';
-  const r = PLAYER_CONFIG.radius;
-
-  // Sombra
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath();
-  ctx.ellipse(player.x + 2, player.y + 4, r, r * 0.6, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Efecto kick (anillo blanco alrededor del jugador cuando el kick está activo)
-  if (player.isKicking) {
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, r + 4, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  // Cuerpo del jugador
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(player.x, player.y, r, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Borde
-  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Inicial del nombre
-  const initial = (player.name || '?')[0].toUpperCase();
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${r}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(initial, player.x, player.y);
-
-  // Barra de estámina
-  if (showStaminaBar) {
-    const st = player.stamina ?? 100;
-    const barW = 28;
-    const barH = 4;
-    const bx = player.x - barW / 2;
-    const by = player.y + r + 6;
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
-
-    ctx.fillStyle = st > 50 ? '#4cd964' : st > 20 ? '#ffcc00' : '#ff3b30';
-    ctx.fillRect(bx, by, (barW * Math.max(0, Math.min(100, st))) / 100, barH);
   }
 }
 
-function drawBall(ctx, ball, isCarMode = false) {
-  const r = isCarMode ? (CAR_BALL_CONFIG?.radius || 14.5) : BALL_CONFIG.radius;
+function drawBall(ctx, ball) {
+  const r = CAR_BALL_CONFIG.radius;
 
   // Sombra más profunda para pelota pesada
-  ctx.fillStyle = isCarMode ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.35)';
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.beginPath();
   ctx.ellipse(ball.x + 2, ball.y + 3, r, r * 0.6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  if (isCarMode) {
-    // Pelota pesada modo Coches: textura técnica / balón estilizado de fútbol
-    ctx.fillStyle = '#f5f5f5';
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, r, 0, Math.PI * 2);
-    ctx.fill();
+  // Pelota pesada modo Coches: textura técnica / balón estilizado de fútbol
+  ctx.fillStyle = '#f5f5f5';
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, r, 0, Math.PI * 2);
+  ctx.fill();
 
-    // Pentágono central
-    ctx.fillStyle = '#23252a';
-    ctx.beginPath();
-    const hexR = r * 0.42;
-    for (let i = 0; i < 5; i++) {
-      const a = (i * Math.PI * 2) / 5 - Math.PI / 2;
-      const hx = ball.x + Math.cos(a) * hexR;
-      const hy = ball.y + Math.sin(a) * hexR;
-      if (i === 0) ctx.moveTo(hx, hy);
-      else ctx.lineTo(hx, hy);
-    }
-    ctx.closePath();
-    ctx.fill();
+  // Pentágono central
+  ctx.fillStyle = '#23252a';
+  ctx.beginPath();
+  const hexR = r * 0.42;
+  for (let i = 0; i < 5; i++) {
+    const a = (i * Math.PI * 2) / 5 - Math.PI / 2;
+    const hx = ball.x + Math.cos(a) * hexR;
+    const hy = ball.y + Math.sin(a) * hexR;
+    if (i === 0) ctx.moveTo(hx, hy);
+    else ctx.lineTo(hx, hy);
+  }
+  ctx.closePath();
+  ctx.fill();
 
-    // Costuras exteriores
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1.2;
-    for (let i = 0; i < 5; i++) {
-      const a = (i * Math.PI * 2) / 5 - Math.PI / 2;
-      const hx = ball.x + Math.cos(a) * hexR;
-      const hy = ball.y + Math.sin(a) * hexR;
-      const ox = ball.x + Math.cos(a) * r;
-      const oy = ball.y + Math.sin(a) * r;
-      ctx.beginPath();
-      ctx.moveTo(hx, hy);
-      ctx.lineTo(ox, oy);
-      ctx.stroke();
-    }
-
-    // Borde exterior metálico
-    ctx.strokeStyle = '#1a1a1a';
-    ctx.lineWidth = 1.6;
+  // Costuras exteriores
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i < 5; i++) {
+    const a = (i * Math.PI * 2) / 5 - Math.PI / 2;
+    const hx = ball.x + Math.cos(a) * hexR;
+    const hy = ball.y + Math.sin(a) * hexR;
+    const ox = ball.x + Math.cos(a) * r;
+    const oy = ball.y + Math.sin(a) * r;
     ctx.beginPath();
-    ctx.arc(ball.x, ball.y, r, 0, Math.PI * 2);
-    ctx.stroke();
-  } else {
-    // Pelota normal limpia
-    ctx.fillStyle = '#f0f0f0';
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, r, 0, Math.PI * 2);
+    ctx.moveTo(hx, hy);
+    ctx.lineTo(ox, oy);
     ctx.stroke();
   }
+
+  // Borde exterior metálico
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, r, 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 function drawBoostPickups(ctx, pickups) {

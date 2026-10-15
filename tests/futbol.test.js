@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { newRoom, applyAction, canStart, isHost } from '../src/futbol/game.js';
-import { createGameState, stepPhysics, FIELD, GOAL } from '../src/futbol/physics.js';
+import { createGameState, stepPhysics } from '../src/futbol/physics.js';
+import { TICK_MS } from '../src/futbol/haxball.js';
 
 test('Fútbol: creación de sala y defaults', () => {
   const room = newRoom('h1', 'Messi');
@@ -45,140 +46,154 @@ test('Fútbol: iniciar partido y registrar goles', () => {
   assert.equal(room.winner, 'red');
 });
 
-test('Fútbol Física: colisión y movimiento básico', () => {
-  const players = [
-    { id: 'p1', name: 'Messi', team: 'red' },
-    { id: 'p2', name: 'Ronaldo', team: 'blue' },
-  ];
-  const state = createGameState(players);
-  assert.ok(state.ball);
-  assert.equal(state.ball.x, FIELD.width / 2);
-  assert.equal(state.ball.y, FIELD.height / 2);
+// ─── Pelotas: la física de HaxBall ───────────────────────────────────────────
+// Los números salen del motor de HaxBall: 60 pasos por segundo, velocidades por paso. En el estado
+// van en píxeles por segundo, así que se multiplican por 60.
 
-  // Dar input a Messi hacia la derecha
-  const inputs = {
-    p1: { right: true },
+const tick = (state, inputs = {}) => stepPhysics(state, inputs, TICK_MS);
+const run = (state, inputs, ticks) => {
+  for (let i = 0; i < ticks; i++) state = tick(state, inputs).nextState;
+  return state;
+};
+const near = (actual, expected, msg) => assert.ok(Math.abs(actual - expected) < 1e-6, `${msg}: ${actual} en vez de ${expected}`);
+
+test('HaxBall: pelota al medio y cada equipo en su lado, en fila (0, 55, −55…)', () => {
+  const state = createGameState([
+    { id: 'r1', name: 'A', team: 'red' },
+    { id: 'r2', name: 'B', team: 'red' },
+    { id: 'r3', name: 'C', team: 'red' },
+    { id: 'b1', name: 'D', team: 'blue' },
+  ]);
+  assert.deepEqual(state.ball, { x: 0, y: 0, vx: 0, vy: 0 });
+  assert.deepEqual([state.players.r1.x, state.players.r1.y], [-277.5, -0]);
+  assert.deepEqual([state.players.r2.x, state.players.r2.y], [-277.5, 55]);
+  assert.deepEqual([state.players.r3.x, state.players.r3.y], [-277.5, -55]);
+  assert.deepEqual([state.players.b1.x, state.players.b1.y], [277.5, -0]);
+  assert.deepEqual([state.players.r1.number, state.players.r3.number, state.players.b1.number], [1, 3, 1]);
+  assert.deepEqual(state.kickoff, { team: 'red', pending: true });
+});
+
+test('HaxBall: un paso desde quieto acelera 0,1, avanza y se frena ×0,96', () => {
+  const state = createGameState([{ id: 'p', name: 'P', team: 'red' }]);
+  const next = tick(state, { p: { right: true } }).nextState.players.p;
+  near(next.x, -277.5 + 0.1, 'avanza lo que acelera');
+  near(next.vx, 0.1 * 0.96 * 60, 'velocidad frenada');
+});
+
+test('HaxBall: velocidad máxima 2,4 por paso (v = 2,4 · (1 − 0,96ⁿ)); en diagonal, la misma', () => {
+  const start = () => {
+    const s = createGameState([{ id: 'p', name: 'P', team: 'red' }]);
+    s.kickoff.pending = false;
+    s.players.p.x = -300;
+    s.players.p.y = 0;
+    return s;
   };
-  const { nextState } = stepPhysics(state, inputs, 50);
-  assert.ok(nextState.players.p1.vx > 0);
-  assert.ok(nextState.players.p1.x > state.players.p1.x);
+  const speed = (s) => Math.hypot(s.players.p.vx, s.players.p.vy) / 60;
+  near(speed(run(start(), { p: { right: true } }, 120)), 2.4 * (1 - 0.96 ** 120), 'derecho');
+  near(speed(run(start(), { p: { right: true, up: true } }, 60)), 2.4 * (1 - 0.96 ** 60), 'en diagonal');
+  near(speed(run(start(), { p: { right: true, kick: true } }, 120)), 1.68 * (1 - 0.96 ** 120), 'con la patada lista acelera 0,07');
 });
 
-test('Fútbol Física: el kick requiere contacto con la pelota y termina al hacer contacto o soltar espacio', () => {
-  const players = [{ id: 'p1', name: 'Messi', team: 'red' }];
+test('HaxBall: la patada empuja 5 en la dirección jugador→pelota, una vez por apretada', () => {
+  let state = createGameState([{ id: 'p', name: 'P', team: 'red' }]);
+  // Bordes a 3 de distancia: la patada llega hasta 4.
+  state.players.p.x = -28;
+  state.players.p.y = 0;
+  const kicked = tick(state, { p: { kick: true } });
+  assert.equal(kicked.touched, true);
+  near(kicked.nextState.ball.vx / 60, 5 * 0.99, 'la pelota sale a 5 (y se frena ×0,99)');
+  assert.equal(kicked.nextState.players.p.isKicking, false, 'la patada se gasta al pegarle');
+
+  // Sin soltar no vuelve a patear, aunque la pelota esté al lado.
+  state = kicked.nextState;
+  state.ball = { x: 0, y: 0, vx: 0, vy: 0 };
+  state.players.p.x = -28;
+  state.players.p.vx = 0;
+  const held = run(state, { p: { kick: true } }, 5);
+  assert.equal(held.ball.vx, 0, 'mantener la tecla no patea de nuevo');
+
+  // Lejos no patea, pero queda lista (borde blanco) hasta que llega o suelta.
+  let far = createGameState([{ id: 'p', name: 'P', team: 'red' }]);
+  far.players.p.x = -100;
+  far = tick(far, { p: { kick: true } }).nextState;
+  assert.equal(far.ball.vx, 0);
+  assert.equal(far.players.p.isKicking, true);
+  far = tick(far, {}).nextState;
+  assert.equal(far.players.p.isKicking, false);
+});
+
+test('HaxBall: choque jugador–pelota con rebote 0,5 × 0,5 y masas 2 y 1', () => {
+  const state = createGameState([{ id: 'p', name: 'P', team: 'red' }]);
+  state.players.p.x = -25; // superpuestos 0: tocándose
+  state.players.p.y = 0;
+  state.players.p.vx = 2 * 60;
+  const next = tick(state).nextState;
+  // Primero avanza y se frena (2 × 0,96); en el choque, la velocidad de acercamiento se multiplica
+  // por 1 + 0,5 × 0,5 y la pelota (invMass 1 contra 0,5) se lleva 2/3.
+  near(next.ball.vx / 60, 2 * 0.96 * 1.25 * (2 / 3), 'la pelota sale con la parte que le toca');
+  assert.ok(next.players.p.vx < 2 * 60, 'el jugador se frena');
+});
+
+test('HaxBall: la pelota rebota en el lateral; el jugador lo cruza y frena en el borde del estadio', () => {
+  const state = createGameState([{ id: 'p', name: 'P', team: 'red' }]);
+  state.ball = { x: 0, y: 150, vx: 0, vy: 6 * 60 };
+  const ball = run(state, {}, 10).ball;
+  assert.ok(ball.y <= 160 && ball.vy < 0, `rebotó en y = 170 (${ball.y})`);
+
+  state.players.p.y = 150;
+  const player = run(state, { p: { down: true } }, 200).players.p;
+  near(player.y, 185, 'pasa la línea y llega hasta 200 − radio');
+});
+
+test('HaxBall: gol cuando la pelota cruza la línea del arco', () => {
+  const state = createGameState([{ id: 'p', name: 'P', team: 'red' }]);
+  state.ball = { x: 360, y: 0, vx: 8 * 60, vy: 0 };
+  let goal = null;
+  let s = state;
+  for (let i = 0; i < 10 && !goal; i++) {
+    const r = tick(s);
+    goal = r.goal;
+    s = r.nextState;
+  }
+  assert.equal(goal, 'red', 'en el arco azul (derecha) es gol del rojo');
+
+  const post = createGameState([{ id: 'p', name: 'P', team: 'red' }]);
+  post.ball = { x: 300, y: -64, vx: 8 * 60, vy: 0 };
+  const after = run(post, {}, 20);
+  assert.ok(after.ball.vx < 0, 'contra el palo rebota');
+});
+
+test('HaxBall: en el saque, el que no saca no entra al círculo ni pasa la mitad', () => {
+  const players = [{ id: 'r', name: 'R', team: 'red' }, { id: 'b', name: 'B', team: 'blue' }];
+  // Saca el rojo: el azul queda afuera del círculo (radio 75 + 15).
   let state = createGameState(players);
-  // Posicionar lejos de la pelota
-  state.players.p1.x = state.ball.x - 100;
-  state.players.p1.y = state.ball.y;
+  state.players.b.x = 120;
+  state = run(state, { b: { left: true } }, 200);
+  near(state.players.b.x, 90, 'el azul se frena en el círculo');
 
-  // 1. Apretar espacio estando lejos -> isKicking = true (busca contacto), pero NO patea la pelota a distancia
-  let result = stepPhysics(state, { p1: { kick: true } }, 50);
-  state = result.nextState;
+  // El rojo puede entrar al círculo, pero no pasar a la mitad del azul.
+  let red = createGameState(players);
+  red.players.r.x = -60;
+  red.players.r.y = 120; // fuera del círculo: la línea del medio lo frena
+  red = run(red, { r: { right: true } }, 100);
+  near(red.players.r.x, -15, 'la línea del medio frena al rojo');
 
-  assert.equal(state.players.p1.isKicking, true);
-  assert.equal(state.ball.vx, 0); // No pateó a distancia
-
-  // 2. Soltar espacio antes de tocar la pelota -> isKicking se vuelve false inmediatamente
-  result = stepPhysics(state, { p1: { kick: false } }, 50);
-  state = result.nextState;
-  assert.equal(state.players.p1.isKicking, false);
-
-  // 3. Acercar al jugador a la pelota (contacto sprite a sprite, dist <= 29) y apretar espacio
-  state.players.p1.x = state.ball.x - 25; // tocando la pelota (16 + 11 = 27 min dist)
-  result = stepPhysics(state, { p1: { kick: true } }, 50);
-  state = result.nextState;
-
-  // Debe haber pateado la pelota
-  assert.ok(Math.abs(state.ball.vx) > 0);
-  // Y el efecto de kick debe haber terminado inmediatamente al hacer contacto
-  assert.equal(state.players.p1.isKicking, false);
+  // Cuando la pelota se mueve, se terminó el saque y se puede pasar.
+  let free = createGameState(players);
+  free.ball.vx = 60;
+  free = tick(free).nextState;
+  assert.equal(free.kickoff.pending, false);
+  free.players.b.x = 120;
+  free = run(free, { b: { left: true } }, 60);
+  assert.ok(free.players.b.x < 90, 'ya puede entrar');
 });
 
-test('Fútbol Física: 2 jugadores comprimiendo la pelota la desplazan correctamente', () => {
-  const players = [
-    { id: 'p1', name: 'Rojo', team: 'red' },
-    { id: 'p2', name: 'Azul', team: 'blue' },
-  ];
-  let state = createGameState(players);
-  const cx = FIELD.width / 2;
-  const cy = FIELD.height / 2;
-
-  // Posicionar p1 a la izquierda y p2 a la derecha aprisionando a la pelota
-  state.players.p1.x = cx - 25;
-  state.players.p1.y = cy;
-  state.players.p2.x = cx + 25;
-  state.players.p2.y = cy;
-  state.ball.x = cx;
-  state.ball.y = cy;
-
-  // Ambos empujan hacia adentro
-  const inputs = {
-    p1: { right: true },
-    p2: { left: true },
-  };
-
-  const { nextState } = stepPhysics(state, inputs, 50);
-
-  // La distancia entre la pelota y los centros de ambos jugadores debe respetar las dimensiones físicas
-  const distP1 = Math.hypot(nextState.ball.x - nextState.players.p1.x, nextState.ball.y - nextState.players.p1.y);
-  const distP2 = Math.hypot(nextState.ball.x - nextState.players.p2.x, nextState.ball.y - nextState.players.p2.y);
-
-  assert.ok(distP1 >= 25, `Distancia p1 pelota (${distP1}) debe ser adecuada`);
-  assert.ok(distP2 >= 25, `Distancia p2 pelota (${distP2}) debe ser adecuada`);
-});
-
-test('Fútbol Física: mapas seleccionables', () => {
-  const players = [{ id: 'p1', name: 'Messi', team: 'red' }];
-  const stateCancha11 = createGameState(players, { mapType: 'cancha11' });
-  assert.equal(stateCancha11.field.width, 2300);
-  assert.equal(stateCancha11.field.height, 1450);
-});
-
-test('Fútbol Física: sistema de estámina', () => {
-  const players = [{ id: 'p1', name: 'Messi', team: 'red' }];
-  let state = createGameState(players, { stamina: true });
-  assert.equal(state.players.p1.stamina, 100);
-
-  // Moverse sin shift -> velocidad al 50% (caminar), no consume estámina
-  let res = stepPhysics(state, { p1: { right: true, shift: false } }, 1000);
-  assert.equal(res.nextState.players.p1.stamina, 100);
-  const walkVx = res.nextState.players.p1.vx;
-
-  // Moverse con shift -> velocidad normal (correr), consume estámina
-  res = stepPhysics(state, { p1: { right: true, shift: true } }, 1000);
-  assert.ok(res.nextState.players.p1.stamina < 100);
-  const sprintVx = res.nextState.players.p1.vx;
-  assert.ok(sprintVx > walkVx, 'Velocidad al correr debe ser mayor que al caminar');
-});
-
-test('Fútbol Física: fuerza de kick dinámica (777 al toque, 420 tras 5s) y velocidad reducida', () => {
-  const players = [{ id: 'p1', name: 'Messi', team: 'red' }];
-  let state = createGameState(players);
-  state.players.p1.x = state.ball.x - 100;
-  state.players.p1.y = state.ball.y;
-
-  // 1. Mantener kick presionado sin tocar la pelota -> isKicking sigue true, acumulando tiempo
-  let res = stepPhysics(state, { p1: { kick: true, right: true } }, 1000);
-  state = res.nextState;
-  assert.equal(state.players.p1.isKicking, true);
-  assert.ok(state.players.p1.kickHoldTime >= 1.0);
-
-  // 2. Patear al instante (holdTime = 0) produce fuerza máxima (777)
-  let stateInstant = createGameState(players);
-  stateInstant.players.p1.x = stateInstant.ball.x - 25;
-  let resInstant = stepPhysics(stateInstant, { p1: { kick: true } }, 50);
-  const vxInstant = Math.abs(resInstant.nextState.ball.vx);
-
-  // 3. Patear tras mantener presionado 5s produce fuerza mínima (420)
-  let stateHeld = createGameState(players);
-  stateHeld.players.p1.x = stateHeld.ball.x - 25;
-  stateHeld.players.p1.kickHoldTime = 5.0;
-  stateHeld.players.p1.kickHeld = true;
-  stateHeld.players.p1.isKicking = true;
-  let resHeld = stepPhysics(stateHeld, { p1: { kick: true } }, 50);
-  const vxHeld = Math.abs(resHeld.nextState.ball.vx);
-
-  assert.ok(vxInstant > vxHeld, 'Patada instantánea (777) debe ser más potente que tras mantener 5s (420)');
+test('HaxBall: los estadios por defecto', () => {
+  const big = createGameState([{ id: 'p', name: 'P', team: 'red' }], { stadium: 'big' });
+  assert.equal(big.field.name, 'Big');
+  assert.equal(big.field.width, 600);
+  assert.equal(big.field.bg.width, 550);
+  assert.equal(createGameState([], { stadium: 'no-existe' }).field.id, 'classic');
 });
 
 test('Fútbol Física: Modo Coches - cancha vertical, orientación e inercia', () => {
