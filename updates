@@ -317,7 +317,14 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.8.2 = A los Tiros: personaje nuevo 🏃
+1.8.2 = A los Tiros: personaje nuevo 🏃
 - El personaje es más chico, como en el original, y apoya los pies sobre el piso (antes quedaban metidos adentro).
 - Piernas curvas con rodillas: caminando se alternan y levantan el pie, al saltar encoge las piernas y al caer las estira.
 - Se aplasta al aterrizar, se estira al saltar, se inclina según para dónde corre y se sacude cuando le pegan.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.8.3 = A los Tiros: el escudo te salva del vacío 🛡️
+- Si tenés el escudo activado justo cuando caés al vacío, salís disparado para arriba igual pero no perdés vida (como en el original).
+- Sin escudo, caerse sigue sacando el 20 % de la vida.
+- Cuando el escudo te salva, las chispas salen blancas.

@@ -7,7 +7,7 @@ import { compileShape, hitSolid, touchesAny } from '../src/tiros/shapes.js';
 import { applyBox, boxSolid, claimBeats, claimBox, encodeBox, newBoxes, pushBox, stepBoxes } from '../src/tiros/boxes.js';
 
 const solidsOf = (rects) => rects.flatMap((r) => compileShape(['rect', ...r]));
-import { MAX_RISE, PLAYER_R, STEP, WALL_SLIDE, bulletDamage, bulletsForShot, newPlayerState, seeded, stepBullet, stepPlayer, touches } from '../src/tiros/sim.js';
+import { MAX_RISE, OUT_DAMAGE, PLAYER_R, STEP, WALL_SLIDE, bulletDamage, bulletsForShot, newPlayerState, outDamage, seeded, stepBullet, stepPlayer, touches } from '../src/tiros/sim.js';
 
 const rand = seeded(7);
 function lobby(names = ['Ana', 'Beto']) {
@@ -439,4 +439,16 @@ test('tiros: las cajas del castillo arrancan quietas en su lugar', () => {
   boxes.forEach((b) => { b.sleep = false; });
   for (let i = 0; i < 240; i++) stepBoxes(boxes, STEP, map.solids, [], () => true);
   boxes.forEach((b, i) => assert.ok(Math.hypot(b.x - start[i][0], b.y - start[i][1]) < 0.08 && Math.abs(b.a) < 0.03, `caja ${i}: ${b.x},${b.y},${b.a}`));
+});
+
+test('tiros: caerse al vacío saca el 20 % de la vida, salvo con el escudo activo (y sale disparado igual)', () => {
+  const stats = statsFor([]);
+  const p = newPlayerState(30, 37.5, stats);
+  assert.equal(outDamage(p, 1), OUT_DAMAGE * p.maxHp);
+  p.blockUntil = 1.2;
+  assert.equal(outDamage(p, 1), 0);
+  const ev = stepPlayer(p, {}, STEP, { solids: [], stats, now: 1 });
+  assert.equal(ev.out, 'bottom');
+  assert.ok(p.vy < -50 && p.launching);
+  assert.equal(outDamage(p, 1.3), OUT_DAMAGE * p.maxHp); // el escudo ya se terminó
 });

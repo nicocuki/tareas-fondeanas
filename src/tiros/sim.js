@@ -168,6 +168,10 @@ export function stepPlayer(p, input, dt, { solids, stats, now, enemyX }) {
   return events;
 }
 
+// Daño por caerse del mundo: el 20 % de la vida, salvo que tenga el escudo activo en ese momento
+// (como en el original: sale disparado igual, pero no pierde vida).
+export const outDamage = (p, now) => (now < p.blockUntil ? 0 : OUT_DAMAGE * p.maxHp);
+
 // Las balas de un disparo. `shot`: { k, t, x, y, a, sd } (hora en segundos del servidor).
 // Cada una arranca en su hora (`t0`): las de una ráfaga salen escalonadas.
 export function bulletsForShot(shot, owner, stats) {

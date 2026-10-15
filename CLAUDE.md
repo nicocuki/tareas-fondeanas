@@ -390,7 +390,8 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
   pierde el 20 % de la vida (`OUT_DAMAGE`) y sale disparado para arriba (`OUT_LAUNCH`) hasta casi el
   techo**, como en el original; mientras sube (`launching`) atraviesa los bloques, porque debajo de un
   piso que llega al borde rebotaba contra él y se moría cayéndose una y otra vez. Pedido explícito de
-  Nico: que caerse siga haciendo daño y lanzando para arriba. Ojo con el salto corto (soltar el salto
+  Nico: que caerse siga haciendo daño y lanzando para arriba. **Con el escudo activo en ese momento no
+  pierde vida** (`outDamage`), como en el original: sale disparado igual y las chispas salen blancas. Ojo con el salto corto (soltar el salto
   corta la subida a la mitad): `jumpCut` arranca en `true` y se pone en `true` al lanzar, si no
   también cortaba el lanzamiento.
 - **El personaje**: el círculo de choque (`PLAYER_R` 0,8) abarca cuerpo y piernas; la bolita se dibuja

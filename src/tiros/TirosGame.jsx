@@ -14,7 +14,7 @@ import { burst, drawScene } from './render.js';
 import { applyBox, boxSolid, claimBox, driftBoxes, encodeBox, newBoxes, pushBox, stepBoxes } from './boxes.js';
 import { statsFor } from './cards.js';
 import {
-  BLOCK_TIME, FX_RADIUS, OUT_DAMAGE, PLAYER_R, STEP, bulletDamage, bulletsForShot, newPlayerState, stepBullet, stepPlayer,
+  BLOCK_TIME, FX_RADIUS, PLAYER_R, STEP, bulletDamage, bulletsForShot, newPlayerState, outDamage, stepBullet, stepPlayer,
   teleportTarget, touches,
 } from './sim.js';
 
@@ -220,7 +220,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   }
 
   function onRemoteBlock(s, id, ev, now) {
-    if (ev.o) { burst(s.particles, ev.x, ev.y, { n: 26, color: colorOf(id), speed: 24, life: 0.7, up: 12 }); return; }
+    if (ev.o) { burst(s.particles, ev.x, ev.y, { n: 26, color: ev.sb ? '#ffffff' : colorOf(id), speed: 24, life: 0.7, up: 12 }); return; }
     const owner = statsRef.current[id];
     if (!owner) return;
     if (owner.blockFx.includes('heal')) s.fields.push({ x: ev.x, y: ev.y, until: now + 3, owner: id });
@@ -298,10 +298,11 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
         // Tocar una caja la reclama: desde ahora la simula esta pantalla.
         for (const i of p.touching || []) claimBox(s.boxes[i], me.id);
         if (ev.out) {
-          damageMe(s, OUT_DAMAGE * p.maxHp, s.lastBy, null, now);
-          burst(s.particles, p.x, Math.min(p.y, WORLD_H), { n: 26, color: colorOf(me.id), speed: 24, life: 0.7, up: 12 });
+          const dm = outDamage(p, now);
+          damageMe(s, dm, s.lastBy, null, now);
+          burst(s.particles, p.x, Math.min(p.y, WORLD_H), { n: 26, color: dm ? colorOf(me.id) : '#ffffff', speed: 24, life: 0.7, up: 12 });
           s.shake = Math.max(s.shake, 0.8);
-          const ev3 = { k: `${me.id}:o${s.seq++}`, t: now, x: p.x, y: Math.min(p.y, WORLD_H), o: 1 };
+          const ev3 = { k: `${me.id}:o${s.seq++}`, t: now, x: p.x, y: Math.min(p.y, WORLD_H), o: 1, sb: dm ? 0 : 1 };
           s.myFx.push(ev3);
           s.seen.add(ev3.k);
         }
