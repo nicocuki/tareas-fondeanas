@@ -181,7 +181,7 @@ test('tiros: saltar, chocar contra la pared y saltar de la pared', () => {
 function onWall(vy) {
   const solids = solidsOf([[0, 30, 64, 2], [30, 0, 2, 30]]);
   const stats = statsFor([]);
-  const p = newPlayerState(28.9, 10, stats);
+  const p = newPlayerState(30 - PLAYER_R, 10, stats);
   stepPlayer(p, { right: true }, STEP, { solids, stats, now: 0 });
   assert.equal(p.wall, 1);
   p.vy = vy;
@@ -401,7 +401,7 @@ test('tiros: el jugador empuja las cajas y una bala las mueve y las hace girar',
   let px = 27;
   for (let i = 0; i < 120; i++) {
     px = Math.min(px + 14 * STEP, box.x - box.h - PLAYER_R + 0.02);
-    stepBoxes([box], STEP, floor, [{ x: px, y: 28.9, vx: 14, vy: 0 }], () => true);
+    stepBoxes([box], STEP, floor, [{ x: px, y: 30 - PLAYER_R, vx: 14, vy: 0 }], () => true);
   }
   assert.ok(box.x > 33, `la caja quedó en ${box.x}`);
   const [hit] = newBoxes([[40, 28.2, 1.8]]);

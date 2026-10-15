@@ -195,74 +195,134 @@ function drawBoxes(ctx, boxes, th) {
 }
 
 // ─── Personaje ───────────────────────────────────────────────────────────────
-// Una bolita de color con cara, dos piernas que caminan y dos brazos: el de adelante sostiene el arma
-// y apunta hacia el mouse. No copia a ningún personaje: es el estilo, no el dibujo.
+// Una bolita de color con cara, dos piernas curvas y dos brazos: el de adelante sostiene el arma y
+// apunta hacia el mouse. No copia a ningún personaje: es el estilo, no el dibujo.
+// El círculo de choque (`PLAYER_R`) abarca cuerpo y piernas: la bolita va arriba y los pies terminan
+// justo en su borde de abajo, que es donde toca el piso.
+const BODY_R = PLAYER_R * 0.7;
+const LEG = 2 * PLAYER_R - 2 * BODY_R;   // largo de las piernas (cadera a piso)
+const ART = BODY_R / 1.1;                // los brazos y la cara se dibujaron para una bolita de radio 1,1
+const clampN = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// Animación de cada personaje (solo dibujo, no viaja por la red): paso, aplastado al caer, estirado al
+// saltar, inclinación según la velocidad y sacudón al recibir un golpe.
+const anims = new Map();
+function animate(c, now) {
+  let a = anims.get(c.id);
+  if (!a) { a = { phase: 0, x: c.x, ground: c.onGround, vy: 0, squash: 0, lean: 0, hit: 0, hurt: 0, t: now }; anims.set(c.id, a); }
+  const dt = clampN(now - a.t, 0, 0.05);
+  a.t = now;
+  if (c.onGround) a.phase += Math.abs(c.x - a.x) * 2.4;
+  a.x = c.x;
+  if (c.onGround && !a.ground) a.squash = clampN(0.1 + Math.abs(a.vy) * 0.008, 0.1, 0.38);   // aterrizó
+  if (!c.onGround && a.ground && c.vy < -4) a.squash = -0.24;                                   // saltó
+  a.ground = c.onGround;
+  a.vy = c.vy;
+  a.squash *= Math.exp(-dt * 9);
+  const lean = clampN(c.vx / 14, -1.4, 1.4) * 0.17;
+  a.lean += (lean - a.lean) * Math.min(1, dt * 10);
+  if (c.hurtUntil > now && a.hurt !== c.hurtUntil) { a.hurt = c.hurtUntil; a.hit = 1; }
+  a.hit *= Math.exp(-dt * 5);
+  return a;
+}
+
 function drawCharacter(ctx, c, now) {
   const { x, y, color, angle } = c;
+  const an = animate(c, now);
   const facing = Math.cos(angle) >= 0 ? 1 : -1;
+  const ahead = Math.abs(c.vx) > 0.6 ? Math.sign(c.vx) : facing;
   const dark = shade(color, -0.45);
+  const sq = an.squash;                                   // + aplastado, − estirado
+  const lean = an.lean + Math.sin(now * 40) * an.hit * 0.4;
+  const walking = c.onGround && Math.abs(c.vx) > 0.8;
+  const floor = y + PLAYER_R;
+  const bob = walking ? Math.abs(Math.sin(an.phase)) * 0.06 : 0;
+  const legs = LEG * (1 - Math.max(0, sq) * 0.7);
+  const bx = x + lean * 0.4;
+  const by = floor - legs - BODY_R * (1 - sq * 0.4) - bob - (c.onGround ? 0 : 0.04);
   ctx.save();
-  // Piernas.
+  // Piernas: curvas, con la rodilla hacia adelante; caminando se alternan y levantan el pie.
   ctx.strokeStyle = dark;
-  ctx.lineWidth = 0.26;
+  ctx.fillStyle = dark;
+  ctx.lineWidth = 0.15;
   ctx.lineCap = 'round';
-  const walking = c.onGround && Math.abs(c.vx) > 1;
-  const phase = walking ? Math.sin(x * 1.6) : 0;
   for (const side of [-1, 1]) {
-    const hipX = x + side * 0.38;
-    const hipY = y + PLAYER_R * 0.75;
-    const swing = walking ? phase * side * 0.45 : 0;
-    const footX = c.onGround ? hipX + swing : hipX + side * 0.25;
-    const footY = c.onGround ? y + PLAYER_R + 0.75 : y + PLAYER_R + 0.45;
+    const hx = bx + side * BODY_R * 0.4, hy = by + BODY_R * 0.75;
+    const ph = an.phase + (side > 0 ? 0 : Math.PI);
+    let fx, fy, bend;
+    if (c.onGround) {
+      fx = hx + (walking ? Math.sin(ph) * 0.3 * ahead : side * 0.07);
+      fy = floor - (walking ? Math.max(0, Math.cos(ph)) * 0.14 : 0);
+      bend = (0.1 + Math.max(0, sq) * 0.35 + (walking ? Math.max(0, Math.cos(ph)) * 0.12 : 0)) * ahead;
+    } else if (c.vy < 0) {
+      fx = hx - ahead * 0.1 + side * 0.04;                // subiendo: rodillas arriba
+      fy = hy + legs * 0.55;
+      bend = 0.24 * ahead;
+    } else {
+      fx = hx + side * 0.1 - ahead * 0.06;                // cayendo: piernas estiradas, un poco abiertas
+      fy = hy + legs * 0.95 + 0.06;
+      bend = 0.06 * ahead;
+    }
     ctx.beginPath();
-    ctx.moveTo(hipX, hipY);
-    ctx.lineTo(footX, footY);
+    ctx.moveTo(hx, hy);
+    ctx.quadraticCurveTo((hx + fx) / 2 + bend, (hy + fy) / 2, fx, fy);
     ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(fx + ahead * 0.06, fy - 0.04, 0.12, 0.07, 0, 0, Math.PI * 2); ctx.fill();
   }
-  // Brazo de atrás (mano libre).
-  const backA = angle + Math.PI * 0.8 * facing;
-  const bx = x + Math.cos(backA) * 1.35, by = y + Math.sin(backA) * 1.0 + 0.3;
+  // Lo de arriba se dibujó para una bolita de radio 1,1 en el origen: se achica y se lleva al cuerpo.
+  ctx.translate(bx, by);
+  ctx.scale(ART, ART);
+  // Brazo de atrás (mano libre): se balancea al caminar.
+  const backA = angle + Math.PI * 0.8 * facing + (walking ? Math.sin(an.phase) * 0.35 : 0) + an.hit * 0.6;
+  const bhx = Math.cos(backA) * 1.35, bhy = Math.sin(backA) * 1.0 + 0.3;
   ctx.strokeStyle = color;
   ctx.lineWidth = 0.22;
-  ctx.beginPath(); ctx.moveTo(x, y + 0.2); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 0.2); ctx.quadraticCurveTo(bhx * 0.5, 0.2 + (bhy - 0.2) * 0.5 + 0.25, bhx, bhy); ctx.stroke();
   ctx.fillStyle = '#f4f1ea';
-  circle(ctx, bx, by, 0.3); ctx.fill();
-  // Cuerpo.
-  const bodyG = ctx.createRadialGradient(x - 0.35, y - 0.4, 0.2, x, y, PLAYER_R * 1.1);
+  circle(ctx, bhx, bhy, 0.3); ctx.fill();
+  // Cuerpo y cara: se aplastan, se estiran y se inclinan.
+  ctx.save();
+  ctx.rotate(lean);
+  ctx.scale(1 + sq * 0.5, 1 - sq * 0.5);
+  const bodyG = ctx.createRadialGradient(-0.35, -0.4, 0.2, 0, 0, 1.2);
   bodyG.addColorStop(0, shade(color, 0.18));
   bodyG.addColorStop(1, color);
   ctx.fillStyle = bodyG;
-  circle(ctx, x, y, PLAYER_R);
+  circle(ctx, 0, 0, 1.1);
   ctx.fill();
-  // Cara: cejas, ojos y boca que miran hacia donde apunta.
   const lx = Math.cos(angle) * 0.32, ly = Math.sin(angle) * 0.22;
+  const angry = c.hurtUntil > now;
   ctx.fillStyle = '#1b1b24';
-  ctx.beginPath(); ctx.ellipse(x - 0.34 + lx, y - 0.12 + ly, 0.17, 0.24, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(x + 0.34 + lx, y - 0.12 + ly, 0.17, 0.24, 0, 0, Math.PI * 2); ctx.fill();
+  const blink = angry ? 0.12 : 0.24;
+  ctx.beginPath(); ctx.ellipse(-0.34 + lx, -0.12 + ly, 0.17, blink, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0.34 + lx, -0.12 + ly, 0.17, blink, 0, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = '#1b1b24';
   ctx.lineWidth = 0.1;
-  const angry = c.hurtUntil > now;
   ctx.beginPath();
-  ctx.moveTo(x - 0.55 + lx, y - (angry ? 0.52 : 0.45) + ly); ctx.lineTo(x - 0.15 + lx, y - (angry ? 0.38 : 0.47) + ly);
-  ctx.moveTo(x + 0.55 + lx, y - (angry ? 0.52 : 0.45) + ly); ctx.lineTo(x + 0.15 + lx, y - (angry ? 0.38 : 0.47) + ly);
+  ctx.moveTo(-0.55 + lx, -(angry ? 0.52 : 0.45) + ly); ctx.lineTo(-0.15 + lx, -(angry ? 0.38 : 0.47) + ly);
+  ctx.moveTo(0.55 + lx, -(angry ? 0.52 : 0.45) + ly); ctx.lineTo(0.15 + lx, -(angry ? 0.38 : 0.47) + ly);
   ctx.stroke();
   ctx.beginPath();
-  if (angry) ctx.arc(x + lx, y + 0.42 + ly, 0.18, Math.PI, 0);
-  else ctx.arc(x + lx, y + 0.22 + ly, 0.2, 0.15 * Math.PI, 0.85 * Math.PI);
+  if (angry) ctx.arc(lx, 0.42 + ly, 0.18, Math.PI, 0);
+  else ctx.arc(lx, 0.22 + ly, 0.2, 0.15 * Math.PI, 0.85 * Math.PI);
   ctx.stroke();
-  // Brazo de adelante con el arma.
-  const hx = x + Math.cos(angle) * 1.75, hy = y + Math.sin(angle) * 1.75;
+  ctx.restore();
+  // Brazo de adelante con el arma (apunta derecho al mouse; un golpe lo sacude).
+  const aim = angle + Math.sin(now * 40) * an.hit * 0.25;
+  const hx = Math.cos(aim) * 1.75, hy = Math.sin(aim) * 1.75;
   ctx.strokeStyle = color;
   ctx.lineWidth = 0.22;
-  ctx.beginPath(); ctx.moveTo(x + Math.cos(angle) * 0.7, y + Math.sin(angle) * 0.7); ctx.lineTo(hx, hy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(Math.cos(aim) * 0.7, Math.sin(aim) * 0.7); ctx.lineTo(hx, hy); ctx.stroke();
   ctx.save();
   ctx.translate(hx, hy);
-  ctx.rotate(angle);
+  ctx.rotate(aim);
   ctx.fillStyle = '#20212a';
   rrect(ctx, -0.15, -0.17, 1.0, 0.34, 0.08); ctx.fill();
   ctx.restore();
   ctx.fillStyle = '#f4f1ea';
   circle(ctx, hx, hy, 0.3); ctx.fill();
+  ctx.restore();
+  ctx.save();
   // Saliendo disparado desde abajo (después de caerse): anillo punteado que gira y estela blanca.
   if (c.launching) {
     const tg = ctx.createLinearGradient(x, y, x, y + 5);
@@ -270,7 +330,7 @@ function drawCharacter(ctx, c, now) {
     tg.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.strokeStyle = tg;
     ctx.lineWidth = 0.22;
-    ctx.beginPath(); ctx.moveTo(x, y + PLAYER_R); ctx.lineTo(x, y + 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, floor); ctx.lineTo(x, y + 5); ctx.stroke();
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,0.95)';
     ctx.lineWidth = 0.16;
@@ -302,7 +362,7 @@ function drawCharacter(ctx, c, now) {
     ctx.stroke();
   }
   // Vida, munición y nombre.
-  const w = 2.6, top = y - PLAYER_R - 1.1;
+  const w = 1.9, top = by - BODY_R - 0.85;
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   rrect(ctx, x - w / 2, top, w, 0.3, 0.15); ctx.fill();
   ctx.fillStyle = c.hp / c.maxHp > 0.3 ? '#9be15d' : '#ff5c4d';
@@ -312,7 +372,7 @@ function drawCharacter(ctx, c, now) {
     ctx.fillStyle = c.reloading ? 'rgba(255,255,255,0.18)' : i < c.ammo ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.18)';
     circle(ctx, x - ((n - 1) * 0.36) / 2 + i * 0.36, top + 0.65, 0.11); ctx.fill();
   }
-  ctx.font = '600 0.85px Inter, sans-serif';
+  ctx.font = '600 0.62px Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillText(c.name, x + 0.05, top - 0.33);

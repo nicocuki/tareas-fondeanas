@@ -191,6 +191,7 @@ por una versión anterior siga abriéndose sin romper.
 | `worker/tree.js` | Árbol de datos compartido por servidor y cliente: rutas, nulls, poda, `push` |
 | `worker/publicas.js` `worker/directorio.js` | Salas públicas: qué sala se lista y el Durable Object con la lista (ver *Salas públicas*) |
 | `src/ui/publicas.js` | La lista en vivo de la portada y la marca de «pública» de cada sala |
+| `src/ui/JoinInvite.jsx` `src/ui/rooms.js` `src/ui/roomSummary.js` | Pantalla de «te estás uniendo a la sala de…» y qué se sabe de una sala por su código |
 | `wrangler.jsonc` | Configuración de Cloudflare |
 | `src/session.js` | Quién sos: `sessionStorage` por pestaña, `localStorage` por dispositivo |
 
@@ -217,6 +218,12 @@ de Gartic Phone, con sus variables `--gp-*` en `src/gartic/gartic.css`), que son
   los avisos. Cada juego llama a `useRegisterRoom(juego, código, salir)`: con eso el header muestra
   el código y el menú ofrece «Salir de la partida».
 - `GameHero` es el encabezado de la pantalla de entrada de cada juego; `LobbyLayout`, el de la sala de espera.
+- **Entrar con el link de una sala** (`?sala=ABCD`) muestra `JoinInvite` en vez de la entrada normal:
+  «Te estás uniendo a la sala de X», el código, cuántos hay, tu nombre (y avatar) y un solo botón.
+  «Prefiero crear mi propia sala» vuelve a la entrada normal y saca el código de la dirección. Trazo
+  Loco tiene su propia versión con su diseño (`Invite` en `GarticApp.jsx`). Lo que se sabe de una sala
+  sale de `summarizeRoom` (`roomSummary.js`, puro): lo usan `useRoomInfo` (en vivo) y el servidor
+  para las salas públicas. Si el link es de otro juego, avisa y ofrece ir a esa sala.
 - La versión que se muestra sale del archivo `updates` (la entrada `LATEST`), que también alimenta «Novedades».
 - La sesión guarda `game`: `loadSession(código, juego)` no devuelve la de otro juego (todos usan la misma clave).
 - Fuentes: Bricolage Grotesque (títulos, `.cs-mono`) e Inter (texto), de Google Fonts.
@@ -386,6 +393,11 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
   Nico: que caerse siga haciendo daño y lanzando para arriba. Ojo con el salto corto (soltar el salto
   corta la subida a la mitad): `jumpCut` arranca en `true` y se pone en `true` al lanzar, si no
   también cortaba el lanzamiento.
+- **El personaje**: el círculo de choque (`PLAYER_R` 0,8) abarca cuerpo y piernas; la bolita se dibuja
+  arriba (`BODY_R`) y los pies terminan en el borde de abajo, que es donde toca el piso (antes el cuerpo
+  era todo el círculo y las piernas quedaban metidas en el piso). Piernas curvas, paso según lo que
+  avanza, aplastado al caer, estirado al saltar, inclinación y sacudón al recibir un golpe: es solo
+  dibujo (`animate` en `render.js`, un estado por jugador que no viaja por la red).
 - **Movimiento y balas medidos de videos del original** (720 px de alto = 36 unidades): gravedad 110,
   salto 38, frenada exponencial (`MOVE_RESPONSE`), agarrarse de la pared (`WALL_SLIDE` 1,2), bala
   común a 37 u/s con gravedad 64; las cartas de velocidad de bala dividen la gravedad por el cuadrado

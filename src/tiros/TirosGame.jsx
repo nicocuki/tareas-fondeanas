@@ -493,7 +493,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
           const p = s.local;
           if (!p || p.dead) continue;
           characters.push({
-            name: pl.name, color: pl.color, mine: true, x: p.x, y: p.y, vx: p.vx, onGround: p.onGround, launching: Boolean(p.launching),
+            id: pl.id, name: pl.name, color: pl.color, mine: true, x: p.x, y: p.y, vx: p.vx, vy: p.vy, onGround: p.onGround, launching: Boolean(p.launching),
             angle: Math.atan2(s.aim.y - p.y, s.aim.x - p.x), hp: p.hp, maxHp: p.maxHp, blocking: now < p.blockUntil,
             cdLeft: Math.max(0, (p.blockReadyAt - now) / st.blockCooldown), ammo: p.ammo, maxAmmo: st.ammo, reloading: Boolean(p.reloadAt), hurtUntil: p.hurtUntil || 0,
           });
@@ -501,7 +501,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
           const v = s.remotes.get(pl.id);
           if (!v || v.snap.d || b?.dead?.[pl.id]) continue;
           characters.push({
-            name: pl.name, color: pl.color, mine: false, x: v.x, y: v.y, vx: v.snap.vx, onGround: Math.abs(v.snap.vy) < 0.5, launching: Boolean(v.snap.ln),
+            id: pl.id, name: pl.name, color: pl.color, mine: false, x: v.x, y: v.y, vx: v.snap.vx, vy: v.snap.vy, onGround: Math.abs(v.snap.vy) < 0.5, launching: Boolean(v.snap.ln),
             angle: v.snap.a, hp: v.snap.hp, maxHp: v.snap.mh, blocking: v.snap.bl > now, cdLeft: 0,
             ammo: v.snap.am2 ?? st.ammo, maxAmmo: st.ammo, reloading: Boolean(v.snap.rl), hurtUntil: v.hurt || 0,
           });

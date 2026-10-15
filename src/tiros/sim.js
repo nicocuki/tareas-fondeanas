@@ -6,7 +6,7 @@ import { WORLD_H, WORLD_W } from './maps.js';
 import { hitSolid } from './shapes.js';
 
 export const STEP = 1 / 120;
-export const PLAYER_R = 1.1;
+export const PLAYER_R = 0.8;   // cuerpo y piernas: los pies tocan el piso en y + PLAYER_R
 // Medido de un video de ROUNDS (720 px de alto = nuestras 36 unidades): cae con ~110 u/s², el salto
 // sube rápido (0,3 s) y, al soltar, la velocidad de costado se va a la mitad cada ~0,07 s.
 export const GRAVITY = 110;

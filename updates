@@ -298,7 +298,7 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.8.0 = A los Tiros: mapas del original y cajas que se caen 📦
+1.8.0 = A los Tiros: mapas del original y cajas que se caen 📦
 - Cuatro mapas nuevos, copiados del juego original: el Valle (rampas rosas con rombos), Burbujas (círculos y cápsulas), Copas (verde agua) y el Castillo. Se sacaron los mapas anteriores.
 - Las piezas ya no son solo rectángulos: hay rampas, círculos y formas redondeadas, y se puede caminar y pararse sobre todas.
 - En el Castillo, los postes de las plataformas y las cajas de los pedestales están sueltos: los empujás caminando, los tirás de un tiro, se caen girando y se apilan. Todos ven las cajas en el mismo lugar.
@@ -306,3 +306,18 @@ LATEST 1.8.0 = A los Tiros: mapas del original y cajas que se caen 📦
 - Al pegar, la bala tira chispitas amarillas.
 - Cuando te caés del mapa y salís disparado para arriba, ahora tenés un anillo punteado y una estela blanca.
 - Sombras que salen de la luz de arriba y se abren hacia abajo, como en las capturas.
+
+--------------------------------------------------------------------------------------------------------------------
+
+1.8.1 = Entrar con el link de una sala 🔗
+- Si abrís el link que te pasaron, ya no ves la pantalla de crear sala: aparece «Te estás uniendo a la sala de …», con el código, cuántos hay y si ya empezó.
+- Elegís tu nombre (y tu avatar) y tocás «Unirme a la sala». Si querés armar la tuya, abajo dice «Prefiero crear mi propia sala».
+- Anda en todos los juegos; Trazo Loco la tiene con su propio diseño.
+- Si el link es de otro juego, te avisa y te lleva a esa sala. Si la sala ya no existe o está llena, también te lo dice.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.8.2 = A los Tiros: personaje nuevo 🏃
+- El personaje es más chico, como en el original, y apoya los pies sobre el piso (antes quedaban metidos adentro).
+- Piernas curvas con rodillas: caminando se alternan y levantan el pie, al saltar encoge las piernas y al caer las estira.
+- Se aplasta al aterrizar, se estira al saltar, se inclina según para dónde corre y se sacude cuando le pegan.
