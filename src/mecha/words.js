@@ -31,7 +31,8 @@ export function createDictionary(text) {
   const wordAt = (k) => {
     const from = offsets[k];
     const to = k + 1 < offsets.length ? offsets[k + 1] - 1 : text.length;
-    return text.slice(from, to).replace(/\n$/, '');
+    // Un \r al final (el archivo guardado con finales de Windows) no es parte de la palabra.
+    return text.slice(from, to).replace(/\r?\n?$/, '');
   };
   return {
     size: offsets.length,

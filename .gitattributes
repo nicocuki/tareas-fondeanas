@@ -1,0 +1,3 @@
+# El diccionario de La Mecha se busca por bisección sobre el texto separado por \n: con los finales
+# \r\n que pone Git en Windows (core.autocrlf) cada palabra quedaba con un \r pegado y no se encontraba.
+public/mecha/palabras.txt text eol=lf

@@ -338,7 +338,7 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.9.0 = Fútbol: ahora es HaxBall de verdad ⚽
+1.9.0 = Fútbol: ahora es HaxBall de verdad ⚽
 - La física del modo pelotas es la de HaxBall, copiada del juego original: misma aceleración, mismo frenado, misma patada, mismos rebotes y 60 pasos por segundo.
 - Se ve como HaxBall: el pasto, las líneas, los arcos con red y palos, los jugadores con su número y el nombre abajo, la pelota blanca y las flechitas que señalan lo que queda fuera de la pantalla.
 - Mientras tenés la patada lista, el borde de tu jugador se pone blanco. La patada sale una vez por apretada (con Espacio o X).
@@ -346,3 +346,9 @@ LATEST 1.9.0 = Fútbol: ahora es HaxBall de verdad ⚽
 - Después de un gol se sigue jugando 2,5 segundos, con el cartel «¡Gol del Rojo!» animado, y el saque es enseguida, sin cuenta regresiva.
 - Para elegir los estadios de HaxBall: Classic, Easy, Small, Big, Rounded, Big Easy, Big Rounded y Huge.
 - Se sacó la estámina, que HaxBall no tiene. El modo coches queda igual.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.9.05 = La Mecha: el diccionario anda también en Windows 🐛
+- En una compu con Windows, Git guardaba el diccionario con finales de línea de Windows y La Mecha rechazaba todas las palabras (en el sitio publicado no pasaba).
+- Ahora el diccionario siempre se guarda con finales normales, y aunque alguien lo guarde con los de Windows, se lee bien igual.

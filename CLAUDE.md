@@ -322,6 +322,8 @@ contenga (`mode: 'anywhere'`) o que empiece con ella (`'start'`) antes de que ex
   tildes, con ñ) se baja una vez en el navegador (~1,4 MB comprimido) y se busca por bisección
   sobre un solo texto, para no ocupar memoria en celulares. Se arma con `npm run diccionario` desde
   `diccionario/` (ver `diccionario/LEEME.md`, licencia MPL 1.1). Palabras extra: `diccionario/agregadas.txt`.
+  **Va siempre con finales `\n`** (`.gitattributes`): con `core.autocrlf` en Windows quedaba con `\r\n`,
+  cada palabra llevaba un `\r` pegado y se rechazaban todas (fallaban 7 tests y el juego en local).
 - **Las sílabas** (`src/mecha/syllables.js`, generado) son solo las que tienen cientos de palabras,
   ordenadas de más a menos comunes; la dificultad elige de qué tramo sacar (`POOLS` en `game.js`).
 - `used` (palabras ya dichas) tiene tope `MAX_USED`, por el límite de 30.000 caracteres de la sala.
