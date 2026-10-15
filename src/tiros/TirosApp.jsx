@@ -5,7 +5,7 @@ import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
-import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
+import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
 import { gameUrl } from '../ui/games.js';
 import { CARDS } from './cards.js';
 import {
@@ -209,6 +209,9 @@ export default function TirosApp({ onBackToMenu }) {
   const now = tick + offset;
 
   useRegisterRoom(GAME, code, () => handleLeave());
+  // La pantalla completa del header agranda solo la ventana del juego (cartas, pelea y final).
+  const screenRef = useRef(null);
+  useFullscreenTarget(screenRef);
   useEffect(() => backend.subscribeServerOffset(setOffset), []);
 
   useEffect(() => {
@@ -320,22 +323,32 @@ export default function TirosApp({ onBackToMenu }) {
     );
   }
   if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} /></>;
-  if (room.phase === 'picking') return <>{banner}<Picking room={room} me={me} code={code} now={now} onDispatch={dispatch} /></>;
-  if (room.phase === 'final') return <>{banner}<Final room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} /></>;
-  if (!me.inGame) return <div className="cs-root tt-page"><Scoreboard room={room} me={me} /><p className="tt-hint tt-center">La partida ya empezó: vas a poder jugar en la próxima.</p></div>;
+  let content;
+  if (room.phase === 'picking') content = <Picking room={room} me={me} code={code} now={now} onDispatch={dispatch} />;
+  else if (room.phase === 'final') content = <Final room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />;
+  else if (!me.inGame) content = <div className="cs-root tt-page"><Scoreboard room={room} me={me} /><p className="tt-hint tt-center">La partida ya empezó: vas a poder jugar en la próxima.</p></div>;
+  else {
+    content = (
+      <div className="cs-root tt-page tt-fight">
+        <TirosGame
+          room={room}
+          me={me}
+          code={code}
+          offset={offset}
+          onDied={(battle, by) => dispatch({ type: 'died', battle, by })}
+          onReportGone={(battle, target) => dispatch({ type: 'died', battle, target })}
+        />
+        <p className="tt-hint tt-keys"><kbd>A</kbd><kbd>D</kbd> moverse · <kbd>W</kbd> saltar · clic izquierdo disparar · clic derecho o <kbd>Shift</kbd> escudo</p>
+        <MyCards room={room} />
+      </div>
+    );
+  }
+  // Un mismo contenedor para cartas, pelea y final: así la pantalla completa sigue entre una fase y otra.
   return (
-    <div className="cs-root tt-page tt-fight">
+    <div ref={screenRef} className="tt-screen">
       {banner}
-      <TirosGame
-        room={room}
-        me={me}
-        code={code}
-        offset={offset}
-        onDied={(battle, by) => dispatch({ type: 'died', battle, by })}
-        onReportGone={(battle, target) => dispatch({ type: 'died', battle, target })}
-      />
-      <p className="tt-hint tt-keys"><kbd>A</kbd><kbd>D</kbd> moverse · <kbd>W</kbd> saltar · clic izquierdo disparar · clic derecho o <kbd>Shift</kbd> escudo</p>
-      <MyCards room={room} />
+      {content}
+      <button type="button" className="tt-screen-exit" onClick={() => { if (fullscreenElement()) toggleFullscreen(); }}>Salir de pantalla completa <kbd>Esc</kbd></button>
     </div>
   );
 }

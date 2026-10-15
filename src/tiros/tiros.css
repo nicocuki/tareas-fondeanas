@@ -39,6 +39,23 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 6
 
 /* Pelea */
 .tt-fight { max-width: 1280px; }
+
+/* Pantalla completa de la ventana del juego (botón del header): solo cartas, pelea o final, lo más
+   grande que entre. Se esconden las ayudas de abajo; el marcador queda dentro de la pelea. */
+.tt-screen-exit { display: none; }
+.tt-screen:fullscreen { background: #0b0c10; color: #f2f2f2; display: flex; flex-direction: column; justify-content: center; overflow: auto; }
+.tt-screen:fullscreen .tt-page { max-width: none; width: 100%; padding: 10px 12px; }
+.tt-screen:fullscreen .tt-keys, .tt-screen:fullscreen .tt-decks { display: none; }
+.tt-screen:fullscreen .tt-stage { max-width: calc(100dvh * 16 / 9 - 24px); border: 0; }
+.tt-screen:fullscreen .tt-arc { max-width: calc((100dvh - 70px) * 16 / 9); }
+.tt-screen:fullscreen .tt-score { margin-bottom: 8px; }
+.tt-screen:fullscreen .tt-screen-exit {
+  display: inline-flex; align-items: center; gap: 6px; position: fixed; bottom: 10px; right: 12px; z-index: 20;
+  padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.75); font: 600 12px Inter, sans-serif; cursor: pointer; opacity: 0.35; transition: opacity 0.2s;
+}
+.tt-screen:fullscreen .tt-screen-exit:hover { opacity: 1; }
+.tt-screen:fullscreen .tt-screen-exit kbd { background: rgba(255, 255, 255, 0.12); color: inherit; border-color: rgba(255, 255, 255, 0.2); }
 .tt-stage { width: 100%; max-width: calc((100dvh - 200px) * 16 / 9); min-width: min(100%, 640px); margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); background: #070f18; }
 .tt-canvas { display: block; width: 100%; cursor: none; touch-action: none; user-select: none; }
 .tt-keys { text-align: center; }

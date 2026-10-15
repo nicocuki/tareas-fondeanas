@@ -1,7 +1,7 @@
 // Marco de toda la página: header fijo, menú lateral y avisos. Los juegos van adentro.
 import React, { useEffect, useRef, useState } from 'react';
 import { GAMES, gameById } from './games.js';
-import { copyInvite, syncProfileName, useCurrentRoom, useProfile, useToast } from './store.js';
+import { copyInvite, fullscreenElement, syncProfileName, toggleFullscreen, useCurrentRoom, useProfile, useToast } from './store.js';
 import SideMenu from './SideMenu.jsx';
 
 export function Logo({ size = 34 }) {
@@ -37,9 +37,9 @@ function RoomChip({ room }) {
   );
 }
 
-// Pantalla completa de toda la página (el header queda, para poder salir o cambiar de juego).
+// Pantalla completa de toda la página (el header queda, para poder salir o cambiar de juego), o solo de
+// la ventana del juego si el juego marcó una (`useFullscreenTarget`, como A los Tiros).
 // Mario vs Luigi tiene la suya, que agranda solo el iframe de Unity.
-const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
 const canFullscreen = () => {
   const el = document.documentElement;
   return Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled) && Boolean(el.requestFullscreen || el.webkitRequestFullscreen);
@@ -60,13 +60,7 @@ function FullscreenButton() {
 
   if (!canFullscreen()) return null; // el iPhone no deja: mejor no mostrar un botón que no hace nada
 
-  function toggle() {
-    const el = document.documentElement;
-    const result = fullscreenElement()
-      ? (document.exitFullscreen || document.webkitExitFullscreen).call(document)
-      : (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
-    result?.catch?.(() => {});
-  }
+  const toggle = () => toggleFullscreen();
 
   const label = on ? 'Salir de pantalla completa' : 'Pantalla completa';
   return (

@@ -218,6 +218,10 @@ de Gartic Phone, con sus variables `--gp-*` en `src/gartic/gartic.css`), que son
   los avisos. Cada juego llama a `useRegisterRoom(juego, código, salir)`: con eso el header muestra
   el código y el menú ofrece «Salir de la partida».
 - `GameHero` es el encabezado de la pantalla de entrada de cada juego; `LobbyLayout`, el de la sala de espera.
+- **Pantalla completa** (botón del header): toda la página, salvo que el juego marque su ventana con
+  `useFullscreenTarget(ref)`; ahí agranda solo ese elemento. A los Tiros lo usa con un contenedor que no
+  cambia entre cartas, pelea y final (`tt-screen`), así no se sale al cambiar de fase. Los estilos van
+  con `:fullscreen` en el CSS del juego.
 - **Entrar con el link de una sala** (`?sala=ABCD`) muestra `JoinInvite` en vez de la entrada normal:
   «Te estás uniendo a la sala de X», el código, cuántos hay, tu nombre (y avatar) y un solo botón.
   «Prefiero crear mi propia sala» vuelve a la entrada normal y saca el código de la dirección. Trazo

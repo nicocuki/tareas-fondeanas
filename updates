@@ -364,8 +364,15 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.9.2 = Pantalla completa en todos los juegos ⛶
+1.9.2 = Pantalla completa en todos los juegos ⛶
 - Arriba a la derecha, al lado del código de la sala, hay un botón para poner la página en pantalla completa en cualquier juego.
 - Volviéndolo a tocar (o con Esc) se sale. El header queda a la vista, así podés cambiar de juego o salir sin dejar la pantalla completa.
 - Mario vs Luigi sigue con su propio botón, que agranda solo el juego.
 - En iPhone el navegador no lo permite, así que ahí el botón no aparece.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.9.3 = A los Tiros: pantalla completa solo del juego
+- En A los Tiros, el botón de pantalla completa agranda solo la ventana del juego (las cartas, la pelea y el final), no toda la página: se ve todo más grande y más claro.
+- Sigue en pantalla completa al pasar de las cartas a la pelea y de una pelea a otra.
+- Se sale con Esc o con el botón chiquito de abajo a la derecha.

@@ -111,6 +111,26 @@ export function useRegisterRoom(game, code, onLeave) {
   if (current && current.game === game && current.code === code) current.onLeave = onLeave;
 }
 
+// ─── Pantalla completa ───────────────────────────────────────────────────────
+// Un juego puede marcar cuál es «la ventana del juego» (un ref): el botón del header pone en pantalla
+// completa ese elemento en vez de toda la página. Si el ref está vacío (por ejemplo en la sala de
+// espera), va la página entera.
+let fullscreenTarget = null;
+export function useFullscreenTarget(ref) {
+  useEffect(() => {
+    fullscreenTarget = ref;
+    return () => { if (fullscreenTarget === ref) fullscreenTarget = null; };
+  }, [ref]);
+}
+export const getFullscreenTarget = () => fullscreenTarget?.current || null;
+export const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+export function toggleFullscreen(el = getFullscreenTarget() || document.documentElement) {
+  const result = fullscreenElement()
+    ? (document.exitFullscreen || document.webkitExitFullscreen).call(document)
+    : (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+  result?.catch?.(() => {});
+}
+
 // ─── Avisos cortos ───────────────────────────────────────────────────────────
 const toast = createStore(null);
 let toastTimer;
