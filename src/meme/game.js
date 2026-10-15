@@ -11,10 +11,21 @@ export const VOTE_MS = 12000;     // cuánto se muestra cada meme para votar
 export const RESULTS_MS = 9000;   // resultados de la ronda antes de la siguiente
 export const STARS = [1, 2, 3, 4, 5];
 
-export const DEFAULT_OPTIONS = { mode: 'normal', rounds: 3, seconds: 90 };
-export const OPTION_VALUES = { mode: ['normal', 'same'], rounds: [1, 2, 3, 4, 5], seconds: [45, 60, 90, 120] };
+// `rerolls`: cuántas veces puede cambiar cada uno su plantilla por ronda (−1 = sin límite).
+export const UNLIMITED = -1;
+export const DEFAULT_OPTIONS = { mode: 'normal', rounds: 3, seconds: 90, rerolls: 1 };
+export const OPTION_VALUES = { mode: ['normal', 'same'], rounds: [1, 2, 3, 4, 5], seconds: [45, 60, 90, 120], rerolls: [0, 1, 2, 3, 5, 10, UNLIMITED] };
 
 export const cleanName = (name) => String(name || '').trim().slice(0, 20);
+
+// Cuántos cambios de plantilla le quedan a alguien en esta ronda (Infinity sin límite). Las salas de
+// antes de esta opción no la tienen (una por persona) y guardaban `true` en vez de la cuenta.
+export function rerollsLeft(room, id) {
+  if (!room || room.options.mode === 'same') return 0;
+  const limit = room.options.rerolls ?? 1;
+  const used = Number(room.rerolled?.[id] === true ? 1 : room.rerolled?.[id] || 0);
+  return limit === UNLIMITED ? Infinity : Math.max(0, limit - used);
+}
 export const makeId = () => Math.random().toString(36).slice(2, 10);
 export const findPlayer = (room, id) => room?.players.find((p) => p.id === id) || null;
 
@@ -189,11 +200,11 @@ export function applyAction(room, action, ctx = {}) {
 
     case 'reroll': {
       if (next.phase !== 'making' || !sameRound || !me?.inGame) return null;
-      if (next.options.mode === 'same' || next.rerolled[me.id] || next.memes[me.id]) return null;
+      if (rerollsLeft(next, me.id) <= 0 || next.memes[me.id]) return null;
       const t = cleanTemplate(action.template);
       if (!t) return null;
       next.templates[me.id] = t;
-      next.rerolled[me.id] = true;
+      next.rerolled[me.id] = Number(next.rerolled[me.id] === true ? 1 : next.rerolled[me.id] || 0) + 1;
       return next;
     }
 

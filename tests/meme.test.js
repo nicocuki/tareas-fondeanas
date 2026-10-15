@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  MAX_PLAYERS, RESULTS_MS, VOTE_MS, applyAction, cleanTemplate, cleanTexts, findPlayer, newRoom, pointsFor, ranking,
+  MAX_PLAYERS, RESULTS_MS, UNLIMITED, VOTE_MS, applyAction, cleanTemplate, cleanTexts, findPlayer, newRoom, pointsFor, ranking, rerollsLeft,
 } from '../src/meme/game.js';
 import { CATALOG, boxLabel, defaultTexts, findTemplate, toRoomTemplate } from '../src/meme/catalog.js';
 
@@ -52,7 +52,7 @@ test('meme: modo normal reparte un meme distinto a cada uno; «todos el mismo»,
   assert.equal(new Set(Object.values(same.templates).map((t) => t.id)).size, 1);
 });
 
-test('meme: se puede cambiar el meme una sola vez, y no en el modo «todos el mismo»', () => {
+test('meme: por defecto se puede cambiar el meme una sola vez, y no en el modo «todos el mismo»', () => {
   let room = start(lobby());
   room = applyAction(room, { type: 'reroll', playerId: 'a', round: 1, template: tpl(99) }, { now: 1500 });
   assert.equal(room.templates.a.id, 't99');
@@ -166,4 +166,36 @@ test('meme: una sala llena con textos largos no pasa el tope de 30.000 caractere
   room.history = Array.from({ length: 5 }, (_, i) => ({ round: i, author: 'a', points: 50, template: tpl(i, 5), texts: room.memes.a }));
   const size = JSON.stringify(room).length;
   assert.ok(size < 30000, `${size}`);
+});
+
+test('meme: el anfitrión elige cuántos cambios de meme tiene cada uno (o sin límite), y se renuevan cada ronda', () => {
+  const reroll = (room, id, i) => applyAction(room, { type: 'reroll', playerId: id, round: room.round, template: tpl(i) }, { now: 1500 });
+  let room = start(lobby(undefined, { rerolls: 3 }));
+  assert.equal(rerollsLeft(room, 'a'), 3);
+  for (const i of [90, 91, 92]) room = reroll(room, 'a', i);
+  assert.equal(room.templates.a.id, 't92');
+  assert.equal(rerollsLeft(room, 'a'), 0);
+  assert.equal(reroll(room, 'a', 93), null);
+  assert.equal(rerollsLeft(room, 'b'), 3); // los cambios son de cada uno
+  // Ronda nueva: vuelven a estar los tres.
+  room = submitAll(room);
+  assert.equal(rerollsLeft({ ...room, rerolled: {} }, 'a'), 3);
+
+  let free = start(lobby(undefined, { rerolls: UNLIMITED }));
+  for (let i = 0; i < 20; i++) free = reroll(free, 'a', 50 + i);
+  assert.equal(free.templates.a.id, 't69');
+  assert.equal(rerollsLeft(free, 'a'), Infinity);
+
+  const none = start(lobby(undefined, { rerolls: 0 }));
+  assert.equal(reroll(none, 'a', 90), null);
+  // Valores que no están en la lista no se aceptan.
+  assert.equal(lobby(undefined, { rerolls: 7 }).options.rerolls, 1);
+});
+
+test('meme: una sala de antes de la opción (sin «rerolls» y con «true») sigue con un cambio por persona', () => {
+  const room = start(lobby());
+  delete room.options.rerolls;
+  assert.equal(rerollsLeft(room, 'a'), 1);
+  room.rerolled.a = true;
+  assert.equal(rerollsLeft(room, 'a'), 0);
 });

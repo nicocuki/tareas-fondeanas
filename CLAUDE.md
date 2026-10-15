@@ -346,8 +346,11 @@ todos, uno por uno, de 1 a 5 estrellas.
 - El reducer no conoce el catálogo: la pantalla que arranca la ronda manda un `pool` (y en el `tick`
   que abre la siguiente), y `reroll` trae la plantilla nueva. En la sala viaja `toRoomTemplate`
   (id, url, tamaño, cantidad de cajas); `cleanTemplate` solo acepta URLs de `https://i.imgflip.com/`.
-- **Modos** (`options.mode`): `normal` reparte una plantilla distinta a cada uno y deja cambiarla una
-  vez; `same` le da la misma a todos y no deja cambiarla.
+- **Modos** (`options.mode`): `normal` reparte una plantilla distinta a cada uno; `same` le da la misma a
+  todos y no deja cambiarla. **Cuántas veces puede cambiarla cada uno por ronda** lo elige el anfitrión
+  (`options.rerolls`: 0, 1, 2, 3, 5, 10 o `UNLIMITED` = −1); `rerolled[id]` cuenta las que usó.
+  `rerollsLeft` lo calcula para el reducer y la pantalla; una sala de antes (sin la opción y con `true`)
+  queda en uno por persona.
 - **Los textos no se dibujan en la imagen**: se guardan como `{ t, x, y, w, s, k }` (texto, posición y
   ancho en %, tamaño en `cqw`, letra negra) y `MemeView` los pone encima con CSS, en Anton con borde negro. Así no hace
   falta subir imágenes a ningún lado.

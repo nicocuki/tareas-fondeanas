@@ -8,7 +8,8 @@ import JoinInvite from '../ui/JoinInvite.jsx';
 import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
 import { gameUrl } from '../ui/games.js';
 import {
-  GAME_TYPE, MAX_PLAYERS, MAX_TEXT, MIN_PLAYERS, STARS, applyAction, cleanName, findPlayer, makeId, newRoom, pointsFor, ranking,
+  GAME_TYPE, MAX_PLAYERS, MAX_TEXT, MIN_PLAYERS, OPTION_VALUES, STARS, UNLIMITED, applyAction, cleanName, findPlayer, makeId, newRoom,
+  pointsFor, ranking, rerollsLeft,
 } from './game.js';
 import { CATALOG, boxLabel, defaultTexts, findTemplate, toRoomTemplate } from './catalog.js';
 import MemeView from './MemeView.jsx';
@@ -21,6 +22,7 @@ function codeFromUrl() {
   return (new URLSearchParams(window.location.search).get('sala') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
 }
 const setUrlCode = (code) => window.history.replaceState(null, '', gameUrl(GAME, code));
+const rerollHint = (n) => (n === UNLIMITED ? 'Cada uno cambia su meme todas las veces que quiera.' : n === 0 ? 'Nadie puede cambiar el meme que le tocó.' : n === 1 ? 'Cada uno lo puede cambiar una vez por ronda.' : `Cada uno lo puede cambiar hasta ${n} veces por ronda.`);
 
 // Plantillas para una ronda, mezcladas (las elige la pantalla que arranca la ronda).
 function samplePool(n = 40) {
@@ -108,11 +110,14 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         </ul>
       </div>
       <LobbyOptions canEdit={host}>
-        <OptionField title="Modo" hint={opts.mode === 'same' ? 'Todos reciben la misma plantilla y gana el más creativo.' : 'A cada uno le toca un meme distinto (y lo puede cambiar una vez).'}>
+        <OptionField title="Modo" hint={opts.mode === 'same' ? 'Todos reciben la misma plantilla y gana el más creativo.' : 'A cada uno le toca un meme distinto (y lo puede cambiar, si quedan cambios).'}>
           <Segmented name="mode" value={opts.mode} disabled={!host} onChange={(v) => set({ mode: v })} choices={[{ value: 'normal', label: '🎲 Normal' }, { value: 'same', label: '🪞 Todos el mismo meme' }]} />
         </OptionField>
         <OptionField title="Rondas">
           <Segmented name="rounds" value={opts.rounds} disabled={!host} onChange={(v) => set({ rounds: v })} choices={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))} />
+        </OptionField>
+        <OptionField title="Cambios de meme por persona" hint={opts.mode === 'same' ? 'Con todos el mismo meme no se puede cambiar.' : rerollHint(opts.rerolls ?? 1)}>
+          <Segmented name="rerolls" value={opts.rerolls ?? 1} disabled={!host || opts.mode === 'same'} onChange={(v) => set({ rerolls: v })} choices={OPTION_VALUES.rerolls.map((n) => ({ value: n, label: n === UNLIMITED ? '∞' : String(n) }))} />
         </OptionField>
         <OptionField title="Tiempo para armar cada meme">
           <Segmented name="seconds" value={opts.seconds} disabled={!host} onChange={(v) => set({ seconds: v })} choices={[45, 60, 90, 120].map((n) => ({ value: n, label: `${n} s` }))} />
@@ -171,7 +176,7 @@ function Making({ room, me, now, onDispatch }) {
       </div>
     );
   }
-  const canReroll = room.options.mode === 'normal' && !room.rerolled[me.id];
+  const changesLeft = rerollsLeft(room, me.id);
   return (
     <div className="cs-root mm-page">
       {header}
@@ -200,7 +205,7 @@ function Making({ room, me, now, onDispatch }) {
             </div>
           ))}
           <div className="mm-editor-actions">
-            {canReroll && (
+            {changesLeft > 0 && (
               <button
                 type="button"
                 className="tf-btn tf-btn-soft"
@@ -211,7 +216,7 @@ function Making({ room, me, now, onDispatch }) {
                   onDispatch({ type: 'reroll', round: room.round, template: toRoomTemplate(pick) });
                 }}
               >
-                🔄 Cambiar meme (1 vez)
+                🔄 Cambiar meme{changesLeft === Infinity ? '' : changesLeft === 1 ? ' (queda 1)' : ` (quedan ${changesLeft})`}
               </button>
             )}
             <button type="button" className="tf-btn tf-btn-primary" disabled={!texts.some((t) => t.t.trim())} onClick={submit}>¡Listo!</button>

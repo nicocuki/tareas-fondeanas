@@ -324,7 +324,14 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.8.3 = A los Tiros: el escudo te salva del vacío 🛡️
+1.8.3 = A los Tiros: el escudo te salva del vacío 🛡️
 - Si tenés el escudo activado justo cuando caés al vacío, salís disparado para arriba igual pero no perdés vida (como en el original).
 - Sin escudo, caerse sigue sacando el 20 % de la vida.
 - Cuando el escudo te salva, las chispas salen blancas.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.8.4 = Armá el Meme: cambios de meme a elección 🔄
+- El anfitrión elige cuántas veces puede cambiar su meme cada uno por ronda: 0, 1, 2, 3, 5, 10 o sin límite.
+- El botón muestra cuántos cambios te quedan («quedan 2», «queda 1») y desaparece cuando se terminan.
+- Los cambios se renuevan en cada ronda. En el modo «Todos el mismo meme» no se puede cambiar.
