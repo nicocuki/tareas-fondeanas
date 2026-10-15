@@ -7,6 +7,7 @@ import CafeOTeLobby from './CafeOTeLobby.jsx';
 import CafeOTeSecretWord from './CafeOTeSecretWord.jsx';
 import CafeOTeBoard from './CafeOTeBoard.jsx';
 import GameHero from '../ui/GameHero.jsx';
+import JoinInvite from '../ui/JoinInvite.jsx';
 import { useRegisterRoom } from '../ui/store.js';
 
 function codeFromUrl() {
@@ -37,6 +38,8 @@ function inviteLink(code) {
 export default function CafeOTeApp({ onBackToMenu }) {
   const [name, setName] = useState(loadName);
   const [joinCode, setJoinCode] = useState(codeFromUrl);
+  // Con el link de una sala se ve directo «te estás uniendo a la sala de…».
+  const [invite, setInvite] = useState(() => codeFromUrl().length === 4);
   const [session, setSession] = useState(() => loadSession(codeFromUrl(), 'cafe-o-te'));
   const [room, setRoom] = useState(null);
   const [error, setError] = useState('');
@@ -145,6 +148,20 @@ export default function CafeOTeApp({ onBackToMenu }) {
 
   // Home de Café o Té (sin sesión)
   if (!session) {
+    if (invite) {
+      return (
+        <div className="cs-root" style={{ background: COLORS.bg, padding: '48px 16px 32px', minHeight: 'var(--page-h)', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ maxWidth: 460, width: '100%' }}>
+            <JoinInvite
+              gameId="cafe-o-te" code={joinCode} name={name} onName={setName} maxName={16}
+              busy={busy} error={error} onBack={onBackToMenu}
+              onJoin={() => handleJoin({ preventDefault() {} })}
+              onCancel={() => { setInvite(false); setJoinCode(''); setUrlCode(''); setError(''); }}
+            />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="cs-root" style={{ background: COLORS.bg, padding: '48px 16px 32px', minHeight: 'var(--page-h)', display: 'flex', justifyContent: 'center' }}>
         <div style={{ maxWidth: 440, width: '100%' }}>

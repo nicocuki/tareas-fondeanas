@@ -5,6 +5,7 @@ import { onValue, ref, set } from '../realtime.js';
 import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
 import GameHero from '../ui/GameHero.jsx';
+import JoinInvite from '../ui/JoinInvite.jsx';
 import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
 import { gameUrl } from '../ui/games.js';
 import {
@@ -41,7 +42,21 @@ function Entry({ onCreate, onJoin, busy, error, onBack }) {
   const [name, setName] = useState(profile.name);
   const [avatar, setAvatar] = useState(profile.avatar);
   const [code, setCode] = useState(codeFromUrl);
+  // Con el link de una sala se ve directo «te estás uniendo a la sala de…».
+  const [invite, setInvite] = useState(() => codeFromUrl().length === 4);
   const save = () => setProfile({ name, avatar });
+  if (invite) {
+    return (
+      <div className="cs-root lm-page">
+        <JoinInvite
+          gameId={GAME} code={code} name={name} onName={setName} avatar={avatar} onAvatar={setAvatar}
+          busy={busy} error={error} onBack={onBack}
+          onJoin={() => { save(); onJoin(code, name, avatar); }}
+          onCancel={() => { setInvite(false); setCode(''); setUrlCode(''); }}
+        />
+      </div>
+    );
+  }
   return (
     <div className="cs-root lm-page">
       <GameHero gameId={GAME} onBack={onBack} />

@@ -9,6 +9,9 @@ import Icon from './Icon.jsx';
 import { PublicCheckbox, PublicSwitch } from '../lobby/PublicRoom.jsx';
 import './gartic.css';
 import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
+import { gameById, gameUrl } from '../ui/games.js';
+import { useRoomInfo } from '../ui/rooms.js';
+import { isFull } from '../ui/roomSummary.js';
 const urlCode=()=>new URLSearchParams(location.search).get('sala')?.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)||'';
 function savedSession(){try{return JSON.parse(sessionStorage.getItem('gartic:session'));}catch{return null;}}
 function remember(code,uid){
@@ -23,6 +26,19 @@ function Frame({onBack,backLabel='Volver',children,wide}){
     <header className="gp-head"><button type="button" className="gp-btn-ghost" onClick={onBack}><Icon name="back" size={20}/>{backLabel}</button><Logo small={wide}/><span className="gp-head-spacer"/></header>
     {children}
   </div></div>;
+}
+// Con el link de una sala: «te estás uniendo a la sala de…», el código y cuántos hay.
+function Invite({code,info}){
+  const other=info&&info.game!=='gartic'?gameById(info.game):null;
+  const title=info===undefined?'Buscando la sala…':!info?'No encontramos esa sala':info.host?<>Te estás uniendo a la sala de <b>{info.hostAvatar} {info.host}</b></>:'Te estás uniendo a una sala';
+  return <div className="gp-panel gp-invite" data-invite={code}>
+    <p className="gp-invite-title">{title}</p>
+    <div className="gp-invite-code"><span>Código</span><strong>{code}</strong></div>
+    {info&&!other&&<p className="gp-invite-status">{info.players===1?'1 jugador en la sala':info.players+' jugadores en la sala'}{info.max?' · entran '+info.max:''}{info.phase!=='lobby'&&' · la partida ya empezó'}</p>}
+    {info===null&&<p className="gp-invite-status is-bad">Puede que se haya cerrado o que el link esté mal. Pedile el código de nuevo a quien te lo pasó.</p>}
+    {other&&<p className="gp-invite-status is-bad">Esta sala es de {other.emoji} {other.title}. <a href={gameUrl(info.game,code)}>Ir a esa sala</a></p>}
+    {isFull(info)&&<p className="gp-invite-status is-bad">La sala está llena.</p>}
+  </div>;
 }
 // Tiempo por ronda: los de siempre o uno escrito a mano.
 function TimeField({label,value,disabled,onChange}){
@@ -45,6 +61,9 @@ export default function GarticApp({onBackToMenu}){
   const [ownLoaded,setOwnLoaded]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[copied,setCopied]=useState('');
   const [online,setOnline]=useState(false),[offset,setOffset]=useState(0),[tick,setTick]=useState(Date.now());
   const [tab,setTab]=useState('modes');
+  const [invite,setInvite]=useState(()=>urlCode().length===4);
+  const inviteInfo=useRoomInfo(invite?joinCode:'');
+  const canJoinInvite=Boolean(inviteInfo)&&inviteInfo.game==='gartic'&&!isFull(inviteInfo);
   const stopPresence=useRef(null),advancing=useRef(false);
   useEffect(()=>{
     let active=true;
@@ -131,17 +150,29 @@ export default function GarticApp({onBackToMenu}){
     try{await navigator.clipboard.writeText(value);setCopied(link?'link':'code');setTimeout(()=>setCopied(''),2000);}catch{window.prompt('Copiá la invitación:',value);}
   }
   const banners=<>{!online && code && <div className="gp-notice" role="status">Reconectando… Tu tarea sigue guardada.</div>}{error && <div className="gp-error" role="alert">{error}</div>}</>;
+  const profile=<section className="gp-col">
+    <h2 className="gp-title">Elegí tu personaje</h2>
+    <div className="gp-panel gp-profile">
+      <span className="gp-avatar gp-avatar-xl">{avatar}</span>
+      <div className="gp-avatar-picker">{AVATARS.map((a)=><button type="button" aria-label={'Avatar '+a} aria-pressed={avatar===a} className={avatar===a?'is-on':''} key={a} onClick={()=>{setAvatar(a);setProfile({avatar:a});}}>{a}</button>)}</div>
+      <input className="gp-name" value={name} maxLength={24} autoComplete="nickname" placeholder="Tu nombre" aria-label="Tu nombre" onChange={(e)=>setName(e.target.value)}/>
+    </div>
+  </section>;
+  if(!code&&invite)return <Frame onBack={onBackToMenu} backLabel="Juegos">
+    {banners}
+    <div className="gp-home">
+      {profile}
+      <section className="gp-col"><h2 className="gp-title">Te invitaron</h2><Invite code={joinCode} info={inviteInfo}/></section>
+    </div>
+    <div className="gp-actions">
+      <button type="button" className="gp-btn gp-btn-go gp-btn-big" disabled={busy || !uid || !cleanName(name) || !canJoinInvite} onClick={()=>enter(false)}><Icon name="play"/>Unirme a la sala</button>
+    </div>
+    <button type="button" className="gp-invite-other" onClick={()=>{setInvite(false);setJoinCode('');remember('');}}>Prefiero crear mi propia sala</button>
+  </Frame>;
   if(!code)return <Frame onBack={onBackToMenu} backLabel="Juegos">
     {banners}
     <div className="gp-home">
-      <section className="gp-col">
-        <h2 className="gp-title">Elegí tu personaje</h2>
-        <div className="gp-panel gp-profile">
-          <span className="gp-avatar gp-avatar-xl">{avatar}</span>
-          <div className="gp-avatar-picker">{AVATARS.map((a)=><button type="button" aria-label={'Avatar '+a} aria-pressed={avatar===a} className={avatar===a?'is-on':''} key={a} onClick={()=>{setAvatar(a);setProfile({avatar:a});}}>{a}</button>)}</div>
-          <input className="gp-name" value={name} maxLength={24} autoComplete="nickname" placeholder="Tu nombre" aria-label="Tu nombre" onChange={(e)=>setName(e.target.value)}/>
-        </div>
-      </section>
+      {profile}
       <section className="gp-col">
         <h2 className="gp-title">Cómo se juega</h2>
         <div className="gp-panel gp-howto">

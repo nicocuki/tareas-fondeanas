@@ -8,6 +8,7 @@ import { backend } from '../storage.js';
 import { clearSession, loadName, loadSession, saveSession, savedPlayerId } from '../session.js';
 import { useRegisterRoom } from '../ui/store.js';
 import GameHero from '../ui/GameHero.jsx';
+import JoinInvite from '../ui/JoinInvite.jsx';
 import {
   CARD_COLORS, COLORS, PAPER_CARD, PICKED_CARD, TEAM_BG, TEAM_BUTTON, TEAM_TEXT,
   ghostButton, inputStyle, labelStyle, panelStyle,
@@ -60,6 +61,8 @@ const CARD_FONT = { 5: 'clamp(10px, 2.8vw, 14px)', 6: 'clamp(9px, 2.2vw, 13px)',
 export default function CodigoSecretoApp({ onBackToMenu }) {
   const [name, setName] = useState(loadName);
   const [joinCode, setJoinCode] = useState(codeFromUrl);
+  // Con el link de una sala se ve directo «te estás uniendo a la sala de…».
+  const [invite, setInvite] = useState(() => codeFromUrl().length === 4);
   const [session, setSession] = useState(() => loadSession(codeFromUrl(), 'codigo-secreto'));
   const [room, setRoom] = useState(null);
   const [error, setError] = useState('');
@@ -245,6 +248,21 @@ export default function CodigoSecretoApp({ onBackToMenu }) {
   function renderView() {
     // ---------- HOME DE CÓDIGO SECRETO ----------
     if (!session) {
+      if (invite) {
+        return (
+          <div className="cs-root" style={{ background: TEAM_BG.lobby, padding: '48px 16px 32px', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ maxWidth: 460, width: '100%' }}>
+              {banners}
+              <JoinInvite
+                gameId="codigo-secreto" code={joinCode} name={name} onName={setName} maxName={MAX_NAME}
+                busy={busy} error={error} onBack={onBackToMenu}
+                onJoin={() => handleJoin({ preventDefault() {} })}
+                onCancel={() => { setInvite(false); setJoinCode(''); setUrlCode(''); setError(''); }}
+              />
+            </div>
+          </div>
+        );
+      }
       return (
         <div className="cs-root" style={{ background: TEAM_BG.lobby, padding: '48px 16px 32px', display: 'flex', justifyContent: 'center' }}>
           <div style={{ maxWidth: 440, width: '100%' }}>
