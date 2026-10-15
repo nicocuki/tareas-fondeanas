@@ -37,6 +37,49 @@ function RoomChip({ room }) {
   );
 }
 
+// Pantalla completa de toda la página (el header queda, para poder salir o cambiar de juego).
+// Mario vs Luigi tiene la suya, que agranda solo el iframe de Unity.
+const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+const canFullscreen = () => {
+  const el = document.documentElement;
+  return Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled) && Boolean(el.requestFullscreen || el.webkitRequestFullscreen);
+};
+
+function FullscreenButton() {
+  const [on, setOn] = useState(() => Boolean(fullscreenElement()));
+
+  useEffect(() => {
+    const sync = () => setOn(Boolean(fullscreenElement()));
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync);
+    return () => {
+      document.removeEventListener('fullscreenchange', sync);
+      document.removeEventListener('webkitfullscreenchange', sync);
+    };
+  }, []);
+
+  if (!canFullscreen()) return null; // el iPhone no deja: mejor no mostrar un botón que no hace nada
+
+  function toggle() {
+    const el = document.documentElement;
+    const result = fullscreenElement()
+      ? (document.exitFullscreen || document.webkitExitFullscreen).call(document)
+      : (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+    result?.catch?.(() => {});
+  }
+
+  const label = on ? 'Salir de pantalla completa' : 'Pantalla completa';
+  return (
+    <button type="button" className="tf-icon-btn" onClick={toggle} aria-label={label} title={label} data-fullscreen={on ? 'on' : 'off'}>
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        {on
+          ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+          : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}
+      </svg>
+    </button>
+  );
+}
+
 export default function AppShell({ activeGame, onNavigate, children }) {
   const [menu, setMenu] = useState(null); // null = cerrado; si no, la vista del menú
   const room = useCurrentRoom();
@@ -81,6 +124,7 @@ export default function AppShell({ activeGame, onNavigate, children }) {
 
           <div className="tf-header-right">
             {room && <RoomChip room={room} />}
+            {game && game.id !== 'mvl' && <FullscreenButton />}
             <button type="button" className="tf-avatar-btn" onClick={() => { syncProfileName(); setMenu('perfil'); }} aria-label="Tu perfil">
               <span aria-hidden="true">{profile.avatar}</span>
             </button>
