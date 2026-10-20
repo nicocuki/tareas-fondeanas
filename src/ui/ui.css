@@ -173,6 +173,14 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 0.2s var(--ease); }
 .tf-switch:checked { background: var(--accent); }
 .tf-switch:checked::after { transform: translateX(18px); }
+.tf-bosskey { margin-bottom: 18px; }
+.tf-bosskey .tf-switch-row { margin-bottom: 0; }
+.tf-bosskey.is-on .tf-switch-row { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.tf-bosskey-bind { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 14px; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 var(--radius-lg) var(--radius-lg); background: var(--surface-2); }
+.tf-bosskey-bind > span { font-weight: 600; }
+.tf-bosskey-bind small { flex-basis: 100%; color: var(--text-2); font-size: 13px; }
+.tf-keycap { min-width: 64px; min-height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border); border-bottom-width: 3px; background: var(--surface); color: var(--text); font-family: inherit; font-weight: 600; font-size: 15px; cursor: pointer; }
+.tf-keycap.is-listening { border-color: var(--accent); color: var(--accent); }
 .tf-credits-card { padding: 16px; border-radius: var(--radius-lg); background: var(--surface-2); font-size: 14px; }
 .tf-credits-card p { color: var(--text-2); margin: 6px 0; }
 .tf-credits-card small { color: var(--text-3); }

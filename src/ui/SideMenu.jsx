@@ -1,7 +1,7 @@
 // Menú hamburguesa: juegos, unirse con código, perfil, cómo jugar, novedades, ajustes y salir.
 import React, { useEffect, useRef, useState } from 'react';
 import { gameById } from './games.js';
-import { AVATARS, copyInvite, setPrefs, setProfile, showToast, useCurrentRoom, usePrefs, useProfile } from './store.js';
+import { AVATARS, DEFAULT_BOSS_KEY, copyInvite, setPrefs, setProfile, showToast, useCurrentRoom, usePrefs, useProfile } from './store.js';
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
 
@@ -177,6 +177,64 @@ function NewsView() {
   );
 }
 
+// Nombre legible de una tecla: «Espacio», «A», «F2», «Ñ»…
+function keyLabel(e) {
+  if (e.code === 'Space') return 'Espacio';
+  if (e.key.length === 1) return e.key.toUpperCase();
+  return e.key;
+}
+
+// Teclas que no sirven: Escape cancela, Tab mueve el foco y las modificadoras solas no se «tocan».
+const BLOCKED_KEYS = ['Escape', 'Tab', 'Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock'];
+
+function BossKeySetting({ prefs }) {
+  const [listening, setListening] = useState(false);
+  const binding = prefs.bossKeyBinding || DEFAULT_BOSS_KEY;
+
+  useEffect(() => {
+    if (!listening) return undefined;
+    // En captura sobre window: llega antes que el Escape del menú (que escucha en document) y lo frena.
+    const onKey = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === 'Escape') { setListening(false); return; }
+      if (BLOCKED_KEYS.includes(e.key)) return;
+      const label = keyLabel(e);
+      setPrefs({ bossKeyBinding: { code: e.code, label } });
+      showToast(`Tecla de Alt+Tab: ${label}`);
+      setListening(false);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [listening]);
+
+  return (
+    <div className={`tf-bosskey${prefs.bossKey ? ' is-on' : ''}`}>
+      <label className="tf-switch-row">
+        <span>
+          <strong>Tecla de Alt+Tab</strong>
+          <small>Al tocar la tecla se abre por encima una pantalla que parece que estás haciendo un TP, por si alguien pasa cerca. Tocala de nuevo para volver al juego.</small>
+        </span>
+        <input
+          type="checkbox"
+          className="tf-switch"
+          checked={prefs.bossKey}
+          onChange={(e) => { setPrefs({ bossKey: e.target.checked }); if (!e.target.checked) setListening(false); }}
+        />
+      </label>
+      {prefs.bossKey && (
+        <div className="tf-bosskey-bind">
+          <span>Tecla</span>
+          <button type="button" data-bosskey className={`tf-keycap${listening ? ' is-listening' : ''}`} onClick={() => setListening((l) => !l)}>
+            {listening ? 'Apretá una tecla…' : binding.label}
+          </button>
+          <small aria-live="polite">{listening ? 'Esc para cancelar.' : 'Tocá el botón para cambiarla.'}</small>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsView() {
   const prefs = usePrefs();
   const options = [['system', 'Sistema'], ['dark', 'Oscuro'], ['light', 'Claro']];
@@ -197,6 +255,7 @@ function SettingsView() {
         </span>
         <input type="checkbox" className="tf-switch" checked={prefs.reducedMotion} onChange={(e) => setPrefs({ reducedMotion: e.target.checked })} />
       </label>
+      <BossKeySetting prefs={prefs} />
       <div className="tf-credits-card">
         <strong>Tareas Fondeanas</strong>
         <p>Juegos para jugar con los del fondo, cada uno desde su pantalla. Gratis y sin cuentas.</p>

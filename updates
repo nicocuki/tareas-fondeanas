@@ -379,8 +379,14 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.10.0 = A los Tiros: todas las cartas, mapas nuevos y «Fila de cartas»
+1.10.0 = A los Tiros: todas las cartas, mapas nuevos y «Fila de cartas»
 - Están todas las cartas de ROUNDS: se sumaron 26 (¡Bombas!, Eco, PEM, Potenciar, Disparo radar, Embestida, Silencio, Campo estático, Sierra, ¡Escudo arriba!, Supernova, Peleador, Descomposición, Cuenta abisal, Presencia helada, Robavidas, Perseverancia prístina, Resplandor, Refresco, Pacto demoníaco, Teledirigidas, Escurridizas, Propulsor, Deslumbrar, Adelantar y Saltarina). Ahora son 68.
 - Algunas que ya estaban quedaron con los números del original (Veneno, Planificación, Persecución, Sed de sangre).
 - Cuatro mapas nuevos copiados de capturas del juego original: Corona, Andamios, Hielo y Pradera.
 - Modo «Fila de cartas»: el anfitrión elige un máximo de cartas por jugador. Si ya tenés ese máximo y elegís otra, se te va la primera que elegiste, como una fila. Abajo de la pelea se marca con ⏏ la próxima que se va.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.10.1 = Ajustes: tecla de Alt+Tab
+- En Ajustes hay una opción nueva, «Tecla de Alt+Tab»: se prende y se apaga, y podés elegir qué tecla usar (por defecto F2).
+- La idea: al tocarla se va a abrir por encima una pantalla que parece que estás haciendo un TP, por si alguien pasa cerca. Por ahora solo se configura; la pantalla llega en la próxima versión.
