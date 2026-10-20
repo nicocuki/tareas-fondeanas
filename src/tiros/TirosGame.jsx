@@ -14,8 +14,8 @@ import { burst, drawScene } from './render.js';
 import { applyBox, boxSolid, claimBox, driftBoxes, encodeBox, newBoxes, pushBox, stepBoxes } from './boxes.js';
 import { statsFor } from './cards.js';
 import {
-  BLOCK_TIME, FX_RADIUS, PLAYER_R, STEP, bulletDamage, bulletsForShot, newPlayerState, outDamage, ringBullets, stepBullet, stepPlayer,
-  teleportTarget, touches,
+  BLOCK_TIME, FX_RADIUS, STEP, bulletDamage, bulletsForShot, newPlayerState, outDamage, ringBullets, stepBullet, stepPlayer,
+  radiusFor, teleportTarget, touches,
 } from './sim.js';
 import { hitSolid } from './shapes.js';
 
@@ -175,7 +175,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     const res = stepBullet(b, dt, { solids: s.solids, stats: bst, aim, targets, onBox: (i, bl) => hitBox(s, i, bl, bst) });
     if (res?.impact) { onImpact(s, b, res.impact.x, res.impact.y, now, false); return; }
     if (b.done) return;
-    if (b.owner !== me.id && active && alive && touches(b, p.x, p.y)) {
+    if (b.owner !== me.id && active && alive && touches(b, p.x, p.y, radiusFor(p.maxHp))) {
       b.done = true;
       if (now < p.blockUntil) { s.myHits.push({ k: b.k, o: b.owner, dm: 0, t: now }); return; }
       const dm = bulletDamage(b, bst);
@@ -202,7 +202,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     // Contra los demás solo se ve: el daño lo decide la pantalla de cada uno.
     for (const [id, v] of s.remotes) {
       if (id === b.owner || v.snap.d || !active) continue;
-      if (touches(b, v.x, v.y)) {
+      if (touches(b, v.x, v.y, radiusFor(v.snap.mh))) {
         b.done = true;
         burst(s.particles, b.x, b.y, { n: 12, color: colorOf(id), speed: 18, life: 0.5 });
         if (!(v.snap.bl > now)) onImpact(s, b, b.x, b.y, now, false);
@@ -310,7 +310,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     const p = s.local;
     if (!p || p.dead || skipMe || owner === me.id || !isActive(now)) return;
     const d = Math.hypot(p.x - x, p.y - y);
-    if (d > radius + PLAYER_R) return;
+    if (d > radius + radiusFor(p.maxHp)) return;
     if (now < p.blockUntil) return;
     damageMe(s, dmg, owner, `${key}x`, now);
     const k = 25 / Math.max(1, d);
@@ -337,7 +337,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   // Lleva al jugador a (x, y), subiéndolo de a poco si quedaría adentro de una pared.
   function landAt(s, p, x, y) {
     for (let up = 0; up < 4; up += 0.25) {
-      if (!s.solids.some((sol) => hitSolid(x, y - up, PLAYER_R, sol))) { p.x = x; p.y = y - up; p.vy = Math.min(p.vy, 0); return; }
+      if (!s.solids.some((sol) => hitSolid(x, y - up, radiusFor(p.maxHp), sol))) { p.x = x; p.y = y - up; p.vy = Math.min(p.vy, 0); return; }
     }
   }
 
@@ -494,7 +494,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
           const dx = p.x - v.x, dy = p.y - v.y;
           const d = Math.hypot(dx, dy) || 1;
           const shielded = now < p.blockUntil;
-          if (v.snap.sw > now && d < SAW_R + PLAYER_R && !shielded) damageMe(s, SAW_DPS * STEP, id, null, now, true);
+          if (v.snap.sw > now && d < SAW_R + radiusFor(p.maxHp) && !shielded) damageMe(s, SAW_DPS * STEP, id, null, now, true);
           if (v.snap.ab && d < ABYSS_R) {
             if (!shielded) damageMe(s, ABYSS_DPS * STEP, id, null, now, true);
             p.vx -= (dx / d) * 25 * STEP; p.vy -= (dy / d) * 25 * STEP;
@@ -528,8 +528,8 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
         const mine = (bx) => bx.o === me.id;
         const fixed = [...s.mapSolids, ...s.boxes.filter((bx) => !bx.gone && !mine(bx)).map(boxSolid)];
         const pushers = [];
-        if (alive) pushers.push({ x: p.x, y: p.y, vx: p.pushVx || 0, vy: p.pushVy || 0 });
-        for (const v of s.remotes.values()) if (!v.snap.d) pushers.push({ x: v.x, y: v.y, vx: v.snap.vx, vy: v.snap.vy });
+        if (alive) pushers.push({ x: p.x, y: p.y, vx: p.pushVx || 0, vy: p.pushVy || 0, r: radiusFor(p.maxHp) });
+        for (const v of s.remotes.values()) if (!v.snap.d) pushers.push({ x: v.x, y: v.y, vx: v.snap.vx, vy: v.snap.vy, r: radiusFor(v.snap.mh) });
         stepBoxes(s.boxes, STEP, fixed, pushers, mine);
         driftBoxes(s.boxes, STEP, mine, now);
       }

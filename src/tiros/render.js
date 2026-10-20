@@ -3,7 +3,7 @@
 // piernas, balas que brillan y dejan estela, explosiones con chispas. Todo en unidades del mundo.
 import { LIGHT, WORLD_H, WORLD_W, themeOf } from './maps.js';
 import { compileShape, outline } from './shapes.js';
-import { PLAYER_R } from './sim.js';
+import { PLAYER_R, sizeFor } from './sim.js';
 import { CARDS } from './cards.js';
 
 // ─── Partículas ──────────────────────────────────────────────────────────────
@@ -498,8 +498,15 @@ export function drawScene(ctx, canvas, v) {
   // Personajes (con lo que llevan alrededor: sierra, Cuenta abisal, aturdido).
   for (const c of v.characters) {
     drawAura(ctx, c, v.now, v.sawR || 3.6);
+    // Más vida, más grande (ver sizeFor): se agranda desde los pies, que siguen en el piso.
+    const k = sizeFor(c.maxHp);
+    ctx.save();
+    ctx.translate(c.x, c.y + PLAYER_R * k);
+    ctx.scale(k, k);
+    ctx.translate(-c.x, -(c.y + PLAYER_R));
     drawCharacter(ctx, c, v.now);
     if (c.stunned) drawStars(ctx, c, v.now);
+    ctx.restore();
   }
 
   // Cajas sueltas.

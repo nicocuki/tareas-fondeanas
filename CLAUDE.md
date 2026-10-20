@@ -403,7 +403,10 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
   pierde vida** (`outDamage`), como en el original: sale disparado igual y las chispas salen blancas. Ojo con el salto corto (soltar el salto
   corta la subida a la mitad): `jumpCut` arranca en `true` y se pone en `true` al lanzar, si no
   también cortaba el lanzamiento.
-- **El personaje**: el círculo de choque (`PLAYER_R` 0,8) abarca cuerpo y piernas; la bolita se dibuja
+- **Más vida, más grande** (pedido de Nico, como en ROUNDS): `sizeFor(maxHp)` en `sim.js` agranda el
+  círculo de choque (`radiusFor`) y el dibujo, y frena el movimiento (÷ raíz del tamaño). Crece con la raíz
+  quinta, entre ×0,8 y ×1,5. Los remotos usan `snap.mh`, que ya viajaba en la foto.
+- **El personaje**: el círculo de choque (`PLAYER_R` 0,8 con 100 de vida) abarca cuerpo y piernas; la bolita se dibuja
   arriba (`BODY_R`) y los pies terminan en el borde de abajo, que es donde toca el piso (antes el cuerpo
   era todo el círculo y las piernas quedaban metidas en el piso). Piernas curvas, paso según lo que
   avanza, aplastado al caer, estirado al saltar, inclinación y sacudón al recibir un golpe: es solo

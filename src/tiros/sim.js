@@ -7,7 +7,12 @@ import { hitSolid } from './shapes.js';
 import { BASE } from './cards.js';
 
 export const STEP = 1 / 120;
-export const PLAYER_R = 0.8;   // cuerpo y piernas: los pies tocan el piso en y + PLAYER_R
+export const PLAYER_R = 0.8;   // cuerpo y piernas: los pies tocan el piso en y + PLAYER_R (con 100 de vida)
+// Como en ROUNDS, el tamaño sigue a la vida máxima: con más vida, un poco más grande (y más fácil de
+// pegarle) y un poco más lento; con menos, al revés. Crece despacio (raíz quinta) y con topes:
+// 200 de vida = ×1,15 de tamaño y 93 % de velocidad; 500 = ×1,38 y 85 %.
+export const sizeFor = (maxHp) => Math.max(0.8, Math.min(1.5, ((maxHp || 100) / 100) ** 0.2));
+export const radiusFor = (maxHp) => PLAYER_R * sizeFor(maxHp);
 // Medido de un video de ROUNDS (720 px de alto = nuestras 36 unidades): cae con ~110 u/s², el salto
 // sube rápido (0,3 s) y, al soltar, la velocidad de costado se va a la mitad cada ~0,07 s.
 export const GRAVITY = 110;
@@ -75,7 +80,8 @@ export function newPlayerState(x, y, stats) {
 export function stepPlayer(p, input, dt, { solids, stats, now, enemyX }) {
   const events = {};
   const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-  let mult = 1;
+  const r = radiusFor(p.maxHp);
+  let mult = 1 / Math.sqrt(sizeFor(p.maxHp));
   if (now < p.slowUntil) mult *= 1 - p.slowAmount;
   if (stats.bloodRush && now < p.rushUntil) mult *= 1.5;
   if (stats.chase && enemyX != null && dir !== 0 && Math.sign(enemyX - p.x) === dir) mult *= 1.6;
@@ -134,7 +140,7 @@ export function stepPlayer(p, input, dt, { solids, stats, now, enemyX }) {
   if (p.launching && p.vy >= 0) p.launching = false;
   for (const solid of solids) {
     if (p.launching) break;
-    const hit = hitSolid(p.x, p.y, PLAYER_R, solid);
+    const hit = hitSolid(p.x, p.y, r, solid);
     if (!hit) continue;
     if (solid.boxIndex !== undefined) (p.touching ||= []).push(solid.boxIndex);
     if (hit.ny < -0.6) {
@@ -156,7 +162,7 @@ export function stepPlayer(p, input, dt, { solids, stats, now, enemyX }) {
     const probe = Math.abs(p.vx) * dt * 1.5 + 0.05;
     let lift = null;
     for (const solid of solids) {
-      const hit = hitSolid(p.x, p.y + probe, PLAYER_R, solid);
+      const hit = hitSolid(p.x, p.y + probe, r, solid);
       if (hit && hit.ny < -0.6) lift = Math.min(lift ?? Infinity, probe - hit.depth / -hit.ny);
     }
     if (lift !== null && lift >= 0) { p.y += lift; p.vy = 0; p.onGround = true; }
@@ -318,10 +324,11 @@ export const touches = (b, x, y, r = PLAYER_R) => Math.hypot(b.x - x, b.y - y) <
 // Hacia dónde apunta la teletransportación: hasta 10 unidades, frenando antes de una pared.
 export function teleportTarget(p, angle, solids) {
   let x = p.x, y = p.y;
+  const r = radiusFor(p.maxHp);
   for (let d = 0; d < 10; d += 0.25) {
     const nx = p.x + Math.cos(angle) * d;
     const ny = p.y + Math.sin(angle) * d;
-    if (solids.some((sol) => hitSolid(nx, ny, PLAYER_R, sol))) break;
+    if (solids.some((sol) => hitSolid(nx, ny, r, sol))) break;
     if (nx < 0 || nx > WORLD_W || ny < -5 || ny > WORLD_H) break;
     x = nx; y = ny;
   }

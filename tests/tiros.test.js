@@ -7,7 +7,7 @@ import { compileShape, hitSolid, touchesAny } from '../src/tiros/shapes.js';
 import { applyBox, boxSolid, claimBeats, claimBox, encodeBox, newBoxes, pushBox, stepBoxes } from '../src/tiros/boxes.js';
 
 const solidsOf = (rects) => rects.flatMap((r) => compileShape(['rect', ...r]));
-import { MAX_RISE, OUT_DAMAGE, PLAYER_R, STEP, WALL_SLIDE, bulletDamage, bulletsForShot, newPlayerState, outDamage, ringBullets, seeded, stepBullet, stepPlayer, touches } from '../src/tiros/sim.js';
+import { MAX_RISE, OUT_DAMAGE, PLAYER_R, STEP, radiusFor, sizeFor, WALL_SLIDE, bulletDamage, bulletsForShot, newPlayerState, outDamage, ringBullets, seeded, stepBullet, stepPlayer, touches } from '../src/tiros/sim.js';
 
 const rand = seeded(7);
 function lobby(names = ['Ana', 'Beto']) {
@@ -523,4 +523,19 @@ test('tiros: las escurridizas esquivan el piso', () => {
   const [b] = bulletsForShot({ k: 'e', t: 0, x: 5, y: 17, a: 0.25, sd: 1 }, 'a', st);
   for (let i = 0; i < 120 && !b.done; i++) stepBullet(b, STEP, { solids: floor, stats: st });
   assert.ok(!b.done, 'no pegó en el piso');
+});
+
+test('tiros: con más vida el jugador es un poco más grande y más lento', () => {
+  assert.equal(sizeFor(100), 1);
+  assert.ok(sizeFor(200) > 1.1 && sizeFor(200) < 1.2, 'el doble de vida, un poco más grande');
+  assert.ok(sizeFor(5000) <= 1.5 && sizeFor(10) >= 0.8, 'con topes');
+  const floor = solidsOf([[0, 20, 64, 4]]);
+  const run = (hp) => {
+    const p = newPlayerState(10, 20 - radiusFor(hp), { ...statsFor([]), hp });
+    for (let i = 0; i < 120; i++) stepPlayer(p, { right: true }, STEP, { solids: floor, stats: statsFor([]), now: i * STEP });
+    return p;
+  };
+  const normal = run(100), big = run(300);
+  assert.ok(big.x < normal.x, 'el grande avanza menos');
+  assert.ok(big.onGround && Math.abs(big.y + radiusFor(300) - 20) < 0.05, 'el grande apoya los pies en el piso');
 });

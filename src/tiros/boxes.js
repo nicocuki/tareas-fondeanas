@@ -56,7 +56,7 @@ export function claimBox(b, me) {
 
 export const claimBeats = (s, id, b) => s > b.s || (s === b.s && id > b.o);
 
-// Un paso de las cajas que simula esta pantalla. `players`: [{ x, y, vx, vy }] (los empujan, pero no
+// Un paso de las cajas que simula esta pantalla. `players`: [{ x, y, vx, vy, r }] (los empujan, pero no
 // los mueve: a cada jugador lo corrige su propia pantalla). `mine(caja)` dice cuáles simula esta.
 // Devuelve los índices de las cajas que tocó algún jugador (para reclamarlas).
 export function stepBoxes(boxes, dt, solids, players, mine) {
@@ -66,7 +66,7 @@ export function stepBoxes(boxes, dt, solids, players, mine) {
   const polys = new Map(live.map((b) => [b, boxSolid(b)]));
   for (const b of live) {
     for (const p of players) {
-      if (hitSolid(p.x, p.y, PLAYER_R + 0.05, polys.get(b))) { touched.add(b.i); if (b.sleep && Math.hypot(p.vx, p.vy) > 0.5) { b.sleep = false; b.still = 0; } }
+      if (hitSolid(p.x, p.y, (p.r || PLAYER_R) + 0.05, polys.get(b))) { touched.add(b.i); if (b.sleep && Math.hypot(p.vx, p.vy) > 0.5) { b.sleep = false; b.still = 0; } }
     }
   }
   const awake = live.filter((b) => !b.sleep);
@@ -88,9 +88,10 @@ export function stepBoxes(boxes, dt, solids, players, mine) {
       for (const c of polyContacts(poly, polys.get(o))) contacts.push({ a: b, other: o.sleep ? null : o, ...c });
     }
     for (const p of players) {
-      const hit = hitSolid(p.x, p.y, PLAYER_R, poly);
+      const r = p.r || PLAYER_R;
+      const hit = hitSolid(p.x, p.y, r, poly);
       if (!hit) continue;
-      contacts.push({ a: b, other: null, kin: { vx: p.vx * PLAYER_PUSH, vy: p.vy * PLAYER_PUSH }, nx: -hit.nx, ny: -hit.ny, depth: hit.depth * 0.5, x: p.x - hit.nx * PLAYER_R, y: p.y - hit.ny * PLAYER_R });
+      contacts.push({ a: b, other: null, kin: { vx: p.vx * PLAYER_PUSH, vy: p.vy * PLAYER_PUSH }, nx: -hit.nx, ny: -hit.ny, depth: hit.depth * 0.5, x: p.x - hit.nx * r, y: p.y - hit.ny * r });
     }
   }
 
