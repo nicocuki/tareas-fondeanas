@@ -65,6 +65,11 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 6
 .tt-chip { padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); cursor: help; }
 .tt-chip.is-uncommon { border-color: #3d8fe0; }
 .tt-chip.is-rare { border-color: #a463d9; background: color-mix(in srgb, #a463d9 12%, var(--surface-2)); }
+.tt-chip.is-leaving { opacity: 0.6; border-style: dashed; }
+.tt-deck-name small { font-weight: 500; color: var(--text-2); }
+.tt-limit-hint { margin: 0; }
+.tt-limit { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 14px; }
+.tt-limit .tf-input { width: 84px; }
 
 /* Elegir carta (PickStage.jsx): lienzo de 16:9 con rayos, cartas en arco y el personaje abajo.
    Los tamaños van en cqw (ancho del lienzo), así todo escala junto. Los colores son fijos, como en la pelea. */

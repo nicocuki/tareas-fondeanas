@@ -116,7 +116,7 @@ function background(map, mapIndex, scale) {
     const solids = compileShape(shape);
     const [x0, y0, x1, y1] = solids.reduce((bb, sd) => [Math.min(bb[0], sd.box[0]), Math.min(bb[1], sd.box[1]), Math.max(bb[2], sd.box[2]), Math.max(bb[3], sd.box[3])], [Infinity, Infinity, -Infinity, -Infinity]);
     // Cada parte por separado (recortar todas juntas anula donde se superponen), con el color de la pieza entera.
-    const fill = pieceFill(ctx, th, i, x0, y0, x1, y1);
+    const fill = map.accent?.includes(i) && th.accent ? th.accent : pieceFill(ctx, th, i, x0, y0, x1, y1);
     for (const sd of solids) {
       ctx.save();
       solidPath(ctx, sd);
@@ -381,6 +381,56 @@ function drawCharacter(ctx, c, now) {
   ctx.restore();
 }
 
+// Lo que rodea al personaje por sus cartas: la sierra que gira, el aura oscura de la Cuenta abisal (y
+// cuánto le falta cargarla) y el brillo del tiro potenciado.
+function drawAura(ctx, c, now, sawR) {
+  const { x, y } = c;
+  if (c.abyss) {
+    const g = ctx.createRadialGradient(x, y, PLAYER_R, x, y, 6);
+    g.addColorStop(0, 'rgba(120,40,200,0.45)');
+    g.addColorStop(1, 'rgba(40,0,80,0)');
+    ctx.fillStyle = g; circle(ctx, x, y, 6); ctx.fill();
+  } else if (c.abyssCharge > 0.02) {
+    ctx.strokeStyle = 'rgba(180,90,255,0.8)';
+    ctx.lineWidth = 0.14;
+    ctx.beginPath();
+    ctx.arc(x, y, PLAYER_R + 0.9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * c.abyssCharge);
+    ctx.stroke();
+  }
+  if (c.empowered) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 0.08;
+    circle(ctx, x, y, PLAYER_R + 0.25 + Math.sin(now * 10) * 0.08); ctx.stroke();
+  }
+  if (c.saw) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(now * 14);
+    ctx.fillStyle = 'rgba(220,225,235,0.9)';
+    ctx.beginPath();
+    const teeth = 14;
+    for (let i = 0; i < teeth * 2; i++) {
+      const a = (i / (teeth * 2)) * Math.PI * 2;
+      const r = i % 2 ? sawR - 0.5 : sawR;
+      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.moveTo(sawR - 0.9, 0);
+    ctx.arc(0, 0, sawR - 0.9, 0, Math.PI * 2);
+    ctx.fill('evenodd');
+    ctx.restore();
+  }
+}
+
+// Estrellitas girando arriba de la cabeza: aturdido o silenciado.
+function drawStars(ctx, c, now) {
+  ctx.fillStyle = '#ffe066';
+  for (let i = 0; i < 3; i++) {
+    const a = now * 6 + (i * Math.PI * 2) / 3;
+    circle(ctx, c.x + Math.cos(a) * 0.9, c.y - 2.3 + Math.sin(a) * 0.25, 0.14); ctx.fill();
+  }
+}
+
 // ─── Escena completa ─────────────────────────────────────────────────────────
 // `v`: { map, mapIndex, now, dt, bullets, boxes, explosions, clouds, fields, particles, characters, aim,
 //        hud: { players, rounds, battles }, texts: [{ text, size, y }], shake }
@@ -401,14 +451,56 @@ export function drawScene(ctx, canvas, v) {
     ctx.fillStyle = g; circle(ctx, f.x, f.y, 5); ctx.fill();
   }
   for (const c of v.clouds) {
+    const tint = c.kind === 'static' ? '90,190,255' : '150,70,210';
     const g = ctx.createRadialGradient(c.x, c.y, 0.5, c.x, c.y, c.r);
-    g.addColorStop(0, 'rgba(150,70,210,0.45)');
-    g.addColorStop(1, 'rgba(150,70,210,0)');
+    g.addColorStop(0, `rgba(${tint},0.45)`);
+    g.addColorStop(1, `rgba(${tint},0)`);
     ctx.fillStyle = g; circle(ctx, c.x, c.y, c.r); ctx.fill();
+    // El campo estático chisporrotea: rayitos cortos que cambian cada cuadro.
+    if (c.kind === 'static') {
+      ctx.strokeStyle = 'rgba(190,235,255,0.8)';
+      ctx.lineWidth = 0.08;
+      for (let i = 0; i < 4; i++) {
+        const a = Math.random() * Math.PI * 2, d = Math.random() * c.r * 0.8;
+        let px = c.x + Math.cos(a) * d, py = c.y + Math.sin(a) * d;
+        ctx.beginPath(); ctx.moveTo(px, py);
+        for (let j = 0; j < 3; j++) { px += (Math.random() - 0.5) * 1.4; py += (Math.random() - 0.5) * 1.4; ctx.lineTo(px, py); }
+        ctx.stroke();
+      }
+    }
+  }
+  // Supernova: un remolino oscuro que se achica hasta que revienta.
+  for (const n of v.novas || []) {
+    const f = Math.min(1, (v.now - n.t) / (v.novaTime || 1.5));
+    if (f >= 1) continue;
+    const r = 14 * (1 - f * 0.6);
+    const g = ctx.createRadialGradient(n.x, n.y, 0.3, n.x, n.y, r);
+    g.addColorStop(0, `rgba(255,240,255,${0.5 + f * 0.4})`);
+    g.addColorStop(0.25, 'rgba(160,80,255,0.35)');
+    g.addColorStop(1, 'rgba(60,20,120,0)');
+    ctx.fillStyle = g; circle(ctx, n.x, n.y, r); ctx.fill();
+    ctx.strokeStyle = 'rgba(210,170,255,0.6)';
+    ctx.lineWidth = 0.12;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r * (0.35 + i * 0.22), v.now * (4 + i) + i, v.now * (4 + i) + i + 2.2);
+      ctx.stroke();
+    }
+  }
+  // Ondas de Resplandor: un anillo de sol que se agranda.
+  for (const w of v.waves || []) {
+    const f = Math.min(1, (v.now - w.t) / 0.5);
+    ctx.strokeStyle = `rgba(255,214,90,${0.85 * (1 - f)})`;
+    ctx.lineWidth = 0.35 * (1 - f) + 0.05;
+    circle(ctx, w.x, w.y, (v.waveR || 7) * f); ctx.stroke();
   }
 
-  // Personajes.
-  for (const c of v.characters) drawCharacter(ctx, c, v.now);
+  // Personajes (con lo que llevan alrededor: sierra, Cuenta abisal, aturdido).
+  for (const c of v.characters) {
+    drawAura(ctx, c, v.now, v.sawR || 3.6);
+    drawCharacter(ctx, c, v.now);
+    if (c.stunned) drawStars(ctx, c, v.now);
+  }
 
   // Cajas sueltas.
   if (v.boxes?.length) drawBoxes(ctx, v.boxes, themeOf(v.map));

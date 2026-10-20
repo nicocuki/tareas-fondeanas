@@ -20,10 +20,28 @@ export const THEMES = {
   burbujas: { bg: ['#25353b', '#0b151a'], fill: ['#e46cc0', '#a066e0', '#e8b2b8', '#c86ad0'], shadow: ['#020616', 0.7], light: 'rgba(200,225,230,0.09)' },
   copas: { bg: ['#0f3b3f', '#08212a'], fill: ['#19b2bf'], texture: 'paint', paint: '#62d052', shadow: ['#040a28', 0.66], light: 'rgba(170,255,240,0.05)' },
   castillo: { bg: ['#0f3b40', '#0a2631'], fill: ['#7b3538'], dark: '#2b2a37', shadow: ['#050c30', 0.7], light: 'rgba(170,255,240,0.05)' },
+  // `accent`: color de las piezas que el mapa marca en `accent` (los pedestales amarillos de Andamios).
+  madera: { bg: ['#14243a', '#0a1322'], fill: ['#93502e'], accent: '#ffb52e', dark: '#262633', shadow: ['#03060f', 0.68], light: 'rgba(255,200,140,0.05)' },
+  hielo: { bg: ['#17435a', '#0b2233'], fill: ['#e8f4fb', '#cfe6f3'], texture: 'paint', paint: '#8cc6e6', shadow: ['#041020', 0.6], light: 'rgba(200,240,255,0.08)' },
+  pradera: { bg: ['#123c3f', '#081d26'], fill: ['#7ad84a', '#2fbf9f', '#5fd065', '#22b5b8'], texture: 'paint', paint: '#d9ff6a', shadow: ['#02101c', 0.66], light: 'rgba(190,255,220,0.06)' },
 };
 
 // Una copa: rectángulo arriba y punta recortada abajo.
 const cup = (x0, x1, top, side, bottom, cut) => ['poly', [[x0, top], [x1, top], [x1, side], [x1 - cut, bottom], [x0 + cut, bottom], [x0, side]]];
+
+// Pentágono con la punta para abajo (`s`: medio ancho), girado `rot` radianes alrededor de su centro.
+const pent = (cx, cy, s, rot = 0) => ['poly', [[-s, -s], [s, -s], [s, s * 0.4], [0, s * 1.3], [-s, s * 0.4]].map(([x, y]) => turn(cx, cy, x, y, rot))];
+// Cuadrado de lado `side` girado `rot` radianes.
+const diamond = (cx, cy, side, rot) => ['poly', [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => turn(cx, cy, (x * side) / 2, (y * side) / 2, rot))];
+function turn(cx, cy, x, y, rot) {
+  const c = Math.cos(rot), s = Math.sin(rot);
+  return [Math.round((cx + x * c - y * s) * 100) / 100, Math.round((cy + x * s + y * c) * 100) / 100];
+}
+// Un polígono de piso sin entrantes: lo parte en franjas verticales convexas desde el contorno de arriba hasta el fondo.
+const ground = (top, bottom = WORLD_H) => ['group', top.slice(1).map((b, i) => {
+  const a = top[i];
+  return ['poly', [a, b, [b[0], bottom], [a[0], bottom]]];
+})];
 
 export const MAPS = [
   {
@@ -105,6 +123,67 @@ export const MAPS = [
       [8, 20.4], [23.4, 20.4], [38.8, 20.4], [54.2, 20.4],
     ].map(([x, y]) => [x, y, BOX_SIZE]),
     spawns: [[16.5, 16.4], [47.5, 16.4], [5.3, 22.8], [58.7, 22.8]],
+  },
+  // Los cuatro que siguen salen de capturas del original: la de la carta «Abyssal Countdown» de la wiki
+  // de ROUNDS y tres del press kit de Landfall (Round7, Round8 y Round9). Esas capturas tienen la cámara
+  // un poco más cerca, así que las medidas están llevadas a nuestras 64 × 36 unidades.
+  {
+    name: 'Corona', theme: 'rosa',
+    shapes: [
+      ground([[12, 24], [13.6, 24], [18, 27.7], [21.1, 27.7], [30.4, 22.2], [33.6, 22.2], [42.9, 27.7], [46, 27.7], [50.4, 24], [52, 24]]),
+      ['poly', [[29.9, 9.5], [34.1, 9.5], [34.1, 13.2], [32, 15.5], [29.9, 13.2]]],
+      pent(18.4, 11.7, 1.5, 0.35), pent(45.6, 11.7, 1.5, -0.35),
+      diamond(19.5, 20.1, 2.9, 0.5), diamond(24.9, 16.9, 2.9, 0.5), diamond(39.1, 16.9, 2.9, -0.5), diamond(44.5, 20.1, 2.9, -0.5),
+      pent(6.7, 23.4, 1.35), pent(57.3, 23.4, 1.35),
+    ],
+    decor: [],
+    boxes: [],
+    spawns: [[6.7, 20.85], [57.3, 20.85], [19.5, 26.5], [44.5, 26.5]],
+  },
+  {
+    name: 'Andamios', theme: 'madera',
+    shapes: [
+      // La torre de la izquierda: tres tablones, el bloque de abajo y sus dos patas.
+      ['rect', 13.2, 1, 17.4, 1.4], ['rect', 12.4, 8.2, 17.2, 1.5], ['rect', 13.2, 15.5, 17.4, 1.4],
+      ['rect', 17.6, 16.9, 8.7, 2.9], ['rect', 17.3, 19.8, 2.8, 14.3], ['rect', 24, 19.8, 3, 14.3],
+      ['rect', 17, 34.1, 10.5, 1.9],
+      // Postes sueltos, el pilar del medio y la estructura de la derecha.
+      ['rect', 6.3, 19.8, 2.7, 16.2], ['rect', 11.5, 25.6, 2.8, 10.4],
+      ['rect', 39, 19.3, 2.7, 14.8], ['rect', 38.4, 34.1, 5.6, 1.9],
+      ['rect', 55, 12.2, 9, 7.6], ['rect', 50.6, 15.3, 4.4, 1.5], ['rect', 57.6, 19.8, 2.6, 14.3], ['rect', 55.6, 34.1, 6.8, 1.9],
+    ],
+    accent: [6, 10, 14],
+    decor: [['rect', 16, 2.4, 2.8, 13.1], ['rect', 24.7, 2.4, 3.1, 13.1]],
+    boxes: [[38.9, 16.3, 3], [56, 9.2, 3], [25.5, 5.4, 2.8]],
+    spawns: [[21.9, 14.3], [61.8, 11], [7.6, 18.6], [52.8, 14.1]],
+  },
+  {
+    name: 'Hielo', theme: 'hielo',
+    shapes: [
+      ['rect', 3.5, 4.9, 5.8, 8], ['rect', 21.5, 4.9, 5.8, 2.7],
+      ['group', [['rect', 43.5, 5.1, 5.7, 9.7], ['rect', 33.9, 14.8, 19.3, 2.5]]],
+      ['rect', 13.5, 17.6, 5.8, 2.5], ['rect', 28.8, 23.9, 7.9, 2.6], ['rect', 55.7, 24.7, 5.9, 2.6],
+      ['rect', 3.5, 26.7, 5.8, 9.3],
+      ['group', [['rect', 15.6, 31.1, 3.2, 3.5], ['rect', 15.6, 34.6, 24.6, 1.4]]],
+      ['rect', 48.2, 33.6, 5.7, 2.4],
+    ],
+    decor: [],
+    boxes: [],
+    spawns: [[6.4, 3.7], [46.3, 3.9], [32.7, 22.7], [58.6, 23.5]],
+  },
+  {
+    name: 'Pradera', theme: 'pradera',
+    shapes: [
+      ground([[0, 23.2], [6.1, 21.6], [8.6, 21.6], [27.5, 32.6], [33.6, 33.1], [41.7, 25.1], [45.3, 25.1]]),
+      ['poly', [[1.7, 0], [9.8, 0], [9.8, 4.6], [5.6, 8.1], [1.7, 4.6]]],
+      ['poly', [[29.5, 0], [35.8, 0], [35.1, 1.5], [30.5, 4.1], [29.5, 3]]],
+      ['poly', [[18.3, 6.3], [24.7, 10.5], [21.2, 16.1], [15, 11.9]]],
+      ['poly', [[29.5, 12.5], [35.5, 16.3], [31.8, 22.2], [25.7, 18.6]]],
+      ['poly', [[53.3, 21.3], [59, 21.3], [59, 24.4], [56.2, 27.3], [53.3, 24.4]]],
+    ],
+    decor: [],
+    boxes: [],
+    spawns: [[7.3, 20.4], [56.2, 20.1], [43.5, 23.9], [30.5, 31.5]],
   },
 ];
 

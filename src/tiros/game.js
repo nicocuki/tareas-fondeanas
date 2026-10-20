@@ -25,8 +25,14 @@ export const REVEAL_MS = 1800;      // la carta elegida se ve 1 s y después se 
 export const MAX_BATTLE_MS = 120000; // si una pelea se estira tanto, se repite
 export const COLORS = ['#f28c28', '#3d8fe0', '#3fb36b', '#a463d9'];
 
-export const DEFAULT_OPTIONS = { rounds: 5, battles: 2 };
+// `cardLimit`: modo «Fila de cartas». 0 = apagado; si no, cada uno tiene como mucho esa cantidad de
+// cartas y, al elegir una más, se le va la más vieja (como una fila).
+export const DEFAULT_OPTIONS = { rounds: 5, battles: 2, cardLimit: 0 };
 export const OPTION_VALUES = { rounds: [3, 5, 7], battles: [1, 2, 3] };
+export const MAX_CARD_LIMIT = 30;
+const validOption = (key, value) => (key === 'cardLimit'
+  ? Number.isInteger(value) && value >= 0 && value <= MAX_CARD_LIMIT
+  : OPTION_VALUES[key]?.includes(value));
 
 export const cleanName = (name) => String(name || '').trim().slice(0, 20);
 export const makeId = () => Math.random().toString(36).slice(2, 10);
@@ -133,7 +139,13 @@ function afterBattle(room, now, rand) {
 
 function choose(room, card, now) {
   const pick = room.picking;
-  findPlayer(room, pick.order[pick.at])?.cards.push(card);
+  const player = findPlayer(room, pick.order[pick.at]);
+  if (player) {
+    player.cards.push(card);
+    // Fila de cartas: si se pasa del tope, se va la que eligió primero.
+    const limit = room.options.cardLimit || 0;
+    if (limit > 0) player.cards.splice(0, Math.max(0, player.cards.length - limit));
+  }
   pick.chosen = card;
   pick.chosenAt = now;
   room.phaseEndsAt = now + REVEAL_MS;
@@ -182,7 +194,7 @@ export function applyAction(room, action, ctx = {}) {
     case 'setOptions': {
       if (next.phase !== 'lobby' || next.hostId !== action.playerId) return null;
       for (const [key, value] of Object.entries(action.options || {})) {
-        if (OPTION_VALUES[key]?.includes(value)) next.options[key] = value;
+        if (validOption(key, value)) next.options[key] = value;
       }
       return next;
     }

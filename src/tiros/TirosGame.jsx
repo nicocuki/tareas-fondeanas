@@ -14,15 +14,28 @@ import { burst, drawScene } from './render.js';
 import { applyBox, boxSolid, claimBox, driftBoxes, encodeBox, newBoxes, pushBox, stepBoxes } from './boxes.js';
 import { statsFor } from './cards.js';
 import {
-  BLOCK_TIME, FX_RADIUS, PLAYER_R, STEP, bulletDamage, bulletsForShot, newPlayerState, outDamage, stepBullet, stepPlayer,
+  BLOCK_TIME, FX_RADIUS, PLAYER_R, STEP, bulletDamage, bulletsForShot, newPlayerState, outDamage, ringBullets, stepBullet, stepPlayer,
   teleportTarget, touches,
 } from './sim.js';
+import { hitSolid } from './shapes.js';
 
 const SEND_EVERY = 1 / 30;      // fotos por conexión directa
 const SERVER_EVERY = 1 / 20;    // fotos de respaldo por el servidor
 const EVENT_KEEP = 1.5;         // segundos que un evento sigue viajando en las fotos (por si se pierde una)
 const IDLE_RELOAD = 0.6;        // sin tirar este tiempo, empieza a recargar
 const GONE_AFTER = 8;           // sin fotos de alguien este tiempo, el anfitrión lo da por muerto
+// Efectos de las cartas que no son balas (alcance en unidades, daño por segundo).
+const SAW_R = 3.6, SAW_DPS = 80;          // Sierra
+const ABYSS_R = 6, ABYSS_DPS = 25;        // Cuenta abisal cargada
+const ABYSS_CHARGE = 2.5, ABYSS_TIME = 4; // segundos quieto para cargarla y cuánto dura
+const DRAIN_R = 6, DRAIN_DPS = 15;        // Robavidas
+const CHILL_R = 10;                       // Presencia helada
+const WAVE_R = 7;                         // ondas de Resplandor
+const NOVA_R = 14, NOVA_STUN_R = 7, NOVA_TIME = 1.5; // Supernova: atrae, y al final aturde
+const ECHO_DELAY = 0.35;                  // Eco
+const CHARGE_SPEED = 45, CHARGE_TIME = 0.25; // Embestida
+const RADAR_RANGE = 40;                   // Disparo radar
+const BLOOD_COST = 10;                    // Pacto demoníaco: vida por tiro
 
 const KEYS = {
   left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], jump: ['KeyW', 'ArrowUp', 'Space'], block: ['ShiftLeft', 'ShiftRight', 'KeyS', 'ArrowDown'],
@@ -47,7 +60,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   if (!sim.current) {
     sim.current = {
       n: 0, mapSolids: [], solids: [], boxes: [], local: null, bullets: new Map(), seen: new Set(), remotes: new Map(),
-      explosions: [], clouds: [], fields: [], particles: [], shake: 0, myShots: [], myHits: [], myFx: [], seq: 0, lastBy: null,
+      explosions: [], clouds: [], fields: [], novas: [], waves: [], particles: [], shake: 0, myShots: [], myHits: [], myFx: [], seq: 0, lastBy: null,
       input: { left: false, right: false, jump: false, shoot: false, block: false, blockWas: false }, aim: { x: 32, y: 18 },
       sentAt: 0, serverAt: 0, deathSent: false, goneSent: new Set(), msg: '', msgUntil: 0,
     };
@@ -67,7 +80,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     s.local = newPlayerState(x, y, statsRef.current[me.id]);
     s.bullets.clear();
     s.remotes.clear();
-    s.explosions = []; s.clouds = []; s.fields = []; s.particles = []; s.myShots = []; s.myHits = []; s.myFx = [];
+    s.explosions = []; s.clouds = []; s.fields = []; s.novas = []; s.waves = []; s.particles = []; s.myShots = []; s.myHits = []; s.myFx = [];
     s.deathSent = false;
     s.goneSent.clear();
     s.lastBy = null;
@@ -131,7 +144,9 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     for (const ev of snap.fx || []) {
       if (s.seen.has(ev.k)) continue;
       s.seen.add(ev.k);
-      onRemoteBlock(s, id, ev, now);
+      if (ev.o) burst(s.particles, ev.x, ev.y, { n: 26, color: ev.sb ? '#ffffff' : colorOf(id), speed: 24, life: 0.7, up: 12 });
+      else if (ev.w) onWave(s, id, ev, now);
+      else blockEffects(s, id, ev, now);
     }
   }
 
@@ -148,7 +163,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   // Un paso de una bala: se mueve, explota, y si me toca a mí, me hace daño (lo decide esta pantalla).
   function bulletTick(s, b, now, dt, targets) {
     const p = s.local;
-    const bst = statsRef.current[b.owner];
+    const bst = b.st || statsRef.current[b.owner];
     if (!bst || !p) { b.done = true; return; }
     const active = isActive(now);
     const alive = !p.dead;
@@ -170,11 +185,17 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
         s.lastBy = b.owner;
       } else damageMe(s, dm, b.owner, b.k, now);
       burst(s.particles, b.x, b.y, { n: 12, color: colorOf(me.id), speed: 18, life: 0.5 });
-      if (bst.slow) { p.slowUntil = now + 1.5; p.slowAmount = Math.max(p.slowAmount, bst.slow * Math.min(1, dm / 55)); }
+      if (bst.slow) { p.slowUntil = now + 1.5; p.slowAmount = Math.max(p.slowAmount, bst.slow * Math.min(1, b.st ? 1 : dm / 55)); }
+      if (bst.stun) p.stunUntil = Math.max(p.stunUntil, now + bst.stun);
       const sp = Math.hypot(b.vx, b.vy) || 1;
       const push = Math.min(40, (dm / 55) * 9 * bst.knock);
       p.vx += (b.vx / sp) * push;
       p.vy += (b.vy / sp) * push - 3;
+      // Propulsor: la bala lo sigue empujando un rato, más fuerte cuanto más daño hace.
+      if (bst.thrust) {
+        const f = 110 * bst.thrust * Math.min(1.5, Math.max(0.4, dm / 55));
+        p.thrust = { ax: (b.vx / sp) * f, ay: (b.vy / sp) * f, until: now + 0.35 };
+      }
       onImpact(s, b, b.x, b.y, now, true);
       return;
     }
@@ -208,31 +229,66 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     if (st.lifesteal) p.hp = Math.min(p.maxHp, p.hp + dm * st.lifesteal);
     if (st.bloodRush) p.rushUntil = now + 3;
     if (st.reloadOnHit) { p.ammo = st.ammo; p.reloadAt = 0; }
+    if (st.refresh && now >= p.refreshAt) { p.blockReadyAt = now; p.refreshAt = now + 1; }
+    // Peleador: +200 % de vida (la máxima y la actual) por 3 s; pegar otra vez lo estira.
+    if (st.brawler) {
+      if (!p.brawlExtra) {
+        p.brawlExtra = 2 * st.hp;
+        p.maxHp += p.brawlExtra;
+        p.hp += p.brawlExtra;
+      }
+      p.brawlUntil = now + 3;
+    }
   }
 
-  function damageMe(s, dm, by, key, now) {
+  // `dot`: daño que ya entra de a poco (veneno, nubes, auras), así Descomposición no lo vuelve a repartir.
+  function damageMe(s, dm, by, key, now, dot = false) {
     const p = s.local;
     if (!p || p.dead || dm <= 0) return;
+    if (!dot && statsRef.current[me.id]?.decay) {
+      p.poison.push({ dps: dm / 4, until: now + 4, by });
+      if (by) s.lastBy = by;
+      if (key) s.myHits.push({ k: key, o: by, dm: Math.round(dm), t: now });
+      return;
+    }
     p.hp -= dm;
     p.hurtUntil = performance.now() / 1000 + 0.6;
     if (by) s.lastBy = by;
     if (key) s.myHits.push({ k: key, o: by, dm: Math.round(dm), t: now });
   }
 
-  function onRemoteBlock(s, id, ev, now) {
-    if (ev.o) { burst(s.particles, ev.x, ev.y, { n: 26, color: ev.sb ? '#ffffff' : colorOf(id), speed: 24, life: 0.7, up: 12 }); return; }
+  // Los efectos de un escudo en el lugar `ev`, en todas las pantallas (también en la del que se cubrió):
+  // lo que deja en el mapa (campos, bombitas, PEM, supernova) y, si es de otro, lo que me hace a mí.
+  // También lo dispara el tiro potenciado (Potenciar) donde pega.
+  function blockEffects(s, id, ev, now) {
     const owner = statsRef.current[id];
     if (!owner) return;
-    if (owner.blockFx.includes('heal')) s.fields.push({ x: ev.x, y: ev.y, until: now + 3, owner: id });
+    const has = (name) => owner.blockFx.includes(name);
+    if (has('heal')) s.fields.push({ x: ev.x, y: ev.y, until: now + 3, owner: id });
+    if (has('static')) s.clouds.push({ x: ev.x, y: ev.y, until: now + 3, owner: id, r: 5, kind: 'static' });
+    if (has('bombs')) addBullets(s, ringBullets(ev, id, 'bombs'), now);
+    if (has('emp')) addBullets(s, ringBullets(ev, id, 'emp'), now);
+    if (has('nova')) s.novas.push({ x: ev.x, y: ev.y, t: ev.t ?? now, owner: id });
+    if (id === me.id) return;
     const p = s.local;
     if (!p || p.dead || !isActive(now)) return;
     const dx = p.x - ev.x, dy = p.y - ev.y;
     const d = Math.hypot(dx, dy) || 1;
     if (d > FX_RADIUS) return;
-    if (owner.blockFx.includes('frost')) { p.slowUntil = now + 2.5; p.slowAmount = Math.max(p.slowAmount, 0.6); }
-    if (owner.blockFx.includes('shock')) { p.vx += (dx / d) * 38; p.vy += (dy / d) * 38 - 8; }
-    if (owner.blockFx.includes('implode')) { p.vx -= (dx / d) * 30; p.vy -= (dy / d) * 30; }
-    if (owner.blockFx.includes('overpower')) damageMe(s, 0.15 * (ev.mh || owner.hp), id, ev.k, now);
+    if (has('frost')) { p.slowUntil = now + 2.5; p.slowAmount = Math.max(p.slowAmount, 0.6); }
+    if (has('shock')) { p.vx += (dx / d) * 38; p.vy += (dy / d) * 38 - 8; }
+    if (has('implode')) { p.vx -= (dx / d) * 30; p.vy -= (dy / d) * 30; }
+    if (has('overpower')) damageMe(s, 0.15 * (ev.mh || owner.hp), id, ev.k, now);
+    if (has('silence')) p.silenceUntil = Math.max(p.silenceUntil, now + 2);
+  }
+
+  // Una onda de Resplandor de otro: se ve, y si me alcanza, me daña.
+  function onWave(s, id, ev, now) {
+    s.waves.push({ x: ev.x, y: ev.y, t: now, color: colorOf(id) });
+    const p = s.local;
+    const owner = statsRef.current[id];
+    if (!p || p.dead || !owner || !isActive(now) || now < p.blockUntil) return;
+    if (Math.hypot(p.x - ev.x, p.y - ev.y) < WAVE_R) damageMe(s, Math.max(8, 0.25 * owner.dmg), id, ev.k, now);
   }
 
   function isActive(now) {
@@ -263,14 +319,70 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   }
 
   function onImpact(s, b, x, y, now, skipMe) {
-    const st = statsRef.current[b.owner];
+    const st = b.st || statsRef.current[b.owner];
     if (!st) return;
     burst(s.particles, x, y, { n: 7, color: '#ffe066', speed: 16, life: 0.3, size: 0.16 });
     if (st.explode) explode(s, x, y, st.explode, b.owner, bulletDamage(b, st), b.k, skipMe, now);
     if (st.cloud) s.clouds.push({ x, y, until: now + 5, owner: b.owner, r: 4.5 });
+    // Tiro potenciado: donde pega se activan los efectos del escudo (con Teletransporte, te lleva ahí).
+    if (b.em) {
+      const mine = b.owner === me.id;
+      const mh = mine ? s.local?.maxHp : s.remotes.get(b.owner)?.snap.mh;
+      burst(s.particles, x, y, { n: 18, color: '#ffffff', speed: 20, life: 0.5 });
+      blockEffects(s, b.owner, { k: `${b.k}e`, t: now, x, y, mh }, now);
+      if (mine && st.blockFx.includes('teleport') && s.local && !s.local.dead) landAt(s, s.local, x, y);
+    }
+  }
+
+  // Lleva al jugador a (x, y), subiéndolo de a poco si quedaría adentro de una pared.
+  function landAt(s, p, x, y) {
+    for (let up = 0; up < 4; up += 0.25) {
+      if (!s.solids.some((sol) => hitSolid(x, y - up, PLAYER_R, sol))) { p.x = x; p.y = y - up; p.vy = Math.min(p.vy, 0); return; }
+    }
   }
 
   function colorOf(id) { return roomRef.current.players.find((p) => p.id === id)?.color || '#888'; }
+
+  // Un disparo propio hacia el ángulo `a`. El tiro potenciado (Potenciar) se gasta en el primero.
+  function fire(s, p, st, a, now) {
+    const shot = { k: `${me.id}:${s.n}:${s.seq++}`, t: now, x: p.x, y: p.y, a, sd: Math.floor(Math.random() * 2 ** 31) };
+    if (p.empowered) { shot.em = 1; p.empowered = false; }
+    s.seen.add(shot.k);
+    s.myShots.push(shot);
+    burst(s.particles, p.x + Math.cos(a) * 2.6, p.y + Math.sin(a) * 2.6, { n: 3, color: '#ffe3a1', speed: 10, life: 0.18, size: 0.15, gravity: 0 });
+    addBullets(s, bulletsForShot(shot, me.id, st), now);
+  }
+
+  // Cubrirse. `auto`: no lo apretó el jugador (Eco, Embestida, ¡Escudo arriba!, Cuenta abisal), así que
+  // no gasta el enfriamiento. `quiet`: no vuelve a disparar Eco ni Embestida (si no, se encadenarían).
+  function doBlock(s, p, st, now, { auto = false, quiet = false } = {}) {
+    p.blockUntil = Math.max(p.blockUntil, now + BLOCK_TIME);
+    if (!auto) p.blockReadyAt = now + st.blockCooldown;
+    const a = Math.atan2(s.aim.y - p.y, s.aim.x - p.x);
+    const ev = { k: `${me.id}:b${s.seq++}`, t: now, x: p.x, y: p.y, a, mh: p.maxHp };
+    s.myFx.push(ev);
+    s.seen.add(ev.k);
+    const has = (name) => st.blockFx.includes(name);
+    blockEffects(s, me.id, ev, now);
+    if (has('teleport')) Object.assign(p, teleportTarget(p, a, s.solids));
+    if (has('reload')) { p.ammo = st.ammo; p.reloadAt = 0; }
+    if (has('saw')) p.sawUntil = now + 2.5;
+    if (has('echo') && !quiet) p.echoAt = now + ECHO_DELAY;
+    if (has('charge') && !quiet) {
+      p.vx = Math.cos(a) * CHARGE_SPEED;
+      p.vy = Math.sin(a) * CHARGE_SPEED - 4;
+      p.onGround = false;
+      p.chargeUntil = now + CHARGE_TIME;
+    }
+    if (has('radar')) {
+      for (const [, v] of s.remotes) {
+        if (v.snap.d || Math.hypot(v.x - p.x, v.y - p.y) > RADAR_RANGE) continue;
+        fire(s, p, st, Math.atan2(v.y - p.y, v.x - p.x), now);
+      }
+    }
+    // Después del radar: el tiro potenciado es el próximo que tire el jugador.
+    if (has('empower')) p.empowered = true;
+  }
 
   // ─── Bucle principal ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -294,7 +406,15 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       // En la cuenta regresiva solo cae al piso: todavía no se mueve ni tira.
       if (!active && alive && r.phase === 'fight') stepPlayer(p, {}, STEP, { solids: s.solids, stats: st, now: 0 });
       if (active && alive) {
-        const ev = stepPlayer(p, s.input, STEP, { solids: s.solids, stats: st, now, enemyX: enemy?.x });
+        if (now >= p.slowUntil) p.slowAmount = 0;
+        const stunned = now < p.stunUntil;
+        const silenced = now < p.silenceUntil;
+        // Embestida: mientras sale disparado no frena; al terminar, se cubre otra vez solo.
+        const charging = now < p.chargeUntil;
+        const ev = stepPlayer(p, stunned || charging ? {} : s.input, STEP, { solids: s.solids, stats: st, now, enemyX: enemy?.x });
+        if (p.chargeUntil && now >= p.chargeUntil) { p.chargeUntil = 0; doBlock(s, p, st, now, { auto: true, quiet: true }); }
+        if (p.echoAt && now >= p.echoAt) { p.echoAt = 0; doBlock(s, p, st, now, { auto: true, quiet: true }); }
+        if (p.thrust && now < p.thrust.until) { p.vx += p.thrust.ax * STEP; p.vy += p.thrust.ay * STEP; }
         // Tocar una caja la reclama: desde ahora la simula esta pantalla.
         for (const i of p.touching || []) claimBox(s.boxes[i], me.id);
         if (ev.out) {
@@ -306,45 +426,94 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
           s.myFx.push(ev3);
           s.seen.add(ev3.k);
         }
-        // Veneno: el daño entra de a poco.
-        for (const po of p.poison) if (now < po.until) damageMe(s, po.dps * STEP, po.by, null, now);
+        // Veneno (y Descomposición): el daño entra de a poco.
+        for (const po of p.poison) if (now < po.until) damageMe(s, po.dps * STEP, po.by, null, now, true);
         p.poison = p.poison.filter((po) => now < po.until);
-        // Disparo.
+        // Disparo. Con ¡Escudo arriba! no se recarga de a poco: solo con el cargador vacío.
         if (p.reloadAt && now >= p.reloadAt) { p.ammo = st.ammo; p.reloadAt = 0; }
-        if (!p.reloadAt && p.ammo < st.ammo && now - p.lastShotAt > IDLE_RELOAD) p.reloadAt = now + st.reload;
-        if (s.input.shoot && p.ammo > 0 && now >= p.nextShotAt) {
-          const a = Math.atan2(s.aim.y - p.y, s.aim.x - p.x);
-          const shot = { k: `${me.id}:${r.battle.n}:${s.seq++}`, t: now, x: p.x, y: p.y, a, sd: Math.floor(Math.random() * 2 ** 31) };
-          s.seen.add(shot.k);
-          s.myShots.push(shot);
-          burst(s.particles, p.x + Math.cos(a) * 2.6, p.y + Math.sin(a) * 2.6, { n: 3, color: '#ffe3a1', speed: 10, life: 0.18, size: 0.15, gravity: 0 });
-          addBullets(s, bulletsForShot(shot, me.id, st), now);
+        if (!p.reloadAt && p.ammo < st.ammo && !st.shieldsUp && now - p.lastShotAt > IDLE_RELOAD) p.reloadAt = now + st.reload;
+        const canPay = !st.bloodShot || p.hp > BLOOD_COST;
+        if (s.input.shoot && !stunned && !silenced && canPay && p.ammo > 0 && now >= p.nextShotAt) {
+          fire(s, p, st, Math.atan2(s.aim.y - p.y, s.aim.x - p.x), now);
+          if (st.bloodShot) { p.hp -= BLOOD_COST; p.hurtUntil = performance.now() / 1000 + 0.3; }
           p.ammo -= 1;
           p.nextShotAt = now + st.cooldown;
           p.lastShotAt = now;
           p.reloadAt = p.ammo <= 0 ? now + st.reload : 0;
+          if (p.ammo <= 0 && st.shieldsUp) doBlock(s, p, st, now, { auto: true });
         }
+        // Resplandor: mientras recarga suelta ondas, cada vez más seguido.
+        if (st.radiance && p.reloadAt) {
+          if (now >= p.waveAt) {
+            const left = Math.max(0, Math.min(1, (p.reloadAt - now) / st.reload));
+            p.waveAt = now + 0.2 + 0.4 * left;
+            const wave = { k: `${me.id}:w${s.seq++}`, t: now, x: p.x, y: p.y, w: 1 };
+            s.myFx.push(wave);
+            s.seen.add(wave.k);
+            s.waves.push({ x: p.x, y: p.y, t: now, color: colorOf(me.id) });
+          }
+        } else p.waveAt = 0;
         // Escudo.
         const blockPressed = s.input.block && !s.input.blockWas;
         s.input.blockWas = s.input.block;
-        if (blockPressed && now >= p.blockReadyAt) {
-          p.blockUntil = now + BLOCK_TIME;
-          p.blockReadyAt = now + st.blockCooldown;
-          const a = Math.atan2(s.aim.y - p.y, s.aim.x - p.x);
-          const ev2 = { k: `${me.id}:b${s.seq++}`, t: now, x: p.x, y: p.y, a, mh: p.maxHp };
-          s.myFx.push(ev2);
-          s.seen.add(ev2.k);
-          if (st.blockFx.includes('teleport')) Object.assign(p, teleportTarget(p, a, s.solids));
-          if (st.blockFx.includes('reload')) { p.ammo = st.ammo; p.reloadAt = 0; }
-          if (st.blockFx.includes('heal')) s.fields.push({ x: p.x, y: p.y, until: now + 3, owner: me.id });
+        if (blockPressed && !stunned && !silenced && now >= p.blockReadyAt) doBlock(s, p, st, now);
+        // Cuenta abisal: quieto se carga; cargada, se cubre sin parar y daña a los de cerca (en sus pantallas).
+        if (st.abyss) {
+          const still = p.onGround && Math.abs(p.vx) < 1.5 && !s.input.left && !s.input.right;
+          if (now < p.abyssUntil) {
+            if (now >= p.abyssBlockAt) { p.abyssBlockAt = now + 0.45; doBlock(s, p, st, now, { auto: true, quiet: true }); }
+          } else if (still) {
+            p.abyssCharge += STEP / ABYSS_CHARGE;
+            if (p.abyssCharge >= 1) { p.abyssCharge = 0; p.abyssUntil = now + ABYSS_TIME; p.abyssBlockAt = now; }
+          } else p.abyssCharge = Math.max(0, p.abyssCharge - STEP / 1.5);
         }
-        // Campos que curan y nubes tóxicas.
+        // Peleador: se termina la vida extra.
+        if (p.brawlUntil && now >= p.brawlUntil) {
+          p.maxHp -= p.brawlExtra;
+          p.hp = Math.min(p.hp, p.maxHp);
+          p.brawlExtra = 0;
+          p.brawlUntil = 0;
+        }
+        // Perseverancia prístina: arriba del 90 % la vida vale ×5 (se escala la actual y la máxima juntas).
+        if (st.pristine) {
+          if (!p.boosted && p.hp >= 0.9 * p.maxHp) { p.boosted = true; p.maxHp *= 5; p.hp *= 5; }
+          else if (p.boosted && p.hp < 0.9 * p.maxHp) { p.boosted = false; p.maxHp /= 5; p.hp /= 5; }
+        }
+        // Campos que curan y nubes tóxicas (o campos estáticos).
         if (s.fields.some((f) => now < f.until && Math.hypot(f.x - p.x, f.y - p.y) < 5)) p.hp = Math.min(p.maxHp, p.hp + 25 * STEP);
         for (const c of s.clouds) {
           if (c.owner !== me.id && now < c.until && Math.hypot(c.x - p.x, c.y - p.y) < c.r) {
-            damageMe(s, 30 * STEP, c.owner, null, now);
+            damageMe(s, 30 * STEP, c.owner, null, now, true);
             p.slowUntil = now + 0.3; p.slowAmount = Math.max(p.slowAmount, 0.5);
           }
+        }
+        // Lo que hacen los demás estando cerca: sierra, Cuenta abisal, Presencia helada, Robavidas.
+        for (const [id, v] of s.remotes) {
+          const ost = statsRef.current[id];
+          if (v.snap.d || !ost) continue;
+          const dx = p.x - v.x, dy = p.y - v.y;
+          const d = Math.hypot(dx, dy) || 1;
+          const shielded = now < p.blockUntil;
+          if (v.snap.sw > now && d < SAW_R + PLAYER_R && !shielded) damageMe(s, SAW_DPS * STEP, id, null, now, true);
+          if (v.snap.ab && d < ABYSS_R) {
+            if (!shielded) damageMe(s, ABYSS_DPS * STEP, id, null, now, true);
+            p.vx -= (dx / d) * 25 * STEP; p.vy -= (dy / d) * 25 * STEP;
+          }
+          if (ost.chill && d < CHILL_R) { p.slowUntil = now + 0.1; p.slowAmount = Math.max(p.slowAmount, Math.min(0.8, ost.chill * (1 - d / CHILL_R))); }
+          if (ost.drain && d < DRAIN_R) damageMe(s, DRAIN_DPS * STEP, id, null, now, true);
+          if (st.drain && d < DRAIN_R) p.hp = Math.min(p.maxHp, p.hp + DRAIN_DPS * STEP);
+        }
+        // Supernova: atrae a los de alrededor y al final aturde a los que quedaron cerca.
+        for (const n of s.novas) {
+          if (n.done) continue;
+          const dx = n.x - p.x, dy = n.y - p.y;
+          const d = Math.hypot(dx, dy) || 1;
+          if (now - n.t >= NOVA_TIME) {
+            n.done = true;
+            s.explosions.push({ x: n.x, y: n.y, r: NOVA_STUN_R, t: now });
+            s.shake = Math.max(s.shake, 0.7);
+            if (n.owner !== me.id && d < NOVA_STUN_R && now >= p.blockUntil) p.stunUntil = Math.max(p.stunUntil, now + 1.2);
+          } else if (n.owner !== me.id && d < NOVA_R) { p.vx += (dx / d) * 55 * STEP; p.vy += (dy / d) * 55 * STEP; }
         }
       }
 
@@ -397,6 +566,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
         hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, d: p.dead ? 1 : 0, bl: round(p.blockUntil),
         am2: p.ammo, rl: p.reloadAt ? round(p.reloadAt) : 0,
         sh: s.myShots, hi: s.myHits, fx: s.myFx, ln: p.launching ? 1 : 0, bx: myBoxes(now),
+        sw: p.sawUntil > now ? round(p.sawUntil) : 0, ab: p.abyssUntil > now ? 1 : 0, su: p.stunUntil > now || p.silenceUntil > now ? 1 : 0,
       };
     }
 
@@ -480,6 +650,8 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       s.explosions = s.explosions.filter((e) => now - e.t < 0.45);
       s.fields = s.fields.filter((f) => now < f.until);
       s.clouds = s.clouds.filter((c) => now < c.until);
+      s.novas = s.novas.filter((n) => now - n.t < NOVA_TIME + 0.5);
+      s.waves = s.waves.filter((w) => now - w.t < 0.5);
       const bullets = [];
       for (const bl of s.bullets.values()) {
         if (now < bl.t0) continue;
@@ -497,6 +669,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
             id: pl.id, name: pl.name, color: pl.color, mine: true, x: p.x, y: p.y, vx: p.vx, vy: p.vy, onGround: p.onGround, launching: Boolean(p.launching),
             angle: Math.atan2(s.aim.y - p.y, s.aim.x - p.x), hp: p.hp, maxHp: p.maxHp, blocking: now < p.blockUntil,
             cdLeft: Math.max(0, (p.blockReadyAt - now) / st.blockCooldown), ammo: p.ammo, maxAmmo: st.ammo, reloading: Boolean(p.reloadAt), hurtUntil: p.hurtUntil || 0,
+            saw: now < p.sawUntil, abyss: now < p.abyssUntil, abyssCharge: p.abyssCharge, stunned: now < p.stunUntil || now < p.silenceUntil, empowered: p.empowered,
           });
         } else {
           const v = s.remotes.get(pl.id);
@@ -505,6 +678,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
             id: pl.id, name: pl.name, color: pl.color, mine: false, x: v.x, y: v.y, vx: v.snap.vx, vy: v.snap.vy, onGround: Math.abs(v.snap.vy) < 0.5, launching: Boolean(v.snap.ln),
             angle: v.snap.a, hp: v.snap.hp, maxHp: v.snap.mh, blocking: v.snap.bl > now, cdLeft: 0,
             ammo: v.snap.am2 ?? st.ammo, maxAmmo: st.ammo, reloading: Boolean(v.snap.rl), hurtUntil: v.hurt || 0,
+            saw: v.snap.sw > now, abyss: Boolean(v.snap.ab), stunned: Boolean(v.snap.su),
           });
         }
       }
@@ -523,6 +697,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       };
       drawScene(canvas.getContext('2d'), canvas, {
         map: MAPS[b?.map ?? 0], mapIndex: b?.map ?? 0, now, dt, bullets, explosions: s.explosions, clouds: s.clouds, fields: s.fields,
+        novas: s.novas, waves: s.waves, novaTime: NOVA_TIME, waveR: WAVE_R, sawR: SAW_R,
         particles: s.particles, characters, aim: s.aim, hud, texts, shake: s.shake, boxes: s.boxes,
       });
     }

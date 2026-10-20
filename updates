@@ -372,7 +372,15 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.9.3 = A los Tiros: pantalla completa solo del juego
+1.9.3 = A los Tiros: pantalla completa solo del juego
 - En A los Tiros, el botón de pantalla completa agranda solo la ventana del juego (las cartas, la pelea y el final), no toda la página: se ve todo más grande y más claro.
 - Sigue en pantalla completa al pasar de las cartas a la pelea y de una pelea a otra.
 - Se sale con Esc o con el botón chiquito de abajo a la derecha.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.10.0 = A los Tiros: todas las cartas, mapas nuevos y «Fila de cartas»
+- Están todas las cartas de ROUNDS: se sumaron 26 (¡Bombas!, Eco, PEM, Potenciar, Disparo radar, Embestida, Silencio, Campo estático, Sierra, ¡Escudo arriba!, Supernova, Peleador, Descomposición, Cuenta abisal, Presencia helada, Robavidas, Perseverancia prístina, Resplandor, Refresco, Pacto demoníaco, Teledirigidas, Escurridizas, Propulsor, Deslumbrar, Adelantar y Saltarina). Ahora son 68.
+- Algunas que ya estaban quedaron con los números del original (Veneno, Planificación, Persecución, Sed de sangre).
+- Cuatro mapas nuevos copiados de capturas del juego original: Corona, Andamios, Hielo y Pradera.
+- Modo «Fila de cartas»: el anfitrión elige un máximo de cartas por jugador. Si ya tenés ese máximo y elegís otra, se te va la primera que elegiste, como una fila. Abajo de la pelea se marca con ⏏ la próxima que se va.

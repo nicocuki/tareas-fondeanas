@@ -7,7 +7,7 @@ import { compileShape, hitSolid, touchesAny } from '../src/tiros/shapes.js';
 import { applyBox, boxSolid, claimBeats, claimBox, encodeBox, newBoxes, pushBox, stepBoxes } from '../src/tiros/boxes.js';
 
 const solidsOf = (rects) => rects.flatMap((r) => compileShape(['rect', ...r]));
-import { MAX_RISE, OUT_DAMAGE, PLAYER_R, STEP, WALL_SLIDE, bulletDamage, bulletsForShot, newPlayerState, outDamage, seeded, stepBullet, stepPlayer, touches } from '../src/tiros/sim.js';
+import { MAX_RISE, OUT_DAMAGE, PLAYER_R, STEP, WALL_SLIDE, bulletDamage, bulletsForShot, newPlayerState, outDamage, ringBullets, seeded, stepBullet, stepPlayer, touches } from '../src/tiros/sim.js';
 
 const rand = seeded(7);
 function lobby(names = ['Ana', 'Beto']) {
@@ -451,4 +451,76 @@ test('tiros: caerse al vacío saca el 20 % de la vida, salvo con el escudo activ
   assert.equal(ev.out, 'bottom');
   assert.ok(p.vy < -50 && p.launching);
   assert.equal(outDamage(p, 1.3), OUT_DAMAGE * p.maxHp); // el escudo ya se terminó
+});
+
+test('tiros: fila de cartas: con el tope lleno, elegir una nueva saca la primera que se eligió', () => {
+  let room = lobby();
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'b', options: { cardLimit: 2 } }, { now: 0 }), null);
+  room = applyAction(room, { type: 'setOptions', playerId: 'a', options: { cardLimit: 2 } }, { now: 0 });
+  assert.equal(room.options.cardLimit, 2);
+  // Valores raros no entran.
+  for (const bad of [-1, 2.5, 31, '3']) assert.equal(applyAction(room, { type: 'setOptions', playerId: 'a', options: { cardLimit: bad } }, { now: 0 }).options.cardLimit, 2);
+  room = applyAction(room, { type: 'start', playerId: 'a' }, { now: 0, rand });
+  const ana = () => findPlayer(room, 'a');
+  ana().cards = ['grande', 'rafaga'];
+  const card = room.picking.hand.find((c) => c !== 'grande' && c !== 'rafaga');
+  room = applyAction(room, { type: 'pick', playerId: 'a', turn: 0, card }, { now: 10, rand });
+  assert.deepEqual(ana().cards, ['rafaga', card]);
+  // Sin el modo (0) se juntan todas.
+  room = applyAction(lobby(), { type: 'start', playerId: 'a' }, { now: 0, rand });
+  ana().cards = ['grande', 'rafaga'];
+  room = applyAction(room, { type: 'pick', playerId: 'a', turn: 0, card: room.picking.hand[0] }, { now: 10, rand });
+  assert.equal(ana().cards.length, 3);
+});
+
+test('tiros: están todas las cartas del original, con sus números', () => {
+  // Las 67 del ROUNDS de base (con nuestro nombre) más Empujón, que es nuestra.
+  assert.equal(CARD_IDS.length, 68);
+  assert.equal(new Set(CARD_IDS).size, CARD_IDS.length);
+  const pact = statsFor(['pacto']);
+  assert.equal(pact.ammo, 12);
+  assert.equal(pact.cooldown, 0.06);
+  assert.equal(pact.explode, 2);
+  assert.equal(statsFor(['saltarina']).dmg, 55 * 1.25);
+  assert.equal(statsFor(['saltarina']).bounces, 2);
+  assert.equal(statsFor(['descomposicion']).hp, 150);
+  assert.ok(statsFor(['adelantar']).straight);
+  assert.deepEqual(statsFor(['bombas', 'pem', 'eco', 'supernova']).blockFx, ['bombs', 'emp', 'echo', 'nova']);
+  assert.equal(statsFor(['supernova']).blockCooldown, 4.5);
+  assert.ok(Math.abs(statsFor(['plan']).cooldown - 0.3 * 2.5) < 1e-9);
+});
+
+test('tiros: las balas del escudo (PEM, bombitas) salen iguales en todas las pantallas y usan sus propias estadísticas', () => {
+  const ev = { k: 'a:b1', t: 10, x: 20, y: 10 };
+  const a = ringBullets(ev, 'a', 'emp');
+  const b = ringBullets(ev, 'a', 'emp');
+  assert.equal(a.length, 12);
+  assert.deepEqual(a.map((x) => [x.k, x.vx, x.vy]), b.map((x) => [x.k, x.vx, x.vy]));
+  assert.ok(a.every((x) => x.st.slow > 0 && x.st.straight));
+  const bombs = ringBullets(ev, 'a', 'bombs');
+  assert.ok(bombs.every((x) => x.st.timedBomb && x.vy < 0)); // salen para arriba
+});
+
+test('tiros: «Adelantar» no cae, las teledirigidas buscan al enemigo y el tiro potenciado pega más', () => {
+  const st = statsFor(['adelantar']);
+  const [b] = bulletsForShot({ k: 's', t: 0, x: 10, y: 10, a: 0, sd: 1 }, 'a', st);
+  for (let i = 0; i < 30; i++) stepBullet(b, STEP, { solids: [], stats: st });
+  assert.ok(Math.abs(b.y - 10) < 1e-9);
+  const seek = statsFor(['teledirigida']);
+  const [h] = bulletsForShot({ k: 'h', t: 0, x: 10, y: 10, a: 0, sd: 1 }, 'a', seek);
+  for (let i = 0; i < 60; i++) stepBullet(h, STEP, { solids: [], stats: seek, targets: [{ id: 'b', x: 25, y: 20 }] });
+  assert.ok(h.y > 12, 'dobla hacia el enemigo');
+  const base = statsFor([]);
+  const [plain] = bulletsForShot({ k: 'p', t: 0, x: 0, y: 0, a: 0, sd: 1 }, 'a', base);
+  const [strong] = bulletsForShot({ k: 'q', t: 0, x: 0, y: 0, a: 0, sd: 1, em: 1 }, 'a', base);
+  assert.equal(bulletDamage(strong, base), bulletDamage(plain, base) * 1.5);
+  assert.ok(strong.vx > plain.vx);
+});
+
+test('tiros: las escurridizas esquivan el piso', () => {
+  const st = statsFor(['escurridiza']);
+  const floor = solidsOf([[0, 20, 64, 4]]);
+  const [b] = bulletsForShot({ k: 'e', t: 0, x: 5, y: 17, a: 0.25, sd: 1 }, 'a', st);
+  for (let i = 0; i < 120 && !b.done; i++) stepBullet(b, STEP, { solids: floor, stats: st });
+  assert.ok(!b.done, 'no pegó en el piso');
 });

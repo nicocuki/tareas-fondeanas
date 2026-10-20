@@ -9,7 +9,7 @@ import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, u
 import { gameUrl } from '../ui/games.js';
 import { CARDS } from './cards.js';
 import {
-  GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, currentPicker, findPlayer, makeId, newRoom, ranking,
+  GAME_TYPE, MAX_CARD_LIMIT, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, currentPicker, findPlayer, makeId, newRoom, ranking,
 } from './game.js';
 import TirosGame from './TirosGame.jsx';
 import PickStage from './PickStage.jsx';
@@ -97,6 +97,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         <OptionField title="Peleas para ganar una ronda" hint={opts.battles === 2 ? 'Como el original: al mejor de 3.' : opts.battles === 1 ? 'Cada pelea es una ronda: más cartas, más rápido.' : 'Al mejor de 5.'}>
           <Segmented name="battles" value={opts.battles} disabled={!host} onChange={(v) => set({ battles: v })} choices={[1, 2, 3].map((n) => ({ value: n, label: String(n) }))} />
         </OptionField>
+        <CardLimitField value={opts.cardLimit || 0} host={host} onChange={(v) => set({ cardLimit: v })} />
       </LobbyOptions>
       <div className="tt-card tt-controls">
         <h2>Controles</h2>
@@ -112,6 +113,33 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         {!enough && <p className="tt-hint">Hacen falta al menos {MIN_PLAYERS} jugadores. Pasales el código.</p>}
       </div>
     </LobbyLayout>
+  );
+}
+
+// Modo «Fila de cartas»: apagado, o un tope de cartas por jugador que elige el anfitrión.
+function CardLimitField({ value, host, onChange }) {
+  const [draft, setDraft] = useState(String(value || 8));
+  useEffect(() => { if (value) setDraft(String(value)); }, [value]);
+  const on = value > 0;
+  const commit = (text) => {
+    setDraft(text);
+    const n = Number(text);
+    if (Number.isInteger(n) && n >= 1 && n <= MAX_CARD_LIMIT) onChange(n);
+  };
+  return (
+    <OptionField title="Fila de cartas" hint={on ? `Cada uno tiene como mucho ${value} carta${value === 1 ? '' : 's'}: al elegir una más, se va la primera que eligió.` : 'Apagado: las cartas se juntan sin tope, como en el original.'}>
+      <Segmented name="cardLimitOn" value={on} disabled={!host} onChange={(v) => onChange(v ? Math.max(1, Math.min(MAX_CARD_LIMIT, Number(draft) || 8)) : 0)} choices={[{ value: false, label: 'Apagada' }, { value: true, label: 'Encendida' }]} />
+      {on && (
+        <label className="tt-limit">
+          <span>Máximo de cartas</span>
+          <input
+            className="tf-input" type="number" inputMode="numeric" min={1} max={MAX_CARD_LIMIT} value={host ? draft : value} disabled={!host} data-opt="cardLimit"
+            onChange={(e) => commit(e.target.value)}
+            onBlur={() => setDraft(String(value))}
+          />
+        </label>
+      )}
+    </OptionField>
   );
 }
 
@@ -139,14 +167,19 @@ function Scoreboard({ room, me }) {
 
 function MyCards({ room }) {
   const players = room.players.filter((p) => p.inGame && p.cards.length);
+  const limit = room.options.cardLimit || 0;
   if (!players.length) return null;
   return (
     <div className="tt-decks">
+      {limit > 0 && <p className="tt-hint tt-limit-hint">Fila de cartas: hasta {limit} cada uno. La marcada con ⏏ es la próxima que se va.</p>}
       {players.map((p) => (
         <div key={p.id} className="tt-deck">
           <span className="tt-dot" style={{ background: p.color }} />
-          <span className="tt-deck-name">{p.name}</span>
-          {p.cards.map((c, i) => <span key={`${c}-${i}`} className={`tt-chip is-${CARDS[c]?.rarity}`} title={CARDS[c]?.lines.map((l) => l.slice(2)).join(' · ')}>{CARDS[c]?.name}</span>)}
+          <span className="tt-deck-name">{p.name}{limit > 0 && <small> {p.cards.length}/{limit}</small>}</span>
+          {p.cards.map((c, i) => {
+            const leaving = limit > 0 && i === 0 && p.cards.length >= limit;
+            return <span key={`${c}-${i}`} className={`tt-chip is-${CARDS[c]?.rarity}${leaving ? ' is-leaving' : ''}`} title={CARDS[c]?.lines.map((l) => l.slice(2)).join(' · ')}>{leaving && '⏏ '}{CARDS[c]?.name}</span>;
+          })}
         </div>
       ))}
     </div>

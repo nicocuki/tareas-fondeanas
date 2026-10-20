@@ -412,8 +412,11 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
   salto 38, frenada exponencial (`MOVE_RESPONSE`), agarrarse de la pared (`WALL_SLIDE` 1,2), bala
   común a 37 u/s con gravedad 64; las cartas de velocidad de bala dividen la gravedad por el cuadrado
   del multiplicador. El salto lo subió Nico a pedido («más alto»).
-- **Los mapas son copia de 4 capturas que mandó Nico** (1920 px = 64 unidades: 30 px cada una). Pidió
-  solo esos cuatro. Las piezas no son solo rectángulos: `shapes.js` tiene polígonos convexos y
+- **Los mapas son copia de capturas del original**: los cuatro primeros, de capturas que mandó Nico
+  (1920 px = 64 unidades: 30 px cada una); después pidió más y se sumaron Corona, Andamios, Hielo y
+  Pradera, de la wiki de ROUNDS y del press kit de Landfall (Round7/8/9, 1280 × 720). **Los mapas
+  nuevos van al final de `MAPS`**: la sala guarda el índice (`battle.map`). `ground` arma un piso con
+  entrantes en franjas convexas; `accent` pinta piezas con `theme.accent`. Las piezas no son solo rectángulos: `shapes.js` tiene polígonos convexos y
   círculos (y con eso arma `rect`, `poly`, `capsule` y `group`, una pieza compuesta que se pinta de un
   solo color). `hitSolid` es el choque de un círculo (jugador, bala) contra un sólido. Contra el piso
   (normal hacia arriba) al jugador se lo sube derecho y, bajando una rampa caminando, se lo pega al
@@ -434,6 +437,24 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
   todas juntas anulaba donde se superponen (salían medias lunas negras en las cápsulas). Los colores
   de cada mapa están en `THEMES` de `maps.js`. Mientras sube lanzado después de caerse, el jugador
   lleva un anillo punteado y una estela blanca, como en el original.
+- **Están las 67 cartas del ROUNDS de base** (lista de la wiki «All Cards») más Empujón, que es nuestra.
+  Cómo viajan las que no son balas, sin tocar el reducer:
+  - Los efectos de escudo pasan por `blockEffects(dueño, ev)`, que corre en **todas** las pantallas (también
+    la del que se cubrió): deja en el mapa lo que se ve (campos, supernova) y, si el escudo es de otro,
+    aplica lo que me hace a mí. PEM y ¡Bombas! son balas en anillo (`ringBullets`) con sus propias
+    estadísticas en `b.st`, iguales en todas las pantallas a partir del evento. El tiro potenciado
+    (Potenciar) lleva `em` en el disparo y dispara `blockEffects` donde pega.
+  - Eco, Embestida, ¡Escudo arriba! y Cuenta abisal se cubren solos con `doBlock(..., { auto, quiet })`:
+    `auto` no gasta el enfriamiento y `quiet` no vuelve a disparar Eco ni Embestida (se encadenaban).
+  - Lo que se hace estando cerca (Sierra, Cuenta abisal cargada) viaja como marca en la foto (`sw`, `ab`) y
+    el daño lo decide la pantalla del que está cerca; Presencia helada y Robavidas se calculan con las
+    cartas del otro. Resplandor manda cada onda como evento (`w`). El aturdido/silenciado viaja en `su` (solo dibujo).
+  - Descomposición reparte en 4 s el daño directo (`damageMe(..., dot)`: lo que ya entra de a poco no se
+    reparte otra vez). Perseverancia prístina multiplica por 5 la vida actual y la máxima juntas, así
+    entrar y salir del 90 % no se traba. Peleador suma y saca vida máxima.
+- **Fila de cartas** (`options.cardLimit`, 0 = apagado, hasta `MAX_CARD_LIMIT`): pedido de Nico. Con el
+  tope lleno, elegir una carta saca la primera de `cards` (en `choose`). El número es libre, por eso
+  no está en `OPTION_VALUES`.
 - `window.__tiros` (el estado de la pelea) y `data-tiros-canvas`, `data-card` existen para manejar el
   juego desde un navegador automatizado. Para probar el respaldo por el servidor, borrá
   `window.RTCPeerConnection` antes de cargar la página en uno de los navegadores.

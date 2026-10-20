@@ -4,6 +4,7 @@
 // mandarlas por la red: con las cartas del que tiró alcanza para saber cómo se mueven.
 import { WORLD_H, WORLD_W } from './maps.js';
 import { hitSolid } from './shapes.js';
+import { BASE } from './cards.js';
 
 export const STEP = 1 / 120;
 export const PLAYER_R = 0.8;   // cuerpo y piernas: los pies tocan el piso en y + PLAYER_R
@@ -38,6 +39,8 @@ export const OUT_DAMAGE = 0.2;    // fracción de la vida máxima que se pierde 
 export const OUT_LAUNCH = 88;     // velocidad hacia arriba al caerse del mapa (llega cerca del techo)
 export const OUT_PUSH = 36;       // empujón de vuelta al salirse por un costado
 export const FX_RADIUS = 9;       // alcance de los efectos del escudo
+export const EMPOWER_SPEED = 1.6; // el tiro potenciado (Potenciar) va más rápido…
+export const EMPOWER_DAMAGE = 1.5; // …y pega más fuerte
 
 // Números al azar repetibles a partir de una semilla (mulberry32).
 export function seeded(seed) {
@@ -61,6 +64,9 @@ export function newPlayerState(x, y, stats) {
     ammo: stats.ammo, reloadAt: 0, nextShotAt: 0, lastShotAt: 0, burstLeft: 0, burstAt: 0,
     blockUntil: 0, blockReadyAt: 0, slowUntil: 0, slowAmount: 0, rushUntil: 0, outUntil: 0,
     poison: [], // [{ dps, until, by }]
+    stunUntil: 0, silenceUntil: 0, thrust: null, sawUntil: 0, empowered: false,
+    echoAt: 0, chargeUntil: 0, abyssCharge: 0, abyssUntil: 0, abyssBlockAt: 0, waveAt: 0,
+    brawlUntil: 0, brawlExtra: 0, boosted: false, refreshAt: 0,
   };
 }
 
@@ -181,9 +187,10 @@ export function bulletsForShot(shot, owner, stats) {
     for (let i = 0; i < stats.bullets; i++) {
       const offset = stats.bullets > 1 ? -stats.spread / 2 + (stats.spread * i) / (stats.bullets - 1) : 0;
       const a = shot.a + offset + (rand() - 0.5) * 2 * stats.inaccuracy;
-      const speed = BULLET_SPEED * stats.speed * (stats.bullets > 1 ? 0.9 + rand() * 0.2 : 1);
+      const speed = BULLET_SPEED * stats.speed * (stats.bullets > 1 ? 0.9 + rand() * 0.2 : 1) * (shot.em ? EMPOWER_SPEED : 1);
       const ox = Math.cos(a), oy = Math.sin(a);
       list.push({
+        em: shot.em ? 1 : 0,
         k: `${shot.k}:${j}:${i}`,
         owner,
         t0: shot.t + j * BURST_GAP,
@@ -205,7 +212,40 @@ export function bulletsForShot(shot, owner, stats) {
   return list;
 }
 
-export const bulletDamage = (b, stats) => stats.dmg * (1 + stats.grow * b.dist) * (1 + stats.trickster * b.bounced);
+export const bulletDamage = (b, stats) => stats.dmg * (1 + stats.grow * b.dist) * (1 + stats.trickster * b.bounced) * (b.em ? EMPOWER_DAMAGE : 1);
+
+// Balas que salen del escudo (PEM y ¡Bombas!): no usan las cartas del que se cubrió sino las suyas
+// propias (`b.st`). Salen en anillo desde el lugar del escudo, iguales en todas las pantallas.
+export const EMP_STATS = { ...BASE, dmg: 8, slow: 0.7, straight: true, size: 0.7 };
+export const BOMB_STATS = { ...BASE, dmg: 24, timedBomb: true, explode: 3.2, size: 0.9 };
+export function ringBullets(ev, owner, kind) {
+  const emp = kind === 'emp';
+  const st = emp ? EMP_STATS : BOMB_STATS;
+  const n = emp ? 12 : 7;
+  const list = [];
+  for (let i = 0; i < n; i++) {
+    // El PEM sale parejo para todos lados; las bombitas, para arriba y a los costados.
+    const a = emp ? (i / n) * Math.PI * 2 : -Math.PI / 2 + ((i / (n - 1)) - 0.5) * 2.6;
+    const speed = emp ? 24 : 15 + (i % 3) * 2.5;
+    list.push({
+      k: `${ev.k}:${kind}${i}`, owner, st, em: 0, t0: ev.t, glow: emp ? '#8fe3ff' : '#ff9a3c',
+      x: ev.x + Math.cos(a) * (PLAYER_R + 0.6), y: ev.y + Math.sin(a) * (PLAYER_R + 0.6),
+      vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, r: BULLET_R * st.size,
+      age: 0, dist: 0, bouncesLeft: 0, bounced: 0, drillLeft: 0, stuckAt: 0, done: false,
+    });
+  }
+  return list;
+}
+
+function nearestTarget(b, targets) {
+  let best = null;
+  for (const t of targets || []) {
+    if (t.id === b.owner) continue;
+    const d = Math.hypot(t.x - b.x, t.y - b.y);
+    if (!best || d < best.d) best = { d, t };
+  }
+  return best?.t || null;
+}
 
 function steer(b, tx, ty, rate, dt) {
   const speed = Math.hypot(b.vx, b.vy) || 1;
@@ -227,16 +267,19 @@ export function stepBullet(b, dt, { solids, stats, aim, targets, onBox }) {
   b.age += dt;
   if (b.age > BULLET_LIFE) { b.done = true; return null; }
   if (stats.remote && aim) steer(b, aim.x, aim.y, 7, dt);
-  else if (stats.homing && b.bounced > 0 && targets?.length) {
-    let best = null;
-    for (const t of targets) {
-      if (t.id === b.owner) continue;
-      const d = Math.hypot(t.x - b.x, t.y - b.y);
-      if (!best || d < best.d) best = { d, t };
-    }
-    if (best) steer(b, best.t.x, best.t.y, 6, dt);
+  else if ((stats.seek || (stats.homing && b.bounced > 0)) && targets?.length) {
+    const t = nearestTarget(b, targets);
+    if (t) steer(b, t.x, t.y, stats.seek ? 3.5 : 6, dt);
   }
-  if (!stats.remote) b.vy += (BULLET_GRAVITY / Math.max(1, stats.speed) ** 2) * dt;
+  // Escurridizas: si lo que tiene adelante es piso o pared, dobla para el otro lado.
+  if (stats.sneaky && solids) {
+    const ahead = 0.18;
+    for (const solid of solids) {
+      const hit = hitSolid(b.x + b.vx * ahead, b.y + b.vy * ahead, b.r + 0.5, solid);
+      if (hit) { b.vx += hit.nx * 90 * dt; b.vy += hit.ny * 90 * dt; break; }
+    }
+  }
+  if (!stats.remote && !stats.straight && !stats.seek) b.vy += (BULLET_GRAVITY / Math.max(1, stats.speed) ** 2) * dt;
   const speed = Math.hypot(b.vx, b.vy);
   const steps = Math.max(1, Math.ceil((speed * dt) / 0.4));
   const h = dt / steps;
