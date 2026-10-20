@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
+import { everyFrame } from '../ticker.js';
 import { COLORS, panelStyle, ghostButton } from '../theme.js';
 import {
   CAR_CONFIG, CAR_BALL_CONFIG, advanceBall, createGameState, resetPositions, stepPhysics,
@@ -582,10 +583,11 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       return next;
     }
 
-    let raf = 0;
     let lastTs = null;
-    function frame(ts) {
-      raf = requestAnimationFrame(frame);
+    // Con la pestaña de fondo sigue andando (everyFrame): el jugador y la pelea siguen mandando
+    // fotos; solo no se dibuja.
+    function frame({ hidden }) {
+      const ts = performance.now();
       const dt = lastTs === null ? 16 : Math.min(ts - lastTs, 50);
       lastTs = ts;
       const now = serverNow();
@@ -656,6 +658,7 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       if (zoomKeysRef.current.zoomOut) zoomScaleRef.current = Math.max(0.4, zoomScaleRef.current - 0.02 * (dt / 16));
       if (zoomKeysRef.current.zoomIn) zoomScaleRef.current = Math.min(2.5, zoomScaleRef.current + 0.02 * (dt / 16));
 
+      if (hidden) return;
       // Entre dos pasos de física se dibuja lo propio a mitad de camino: con 144 Hz no hay tirones.
       const shown = blendBodies(state, net.prev, alpha);
       updateCamera(shown, dt);
@@ -907,9 +910,9 @@ export default function FutbolGame({ room, code, me, onGoal, onTimeEnd, onBackTo
       }
     }
 
-    raf = requestAnimationFrame(frame);
+    const stopFrames = everyFrame(frame);
     return () => {
-      cancelAnimationFrame(raf);
+      stopFrames();
       canvas?.removeEventListener('wheel', onWheel);
       offChannel();
       offOffset();

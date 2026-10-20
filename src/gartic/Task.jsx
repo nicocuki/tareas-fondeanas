@@ -3,6 +3,7 @@ import DrawingCanvas from './DrawingCanvas.jsx';
 import Icon from './Icon.jsx';
 import { MAX_TEXT, stepType } from './game.js';
 import { saveStep, submit } from './storage.js';
+import { backgroundTimeout } from '../ticker.js';
 
 export default function Task({ code, state, uid, initial, previous, ready, readyMap, players, now, onError }) {
   const key = 'gartic:draft:' + code + ':' + state.match + ':' + state.round + ':' + uid;
@@ -21,12 +22,11 @@ export default function Task({ code, state, uid, initial, previous, ready, ready
   }
   useEffect(() => {
     if (ready || sending || saved) return;
-    const timer = setTimeout(() => {
+    return backgroundTimeout(() => {
       const value = draft.current, valueStrokes = draftStrokes.current;
       queue.current = queue.current.catch(() => {}).then(() => saveStep(code, state, uid, value, valueStrokes));
       queue.current.then(() => { if (alive.current) setSaved(draft.current === value); }).catch(() => { if (alive.current) onError('No se pudo guardar el borrador. Revisá la conexión.'); });
     }, 500);
-    return () => clearTimeout(timer);
   }, [content, ready, sending, saved]);
   async function finish() {
     if (ready || sending) return;
@@ -47,8 +47,8 @@ export default function Task({ code, state, uid, initial, previous, ready, ready
   }
   useEffect(() => {
     if (left > 0 || ready || sending) return;
-    const timer = setTimeout(finish, 250);
-    return () => clearTimeout(timer);
+    // Con la pestaña de fondo también se entrega a tiempo (ticker.js).
+    return backgroundTimeout(finish, 250);
   }, [left, ready, sending]);
 
   const waiting = ready || sending;

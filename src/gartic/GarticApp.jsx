@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadName } from '../session.js';
 import { backend } from '../storage.js';
+import { backgroundInterval } from '../ticker.js';
 import { MODES, TIME_CHOICES, MIN_SECONDS, MAX_SECONDS, cleanName, cleanSeconds, previousAuthor, roomSettings } from './game.js';
 import * as network from './storage.js';
 import Task from './Task.jsx';
@@ -74,8 +75,8 @@ export default function GarticApp({onBackToMenu}){
     }).catch(()=>{if(active)setError('No pudimos preparar tu jugador. Recargá la página.');});
     const off=network.watch('.info/connected',setOnline);
     const offOffset=backend.subscribeServerOffset(setOffset);
-    const timer=setInterval(()=>setTick(Date.now()),250);
-    return()=>{active=false;off();offOffset();clearInterval(timer);};
+    const stopTick=backgroundInterval(()=>setTick(Date.now()),250); // sigue con la pestaña de fondo (ticker.js)
+    return()=>{active=false;off();offOffset();stopTick();};
   },[]);
   useEffect(()=>{
     if(!code || !uid)return;

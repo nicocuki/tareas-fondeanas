@@ -1,6 +1,7 @@
 // A los Tiros: entrada, sala de espera, elegir cartas, la pelea y el final.
 import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
+import { backgroundInterval } from '../ticker.js';
 import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
 import GameHero from '../ui/GameHero.jsx';
@@ -262,8 +263,8 @@ export default function TirosApp({ onBackToMenu }) {
   const timed = room && ['picking', 'battleEnd', 'fight'].includes(room.phase);
   useEffect(() => {
     if (!timed) return undefined;
-    const id = setInterval(() => setTick(Date.now()), 250);
-    return () => clearInterval(id);
+    // Con el reloj del Worker: con la pestaña de fondo, setInterval se atrasa y el turno no se cerraba a tiempo.
+    return backgroundInterval(() => setTick(Date.now()), 250);
   }, [timed]);
 
   // Cuando se termina un reloj, cualquiera avisa; la transacción deja pasar un solo aviso.

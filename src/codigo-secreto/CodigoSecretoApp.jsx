@@ -5,6 +5,7 @@ import {
   newRoom, numberProblem, operativesOf, pickedCards, remaining, spymasterOf, startProblems, timerLeft,
 } from './game.js';
 import { backend } from '../storage.js';
+import { backgroundInterval } from '../ticker.js';
 import { clearSession, loadName, loadSession, saveSession, savedPlayerId } from '../session.js';
 import { useRegisterRoom } from '../ui/store.js';
 import GameHero from '../ui/GameHero.jsx';
@@ -104,8 +105,8 @@ export default function CodigoSecretoApp({ onBackToMenu }) {
   const paused = room?.paused === true;
   useEffect(() => {
     if (!deadline || paused) return undefined;
-    const id = setInterval(() => setTick((n) => n + 1), 500);
-    return () => clearInterval(id);
+    // Con el reloj del Worker: con la pestaña de fondo, setInterval se atrasa y el turno no se cerraba a tiempo.
+    return backgroundInterval(() => setTick((n) => n + 1), 500);
   }, [deadline, paused]);
 
   const me = findPlayer(room, session?.playerId);

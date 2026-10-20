@@ -8,10 +8,11 @@
 import {
   SERVER_TIMESTAMP, canonical, childEntries, clone, joinPath, normalize, pushKey, setAt, splitPath, uidFromSecret,
 } from '../worker/tree.js';
+import { backgroundInterval, backgroundTimeout } from './ticker.js';
 
 const SECRET_KEY = 'tareas:secreto';
 const PING_MS = 20000;         // latido para que ni el navegador ni Cloudflare corten la conexión
-const DEAD_MS = 50000;         // sin noticias en este tiempo, la conexión se da por muerta
+const DEAD_MS = 30000;         // un ping sin respuesta en este tiempo: la conexión se da por muerta
 const IDLE_CLOSE_MS = 20000;   // una sala que ya nadie escucha se desconecta
 const MAX_TX_ATTEMPTS = 50;
 
@@ -105,9 +106,12 @@ class Shard {
     this.odPaths = new Set();  // rutas con algo anotado para la desconexión
     this.retries = 0;
     this.lastSeen = 0;
+    this.pingAt = 0;
     this.idleTimer = null;
     this.connect();
-    this.heartbeat = setInterval(() => this.beat(), PING_MS);
+    // Con el reloj del Worker (ticker.js): con la pestaña de fondo, setInterval se frena a uno por
+    // minuto y la sala daba al jugador por desconectado.
+    this.stopHeartbeat = backgroundInterval(() => this.beat(), PING_MS);
   }
 
   connect() {
@@ -116,6 +120,7 @@ class Shard {
     try { ws = new config.WebSocket(config.url(this.code)); } catch { this.scheduleReconnect(); return; }
     this.ws = ws;
     this.lastSeen = Date.now();
+    this.pingAt = 0;
     ws.onopen = () => {
       this.lastSeen = Date.now();
       ws.send(JSON.stringify({ op: 'hello', secret: tabSecret(), r: 0 }));
@@ -141,13 +146,17 @@ class Shard {
     if (this.dead) return;
     const delay = Math.min(5000, 400 * 2 ** this.retries) * (0.75 + Math.random() * 0.5);
     this.retries += 1;
-    setTimeout(() => this.connect(), delay);
+    backgroundTimeout(() => this.connect(), delay);
   }
 
   beat() {
     if (!this.ws) return;
-    if (Date.now() - this.lastSeen > DEAD_MS) { try { this.ws.close(); } catch {} this.dropped(this.ws); return; }
-    if (this.ready) { try { this.ws.send('ping'); } catch {} }
+    // Muerta solo si el ping anterior no tuvo respuesta. Contar desde el último mensaje recibido
+    // fallaba con la pestaña de fondo: si el latido se atrasaba, cortaba una conexión que andaba bien.
+    const now = Date.now();
+    const unanswered = this.ready ? this.pingAt && this.lastSeen < this.pingAt && now - this.pingAt > DEAD_MS : now - this.lastSeen > DEAD_MS;
+    if (unanswered) { try { this.ws.close(); } catch {} this.dropped(this.ws); return; }
+    if (this.ready && (!this.pingAt || this.lastSeen >= this.pingAt)) { this.pingAt = now; try { this.ws.send('ping'); } catch {} }
   }
 
   receive(data) {
@@ -235,7 +244,7 @@ class Shard {
 
   destroy() {
     this.dead = true;
-    clearInterval(this.heartbeat);
+    this.stopHeartbeat();
     clearTimeout(this.idleTimer);
     const ws = this.ws;
     this.ws = null;

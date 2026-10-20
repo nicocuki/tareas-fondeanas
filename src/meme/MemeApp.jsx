@@ -1,6 +1,7 @@
 // Armá el Meme: entrada, sala de espera, armado del meme, votación, resultados y final.
 import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
+import { backgroundInterval } from '../ticker.js';
 import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
 import GameHero from '../ui/GameHero.jsx';
@@ -373,8 +374,8 @@ export default function MemeApp({ onBackToMenu }) {
   const timed = room && ['making', 'voting', 'results'].includes(room.phase);
   useEffect(() => {
     if (!timed) return undefined;
-    const id = setInterval(() => setTick(Date.now()), 250);
-    return () => clearInterval(id);
+    // Con el reloj del Worker: con la pestaña de fondo, setInterval se atrasa y el turno no se cerraba a tiempo.
+    return backgroundInterval(() => setTick(Date.now()), 250);
   }, [timed]);
 
   // Cuando se termina un reloj, cualquiera avisa; la transacción deja pasar un solo aviso.

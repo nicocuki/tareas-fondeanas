@@ -393,6 +393,13 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.10.2 = A los Tiros: más vida, más grande
+1.10.2 = A los Tiros: más vida, más grande
 - Como en ROUNDS, el tamaño de cada jugador sigue a su vida máxima: con cartas que dan vida quedás un poco más grande (y más fácil de pegarte) y un poco más lento.
 - Con el doble de vida sos un 15 % más grande y vas al 93 % de velocidad; con 500 de vida, un 38 % más grande y al 85 %. Con menos vida de lo normal, al revés.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.10.25 = Jugar con otra pestaña abierta 🐛
+- Si cambiabas de pestaña en medio de una partida, la sala a veces te daba por desconectado: no entrabas a la ronda que arrancaba el anfitrión (pasaba en Trazo Loco y en los demás) o entrabas tarde.
+- En A los Tiros, el que estaba en otra pestaña quedaba congelado: no recibía daño, y el anfitrión lo daba por muerto. Ahora sigue jugando aunque no lo estés mirando (recibe daño, entra a cada pelea y los demás lo ven).
+- Lo mismo en el fútbol online, y los relojes de los turnos (Código Secreto, Trazo Loco, Armá el Meme, La Mecha, A los Tiros) se cierran a tiempo aunque estés en otra pestaña.

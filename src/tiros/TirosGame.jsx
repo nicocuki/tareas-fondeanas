@@ -8,6 +8,7 @@
 // Las cajas sueltas las simula la pantalla del último que las tocó y van en su foto (ver `boxes.js`).
 import React, { useEffect, useMemo, useRef } from 'react';
 import { backend } from '../storage.js';
+import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { MAPS, WORLD_H, WORLD_W } from './maps.js';
 import { burst, drawScene } from './render.js';
@@ -387,7 +388,6 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   // ─── Bucle principal ──────────────────────────────────────────────────────
   useEffect(() => {
     const s = sim.current;
-    let raf = 0;
     let last = performance.now() / 1000;
     let acc = 0;
 
@@ -582,8 +582,9 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       return out;
     }
 
-    function frame() {
-      raf = requestAnimationFrame(frame);
+    // Con la pestaña de fondo sigue andando (everyFrame): el jugador se mueve, recibe daño y manda
+    // fotos igual; solo no se dibuja.
+    function frame({ hidden }) {
       const t = performance.now() / 1000;
       acc = Math.min(acc + (t - last), 0.25);
       last = t;
@@ -625,7 +626,8 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
           }
         }
       }
-      draw(now);
+      if (hidden) s.particles.length = 0;
+      else draw(now);
     }
 
     let lastDraw = performance.now() / 1000;
@@ -702,9 +704,9 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       });
     }
 
-    raf = requestAnimationFrame(frame);
+    const stop = everyFrame(frame);
     window.__tiros = s; // para manejar la pelea desde un navegador automatizado
-    return () => { cancelAnimationFrame(raf); if (window.__tiros === s) delete window.__tiros; };
+    return () => { stop(); if (window.__tiros === s) delete window.__tiros; };
   }, [me.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Teclado y mouse ──────────────────────────────────────────────────────

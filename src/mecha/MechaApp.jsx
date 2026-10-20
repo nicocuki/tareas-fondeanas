@@ -1,6 +1,7 @@
 // La Mecha: entrada, sala de espera, ronda con la bomba y fin de partida.
 import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
+import { backgroundInterval } from '../ticker.js';
 import { onValue, ref, set } from '../realtime.js';
 import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
@@ -343,8 +344,8 @@ export default function MechaApp({ onBackToMenu }) {
   const playing = room?.phase === 'playing';
   useEffect(() => {
     if (!playing) return undefined;
-    const id = setInterval(() => setTick(Date.now()), 100);
-    return () => clearInterval(id);
+    // Con el reloj del Worker: con la pestaña de fondo, setInterval se atrasa y el turno no se cerraba a tiempo.
+    return backgroundInterval(() => setTick(Date.now()), 100);
   }, [playing]);
 
   // Cuando se termina la mecha, cualquiera avisa: la transacción deja pasar un solo aviso por turno.

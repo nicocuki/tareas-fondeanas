@@ -184,6 +184,7 @@ por una versión anterior siga abriéndose sin romper.
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
 | `src/storage.js` | Salas (`rooms/`) y canales en tiempo real del fútbol y de A los Tiros sobre el servidor de salas |
 | `src/realtime.js` | Cliente del servidor de salas, con la misma forma que Firebase Realtime Database |
+| `src/ticker.js` | Relojes que siguen andando con la pestaña de fondo (ver *Pestañas de fondo*) |
 | `worker/index.js` | Worker de Cloudflare: `/api/hora`, `/api/sala/ABCD` (WebSocket) y la página |
 | `worker/sala.js` | Durable Object de una sala: WebSockets que hibernan y SQLite propio |
 | `worker/core.js` | El servidor de una sala sin nada de Cloudflare (se prueba con `node --test`) |
@@ -255,6 +256,25 @@ así los juegos siguieron casi iguales. **Para un juego nuevo, usá esas mismas 
   (`uidFromSecret`). Lo usa Trazo Loco para las reglas de privacidad.
 - **Plan gratis**: 100.000 pedidos por día, y cada 20 mensajes de WebSocket entrantes cuentan como
   uno. Por eso el fútbol sigue yendo directo entre navegadores y no por el servidor.
+
+### Pestañas de fondo
+
+Con la pestaña oculta (o la ventana minimizada o tapada) el navegador **deja de llamar a
+`requestAnimationFrame`** y frena `setInterval`/`setTimeout` a uno por segundo y, a los pocos minutos, a uno
+por minuto. Pasaba: el que cambiaba de pestaña no entraba a la ronda de Trazo Loco (la sala lo veía
+desconectado) y en A los Tiros quedaba congelado, sin recibir daño, hasta que el anfitrión lo daba por muerto.
+
+- **`src/ticker.js`** pide los relojes a un Web Worker, que el navegador no frena así: `everyFrame(fn)`
+  (bucle de juego: `requestAnimationFrame` mientras llega, el Worker cuando se traba más de 100 ms; `fn` recibe
+  `{ hidden }` para no dibujar), `backgroundInterval` y `backgroundTimeout`. Sin Worker (Node) usa los comunes.
+- **Un juego nuevo**: el bucle de una pelea en tiempo real va con `everyFrame`, no con `requestAnimationFrame`;
+  el reloj que cierra turnos o manda `tick`/`timeout`, con `backgroundInterval`; una entrega automática al
+  acabarse el tiempo, con `backgroundTimeout`. Para lo que es solo de pantalla (un «¡Copiado!») da igual.
+- `realtime.js` usa el Worker para el latido y la reconexión, y da la conexión por muerta solo si **un ping
+  quedó sin respuesta** `DEAD_MS`. Antes contaba desde el último mensaje recibido, y con el latido atrasado
+  cortaba conexiones que andaban bien.
+- En el navegador de pruebas, la pestaña de fondo dice `visibilityState: 'visible'` pero igual frena
+  `requestAnimationFrame`: por eso `everyFrame` mira si los cuadros dejaron de llegar, no la visibilidad.
 
 ### Salas públicas
 
