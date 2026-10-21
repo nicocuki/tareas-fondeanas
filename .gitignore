@@ -7,5 +7,8 @@ dist
 .claude/settings.local.json
 Claude outputs/
 
+# Grafo de graphify (se arma en cada compu con `graphify update .`)
+graphify-out/
+
 # Compilación web de Mario vs Luigi (la carpeta que arma Unity; la copia que se publica está en public/mvl)
 web-mvl/

@@ -1,0 +1,5 @@
+# Lo que graphify no tiene que meter en el grafo: código de terceros, minificado o generado
+public/mvl/
+public/mecha/
+diccionario/
+src/mecha/syllables.js
