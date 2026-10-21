@@ -2,24 +2,31 @@
 // Mientras nadie manda nada, la sala se duerme y no gasta; los datos quedan guardados en su
 // SQLite y las conexiones siguen abiertas (lo que cada una escucha va en su «attachment»).
 import { DurableObject } from 'cloudflare:workers';
-import { IDLE_CLEANUP_MS, SalaCore, newAttachment } from './core.js';
+import { IDLE_CLOSE_MS, SalaCore, newAttachment } from './core.js';
 import { roomListing } from './publicas.js';
 
 // Ramas que cambian lo que la sala muestra en la lista de salas públicas.
 const LISTING_ROOTS = new Set(['rooms', 'garticRooms', 'publica']);
 
-const ALARM_REFRESH_MS = 60 * 60 * 1000; // la alarma de limpieza se corre como mucho una vez por hora
+// La actividad se anota (en disco y en la alarma) como mucho una vez por minuto: el cierre puede
+// llegar hasta un minuto tarde, y a cambio no se escribe en disco con cada movimiento.
+const ACTIVITY_SAVE_MS = 60 * 1000;
+export const CLOSED_BY_IDLE = 4000; // código con el que se cierran los WebSocket de una sala inactiva
 
 export class Sala extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.atts = new WeakMap();
-    this.alarmSetAt = 0;
+    this.activeAt = Date.now();
+    this.activeSavedAt = 0;
     // Un "ping" del cliente se contesta solo, sin despertar a la sala.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     ctx.blockConcurrencyWhile(async () => {
       this.code = (await ctx.storage.get('code')) || null;
       this.listing = (await ctx.storage.get('listing')) ?? 'null'; // lo último que se le avisó al Directorio
+      this.activeAt = (await ctx.storage.get('activeAt')) || Date.now();
+      // `IDLE_CLOSE_MS` se puede achicar para probar: `wrangler dev --var IDLE_CLOSE_MS:60000`.
+      this.idleMs = Number(env.IDLE_CLOSE_MS) || IDLE_CLOSE_MS;
       this.core = this.makeCore(this.code);
       this.core.load(await ctx.storage.list({ prefix: 'd:' }).then((m) => [...m].map(([k, v]) => [k.slice(2), v])));
     });
@@ -33,8 +40,11 @@ export class Sala extends DurableObject {
         delete: (key) => { this.ctx.storage.delete(key); },
       },
       connections: () => this.ctx.getWebSockets().map((ws) => this.conn(ws)),
-      onPersist: () => this.scheduleCleanup(),
-      onWrite: (changed) => { if (changed.some((segs) => LISTING_ROOTS.has(segs[0]))) this.publish(); },
+      // Las escrituras del propio servidor (lo anotado para la desconexión) no cuentan como actividad.
+      onWrite: (changed, trusted) => {
+        if (!trusted) this.markActive();
+        if (changed.some((segs) => LISTING_ROOTS.has(segs[0]))) this.publish();
+      },
     });
   }
 
@@ -50,11 +60,14 @@ export class Sala extends DurableObject {
     };
   }
 
-  scheduleCleanup() {
+  // Alguien hizo algo: la sala sigue viva otros IDLE_CLOSE_MS.
+  markActive() {
     const now = Date.now();
-    if (now - this.alarmSetAt < ALARM_REFRESH_MS) return;
-    this.alarmSetAt = now;
-    this.ctx.storage.setAlarm(now + IDLE_CLEANUP_MS);
+    this.activeAt = now;
+    if (now - this.activeSavedAt < ACTIVITY_SAVE_MS) return;
+    this.activeSavedAt = now;
+    this.ctx.storage.put('activeAt', now);
+    this.ctx.storage.setAlarm(now + this.idleMs);
   }
 
   // Le avisa al Directorio si cambió lo que esta sala muestra en la portada.
@@ -84,6 +97,7 @@ export class Sala extends DurableObject {
     const att = newAttachment(code);
     server.serializeAttachment(att);
     this.atts.set(server, att);
+    this.markActive();
     this.publish();
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -105,15 +119,21 @@ export class Sala extends DurableObject {
     this.publish(ws);
   }
 
-  // Tres días sin escrituras: se borra la sala entera.
+  // Sin actividad en IDLE_CLOSE_MS: se cierran las conexiones, se saca de la portada y se borra todo.
+  // Las pantallas que quedaron abiertas se reconectan a una sala vacía y muestran que ya no existe.
   async alarm() {
-    if (this.ctx.getWebSockets().length > 0) {
-      this.alarmSetAt = Date.now();
-      await this.ctx.storage.setAlarm(Date.now() + IDLE_CLEANUP_MS);
-      return;
+    const left = this.activeAt + this.idleMs - Date.now();
+    if (left > 1000) { await this.ctx.storage.setAlarm(Date.now() + left); return; }
+    if (this.code && this.listing !== 'null') {
+      const directorio = this.env.DIRECTORIO.get(this.env.DIRECTORIO.idFromName('portada'));
+      await directorio.publicar(this.code, null).catch(() => {});
+    }
+    for (const ws of this.ctx.getWebSockets()) {
+      try { ws.close(CLOSED_BY_IDLE, 'Sala cerrada por inactividad'); } catch {}
     }
     await this.ctx.storage.deleteAll();
     this.core.wipe();
     this.code = null;
+    this.listing = 'null';
   }
 }

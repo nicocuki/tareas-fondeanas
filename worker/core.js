@@ -18,7 +18,9 @@ import {
 import { canRead, checkPath, isEphemeral, unitDepth, writeError } from './rules.js';
 
 export const MAX_STORED_CHARS = 40_000_000; // tope de lo guardado por sala (~40 MB)
-export const IDLE_CLEANUP_MS = 3 * 24 * 60 * 60 * 1000; // una sala sin uso se borra a los 3 días
+// Una sala sin actividad (ninguna escritura de un jugador ni conexión nueva) se cierra y se borra a los
+// 15 minutos, aunque haya pestañas abiertas: si no, una pestaña olvidada la dejaba viva para siempre.
+export const IDLE_CLOSE_MS = 15 * 60 * 1000;
 // Un mensaje de WebSocket no puede pasar de 1 MiB: lo más grande (los álbumes de Trazo Loco) se
 // parte por ramas y viaja en varios mensajes; el cliente los junta antes de avisar.
 export const MAX_MESSAGE_CHARS = 700_000;
@@ -44,7 +46,7 @@ export class SalaCore {
     this.connections = connections;
     this.now = now;
     this.onPersist = onPersist;
-    this.onWrite = onWrite; // después de cada escritura aceptada, con las rutas tocadas
+    this.onWrite = onWrite; // después de cada escritura aceptada, con las rutas tocadas y si la hizo el servidor
     this.tree = null;
     this.units = new Map(); // unidad guardada → tamaño aproximado
     this.stored = 0;
@@ -181,7 +183,7 @@ export class SalaCore {
     for (const [segs, value] of prepared) this.tree = setAt(this.tree, segs, value);
     this.broadcast(prepared.map(([segs]) => segs));
     this.persist(prepared.map(([segs]) => segs));
-    this.onWrite(prepared.map(([segs]) => segs));
+    this.onWrite(prepared.map(([segs]) => segs), trusted);
     return null;
   }
 

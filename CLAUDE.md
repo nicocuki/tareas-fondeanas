@@ -55,8 +55,13 @@ Sitio: https://tareas-fondeanas.nicocukier.workers.dev · Cuenta de Cloudflare: 
 
 `npm run deploy` publica a mano desde una compu con `npx wrangler login` hecho; normalmente no hace falta.
 
-No hay base aparte que limpiar: una sala sin escrituras durante tres días se borra sola (alarma
-del Durable Object). Las salas de prueba con códigos al azar no molestan a nadie.
+No hay base aparte que limpiar: **una sala sin actividad durante 15 minutos se cierra y se borra sola**
+(`IDLE_CLOSE_MS` en `worker/core.js`, alarma del Durable Object en `worker/sala.js`), aunque haya pestañas
+abiertas: antes había que esperar tres días y que no quedara nadie conectado, y una pestaña olvidada la dejaba
+(y en la portada, si era pública) para siempre. Cuenta como actividad cualquier escritura de un jugador o una
+conexión nueva; lo que escribe el servidor solo (`onDisconnect`) no. Al cerrarla se saca de la portada, se
+cierran los WebSocket (código 4000) y las pantallas que quedaron muestran «Esa sala ya no existe». Para
+probarlo en local sin esperar: `npx wrangler dev --var IDLE_CLOSE_MS:60000` (un minuto).
 
 ## De qué se trata el juego
 

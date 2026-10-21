@@ -441,7 +441,7 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.12.0 = A los Tiros: efectos dibujados 🎨
+1.12.0 = A los Tiros: efectos dibujados 🎨
 - Los efectos de las cartas ahora son dibujos (sprites) en vez de manchas de color.
 - Nube tóxica: como en ROUNDS, muchas nubecitas verdes encimadas que se mueven y laten.
 - Sierra: una hoja de sierra de verdad que gira rápido alrededor tuyo (con estela del giro) y te deja ver adentro.
@@ -452,3 +452,9 @@ LATEST 1.12.0 = A los Tiros: efectos dibujados 🎨
 - Cuenta abisal: un círculo de runas que gira. Tiro potenciado: rayitos alrededor. Presencia helada: copos. Robavidas: gotas de sangre.
 - Las bombitas de ¡Bombas! y Detonación retardada son bombas con mecha (titilan antes de explotar) y el PEM tira bolas eléctricas.
 - Aturdido o silenciado: estrellitas girando arriba de la cabeza.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.11.1 = Las salas abandonadas se cierran solas
+- Si en una sala nadie hace nada durante 15 minutos, se cierra y se borra, aunque alguien haya dejado la pestaña abierta. También sale de la lista de salas públicas.
+- Los que todavía estaban adentro ven «Esa sala ya no existe» y pueden crear otra.
