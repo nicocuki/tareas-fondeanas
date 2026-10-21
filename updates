@@ -455,6 +455,6 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.11.1 = Las salas abandonadas se cierran solas
+LATEST 1.12.1 = Las salas abandonadas se cierran solas
 - Si en una sala nadie hace nada durante 15 minutos, se cierra y se borra, aunque alguien haya dejado la pestaña abierta. También sale de la lista de salas públicas.
 - Los que todavía estaban adentro ven «Esa sala ya no existe» y pueden crear otra.
