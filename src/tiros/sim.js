@@ -234,7 +234,7 @@ export function ringBullets(ev, owner, kind) {
     const a = emp ? (i / n) * Math.PI * 2 : -Math.PI / 2 + ((i / (n - 1)) - 0.5) * 2.6;
     const speed = emp ? 24 : 15 + (i % 3) * 2.5;
     list.push({
-      k: `${ev.k}:${kind}${i}`, owner, st, em: 0, t0: ev.t, glow: emp ? '#8fe3ff' : '#ff9a3c',
+      k: `${ev.k}:${kind}${i}`, kind, owner, st, em: 0, t0: ev.t, glow: emp ? '#8fe3ff' : '#ff9a3c',
       x: ev.x + Math.cos(a) * (PLAYER_R + 0.6), y: ev.y + Math.sin(a) * (PLAYER_R + 0.6),
       vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, r: BULLET_R * st.size,
       age: 0, dist: 0, bouncesLeft: 0, bounced: 0, drillLeft: 0, stuckAt: 0, done: false,

@@ -11,7 +11,7 @@ import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { MAPS, WORLD_H, WORLD_W } from './maps.js';
-import { burst, drawScene } from './render.js';
+import { EXPLOSION_TIME, MARK_TIME, burst, drawScene } from './render.js';
 import { applyBox, boxSolid, claimBox, driftBoxes, encodeBox, newBoxes, pushBox, stepBoxes } from './boxes.js';
 import { statsFor } from './cards.js';
 import {
@@ -61,7 +61,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
   if (!sim.current) {
     sim.current = {
       n: 0, mapSolids: [], solids: [], boxes: [], local: null, bullets: new Map(), seen: new Set(), remotes: new Map(),
-      explosions: [], clouds: [], fields: [], novas: [], waves: [], particles: [], shake: 0, myShots: [], myHits: [], myFx: [], seq: 0, lastBy: null,
+      explosions: [], clouds: [], fields: [], novas: [], waves: [], marks: [], particles: [], shake: 0, myShots: [], myHits: [], myFx: [], seq: 0, lastBy: null,
       input: { left: false, right: false, jump: false, shoot: false, block: false, blockWas: false }, aim: { x: 32, y: 18 },
       sentAt: 0, serverAt: 0, deathSent: false, goneSent: new Set(), msg: '', msgUntil: 0,
     };
@@ -81,7 +81,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     s.local = newPlayerState(x, y, statsRef.current[me.id]);
     s.bullets.clear();
     s.remotes.clear();
-    s.explosions = []; s.clouds = []; s.fields = []; s.novas = []; s.waves = []; s.particles = []; s.myShots = []; s.myHits = []; s.myFx = [];
+    s.explosions = []; s.clouds = []; s.fields = []; s.novas = []; s.waves = []; s.marks = []; s.particles = []; s.myShots = []; s.myHits = []; s.myFx = [];
     s.deathSent = false;
     s.goneSent.clear();
     s.lastBy = null;
@@ -265,8 +265,9 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     const owner = statsRef.current[id];
     if (!owner) return;
     const has = (name) => owner.blockFx.includes(name);
-    if (has('heal')) s.fields.push({ x: ev.x, y: ev.y, until: now + 3, owner: id });
-    if (has('static')) s.clouds.push({ x: ev.x, y: ev.y, until: now + 3, owner: id, r: 5, kind: 'static' });
+    if (has('heal')) s.fields.push({ x: ev.x, y: ev.y, t: now, until: now + 3, owner: id });
+    if (has('static')) s.clouds.push({ x: ev.x, y: ev.y, t: now, until: now + 3, owner: id, r: 5, kind: 'static' });
+    for (const kind of ['frost', 'shock', 'implode', 'overpower', 'silence']) if (has(kind)) s.marks.push({ kind, x: ev.x, y: ev.y, t: now });
     if (has('bombs')) addBullets(s, ringBullets(ev, id, 'bombs'), now);
     if (has('emp')) addBullets(s, ringBullets(ev, id, 'emp'), now);
     if (has('nova')) s.novas.push({ x: ev.x, y: ev.y, t: ev.t ?? now, owner: id });
@@ -324,7 +325,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     if (!st) return;
     burst(s.particles, x, y, { n: 7, color: '#ffe066', speed: 16, life: 0.3, size: 0.16 });
     if (st.explode) explode(s, x, y, st.explode, b.owner, bulletDamage(b, st), b.k, skipMe, now);
-    if (st.cloud) s.clouds.push({ x, y, until: now + 5, owner: b.owner, r: 4.5 });
+    if (st.cloud) s.clouds.push({ x, y, t: now, until: now + 5, owner: b.owner, r: 4.5 });
     // Tiro potenciado: donde pega se activan los efectos del escudo (con Teletransporte, te lleva ahí).
     if (b.em) {
       const mine = b.owner === me.id;
@@ -649,11 +650,12 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       s.shake = Math.max(0, s.shake - dt * 3);
       const r = roomRef.current;
       const b = r.battle;
-      s.explosions = s.explosions.filter((e) => now - e.t < 0.45);
+      s.explosions = s.explosions.filter((e) => now - e.t < EXPLOSION_TIME);
       s.fields = s.fields.filter((f) => now < f.until);
       s.clouds = s.clouds.filter((c) => now < c.until);
       s.novas = s.novas.filter((n) => now - n.t < NOVA_TIME + 0.5);
       s.waves = s.waves.filter((w) => now - w.t < 0.5);
+      s.marks = s.marks.filter((m) => now - m.t < MARK_TIME);
       const bullets = [];
       for (const bl of s.bullets.values()) {
         if (now < bl.t0) continue;
@@ -672,6 +674,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
             angle: Math.atan2(s.aim.y - p.y, s.aim.x - p.x), hp: p.hp, maxHp: p.maxHp, blocking: now < p.blockUntil,
             cdLeft: Math.max(0, (p.blockReadyAt - now) / st.blockCooldown), ammo: p.ammo, maxAmmo: st.ammo, reloading: Boolean(p.reloadAt), hurtUntil: p.hurtUntil || 0,
             saw: now < p.sawUntil, abyss: now < p.abyssUntil, abyssCharge: p.abyssCharge, stunned: now < p.stunUntil || now < p.silenceUntil, empowered: p.empowered,
+            chill: st.chill > 0, drain: st.drain,
           });
         } else {
           const v = s.remotes.get(pl.id);
@@ -680,7 +683,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
             id: pl.id, name: pl.name, color: pl.color, mine: false, x: v.x, y: v.y, vx: v.snap.vx, vy: v.snap.vy, onGround: Math.abs(v.snap.vy) < 0.5, launching: Boolean(v.snap.ln),
             angle: v.snap.a, hp: v.snap.hp, maxHp: v.snap.mh, blocking: v.snap.bl > now, cdLeft: 0,
             ammo: v.snap.am2 ?? st.ammo, maxAmmo: st.ammo, reloading: Boolean(v.snap.rl), hurtUntil: v.hurt || 0,
-            saw: v.snap.sw > now, abyss: Boolean(v.snap.ab), stunned: Boolean(v.snap.su),
+            saw: v.snap.sw > now, abyss: Boolean(v.snap.ab), stunned: Boolean(v.snap.su), chill: st?.chill > 0, drain: Boolean(st?.drain),
           });
         }
       }
@@ -699,7 +702,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
       };
       drawScene(canvas.getContext('2d'), canvas, {
         map: MAPS[b?.map ?? 0], mapIndex: b?.map ?? 0, now, dt, bullets, explosions: s.explosions, clouds: s.clouds, fields: s.fields,
-        novas: s.novas, waves: s.waves, novaTime: NOVA_TIME, waveR: WAVE_R, sawR: SAW_R,
+        novas: s.novas, waves: s.waves, marks: s.marks, novaTime: NOVA_TIME, waveR: WAVE_R, sawR: SAW_R,
         particles: s.particles, characters, aim: s.aim, hud, texts, shake: s.shake, boxes: s.boxes,
       });
     }

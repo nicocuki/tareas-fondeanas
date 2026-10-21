@@ -1,10 +1,12 @@
 // Dibujo de A los Tiros en un canvas, con el estilo del juego en el que se inspira: fondo oscuro con
 // haces de luz desde arriba, bloques de color con facetas y sombra, personajes de color con brazos y
-// piernas, balas que brillan y dejan estela, explosiones con chispas. Todo en unidades del mundo.
+// piernas, balas que brillan y dejan estela. Los efectos de las cartas (sierra, nubes, campos,
+// explosiones, escudo…) son sprites dibujados a mano (`sprites/`). Todo en unidades del mundo.
 import { LIGHT, WORLD_H, WORLD_W, themeOf } from './maps.js';
 import { compileShape, outline } from './shapes.js';
-import { PLAYER_R, sizeFor } from './sim.js';
+import { FX_RADIUS, PLAYER_R, sizeFor } from './sim.js';
 import { CARDS } from './cards.js';
+import { sprite } from './sprites.js';
 
 // ─── Partículas ──────────────────────────────────────────────────────────────
 // Chispas, humo y pedazos. Se guardan en `list` y se mueven acá; no viajan por la red.
@@ -339,20 +341,8 @@ function drawCharacter(ctx, c, now) {
     circle(ctx, x, y, PLAYER_R + 0.55); ctx.stroke();
     ctx.restore();
   }
-  // Escudo.
-  if (c.blocking) {
-    ctx.globalCompositeOperation = 'lighter';
-    const sg = ctx.createRadialGradient(x, y, PLAYER_R * 0.5, x, y, PLAYER_R + 1.1);
-    sg.addColorStop(0, 'rgba(255,255,255,0)');
-    sg.addColorStop(0.7, 'rgba(220,240,255,0.35)');
-    sg.addColorStop(1, 'rgba(220,240,255,0)');
-    ctx.fillStyle = sg;
-    circle(ctx, x, y, PLAYER_R + 1.1); ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-    ctx.lineWidth = 0.18;
-    circle(ctx, x, y, PLAYER_R + 0.6); ctx.stroke();
-  }
+  // Escudo: la burbuja con panal, que late apenas.
+  if (c.blocking) sprite(ctx, 'escudo', x, y, (PLAYER_R + 0.75) * 2 * (1 + Math.sin(now * 30) * 0.03), 0, 0.95);
   // Escudo recargándose: un arco finito.
   if (c.cdLeft > 0) {
     ctx.strokeStyle = 'rgba(255,255,255,0.35)';
@@ -381,16 +371,17 @@ function drawCharacter(ctx, c, now) {
   ctx.restore();
 }
 
-// Lo que rodea al personaje por sus cartas: la sierra que gira, el aura oscura de la Cuenta abisal (y
-// cuánto le falta cargarla) y el brillo del tiro potenciado.
+// Lo que rodea al personaje por sus cartas: la sierra que gira, el círculo de runas de la Cuenta
+// abisal (y cuánto le falta cargarla), los rayitos del tiro potenciado, los copos de la Presencia
+// helada y las gotas del Robavidas.
 function drawAura(ctx, c, now, sawR) {
   const { x, y } = c;
   if (c.abyss) {
-    const g = ctx.createRadialGradient(x, y, PLAYER_R, x, y, 6);
-    g.addColorStop(0, 'rgba(120,40,200,0.45)');
-    g.addColorStop(1, 'rgba(40,0,80,0)');
-    ctx.fillStyle = g; circle(ctx, x, y, 6); ctx.fill();
+    sprite(ctx, 'abismo', x, y, 12 * (1 + Math.sin(now * 5) * 0.03), now * 0.9, 0.95);
+    sprite(ctx, 'abismo', x, y, 8, -now * 1.6, 0.45);
   } else if (c.abyssCharge > 0.02) {
+    // Cargándose: las runas aparecen de a poco, todavía chicas.
+    sprite(ctx, 'abismo', x, y, 4 + c.abyssCharge * 6, now * 0.5, c.abyssCharge * 0.6);
     ctx.strokeStyle = 'rgba(180,90,255,0.8)';
     ctx.lineWidth = 0.14;
     ctx.beginPath();
@@ -398,41 +389,129 @@ function drawAura(ctx, c, now, sawR) {
     ctx.stroke();
   }
   if (c.empowered) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 0.08;
-    circle(ctx, x, y, PLAYER_R + 0.25 + Math.sin(now * 10) * 0.08); ctx.stroke();
+    for (let i = 0; i < 2; i++) {
+      const a = now * 5 + i * Math.PI;
+      sprite(ctx, 'rayo', x + Math.cos(a) * (PLAYER_R + 0.5), y + Math.sin(a) * (PLAYER_R + 0.5), 0.9, a + Math.PI / 2, 0.9);
+    }
+  }
+  if (c.chill) {
+    for (let i = 0; i < 4; i++) {
+      const a = now * 0.8 + (i * Math.PI) / 2;
+      sprite(ctx, 'copo', x + Math.cos(a) * 2.1, y + Math.sin(a) * 1.6, 0.75, now * 1.5 + i, 0.6);
+    }
+  }
+  if (c.drain) {
+    for (let i = 0; i < 3; i++) {
+      const a = -now * 1.4 + (i * Math.PI * 2) / 3;
+      sprite(ctx, 'gota', x + Math.cos(a) * 2.2, y + Math.sin(a) * 1.8, 0.7, 0, 0.75);
+    }
   }
   if (c.saw) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(now * 14);
-    ctx.fillStyle = 'rgba(220,225,235,0.9)';
-    ctx.beginPath();
-    const teeth = 14;
-    for (let i = 0; i < teeth * 2; i++) {
-      const a = (i / (teeth * 2)) * Math.PI * 2;
-      const r = i % 2 ? sawR - 0.5 : sawR;
-      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-    }
-    ctx.closePath();
-    ctx.moveTo(sawR - 0.9, 0);
-    ctx.arc(0, 0, sawR - 0.9, 0, Math.PI * 2);
-    ctx.fill('evenodd');
-    ctx.restore();
+    // La hoja gira rápido; dos copias atrás, más transparentes, hacen de estela del giro.
+    const spin = now * 24;
+    sprite(ctx, 'sierra', x, y, sawR * 2, spin - 0.3, 0.18);
+    sprite(ctx, 'sierra', x, y, sawR * 2, spin - 0.15, 0.35);
+    sprite(ctx, 'sierra', x, y, sawR * 2, spin, 1);
   }
 }
 
 // Estrellitas girando arriba de la cabeza: aturdido o silenciado.
 function drawStars(ctx, c, now) {
-  ctx.fillStyle = '#ffe066';
   for (let i = 0; i < 3; i++) {
     const a = now * 6 + (i * Math.PI * 2) / 3;
-    circle(ctx, c.x + Math.cos(a) * 0.9, c.y - 2.3 + Math.sin(a) * 0.25, 0.14); ctx.fill();
+    sprite(ctx, 'estrella', c.x + Math.cos(a) * 0.95, c.y - 2.3 + Math.sin(a) * 0.28, 0.6 + Math.sin(a) * 0.12, now * 4 + i);
   }
 }
 
+const ease = (t) => 1 - (1 - t) ** 3;
+// Aparece y se va de a poco: 0 → 1 en `fadeIn` segundos desde `t0`, y 1 → 0 en los últimos `fadeOut` antes de `t1`.
+const lifeAlpha = (now, t0, t1, fadeIn, fadeOut) => Math.max(0, Math.min(1, (now - t0) / fadeIn, (t1 - now) / fadeOut));
+
+// Campo curativo: el anillo que gira y crucecitas que suben.
+function drawField(ctx, f, now) {
+  const al = lifeAlpha(now, f.t ?? f.until - 3, f.until, 0.2, 0.5);
+  sprite(ctx, 'curativo', f.x, f.y, 10 * (0.85 + 0.15 * Math.min(1, al * 2)), now * 0.6, al);
+  for (let i = 0; i < 7; i++) {
+    const ph = (now * 0.7 + i / 7) % 1;
+    const px = f.x + (hash(i, f.x) - 0.5) * 7.5;
+    const py = f.y + 2.5 - ph * 5.5;
+    sprite(ctx, 'cruz', px, py, 0.8, 0, al * Math.sin(ph * Math.PI));
+  }
+}
+
+// Nube tóxica, como en ROUNDS: muchas manchas verdes encimadas que se mueven despacio y laten.
+// Campo estático: nubes de tormenta y rayos que caen en lugares distintos cada décima.
+function drawCloud(ctx, c, now) {
+  const al = lifeAlpha(now, c.t ?? c.until - 5, c.until, 0.15, 0.8);
+  const grow = 0.45 + 0.55 * ease(Math.min(1, (now - (c.t ?? 0)) / 0.35));
+  const seed = c.x * 7.3 + c.y;
+  if (c.kind === 'static') {
+    for (let i = 0; i < 3; i++) {
+      const ox = (i - 1) * c.r * 0.45 + Math.sin(now * 0.8 + i) * 0.3;
+      sprite(ctx, 'tormenta', c.x + ox, c.y - c.r * 0.35 + Math.cos(now + i * 2) * 0.2, c.r * (i === 1 ? 1.25 : 0.95) * grow, 0, al * 0.92);
+    }
+    const tick = Math.floor(now * 10);
+    for (let i = 0; i < 2; i++) {
+      if (hash(tick, i + seed) < 0.35) continue;
+      const rx = c.x + (hash(i + seed, tick) - 0.5) * c.r * 1.3;
+      sprite(ctx, 'rayo', rx, c.y + c.r * 0.25, 2, (hash(tick, i) - 0.5) * 0.5, al);
+    }
+    return;
+  }
+  for (let i = 0; i < 11; i++) {
+    const a = hash(i, seed) * Math.PI * 2, d = Math.sqrt(hash(seed, i)) * c.r * 0.65;
+    const px = c.x + Math.cos(a) * d + Math.sin(now * 0.7 + i * 1.7) * 0.45;
+    const py = c.y + Math.sin(a) * d * 0.8 + Math.cos(now * 0.6 + i * 2.3) * 0.35;
+    const size = c.r * (0.75 + hash(i + 3, seed) * 0.45) * grow * (1 + Math.sin(now * 2 + i) * 0.05);
+    sprite(ctx, 'nube', px, py, size, hash(seed, i + 9) * 6 + now * 0.25 * (hash(i, i) - 0.5), al * 0.9);
+  }
+}
+
+// Lo que se ve al cubrirse con algunos efectos de escudo, en el lugar donde se cubrió: copos que salen
+// (Golpe helado), una onda que se abre (Onda expansiva) o se cierra (Implosión), rayos (Sobrecarga) y
+// el globito tachado (Silencio).
+export const MARK_TIME = 0.7;
+function drawMark(ctx, m, now) {
+  const p = Math.min(1, (now - m.t) / MARK_TIME);
+  const ringSize = (FX_RADIUS * 2) / 0.88;   // en onda.svg el anillo está al 88 % del radio
+  if (m.kind === 'frost') {
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + 0.3;
+      const d = 1 + ease(p) * FX_RADIUS * 0.8;
+      sprite(ctx, 'copo', m.x + Math.cos(a) * d, m.y + Math.sin(a) * d, 1.2, p * 5 + i, 1 - p * p);
+    }
+  } else if (m.kind === 'shock') {
+    sprite(ctx, 'onda', m.x, m.y, ringSize * ease(p), 0, 1 - p);
+  } else if (m.kind === 'implode') {
+    sprite(ctx, 'onda', m.x, m.y, ringSize * (1 - ease(p)), 0, 0.3 + p * 0.7);
+  } else if (m.kind === 'overpower') {
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const d = 1.5 + ease(p) * FX_RADIUS * 0.6;
+      sprite(ctx, 'rayo', m.x + Math.cos(a) * d, m.y + Math.sin(a) * d, 2, a + Math.PI / 2, 1 - p);
+    }
+  } else if (m.kind === 'silence') {
+    sprite(ctx, 'mudo', m.x, m.y - 3 - p * 1.2, 2.4 * ease(Math.min(1, p * 4)), 0, 1 - p ** 3);
+  }
+}
+
+// Explosión: humo que se abre y sube, y la bola de fuego encima, que crece y se apaga.
+export const EXPLOSION_TIME = 0.8;
+function drawExplosion(ctx, e, now) {
+  const age = now - e.t;
+  const seed = hash(e.x, e.t);
+  const sp = Math.min(1, age / EXPLOSION_TIME);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + seed * 6;
+    const d = e.r * (0.25 + ease(sp) * 0.55);
+    sprite(ctx, 'humo', e.x + Math.cos(a) * d, e.y + Math.sin(a) * d * 0.8 - sp * 1.5, e.r * (0.55 + sp * 0.5), a + sp, 0.75 * (1 - sp));
+  }
+  const f = Math.min(1, age / 0.38);
+  if (f < 1) sprite(ctx, 'explosion', e.x, e.y, e.r * 2 * (0.45 + 0.75 * ease(f)), seed * 6 + f * 0.8, 1 - f * f);
+}
+
 // ─── Escena completa ─────────────────────────────────────────────────────────
-// `v`: { map, mapIndex, now, dt, bullets, boxes, explosions, clouds, fields, particles, characters, aim,
+// `v`: { map, mapIndex, now, dt, bullets, boxes, explosions, clouds, fields, novas, waves, marks, particles, characters, aim,
 //        hud: { players, rounds, battles }, texts: [{ text, size, y }], shake }
 export function drawScene(ctx, canvas, v) {
   const k = canvas.width / WORLD_W;
@@ -443,57 +522,24 @@ export function drawScene(ctx, canvas, v) {
   ctx.drawImage(background(v.map, v.mapIndex, k), sx, sy);
   ctx.setTransform(k, 0, 0, k, sx, sy);
 
-  // Campos que curan y nubes tóxicas.
-  for (const f of v.fields) {
-    const g = ctx.createRadialGradient(f.x, f.y, 0.5, f.x, f.y, 5);
-    g.addColorStop(0, 'rgba(120,255,160,0.28)');
-    g.addColorStop(1, 'rgba(120,255,160,0)');
-    ctx.fillStyle = g; circle(ctx, f.x, f.y, 5); ctx.fill();
-  }
-  for (const c of v.clouds) {
-    const tint = c.kind === 'static' ? '90,190,255' : '150,70,210';
-    const g = ctx.createRadialGradient(c.x, c.y, 0.5, c.x, c.y, c.r);
-    g.addColorStop(0, `rgba(${tint},0.45)`);
-    g.addColorStop(1, `rgba(${tint},0)`);
-    ctx.fillStyle = g; circle(ctx, c.x, c.y, c.r); ctx.fill();
-    // El campo estático chisporrotea: rayitos cortos que cambian cada cuadro.
-    if (c.kind === 'static') {
-      ctx.strokeStyle = 'rgba(190,235,255,0.8)';
-      ctx.lineWidth = 0.08;
-      for (let i = 0; i < 4; i++) {
-        const a = Math.random() * Math.PI * 2, d = Math.random() * c.r * 0.8;
-        let px = c.x + Math.cos(a) * d, py = c.y + Math.sin(a) * d;
-        ctx.beginPath(); ctx.moveTo(px, py);
-        for (let j = 0; j < 3; j++) { px += (Math.random() - 0.5) * 1.4; py += (Math.random() - 0.5) * 1.4; ctx.lineTo(px, py); }
-        ctx.stroke();
-      }
-    }
-  }
-  // Supernova: un remolino oscuro que se achica hasta que revienta.
+  // Campos que curan, nubes tóxicas y campos estáticos.
+  for (const f of v.fields) drawField(ctx, f, v.now);
+  for (const c of v.clouds) drawCloud(ctx, c, v.now);
+  // Supernova: un remolino que gira cada vez más rápido y se achica hasta que revienta.
   for (const n of v.novas || []) {
     const f = Math.min(1, (v.now - n.t) / (v.novaTime || 1.5));
     if (f >= 1) continue;
     const r = 14 * (1 - f * 0.6);
-    const g = ctx.createRadialGradient(n.x, n.y, 0.3, n.x, n.y, r);
-    g.addColorStop(0, `rgba(255,240,255,${0.5 + f * 0.4})`);
-    g.addColorStop(0.25, 'rgba(160,80,255,0.35)');
-    g.addColorStop(1, 'rgba(60,20,120,0)');
-    ctx.fillStyle = g; circle(ctx, n.x, n.y, r); ctx.fill();
-    ctx.strokeStyle = 'rgba(210,170,255,0.6)';
-    ctx.lineWidth = 0.12;
-    for (let i = 0; i < 3; i++) {
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, r * (0.35 + i * 0.22), v.now * (4 + i) + i, v.now * (4 + i) + i + 2.2);
-      ctx.stroke();
-    }
+    const spin = (v.now - n.t) * (3 + f * 9);
+    sprite(ctx, 'vortice', n.x, n.y, r * 2, spin, 0.55 + f * 0.45);
+    sprite(ctx, 'vortice', n.x, n.y, r * 1.1, -spin * 1.4, 0.4 + f * 0.4);
   }
-  // Ondas de Resplandor: un anillo de sol que se agranda.
+  // Ondas de Resplandor: un anillo de sol que se agranda (en sol.svg el anillo está al 80 % del radio).
   for (const w of v.waves || []) {
     const f = Math.min(1, (v.now - w.t) / 0.5);
-    ctx.strokeStyle = `rgba(255,214,90,${0.85 * (1 - f)})`;
-    ctx.lineWidth = 0.35 * (1 - f) + 0.05;
-    circle(ctx, w.x, w.y, (v.waveR || 7) * f); ctx.stroke();
+    sprite(ctx, 'sol', w.x, w.y, ((v.waveR || 7) * 2 * ease(f)) / 0.8, f * 0.6, 1 - f * f);
   }
+  for (const m of v.marks || []) drawMark(ctx, m, v.now);
 
   // Personajes (con lo que llevan alrededor: sierra, Cuenta abisal, aturdido).
   for (const c of v.characters) {
@@ -515,6 +561,13 @@ export function drawScene(ctx, canvas, v) {
   // Balas: una rayita corta en la dirección en que van (como en el original), con un brillo apenas.
   ctx.lineCap = 'round';
   for (const b of v.bullets) {
+    // Bombitas (¡Bombas!, y la de Detonación retardada cuando se pega): titilan antes de explotar.
+    if (b.kind === 'bombs' || b.stuckAt) {
+      const blink = b.stuckAt ? 1 + Math.max(0, Math.sin(v.now * 40)) * 0.25 : 1;
+      sprite(ctx, 'bomba', b.x, b.y, Math.max(1.3, b.r * 5) * blink, b.stuckAt ? 0 : b.age * 7);
+      continue;
+    }
+    if (b.kind === 'emp') { sprite(ctx, 'pem', b.x, b.y, Math.max(1.1, b.r * 6), v.now * 9); continue; }
     const glow = b.glow || '#ffd27a';
     const sp = Math.hypot(b.vx, b.vy) || 1;
     const len = Math.max(0.45, Math.min(1.1, sp * 0.014));
@@ -532,19 +585,9 @@ export function drawScene(ctx, canvas, v) {
     ctx.beginPath(); ctx.moveTo(b.x - (b.vx / sp) * len * 0.4, b.y - (b.vy / sp) * len * 0.4); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
 
-  // Explosiones: una bola de luz que crece y se apaga.
+  // Explosiones.
+  for (const e of v.explosions) drawExplosion(ctx, e, v.now);
   ctx.globalCompositeOperation = 'lighter';
-  for (const e of v.explosions) {
-    const f = Math.min(1, (v.now - e.t) / 0.45);
-    const r = e.r * (0.55 + f * 0.6);
-    const g = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, r);
-    g.addColorStop(0, `rgba(255,255,235,${0.95 * (1 - f)})`);
-    g.addColorStop(0.35, `rgba(255,214,90,${0.8 * (1 - f)})`);
-    g.addColorStop(0.75, `rgba(255,120,30,${0.45 * (1 - f)})`);
-    g.addColorStop(1, 'rgba(255,90,20,0)');
-    ctx.fillStyle = g;
-    circle(ctx, e.x, e.y, r); ctx.fill();
-  }
   // Chispas.
   ctx.lineCap = 'round';
   for (const p of v.particles) {

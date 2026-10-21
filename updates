@@ -425,7 +425,7 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.11.0 = Nuevo juego: Entre Nosotros (Among Us) 🚀
+1.11.0 = Nuevo juego: Entre Nosotros (Among Us) 🚀
 - Un Among Us de 4 a 10 jugadores en The Skeld, con sus 14 salas: Cafetería, Armas, O2, Navegación, Escudos, Comunicaciones, Depósito, Administración, Electricidad, Motores, Reactor, Seguridad y Enfermería.
 - Tripulantes e impostores, con los porotos de colores (12 colores para elegir). Al empezar te dice qué te tocó.
 - 16 tareas con su minijuego: cables, tarjeta, descargar datos, basura, motores, distribuidor, escaneo, asteroides, reactor, colector, escudos, dirección, rumbo, combustible, filtro de O2 y energía. La barra de tareas se llena entre todos.
@@ -433,3 +433,22 @@ LATEST 1.11.0 = Nuevo juego: Entre Nosotros (Among Us) 🚀
 - Cuerpos para reportar, botón de emergencia, reuniones con chat, votación (o saltear) y expulsión.
 - Visión limitada que choca con las paredes. Los muertos siguen como fantasmas: atraviesan paredes, hacen sus tareas y charlan entre ellos.
 - El anfitrión elige impostores, tiempos, distancias, velocidad, visión, reuniones y cuántas tareas hay.
+
+--------------------------------------------------------------------------------------------------------------------
+
+1.11.05 = Créditos
+- Los créditos (menú, portada y README) quedan con Nicolas Cukier y Uriel Suti.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.12.0 = A los Tiros: efectos dibujados 🎨
+- Los efectos de las cartas ahora son dibujos (sprites) en vez de manchas de color.
+- Nube tóxica: como en ROUNDS, muchas nubecitas verdes encimadas que se mueven y laten.
+- Sierra: una hoja de sierra de verdad que gira rápido alrededor tuyo (con estela del giro) y te deja ver adentro.
+- Campo curativo con su anillo y crucecitas que suben; Campo estático con nubes de tormenta y rayos que caen.
+- Supernova: un remolino que gira cada vez más rápido; Resplandor: un anillo de sol que se abre.
+- Explosiones con bola de fuego y humo. El escudo es una burbuja con panal.
+- Al cubrirte se ve lo que hace tu escudo: copos (Golpe helado), una onda que se abre (Onda expansiva) o se cierra (Implosión), rayos (Sobrecarga) y un globito tachado (Silencio).
+- Cuenta abisal: un círculo de runas que gira. Tiro potenciado: rayitos alrededor. Presencia helada: copos. Robavidas: gotas de sangre.
+- Las bombitas de ¡Bombas! y Detonación retardada son bombas con mecha (titilan antes de explotar) y el PEM tira bolas eléctricas.
+- Aturdido o silenciado: estrellitas girando arriba de la cabeza.

@@ -259,7 +259,7 @@ function SettingsView() {
       <div className="tf-credits-card">
         <strong>Tareas Fondeanas</strong>
         <p>Juegos para jugar con los del fondo, cada uno desde su pantalla. Gratis y sin cuentas.</p>
-        <p className="tf-credits-names">Hecho por Nicolas Cukier, Uriel Suti y Alan Vitas.</p>
+        <p className="tf-credits-names">Hecho por Nicolas Cukier y Uriel Suti.</p>
         <small>{APP_VERSION}</small>
       </div>
     </div>

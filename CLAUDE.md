@@ -178,7 +178,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/gartic/` | Trazo Loco: lógica (`game.js`), trazos y balde (`drawing.js`), red (`storage.js`), pantallas (ver `docs/GARTIC.md`) |
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
-| `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), pelea en tiempo real (`TirosGame.jsx`) |
+| `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), sprites de los efectos (`sprites/`, `sprites.js`), pelea en tiempo real (`TirosGame.jsx`) |
 | `src/nave/` | Entre Nosotros (Among Us): mapa (`map.js`), tareas (`tasks.js`), reducer (`game.js`), movimiento y vista (`sim.js`), dibujo (`render.js`), la nave en vivo (`NaveGame.jsx`), minijuegos, reunión (ver *Entre Nosotros*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
@@ -455,6 +455,14 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
   (`bx`, `encodeBox`/`applyBox`); las demás pantallas las siguen con la última velocidad. El jugador
   las empuja con la velocidad que *quiere* tener (`pushVx`): la que le queda después de chocar ya
   viene frenada y apenas las movía.
+- **Los efectos de las cartas son sprites** (`src/tiros/sprites/*.svg`, dibujados a mano; pedido de Nico: «que no
+  sea todo arte de código»): sierra, nube tóxica, tormenta y rayo, campo curativo y cruz, remolino (Supernova), sol
+  (Resplandor), explosión y humo, escudo, runas (Cuenta abisal), bombita, PEM, copo, onda, gota, estrella y globo
+  tachado. `sprites.js` los carga con `import.meta.glob` y los pasa una vez a un canvas chico; `sprite(ctx, nombre,
+  x, y, lado, giro, alfa)` los dibuja en unidades del mundo. **La nube tóxica son muchas partículas del mismo
+  sprite**, como en ROUNDS. Lo que se ve al cubrirse (copos, onda, rayos, Silencio) va en `s.marks`, que llena
+  `blockEffects` en todas las pantallas; no viaja por la red. Las balas de ¡Bombas! y del PEM llevan `kind`.
+  Un sprite nuevo: un SVG de `viewBox="0 0 100 100"` en esa carpeta (y en `RES` si se ve grande).
 - **El dibujo está en `render.js`** (sin estado de juego): fondo, haces de luz, sombras y piezas se
   pintan una vez por pelea en un canvas aparte (`background`); cajas, personajes, balas (una rayita,
   como en el original), explosiones y chispas (`burst`, partículas que no viajan por la red) cada
