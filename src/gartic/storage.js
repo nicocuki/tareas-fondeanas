@@ -56,7 +56,6 @@ export async function joinRoom(code, uid, name, avatar) {
   const room = snap.val();
   if (!room) throw new Error('No encontramos esa sala.');
   if (room.players?.[uid]) return;
-  if (room.state.phase !== 'lobby') throw new Error('La partida ya empezó. Podés entrar cuando vuelvan al lobby.');
   if (Object.keys(room.players || {}).length >= roomSettings(room.settings).maxPlayers) throw new Error('La sala está llena.');
   for (let attempt = 0; attempt < 5; attempt++) {
     const fresh = (await get(at(roomPath(code)))).val();

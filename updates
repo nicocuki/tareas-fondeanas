@@ -406,6 +406,13 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.10.3 = La Mecha: escribís sin volver a tocar el cuadro 🐛
+1.10.3 = La Mecha: escribís sin volver a tocar el cuadro 🐛
 - Si mandabas una palabra que no valía, había que volver a hacer clic en el cuadro para seguir escribiendo. Ahora queda listo para escribir.
 - Mientras tengas la bomba, cualquier tecla va al cuadro aunque hayas tocado otra parte de la pantalla.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.10.4 = Salas públicas en curso
+- Las salas públicas siguen apareciendo en la portada aunque la partida ya haya empezado, con la marca «En curso». Primero se muestran las que esperan jugadores.
+- Se entra con un clic igual que antes: mirás la partida y jugás en la próxima.
+- Vale para Código Secreto, Trazo Loco, La Mecha, Armá el Meme y A los Tiros. El fútbol y Café o Té no dejan entrar en medio, así que siguen apareciendo solo mientras esperan.

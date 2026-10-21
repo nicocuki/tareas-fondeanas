@@ -4,19 +4,22 @@
 // Directorio (un Durable Object único) cuando eso cambia. La portada escucha al Directorio por un
 // WebSocket. Sin nada de Cloudflare: se prueba con `node --test`.
 import { getAt } from './tree.js';
-import { isFull, summarizeRoom } from '../src/ui/roomSummary.js';
+import { JOIN_IN_PROGRESS, isFull, summarizeRoom } from '../src/ui/roomSummary.js';
 
 export const MAX_LISTED = 40;
 // Una sala que no avisa nada en seis horas se deja de mostrar, por si se perdió el aviso de cierre.
 export const LISTING_TTL_MS = 6 * 60 * 60 * 1000;
 
 // Qué mostrar de la sala `code` en la portada, o null si no corresponde listarla:
-// no es pública, no está en la sala de espera, está llena o no hay nadie conectado.
+// no es pública, está llena o no hay nadie conectado. Una partida empezada se lista (`playing`) solo
+// en los juegos que dejan entrar en medio (`JOIN_IN_PROGRESS`).
 export function roomListing(tree, code, connections) {
   if (!code || connections < 1 || getAt(tree, ['publica', code]) !== true) return null;
   const sum = summarizeRoom(code, getAt(tree, ['garticRooms', code]), getAt(tree, ['rooms', code]));
-  if (!sum || sum.phase !== 'lobby' || sum.local || !sum.players || isFull(sum)) return null;
-  return { code, game: sum.game, host: sum.host, players: sum.players, max: sum.max };
+  if (!sum || sum.local || !sum.players || isFull(sum)) return null;
+  const playing = sum.phase !== 'lobby';
+  if (playing && !JOIN_IN_PROGRESS.includes(sum.game)) return null;
+  return { code, game: sum.game, host: sum.host, players: sum.players, max: sum.max, ...(playing ? { playing: true } : {}) };
 }
 
 // Las que se muestran: sin vencidas, las más nuevas primero, con tope.

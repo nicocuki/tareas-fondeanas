@@ -35,4 +35,8 @@ export function summarizeRoom(code, gartic, raw) {
   };
 }
 
+// Juegos en los que se puede entrar con la partida empezada: entrás mirando y jugás en la próxima.
+// Fútbol y Café o Té no (sus reducers rechazan el `join` fuera de la sala de espera).
+export const JOIN_IN_PROGRESS = ['codigo-secreto', 'gartic', 'la-mecha', 'meme', 'tiros'];
+
 export const isFull = (s) => Boolean(s?.max && s.players >= s.max);

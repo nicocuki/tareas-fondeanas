@@ -29,9 +29,18 @@ test('Código Secreto (sin gameType) se lista como codigo-secreto', () => {
   assert.equal(listing.host, 'Uri');
 });
 
-test('no se lista si la partida empezó, si está llena o si no hay nadie conectado', () => {
+test('una partida empezada se lista «en curso» si el juego deja entrar en medio', () => {
   const room = newTiros('a', 'Nico', '🐸', 0);
-  assert.equal(roomListing(tree('ABCD', { ...room, phase: 'fight' }, pub('ABCD')), 'ABCD', 1), null);
+  assert.equal(roomListing(tree('ABCD', { ...room, phase: 'fight' }, pub('ABCD')), 'ABCD', 1).playing, true);
+  assert.equal(roomListing(tree('ABCD', room, pub('ABCD')), 'ABCD', 1).playing, undefined);
+  const futbol = { gameType: 'futbol', phase: 'playing', hostId: 'a', players: [{ id: 'a', name: 'Nico' }] };
+  assert.equal(roomListing(tree('ABCD', futbol, pub('ABCD')), 'ABCD', 1), null, 'el fútbol no deja entrar en medio');
+  const gartic = { hostId: 'u1', settings: { maxPlayers: 6 }, players: { u1: { name: 'Alan' } }, state: { phase: 'playing' } };
+  assert.equal(roomListing({ garticRooms: { WXYZ: gartic }, ...pub('WXYZ') }, 'WXYZ', 1).playing, true);
+});
+
+test('no se lista si está llena o si no hay nadie conectado', () => {
+  const room = newTiros('a', 'Nico', '🐸', 0);
   const full = { ...room, players: ['a', 'b', 'c', 'd'].map((id) => ({ id, name: id })) };
   assert.equal(roomListing(tree('ABCD', full, pub('ABCD')), 'ABCD', 4), null);
   assert.equal(roomListing(tree('ABCD', room, pub('ABCD')), 'ABCD', 0), null);

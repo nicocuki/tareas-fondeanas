@@ -287,8 +287,9 @@ con un clic (lleva a `?juego=…&sala=ABCD`, igual que un link de invitación).
   mano. «Crear la sala como pública» (`PublicCheckbox`, en `GameHero` y en Trazo Loco) es la
   preferencia `publicRooms`: se aplica la primera vez que el anfitrión ve su sala con un solo jugador.
 - **Decide el servidor**: después de cada escritura en `rooms`, `garticRooms` o `publica`, y al
-  abrirse o cerrarse un WebSocket, `Sala.publish()` calcula `roomListing` (pública, en
-  `phase: 'lobby'`, no llena, con alguien conectado) y, si cambió, se lo manda por RPC al
+  abrirse o cerrarse un WebSocket, `Sala.publish()` calcula `roomListing` (pública, no llena, con alguien conectado;
+  empezada solo si el juego está en `JOIN_IN_PROGRESS` de `roomSummary.js`, y ahí va con `playing` y la portada
+  le pone «En curso») y, si cambió, se lo manda por RPC al
   **Directorio**: un Durable Object único (`idFromName('portada')`).
 - La portada escucha `/api/salas` por WebSocket (hiberna; un GET devuelve el JSON). Una entrada sin
   avisos en seis horas se descarta (`LISTING_TTL_MS`). **Un juego nuevo** que guarde la sala en
