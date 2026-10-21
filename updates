@@ -399,7 +399,13 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.10.25 = Jugar con otra pestaña abierta 🐛
+1.10.25 = Jugar con otra pestaña abierta 🐛
 - Si cambiabas de pestaña en medio de una partida, la sala a veces te daba por desconectado: no entrabas a la ronda que arrancaba el anfitrión (pasaba en Trazo Loco y en los demás) o entrabas tarde.
 - En A los Tiros, el que estaba en otra pestaña quedaba congelado: no recibía daño, y el anfitrión lo daba por muerto. Ahora sigue jugando aunque no lo estés mirando (recibe daño, entra a cada pelea y los demás lo ven).
 - Lo mismo en el fútbol online, y los relojes de los turnos (Código Secreto, Trazo Loco, Armá el Meme, La Mecha, A los Tiros) se cierran a tiempo aunque estés en otra pestaña.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.10.3 = La Mecha: escribís sin volver a tocar el cuadro 🐛
+- Si mandabas una palabra que no valía, había que volver a hacer clic en el cuadro para seguir escribiendo. Ahora queda listo para escribir.
+- Mientras tengas la bomba, cualquier tecla va al cuadro aunque hayas tocado otra parte de la pantalla.

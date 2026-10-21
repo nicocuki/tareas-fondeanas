@@ -164,6 +164,20 @@ function Arena({ room, me, code, now, dict, onDispatch, onLeave }) {
   // Lo que escribe el que tiene la bomba, en vivo.
   useEffect(() => onValue(ref(`mecha/${code}/typing`), (snap) => setTyping(snap.val())), [code]);
   useEffect(() => { setText(''); setProblem(''); if (myTurn) setTimeout(() => input.current?.focus(), 30); }, [room.turn, myTurn]);
+  // Al equivocarte, el formulario se vuelve a armar para sacudirse (key={shake}) y el cuadro perdía el foco.
+  useEffect(() => { if (myTurn && shake) input.current?.focus(); }, [shake]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Mientras sea tu turno, cualquier tecla va al cuadro aunque hayas tocado otra parte de la pantalla.
+  useEffect(() => {
+    if (!myTurn) return undefined;
+    const onKey = (e) => {
+      const box = input.current;
+      if (!box || document.activeElement === box || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter') box.focus();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [myTurn]);
 
   function publish(value) {
     clearTimeout(sendTimer.current);
