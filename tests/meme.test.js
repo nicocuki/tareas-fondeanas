@@ -199,3 +199,14 @@ test('meme: una sala de antes de la opción (sin «rerolls» y con «true») sig
   room.rerolled.a = true;
   assert.equal(rerollsLeft(room, 'a'), 0);
 });
+
+test('meme: el que entra con la partida empezada solo mira: no vota ni se lo espera', () => {
+  let room = submitAll(start(lobby()));
+  room = applyAction(room, { type: 'join', playerId: 'tarde', name: 'Tardío' }, { now: 3000 });
+  const author = room.order[0];
+  assert.equal(applyAction(room, { type: 'vote', playerId: 'tarde', round: 1, index: 0, stars: 5 }, { now: 3000 }), null);
+  for (const id of room.players.filter((p) => p.inGame && p.id !== author).map((p) => p.id)) {
+    room = applyAction(room, { type: 'vote', playerId: id, round: 1, index: 0, stars: 4 }, { now: 3000 });
+  }
+  assert.equal(room.voteIndex, 1, 'pasó al siguiente sin esperar al que llegó tarde');
+});

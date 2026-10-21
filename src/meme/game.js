@@ -144,9 +144,10 @@ function showResults(room, now) {
   room.phaseEndsAt = now + RESULTS_MS;
 }
 
-// Quiénes pueden votar el meme actual: todos menos su autor.
+// Quiénes pueden votar el meme actual: los que juegan esta partida, menos su autor. El que entró
+// con la partida empezada solo mira.
 export function votersFor(room, author) {
-  return room.players.filter((p) => p.id !== author).map((p) => p.id);
+  return room.players.filter((p) => p.inGame && p.id !== author).map((p) => p.id);
 }
 
 export function applyAction(room, action, ctx = {}) {
@@ -219,7 +220,7 @@ export function applyAction(room, action, ctx = {}) {
     }
 
     case 'vote': {
-      if (next.phase !== 'voting' || !sameRound || action.index !== next.voteIndex || !me) return null;
+      if (next.phase !== 'voting' || !sameRound || action.index !== next.voteIndex || !me?.inGame) return null;
       const author = next.order[next.voteIndex];
       if (!author || author === me.id || !STARS.includes(action.stars)) return null;
       next.votes[author] = { ...next.votes[author], [me.id]: action.stars };

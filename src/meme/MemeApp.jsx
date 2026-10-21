@@ -249,6 +249,8 @@ function Voting({ room, me, now, onDispatch }) {
         <MemeView template={room.templates[author]} texts={room.memes[author]} className="mm-vote-meme" maxHeight="var(--page-h) - 250px" />
         {mine ? (
           <p className="mm-own">Este es el tuyo 🤫 Hacete el distraído.</p>
+        ) : !me.inGame ? (
+          <p className="mm-own">Estás mirando: votás desde la próxima partida.</p>
         ) : (
           <div className="mm-stars" role="radiogroup" aria-label="Tu voto">
             {STARS.map((n) => (

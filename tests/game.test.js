@@ -652,3 +652,9 @@ test('sistema de listo: cambiar de rol resetea listo y cuando todos ponen listo 
   assert.equal(room.phase, 'playing');
 });
 
+
+test('el que entra con la partida empezada no puede elegir equipo: solo mira', () => {
+  let room = playingRoom();
+  room = applyAction(room, { type: 'join', playerId: 'tarde', name: 'Tardío' });
+  assert.equal(applyAction(room, { type: 'pickRole', playerId: 'tarde', team: 'red', role: 'operative' }), null);
+});

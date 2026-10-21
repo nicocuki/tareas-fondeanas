@@ -367,8 +367,9 @@ function reduce(room, a, me, { rand, now }) {
 
     case 'pickRole': {
       if (!me || !room.teams.includes(a.team) || !ROLES.includes(a.role)) return null;
-      // Durante la partida solo puede elegir quien todavía no tiene equipo (evita que un espía vea el mapa y pase a agente).
-      if (room.phase !== 'lobby' && me.team) return null;
+      // Equipo y rol se eligen en la sala de espera: el que entra con la partida empezada solo mira
+      // (y así un espía tampoco puede ver el mapa y pasarse a agente).
+      if (room.phase !== 'lobby') return null;
       if (me.team === a.team && me.role === a.role) return null;
       const spymaster = a.role === 'spymaster' && spymasterOf(room, a.team);
       if (spymaster && spymaster.id !== me.id) return null;

@@ -412,7 +412,13 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.10.4 = Salas públicas en curso
+1.10.4 = Salas públicas en curso
 - Las salas públicas siguen apareciendo en la portada aunque la partida ya haya empezado, con la marca «En curso». Primero se muestran las que esperan jugadores.
 - Se entra con un clic igual que antes: mirás la partida y jugás en la próxima.
 - Vale para Código Secreto, Trazo Loco, La Mecha, Armá el Meme y A los Tiros. El fútbol y Café o Té no dejan entrar en medio, así que siguen apareciendo solo mientras esperan.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.10.45 = El que entra tarde solo mira 🐛
+- En Código Secreto, el que entraba con la partida empezada podía sumarse a un equipo y jugar. Ahora mira y elige equipo cuando vuelven a la sala de espera.
+- En Armá el Meme, el que entraba a mitad de partida podía votar, y la votación lo esperaba. Ahora solo mira y vota desde la próxima.

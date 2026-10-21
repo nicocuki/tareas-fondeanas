@@ -595,17 +595,7 @@ export default function CodigoSecretoApp({ onBackToMenu }) {
 
         {me && !me.team && (
           <div style={{ ...panelStyle, padding: 14, marginBottom: 14, textAlign: 'center' }}>
-            <div style={{ fontSize: 14, color: COLORS.muted, marginBottom: 10 }}>Estás mirando la partida. Sumate a un equipo:</div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-              {room.teams.flatMap((team) => ['operative', 'spymaster'].map((role) => {
-                const [bg, fg] = TEAM_BUTTON[team];
-                return (
-                  <button key={team + role} type="button" className="cs-btn" disabled={role === 'spymaster' && !!spymasterOf(room, team)} onClick={() => dispatch({ type: 'pickRole', team, role })} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 10, background: bg, color: fg }}>
-                    {role === 'spymaster' ? 'Espía' : 'Agente'} {TEAM_LABEL[team].toLowerCase()}
-                  </button>
-                );
-              }))}
-            </div>
+            <div style={{ fontSize: 14, color: COLORS.muted }}>Estás mirando la partida. Elegís equipo cuando vuelvan a la sala de espera.</div>
           </div>
         )}
 
