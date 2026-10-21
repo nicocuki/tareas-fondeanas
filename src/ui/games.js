@@ -2,6 +2,26 @@
 // Para sumar un juego nuevo: agregalo acá, en el enrutador de App.jsx y en ROOTS (worker/rules.js).
 export const GAMES = [
   {
+    id: 'nave',
+    title: 'Entre Nosotros',
+    emoji: '🚀',
+    color: 'var(--game-nave)',
+    onColor: '#ffffff',
+    tagline: 'Among Us, en The Skeld',
+    description: 'Hacé tus tareas en la nave… si sos tripulante. Los impostores matan, sabotean, se meten en las ventilaciones y mienten en las reuniones. Como Among Us.',
+    players: '4 a 10',
+    duration: '10–20 min',
+    input: 'Teclado',
+    badge: 'Nuevo',
+    howTo: [
+      'Al empezar te dice si sos tripulante o impostor. Moverse con WASD o las flechas; E usa lo que tengas cerca.',
+      'Tripulantes: hagan sus tareas (las marcadas en amarillo; Tab muestra el mapa). Si se completa la barra de tareas, ganan.',
+      'Impostores: matan con Q, sabotean desde el mapa (luces o reactor) y viajan por las ventilaciones. Ganan si quedan tantos como los tripulantes.',
+      'Si encontrás un cuerpo, reportalo con R; o tocá el botón de la cafetería. En la reunión se charla y se vota a quién expulsar.',
+      'Los muertos siguen como fantasmas: atraviesan paredes, terminan sus tareas y charlan solo entre ellos.',
+    ],
+  },
+  {
     id: 'mvl',
     title: 'Mario vs Luigi',
     emoji: '🍄',

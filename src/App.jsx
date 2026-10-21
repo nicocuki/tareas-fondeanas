@@ -13,8 +13,10 @@ import MechaApp from './mecha/MechaApp.jsx';
 import MemeApp from './meme/MemeApp.jsx';
 import TirosApp from './tiros/TirosApp.jsx';
 import MvlApp from './mvl/MvlApp.jsx';
+import NaveApp from './nave/NaveApp.jsx';
 
 const SCREENS = {
+  nave: NaveApp,
   meme: MemeApp,
   tiros: TirosApp,
   mvl: MvlApp,

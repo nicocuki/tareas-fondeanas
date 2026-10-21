@@ -113,15 +113,15 @@ function futbolChannel(code) {
 //   tiros/{sala}/p/{id}       foto de respaldo de cada jugador (la escribe solo su dueño)
 //   tiros/{sala}/peers, signal  como en el fútbol
 //   tiros/{sala}/elige        a qué carta apunta el que está eligiendo: { k: turno, i: carta }
-function tirosChannel(code) {
-  const at = (path) => ref(`tiros/${code}/${path}`);
+// Lo común de los juegos con posiciones en vivo (A los Tiros, Entre Nosotros): señalización para el
+// canal directo y la foto de respaldo de cada jugador en `{raíz}/{sala}/p/{id}`.
+function peerChannel(root, code) {
+  const at = (path) => ref(`${root}/${code}/${path}`);
   return {
     signaling: signalingAt(at),
     publish: (id, snap) => set(at(`p/${id}`), snap),
     leaveOnDisconnect: (id) => onDisconnect(at(`p/${id}`)).remove(),
     remove: (id) => remove(at(`p/${id}`)),
-    pointAt: (value) => set(at('elige'), value),
-    subscribePoint: (cb) => onValue(at('elige'), (snap) => cb(snap.val())),
     subscribe(onSnap) {
       const list = at('p');
       const offs = [
@@ -133,11 +133,24 @@ function tirosChannel(code) {
   };
 }
 
+function tirosChannel(code) {
+  const at = (path) => ref(`tiros/${code}/${path}`);
+  return {
+    ...peerChannel('tiros', code),
+    pointAt: (value) => set(at('elige'), value),
+    subscribePoint: (cb) => onValue(at('elige'), (snap) => cb(snap.val())),
+  };
+}
+
+// ─── Entre Nosotros en tiempo real ───────────────────────────────────────────
+// Igual que A los Tiros: posiciones directo entre navegadores y respaldo en nave/{sala}/p/{id}.
+const naveChannel = (code) => peerChannel('nave', code);
+
 // Diferencia entre este reloj y el del servidor: con eso todas las pantallas comparten la misma hora.
 function subscribeServerOffset(onOffset) {
   return onValue(ref('.info/serverTimeOffset'), (snap) => onOffset(Number(snap.val()) || 0));
 }
 
 export const backend = {
-  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, subscribeServerOffset,
+  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, subscribeServerOffset,
 };

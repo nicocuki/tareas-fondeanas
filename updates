@@ -419,6 +419,17 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.10.45 = El que entra tarde solo mira 🐛
+1.10.45 = El que entra tarde solo mira 🐛
 - En Código Secreto, el que entraba con la partida empezada podía sumarse a un equipo y jugar. Ahora mira y elige equipo cuando vuelven a la sala de espera.
 - En Armá el Meme, el que entraba a mitad de partida podía votar, y la votación lo esperaba. Ahora solo mira y vota desde la próxima.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.11.0 = Nuevo juego: Entre Nosotros (Among Us) 🚀
+- Un Among Us de 4 a 10 jugadores en The Skeld, con sus 14 salas: Cafetería, Armas, O2, Navegación, Escudos, Comunicaciones, Depósito, Administración, Electricidad, Motores, Reactor, Seguridad y Enfermería.
+- Tripulantes e impostores, con los porotos de colores (12 colores para elegir). Al empezar te dice qué te tocó.
+- 16 tareas con su minijuego: cables, tarjeta, descargar datos, basura, motores, distribuidor, escaneo, asteroides, reactor, colector, escudos, dirección, rumbo, combustible, filtro de O2 y energía. La barra de tareas se llena entre todos.
+- Los impostores matan, se meten en las ventilaciones y sabotean: apagar las luces o la fusión del reactor (hay que arreglarlo entre dos).
+- Cuerpos para reportar, botón de emergencia, reuniones con chat, votación (o saltear) y expulsión.
+- Visión limitada que choca con las paredes. Los muertos siguen como fantasmas: atraviesan paredes, hacen sus tareas y charlan entre ellos.
+- El anfitrión elige impostores, tiempos, distancias, velocidad, visión, reuniones y cuántas tareas hay.

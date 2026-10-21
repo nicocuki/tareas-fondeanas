@@ -5,11 +5,12 @@ import { MAX_PLAYERS as MAX_CODIGO } from '../codigo-secreto/game.js';
 import { MAX_PLAYERS as MAX_MECHA } from '../mecha/game.js';
 import { MAX_PLAYERS as MAX_MEME } from '../meme/game.js';
 import { MAX_PLAYERS as MAX_TIROS } from '../tiros/game.js';
+import { MAX_PLAYERS as MAX_NAVE } from '../nave/game.js';
 import { roomSettings } from '../gartic/game.js';
 
 // Topes de cada juego. Fútbol no tiene tope.
-const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS };
-const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros'];
+const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE };
+const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave'];
 
 // `gartic`: lo que hay en garticRooms/{código} (objeto); `raw`: lo que hay en rooms/{código} (texto JSON).
 // Devuelve { code, game, host, hostAvatar, players, max, phase, local } o null si no existe.

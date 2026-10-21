@@ -1,0 +1,232 @@
+/* Entre Nosotros. Las tarjetas de la entrada y la sala de espera usan los colores del tema
+   (src/ui/tokens.css); la partida (nave, HUD, reunión) es oscura en los dos temas, como el original. */
+.nv-page { --nv: var(--game-nave); padding: 22px 16px 40px; max-width: 1180px; margin: 0 auto; }
+.nv-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow); padding: 22px; margin-bottom: 20px; }
+.nv-card h2 { margin: 0 0 12px; font-size: 20px; }
+.nv-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.nv-card-head h2 { margin: 0; }
+.nv-card-head span { color: var(--text-2); font-size: 14px; }
+.nv-entry { max-width: 460px; margin: 0 auto; }
+.nv-or { display: flex; align-items: center; gap: 10px; margin: 18px 0 12px; color: var(--text-3); font-size: 13px; }
+.nv-or::before, .nv-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.nv-error { margin: 10px 0; padding: 10px 14px; border-radius: var(--radius); background: var(--danger-soft); color: var(--danger); font-size: 14px; }
+.nv-banner { max-width: 1180px; margin: 12px auto; }
+.nv-hint { color: var(--text-2); font-size: 14px; margin: 8px 0 0; }
+.nv-center { text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 520px; margin: 30px auto; }
+
+.nv-crew { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.nv-crew li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--radius-lg); background: var(--surface-2); border: 1px solid var(--border); }
+.nv-crew li.is-me { border-color: color-mix(in srgb, var(--game-nave) 60%, var(--border)); }
+.nv-crew strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nv-crew small { color: var(--text-3); font-size: 12px; }
+.nv-colors { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; }
+.nv-colors button { display: grid; place-items: center; height: 60px; border-radius: var(--radius-lg); border: 2px solid var(--border); background: var(--surface-2); cursor: pointer; }
+.nv-colors button.is-selected { border-color: var(--game-nave); box-shadow: 0 0 0 3px color-mix(in srgb, var(--game-nave) 30%, transparent); }
+.nv-colors button:disabled { opacity: 0.25; cursor: not-allowed; }
+.nv-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 24px; }
+.nv-controls ul { margin: 0; padding-left: 18px; color: var(--text-2); line-height: 2; }
+.nv-start { text-align: center; margin: 10px 0 20px; }
+.nv-start-btn { min-height: 54px; padding: 0 34px; font-size: 18px; background: var(--game-nave); color: #fff; }
+
+/* ─── La partida ──────────────────────────────────────────────────────────── */
+.nv-screen-wrap { position: relative; }
+.nv-play { position: relative; height: calc(100dvh - 72px); min-height: 460px; background: #05060b; overflow: hidden; color: #f1f3f8; }
+.nv-stage { position: absolute; inset: 0; }
+.nv-canvas { display: block; width: 100%; height: 100%; }
+.nv-screen-exit { display: none; }
+.nv-screen-wrap:fullscreen { background: #05060b; }
+.nv-screen-wrap:fullscreen .nv-play { height: 100dvh; }
+.nv-screen-wrap:fullscreen .nv-screen-exit {
+  display: block; position: fixed; right: 12px; bottom: 12px; z-index: 40; opacity: 0.55; border: 0; border-radius: 999px; padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.6); color: #fff; font: 600 12px Inter, sans-serif; cursor: pointer;
+}
+.nv-play kbd, .nv-screen kbd { background: rgba(255, 255, 255, 0.12); color: inherit; border-color: rgba(255, 255, 255, 0.25); }
+
+/* Lista de tareas y barra */
+.nv-tasks { position: absolute; top: 12px; left: 12px; width: min(330px, 46%); z-index: 3; font-size: 13px; }
+.nv-taskbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(15, 18, 26, 0.85); border: 2px solid #0b0d12; border-radius: 8px; font-weight: 700; }
+.nv-taskbar span { white-space: nowrap; }
+.nv-taskbar div { flex: 1; height: 14px; background: #2c3442; border-radius: 4px; overflow: hidden; border: 1px solid #000; }
+.nv-taskbar i { display: block; height: 100%; background: #43d16b; transition: width 0.4s; }
+.nv-tasks-toggle { margin-top: 6px; border: 0; border-radius: 6px 6px 0 0; padding: 4px 10px; background: rgba(15, 18, 26, 0.85); color: #fff; font: 700 12px Inter, sans-serif; cursor: pointer; }
+.nv-tasks ul { list-style: none; margin: 0; padding: 8px 12px; background: rgba(15, 18, 26, 0.82); border-radius: 0 8px 8px 8px; line-height: 1.6; }
+.nv-tasks li.is-done { color: #43d16b; }
+.nv-tasks li.is-half { color: #ffd23f; }
+.nv-tasks li.is-alarm { color: #ff5a4f; font-weight: 700; animation: nv-blink 0.8s steps(2) infinite; }
+.nv-tasks li.is-impostor { color: #ff5a4f; font-weight: 700; }
+@keyframes nv-blink { 50% { opacity: 0.45; } }
+
+/* Botones de acción */
+.nv-actions { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 10px; z-index: 3; flex-wrap: wrap; justify-content: flex-end; max-width: 70%; }
+.nv-act {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 86px; height: 86px;
+  border-radius: 18px; border: 3px solid #0b0d12; background: rgba(36, 42, 56, 0.92); color: #fff; font: 800 13px Inter, sans-serif; cursor: pointer;
+}
+.nv-act span { font-size: 28px; line-height: 1; }
+.nv-act kbd { position: absolute; top: 4px; right: 4px; font-size: 10px; padding: 0 4px; min-width: 0; }
+.nv-act:disabled { opacity: 0.35; cursor: default; }
+.nv-act.is-red { background: rgba(120, 22, 22, 0.92); }
+.nv-act.is-use:not(:disabled) { background: rgba(48, 92, 160, 0.95); }
+.nv-vent-moves { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); display: flex; gap: 8px; z-index: 3; }
+.nv-note { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); margin: 0; padding: 8px 14px; border-radius: 10px; background: rgba(0, 0, 0, 0.75); z-index: 4; font-weight: 600; }
+.nv-ghost-banner { position: absolute; right: 14px; top: 12px; max-width: min(300px, 40%); margin: 0; padding: 8px 12px; border-radius: 12px; background: rgba(40, 60, 110, 0.75); z-index: 2; font-size: 13px; }
+.nv-ghost-chat { position: absolute; left: 12px; bottom: 12px; width: min(320px, 40%); height: 230px; z-index: 3; }
+.nv-alarm { position: absolute; inset: 0; pointer-events: none; z-index: 2; box-shadow: inset 0 0 120px rgba(255, 30, 30, 0.6); animation: nv-alarm 1s ease-in-out infinite; }
+@keyframes nv-alarm { 50% { box-shadow: inset 0 0 40px rgba(255, 30, 30, 0.25); } }
+
+/* Ventanas (tareas, luces, reactor, mapa) */
+.nv-overlay { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: rgba(0, 0, 0, 0.45); }
+.nv-window { width: min(560px, 94%); background: #1c212b; border: 3px solid #0b0d12; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); overflow: hidden; }
+.nv-window.is-map { width: min(980px, 96%); }
+.nv-window header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #121620; font-size: 15px; }
+.nv-close { border: 0; background: #b3261e; color: #fff; width: 32px; height: 32px; border-radius: 8px; font-size: 16px; cursor: pointer; }
+.nv-window > :not(header) { margin: 14px; }
+.nv-window .nv-hint { color: #aab2c0; text-align: center; }
+.nv-big-btn { border: 3px solid #0b0d12; border-radius: 12px; padding: 12px 22px; background: #2f6fd1; color: #fff; font: 800 16px Inter, sans-serif; cursor: pointer; touch-action: none; }
+.nv-big-btn:disabled { opacity: 0.35; cursor: default; }
+
+.nv-mg-svg { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; touch-action: none; user-select: none; }
+.nv-hold { display: flex; align-items: center; justify-content: center; gap: 30px; padding: 20px; }
+.nv-gauge { width: 60px; height: 220px; border: 3px solid #0b0d12; border-radius: 10px; background: #2c3442; display: flex; align-items: flex-end; overflow: hidden; }
+.nv-gauge i { display: block; width: 100%; }
+.nv-progress-task { text-align: center; padding: 24px 10px; }
+.nv-progress-task p { font-weight: 700; }
+.nv-bar { height: 24px; border: 3px solid #0b0d12; border-radius: 8px; background: #2c3442; overflow: hidden; margin: 14px 0; }
+.nv-bar i { display: block; height: 100%; background: #43d16b; }
+.nv-card-reader { position: relative; height: 260px; background: #3a4150; border-radius: 10px; touch-action: none; user-select: none; }
+.nv-card-screen { position: absolute; left: 12px; right: 12px; top: 12px; padding: 10px; border-radius: 6px; background: #0f2a1a; color: #7bff9e; font: 700 14px monospace; text-align: center; }
+.nv-card-slot { position: absolute; left: 12px; right: 12px; top: 110px; height: 14px; background: #111; border-radius: 4px; }
+.nv-swipe-card { position: absolute; top: 132px; width: 25%; height: 90px; display: grid; place-items: center; border-radius: 10px; background: linear-gradient(135deg, #6cc04a, #3c8d2f); border: 3px solid #0b0d12; color: #fff; font-weight: 800; cursor: grab; }
+.nv-engine { position: relative; height: 280px; background: #262c38; border-radius: 10px; touch-action: none; user-select: none; }
+.nv-engine-line { position: absolute; left: 10%; right: 10%; top: 50%; height: 4px; background: #43d16b; box-shadow: 0 0 10px #43d16b; }
+.nv-engine-handle { position: absolute; right: 8%; transform: translateY(-50%); padding: 8px 14px; border-radius: 8px; background: #ffd23f; color: #000; font-weight: 800; cursor: grab; }
+.nv-engine-handle.is-ok { background: #43d16b; }
+.nv-engine .nv-hint { position: absolute; bottom: 8px; left: 0; right: 0; }
+.nv-distributor { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center; }
+.nv-distributor .nv-hint { grid-column: 1 / -1; }
+.nv-dial { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.nv-dial.is-done { opacity: 0.5; }
+.nv-dial-face { position: relative; width: 110px; height: 110px; border-radius: 50%; background: #111722; border: 4px solid var(--c); }
+.nv-dial-target { position: absolute; left: 50%; top: -2px; width: 18px; height: 14px; transform: translateX(-50%); background: var(--c); border-radius: 0 0 9px 9px; }
+.nv-dial-hand { position: absolute; left: 50%; top: 50%; width: 4px; height: 48px; margin-left: -2px; background: #fff; transform-origin: 50% 0; translate: 0 0; border-radius: 2px; rotate: 180deg; }
+.nv-simon { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+.nv-simon-grid { display: grid; grid-template-columns: repeat(3, 56px); gap: 6px; padding: 10px; background: #0f141c; border-radius: 10px; }
+.nv-simon-grid i, .nv-simon-grid button { width: 56px; height: 56px; border-radius: 6px; background: #273041; border: 0; }
+.nv-simon-grid button { cursor: pointer; background: #34405a; }
+.nv-simon-grid .is-on { background: #4fc3f7; box-shadow: 0 0 14px #4fc3f7; }
+.nv-simon .nv-hint { flex-basis: 100%; }
+.nv-num-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.nv-num-grid button { height: 64px; border: 3px solid #0b0d12; border-radius: 10px; background: #34405a; color: #fff; font: 800 22px Inter, sans-serif; cursor: pointer; }
+.nv-num-grid button.is-on { background: #43d16b; }
+.nv-num-grid.is-bad button { background: #b3261e; }
+.nv-steering { position: relative; aspect-ratio: 1; max-width: 340px; margin: 14px auto !important; border-radius: 50%; background: radial-gradient(circle, #1d3a52, #0c1825); border: 4px solid #0b0d12; touch-action: none; user-select: none; cursor: grab; }
+.nv-steer-center { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border: 3px dashed #43d16b; border-radius: 50%; }
+.nv-steer-cross { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; border: 3px solid #ffd23f; border-radius: 50%; }
+.nv-steer-cross::before, .nv-steer-cross::after { content: ''; position: absolute; background: #ffd23f; }
+.nv-steer-cross::before { left: 50%; top: -10px; bottom: -10px; width: 2px; margin-left: -1px; }
+.nv-steer-cross::after { top: 50%; left: -10px; right: -10px; height: 2px; margin-top: -1px; }
+.nv-steering .nv-hint { position: absolute; bottom: -34px; left: 0; right: 0; }
+.nv-leaves { position: relative; height: 280px; background: #3d4a3a; border-radius: 10px; overflow: hidden; }
+.nv-leaves-vent { position: absolute; left: 0; top: 0; bottom: 0; width: 70px; display: grid; place-items: center; background: #1b2219; color: #aab2c0; font-size: 12px; }
+.nv-leaf { position: absolute; transform: translate(-50%, -50%); border: 0; background: none; font-size: 34px; cursor: pointer; transition: left 0.5s ease-in, opacity 0.5s; }
+.nv-leaf.is-gone { left: 0 !important; opacity: 0; pointer-events: none; }
+.nv-leaves .nv-hint { position: absolute; bottom: 6px; left: 0; right: 0; }
+.nv-divert { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.nv-divert .nv-hint { grid-column: 1 / -1; }
+.nv-divert-col { display: grid; place-items: center; height: 200px; background: #262c38; border-radius: 8px; }
+.nv-divert-col input { writing-mode: vertical-lr; direction: rtl; height: 170px; accent-color: #ffd23f; }
+.nv-divert-col.is-target { animation: nv-blink 0.9s steps(2) infinite; background: #3a3420; }
+.nv-lights { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; padding: 10px; }
+.nv-lights .nv-hint { flex-basis: 100%; }
+.nv-switch { position: relative; width: 64px; height: 130px; border: 3px solid #0b0d12; border-radius: 10px; background: #3a3f4b; cursor: pointer; }
+.nv-switch-led { position: absolute; left: 50%; top: 10px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #4a1f1f; }
+.nv-switch.is-on .nv-switch-led { background: #5ef08a; box-shadow: 0 0 10px #5ef08a; }
+.nv-switch-lever { position: absolute; left: 50%; bottom: 14px; width: 26px; height: 50px; margin-left: -13px; border-radius: 6px; background: #c9ced8; transition: bottom 0.15s; }
+.nv-switch.is-on .nv-switch-lever { bottom: 56px; }
+.nv-reactor { text-align: center; }
+.nv-reactor-clock { color: #ff5a4f; font: 800 22px Inter, sans-serif; }
+.nv-hand { width: 160px; height: 160px; border-radius: 20px; border: 4px solid #0b0d12; background: #33405a; font-size: 80px; cursor: pointer; touch-action: none; }
+.nv-hand.is-on { background: #2f7d4a; box-shadow: 0 0 30px #43d16b; }
+.nv-map { position: relative; }
+.nv-map canvas { display: block; width: 100%; aspect-ratio: 126 / 75; background: #0b1424; border-radius: 10px; }
+.nv-sabotages { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+.nv-sabotages .tf-btn { background: #7a1712; color: #fff; }
+.nv-sabotages span { color: #aab2c0; font-size: 13px; }
+
+/* Te mataron */
+.nv-killed { position: absolute; inset: 0; z-index: 8; display: grid; place-content: center; text-align: center; background: rgba(120, 0, 0, 0.55); animation: nv-fade 2.6s forwards; }
+.nv-killed-scene { display: flex; align-items: center; gap: 10px; font-size: 60px; }
+.nv-killed p { font: 900 42px 'Bricolage Grotesque', Inter, sans-serif; margin: 10px 0 0; }
+@keyframes nv-fade { 0% { opacity: 0; } 10%, 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ─── Pantallas que tapan la nave ─────────────────────────────────────────── */
+.nv-screen { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; color: #f1f3f8; background: radial-gradient(ellipse at center, #121826 0%, #04050a 80%); overflow: auto; }
+.nv-roles h1 { margin: 0; font: 900 clamp(48px, 9vw, 96px) 'Bricolage Grotesque', Inter, sans-serif; color: #7ec8ff; text-shadow: 0 0 30px rgba(126, 200, 255, 0.5); }
+.nv-roles.is-impostor h1 { color: #ff3b30; text-shadow: 0 0 30px rgba(255, 59, 48, 0.5); }
+.nv-roles-hint { margin: 0 0 6px; color: #c6cbd6; font-size: 18px; }
+.nv-roles-beans { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: flex-end; margin: 26px 0; }
+.nv-roles-beans figure { margin: 0; text-align: center; }
+.nv-roles-beans figcaption { margin-top: 6px; font-weight: 700; }
+
+.nv-meeting { flex-direction: row; align-items: stretch; gap: 16px; background: rgba(4, 5, 10, 0.92); }
+.nv-meeting-board { flex: 1 1 640px; max-width: 760px; display: flex; flex-direction: column; background: #c9d4e3; color: #11151d; border: 4px solid #0b0d12; border-radius: 18px; padding: 16px; overflow: auto; }
+.nv-meeting-board header { text-align: center; }
+.nv-meeting-board h1 { margin: 0; font: 900 30px 'Bricolage Grotesque', Inter, sans-serif; }
+.nv-meeting-board header p { margin: 4px 0; }
+.nv-meeting-clock { display: inline-block; padding: 4px 12px; border-radius: 999px; background: #11151d; color: #fff; font-weight: 700; font-size: 14px; }
+.nv-vote-grid { list-style: none; margin: 14px 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.nv-vote-grid li { position: relative; }
+.nv-vote-grid li > button, .nv-vote-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-radius: 12px; border: 3px solid #0b0d12; background: #eef2f7; color: inherit; font: inherit; text-align: left; }
+.nv-vote-grid li > button:not(:disabled) { cursor: pointer; }
+.nv-vote-grid li > button:not(:disabled):hover { background: #ffffff; }
+.nv-vote-grid li.is-dead > button, .nv-vote-grid li.is-dead .nv-vote-row { background: #8f99a8; opacity: 0.7; }
+.nv-vote-grid li.is-picked > button, .nv-vote-grid li.is-picked .nv-vote-row { outline: 3px solid #2f6fd1; }
+.nv-vote-grid li.is-my-vote > button { background: #d7e9ff; }
+.nv-vote-name { flex: 1; font-weight: 800; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nv-vote-tag { font-size: 12px; font-weight: 800; }
+.nv-vote-tag.is-voted { padding: 2px 8px; border-radius: 999px; background: #11151d; color: #fff; }
+.nv-vote-confirm { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 6px; }
+.nv-vote-confirm.is-inline { position: static; transform: none; align-items: center; font-weight: 700; }
+.nv-vote-confirm button { width: 36px; height: 36px; border-radius: 50%; border: 3px solid #0b0d12; color: #fff; font-size: 18px; font-weight: 900; cursor: pointer; }
+.nv-vote-confirm .is-yes { background: #2fa14a; }
+.nv-vote-confirm .is-no { background: #c62828; }
+.nv-meeting-board footer { margin-top: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.nv-meeting-status { font-weight: 700; }
+.nv-dots { display: flex; flex-wrap: wrap; gap: 4px; }
+.nv-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #0b0d12; }
+
+.nv-chat { flex: 0 1 340px; min-width: 260px; display: flex; flex-direction: column; background: #f4f6fa; color: #11151d; border: 4px solid #0b0d12; border-radius: 18px; overflow: hidden; height: 100%; }
+.nv-chat.is-ghost { background: rgba(20, 26, 40, 0.92); color: #f1f3f8; border-color: rgba(140, 170, 255, 0.4); border-radius: 12px; }
+.nv-chat ol { list-style: none; margin: 0; padding: 10px; flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.nv-chat li { display: flex; gap: 8px; align-items: flex-start; }
+.nv-chat li.is-me { flex-direction: row-reverse; text-align: right; }
+.nv-chat li div { max-width: 80%; padding: 6px 10px; border-radius: 12px; background: #ffffff; border: 2px solid #c9d1dd; }
+.nv-chat.is-ghost li div, .nv-chat li.is-ghost div { background: rgba(120, 150, 220, 0.18); border-color: rgba(140, 170, 255, 0.35); }
+.nv-chat li strong { font-size: 12px; text-shadow: 0 0 1px #000; }
+.nv-chat li p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.nv-chat-empty { color: #6b7280; font-size: 13px; justify-content: center; }
+.nv-chat form { display: flex; gap: 6px; padding: 8px; border-top: 2px solid #c9d1dd; }
+.nv-chat.is-ghost form { border-color: rgba(140, 170, 255, 0.3); }
+.nv-chat form .tf-input { flex: 1; min-width: 0; }
+
+.nv-eject { overflow: hidden; background: #000 radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.15) 1px, transparent 2px) 0 0 / 60px 60px; }
+.nv-eject-bean { position: absolute; top: 30%; left: -140px; animation: nv-float linear forwards; }
+@keyframes nv-float { to { left: calc(100% + 140px); transform: rotate(720deg); } }
+.nv-eject-text { font: 800 clamp(22px, 3.4vw, 36px) Inter, sans-serif; margin: 120px 0 0; text-align: center; min-height: 1.4em; }
+.nv-eject-sub { color: #c6cbd6; font-size: 18px; margin: 10px 0 0; }
+.nv-caret { display: inline-block; width: 3px; height: 1em; background: #fff; margin-left: 4px; vertical-align: -0.1em; animation: nv-blink 0.8s steps(2) infinite; }
+
+.nv-final { position: relative; min-height: calc(100dvh - 72px); }
+.nv-final h1 { margin: 0; font: 900 clamp(48px, 9vw, 96px) 'Bricolage Grotesque', Inter, sans-serif; }
+.nv-final.is-crew h1 { color: #7ec8ff; }
+.nv-final.is-impostor h1 { color: #ff3b30; }
+.nv-final-reason { font-size: 20px; margin: 6px 0 0; }
+.nv-final-imps { color: #c6cbd6; }
+.nv-final-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+.nv-final .nv-hint { color: #c6cbd6; }
+
+@media (max-width: 860px) {
+  .nv-meeting { flex-direction: column; }
+  .nv-chat { flex: 1 1 260px; height: auto; min-height: 220px; }
+  .nv-vote-grid { grid-template-columns: 1fr; }
+}

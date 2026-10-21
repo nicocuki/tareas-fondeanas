@@ -179,6 +179,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), pelea en tiempo real (`TirosGame.jsx`) |
+| `src/nave/` | Entre Nosotros (Among Us): mapa (`map.js`), tareas (`tasks.js`), reducer (`game.js`), movimiento y vista (`sim.js`), dibujo (`render.js`), la nave en vivo (`NaveGame.jsx`), minijuegos, reunión (ver *Entre Nosotros*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
@@ -210,7 +211,8 @@ Todo pasa por **variables CSS** en `src/ui/tokens.css`: tema oscuro (pizarrón c
 claro (hoja con birome roja), elegidos en Ajustes y guardados en `tf:preferencias`. `theme.js`
 traduce `COLORS` a esas variables, así los estilos en línea viejos cambian de tema solos.
 **No escribas colores fijos en un componente**: usá `COLORS` o `var(--…)`. Las excepciones son los
-colores de equipo, las casillas de Código Secreto, la cancha del fútbol y Trazo Loco (copia el look
+colores de equipo, las casillas de Código Secreto, la cancha del fútbol, la partida de Entre Nosotros (la nave,
+el HUD y la reunión, oscuros como el original) y Trazo Loco (copia el look
 de Gartic Phone, con sus variables `--gp-*` en `src/gartic/gartic.css`), que son iguales en los dos temas.
 
 - `games.js` es el catálogo (nombre, emoji, color, jugadores, «cómo jugar»). **Un juego nuevo se
@@ -482,6 +484,51 @@ nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del
 - `window.__tiros` (el estado de la pelea) y `data-tiros-canvas`, `data-card` existen para manejar el
   juego desde un navegador automatizado. Para probar el respaldo por el servidor, borrá
   `window.RTCPeerConnection` antes de cargar la página en uno de los navegadores.
+
+## Entre Nosotros
+
+Among Us en The Skeld, pedido de Nico: «tareas, impostores y tripulantes, mecánicas, personajitos», con
+ventilaciones, sabotajes, fantasmas y visión limitada; solo compu (teclado). De 4 a 10 jugadores. El
+`id` del juego es `nave` (`?juego=nave`, `gameType: 'nave'`, raíz `nave/` en `ROOTS`).
+
+- **Mismo esquema que A los Tiros**: lo que es por turnos va en la sala (`game.js`, reducer puro con
+  `{ now, rand }`): roles, tareas, muertes, cuerpos, reuniones, votos, sabotajes y quién gana. Las
+  posiciones van en vivo, directo entre navegadores (`futbol/p2p.js`) y con respaldo en
+  `nave/{sala}/p/{id}` (`naveChannel`, efímero). **Cada pantalla es dueña de su jugador**; el impostor
+  manda en `kill` la posición de la víctima que ve, y ahí queda el cuerpo.
+- Fases: `lobby` → `roles` (5 s) → `playing` ⇄ `meeting` → `ejection` (3 s de resultados y la
+  expulsión) → `final`. `round` sube cada vez que se vuelve a jugar: con eso cada pantalla manda a su
+  jugador alrededor de la mesa del botón (`spawnPoint`). Los relojes los cierra cualquiera con `tick`.
+- **El mapa es una grilla** (`map.js`): salas y pasillos son rectángulos que se tocan de costado; lo
+  de afuera es pared. Los obstáculos (mesas, cajas) no se pisan pero no tapan la vista. Las estaciones
+  de tareas (`STATIONS`, `tarea:sala`), las ventilaciones (`VENTS`, con `to` en los dos sentidos),
+  el botón, el tablero de luces y los lectores del reactor tienen que estar en el piso y libres: **hay un
+  test** que lo revisa, y otro que recorre el mapa para ver que se llega a todas las salas.
+- **Choques y vista** (`sim.js`): caja de choque a la altura de los pies, moviendo primero en x y
+  después en y (así se desliza por las paredes). La vista son rayos por la grilla (DDA) que frenan en
+  las paredes; la niebla se pinta en un canvas aparte y los que se ven se dibujan **después** de la
+  niebla, enteros. Los fantasmas no tienen niebla, atraviesan paredes y solo los ven otros fantasmas.
+- **Tareas** (`tasks.js`): las comunes son iguales para todos; cada tarea es `{ k, s: [estaciones],
+  d: pasos hechos }`. Los impostores tienen una lista de mentira y no pueden hacerlas. El minijuego de
+  cada una está en `Minigames.jsx`; la sala solo se entera del paso (`task`). Escanearse se ve desde
+  afuera (`sc` en la foto), como la tarea visual del original.
+- **Sabotajes**: luces (los tripulantes ven `LIGHTS_OUT` de su radio; se arreglan subiendo las 5
+  palancas de Electricidad, estado compartido en la sala) y fusión del reactor (30 s; dos personas
+  distintas en los dos lectores a la vez; si se acaba el tiempo ganan los impostores). Una reunión
+  cancela el reactor, no las luces. Con el reactor no se toca el botón de emergencia.
+- **Ventilaciones**: solo en la pantalla del impostor (`v` en la foto); los demás no lo dibujan y, si
+  lo ven, ven abrirse la tapa.
+- El anfitrión saca de la partida (`gone`) al que no manda su posición en 15 s (pestaña cerrada).
+- **El que entra tarde solo mira** (`inGame: false`); por eso no está en `JOIN_IN_PROGRESS`.
+- El peor caso de sala (10 jugadores con todas las tareas, chat lleno de comillas) queda por debajo de
+  26.000 caracteres: hay un test. El chat tiene `MAX_CHAT` y `CHAT_BUDGET`.
+- `window.__nave` (el estado de la pantalla: posición propia, demás, ventilación) y `data-act`,
+  `data-vote`, `data-color`, `data-chat-list` existen para manejar el juego desde un navegador
+  automatizado. **Con el panel del navegador oculto no hay cuadros de `requestAnimationFrame`**: el
+  juego sigue (`everyFrame`), pero el canvas no se redibuja; para capturas, mostrá el panel.
+- Los dibujos son nuestros (el poroto con visor de `render.js` y `Bean.jsx`), pero el juego, el mapa y
+  los nombres de las tareas copian a Among Us (de Innersloth): entre amigos está bien; si llegara un
+  pedido de bajarlo, se saca la entrada de `games.js`.
 
 ## Mario vs Luigi
 
