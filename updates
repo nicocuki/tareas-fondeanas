@@ -461,6 +461,15 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.12.2 = A los Tiros: hasta 15 jugadores
+1.12.2 = A los Tiros: hasta 15 jugadores
 - Ahora entran hasta 15 jugadores por sala (antes, 4), cada uno con su color.
 - Los que pasan de 4 aparecen al costado de los lugares de siempre de cada mapa.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.13.0 = Nuevo juego: Cohete Royale (Rocket Bot Royale) 🤖
+- Battle royale de tanquecitos robot de 2 a 25 jugadores en una isla pixelada. Gana el último que queda.
+- Manejás con A/D, apuntás con el mouse y disparás cohetes en arco. Cada tiro te empuja para atrás: disparando para abajo salís volando.
+- Los cohetes rompen el terreno y empujan a los demás. El agua sube cada vez más: el que se hunde, queda afuera.
+- Monedas para juntar y cajas en paracaídas con armas especiales: triple, granada, teledirigido, bomba gorda, láser y mina.
+- Ranking al final con puesto, bajas, monedas y puntos. El anfitrión elige qué tan rápido sube el agua.

@@ -2,6 +2,26 @@
 // Para sumar un juego nuevo: agregalo acá, en el enrutador de App.jsx y en ROOTS (worker/rules.js).
 export const GAMES = [
   {
+    id: 'cohetes',
+    title: 'Cohete Royale',
+    emoji: '🤖',
+    color: 'var(--game-cohetes)',
+    onColor: '#ffffff',
+    tagline: 'Tanques, cohetes y agua',
+    description: 'Battle royale de tanquecitos robot en una isla que se rompe a cohetazos mientras sube el agua. El último que queda gana. Como Rocket Bot Royale.',
+    players: '2 a 25',
+    duration: '3–6 min',
+    input: 'Teclado y mouse',
+    badge: 'Nuevo',
+    howTo: [
+      'Manejás con A y D (o las flechas), apuntás con el mouse y disparás con el clic o Espacio.',
+      'Cada tiro te empuja para atrás: disparando para abajo salís volando. Así se cruzan los pozos y se escapa del agua.',
+      'Los cohetes rompen el terreno y empujan a los demás. Si te quedás sin vida o te hundís, quedás afuera.',
+      'El agua sube cada vez más: hay que buscar lo alto. Gana el último tanque que queda.',
+      'Juntá monedas y agarrá las cajas que caen en paracaídas: traen armas especiales (triple, granada, teledirigido, bomba gorda, láser y mina).',
+    ],
+  },
+  {
     id: 'nave',
     title: 'Entre Nosotros',
     emoji: '🚀',

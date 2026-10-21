@@ -14,8 +14,10 @@ import MemeApp from './meme/MemeApp.jsx';
 import TirosApp from './tiros/TirosApp.jsx';
 import MvlApp from './mvl/MvlApp.jsx';
 import NaveApp from './nave/NaveApp.jsx';
+import CohetesApp from './cohetes/CohetesApp.jsx';
 
 const SCREENS = {
+  cohetes: CohetesApp,
   nave: NaveApp,
   meme: MemeApp,
   tiros: TirosApp,
