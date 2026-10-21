@@ -93,8 +93,9 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
       <div className="ck-card ck-controls">
         <h2>Cómo se juega</h2>
         <ul>
-          <li><kbd>A</kbd> <kbd>D</kbd> (o las flechas) para manejar. Apuntás con el mouse y disparás con el <b>clic</b> (o <kbd>Espacio</kbd>).</li>
-          <li>Cada tiro te empuja para atrás: <b>disparando para abajo salís volando</b>. Así se cruzan los pozos y se escapa del agua.</li>
+          <li>Arrancan todos en la nave: <b>disparás para saltar</b> y bajás en paracaídas donde quieras.</li>
+          <li><kbd>A</kbd> <kbd>D</kbd> (o las flechas) para manejar: el tanque <b>se pega a las paredes y los techos</b>. Apuntás con el mouse y disparás con el <b>clic</b> (o <kbd>Espacio</kbd>). Tenés 3 cohetes que se recargan solos.</li>
+          <li>Cada tiro te empuja para atrás: <b>disparando para el lado contrario te despegás y salís volando</b>.</li>
           <li>Los cohetes rompen el terreno. El agua sube: el que se hunde, queda afuera. Gana el último que queda.</li>
           <li>Juntá monedas 🪙 y agarrá las cajas que caen en paracaídas: traen {CRATE_WEAPONS.map((w) => WEAPONS[w].name).join(', ')}.</li>
         </ul>

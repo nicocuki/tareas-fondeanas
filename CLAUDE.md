@@ -185,7 +185,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), sprites de los efectos (`sprites/`, `sprites.js`), pelea en tiempo real (`TirosGame.jsx`) |
 | `src/nave/` | Entre Nosotros (Among Us): mapa (`map.js`), tareas (`tasks.js`), reducer (`game.js`), movimiento y vista (`sim.js`), dibujo (`render.js`), la nave en vivo (`NaveGame.jsx`), minijuegos, reunión (ver *Entre Nosotros*) |
-| `src/cohetes/` | Cohete Royale (Rocket Bot Royale): terreno (`terrain.js`), tanque y armas (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`CohetesGame.jsx`) (ver *Cohete Royale*) |
+| `src/cohetes/` | Cohete Royale (Rocket Bot Royale): mapa (`terrain.js`), tanque pegajoso, nave y armas (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`CohetesGame.jsx`) (ver *Cohete Royale*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
@@ -547,32 +547,44 @@ ventilaciones, sabotajes, fantasmas y visión limitada; solo compu (teclado). De
 
 ## Cohete Royale
 
-Clon de Rocket Bot Royale (de Winterpixel), pedido de Nico: battle royale de tanquecitos robot en una
-isla que se rompe a cohetazos mientras sube el agua. De 2 a 25, solo compu. `id`: `cohetes`
-(`?juego=cohetes`, `gameType: 'cohetes'`, raíz `cohetes/` en `ROOTS`).
+Clon de Rocket Bot Royale (de Winterpixel), pedido de Nico: battle royale de tanquecitos en un mapa que se
+rompe a cohetazos mientras sube el agua. De 2 a 25, solo compu. `id`: `cohetes` (`?juego=cohetes`,
+`gameType: 'cohetes'`, raíz `cohetes/` en `ROOTS`). **La primera versión estaba mal entendida** (colinas,
+cohetes en arco); Nico mandó un video del original y se rehízo con esto, que es como funciona de verdad:
 
-- **No hay propulsor**: como en el original, el tanque maneja sobre el terreno y **para moverse por el
-  aire se dispara para el lado contrario** (`RECOIL`); la explosión de un tiro al piso también empuja
-  (la propia, al 60 %). Así se cruzan los pozos y se escapa del agua. Nico lo aclaró explícitamente.
-- **La sala** (`game.js`) guarda lo de a una vez: la semilla de la isla (`match.seed`), dónde arranca
-  cada uno (`match.order`), cuántos eran al empezar (`match.size`, define el ancho), quién murió y quién
-  lo mató (`died`, con `by`), las monedas y cajas agarradas (`coin`/`crate`: el primero gana) y el
-  ranking (`place`, `kills`, `coins`, `score`). Gana el último vivo. El que entra tarde mira.
-- **El terreno** (`terrain.js`) es una grilla de «píxeles» armada desde la semilla: todas las pantallas
-  tienen la misma isla. Cavar es borrar, así que con los mismos cráteres (en cualquier orden) queda igual.
-  Se dibuja como imagen de un píxel por casilla agrandada sin suavizar (estilo pixelado del original) y
-  se repinta solo lo que toca cada cráter (`repaint`).
-- **En tiempo real, como A los Tiros**: cada pantalla es dueña de su tanque (física en `sim.js`, paso de
-  1/120 s) y manda una foto (WebRTC directo, respaldo en `cohetes/{sala}/p/{id}`). Los disparos viajan
-  en la foto (`sh`) y cada pantalla simula los proyectiles, pero **dónde explota cada uno lo decide la
-  pantalla del que tiró** y lo manda en `ex`: todas cavan ese cráter y cada una calcula el daño y el
-  empujón de su propio tanque (`blastOn`). Las copias de los demás solo se ven.
-- **El agua** sube con el tiempo de partida (`waterY`, con 20 s de gracia y la opción de velocidad).
-  Hundirse o quedarse sin vida es quedar afuera; si alguien te pegó en los últimos 6 s, la baja es suya.
-- **Monedas** (40, de la semilla) y **cajas** (una cada 11 s, cae en paracaídas, de la semilla) con armas:
-  triple, granada (rebota), teledirigido, bomba gorda, láser y mina (se pega al piso y explota si alguien
-  pasa; la detecta la pantalla del dueño). El cohete común no se gasta.
-- El anfitrión da por muerto al que no manda fotos en 10 s (pestaña cerrada).
+- **El mapa** (`terrain.js`): bloques flotando en el espacio, acomodados en una grilla (`CELL`): anillos y
+  «U» huecas con las esquinas redondeadas, algún bloque lleno, y abajo islas sobre el agua. Fondo violeta con
+  columnas y nieve. La tierra va a cuadros grandes con **un borde verde en todos los lados (también en los
+  cráteres)** y una franja marrón oscura adentro (`render.js`, calculado con la distancia al aire), y plantitas
+  arriba (`decorations`). Es una grilla de «píxeles» armada desde la semilla: todas las pantallas tienen el
+  mismo mapa, y como cavar es borrar, con los mismos cráteres (en cualquier orden) queda igual.
+- **El tanque se pega a cualquier superficie** (`stepTank` en `sim.js`): maneja por el piso, las paredes y los
+  techos y gira con ella (`nx`, `ny` = la normal). Hacia qué lado va se decide al apretar la tecla y se
+  mantiene mientras se sostiene (`side`), así se da la vuelta entera a un bloque sin trabarse en las esquinas
+  (hay un test). **No hay propulsor**: se despega solo con un empujón fuerte (`push`, más que `UNSTICK`):
+  el retroceso de un tiro (se dispara para el lado contrario) o una explosión (la propia empuja al 70 %).
+- **Los cohetes van derecho** (sin gravedad, estela celeste). Cargador de 3 (`MAX_AMMO`) que se recarga de a
+  uno (`RELOAD`). Las armas de las cajas se usan en vez del cohete hasta gastarlas.
+- **Al empezar**, todos van en una nave que cruza el mapa (`shipAt`, igual en todas las pantallas): 5 s de
+  «¡Preparate!» y después «Disparo para saltar»; se baja en paracaídas (`mode: 'chute'`). Si no saltás, te
+  tira sola al final del mapa.
+- **La sala** (`game.js`) guarda lo de a una vez: la semilla (`match.seed`), cuántos eran al empezar
+  (`match.size`, define el ancho), quién murió y quién lo mató (`died`, con `by`), las monedas y cajas
+  agarradas (`coin`/`crate`: el primero gana) y el ranking (`place`, `kills`, `coins`, `score`). Gana el
+  último vivo. El que entra tarde mira.
+- **En tiempo real, como A los Tiros**: cada pantalla es dueña de su tanque (paso de 1/120 s) y manda una foto
+  (WebRTC directo, respaldo en `cohetes/{sala}/p/{id}`) con posición, normal y `m` (nave, paracaídas o
+  tanque). Los disparos viajan en la foto (`sh`) y cada pantalla simula los proyectiles, pero **dónde explota
+  cada uno lo decide la pantalla del que tiró** y lo manda en `ex`: todas cavan ese cráter y cada una calcula
+  el daño y el empujón de su propio tanque (`blastOn`). Las copias de los demás solo se ven.
+- **El agua** sube con el tiempo de partida (`waterY`: 30 s quieta mientras bajan todos, después sube según la
+  opción de velocidad). Hundirse o quedarse sin vida es quedar afuera; si alguien te pegó en los últimos 6 s,
+  la baja es suya.
+- **Monedas** en fila adentro de los anillos (de la semilla) y **cajas** (una cada 10 s, en paracaídas) con
+  armas: triple, granada, teledirigido, bomba gorda, láser y mina (la detecta la pantalla del dueño).
+- La pantalla imita la del original: los 3 cohetes y las casillas abajo al medio, el círculo «tanques quedan»
+  arriba a la derecha, monedas y bajas arriba a la izquierda. No hay mapa chico (el original no tiene).
+- El anfitrión da por muerto al que no manda fotos en 12 s (pestaña cerrada).
 - `window.__cohetes` (estado de la pantalla: tanque, demás, proyectiles, cajas) y `data-cohetes-canvas`
   existen para manejar el juego desde un navegador automatizado.
 - Los dibujos son nuestros, pero el juego copia a Rocket Bot Royale: entre amigos está bien; si llegara un

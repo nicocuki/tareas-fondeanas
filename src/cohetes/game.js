@@ -5,12 +5,12 @@
 // qué monedas y cajas ya se agarraron y el ranking. El movimiento, los tiros y las explosiones van en
 // tiempo real por otro lado (CohetesGame.jsx): cada pantalla es dueña de su tanque y avisa acá
 // cuando muere (`died`), igual que en A los Tiros.
-import { COIN_COUNT, MAX_CRATES } from './sim.js';
+import { MAX_COINS, MAX_CRATES } from './sim.js';
 
 export const GAME_TYPE = 'cohetes';
 export const MAX_PLAYERS = 25;
 export const MIN_PLAYERS = 2;
-export const COUNTDOWN_MS = 3500;
+export const COUNTDOWN_MS = 5000; // «¡Preparate!» mientras la nave entra al mapa
 
 // Un color por jugador (hasta 25).
 export const COLORS = [
@@ -154,7 +154,7 @@ export function applyAction(room, action, ctx = {}) {
     // Monedas y cajas: las agarra el primero que llega (la transacción deja pasar uno).
     case 'coin': {
       const i = action.i;
-      if (next.phase !== 'playing' || !sameMatch || !me?.alive || !Number.isInteger(i) || i < 0 || i >= COIN_COUNT || next.match.coins[i]) return null;
+      if (next.phase !== 'playing' || !sameMatch || !me?.alive || !Number.isInteger(i) || i < 0 || i >= MAX_COINS || next.match.coins[i]) return null;
       next.match.coins[i] = me.id;
       me.coins += 1;
       break;

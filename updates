@@ -467,9 +467,18 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.13.0 = Nuevo juego: Cohete Royale (Rocket Bot Royale) 🤖
+1.13.0 = Nuevo juego: Cohete Royale (Rocket Bot Royale) 🤖
 - Battle royale de tanquecitos robot de 2 a 25 jugadores en una isla pixelada. Gana el último que queda.
 - Manejás con A/D, apuntás con el mouse y disparás cohetes en arco. Cada tiro te empuja para atrás: disparando para abajo salís volando.
 - Los cohetes rompen el terreno y empujan a los demás. El agua sube cada vez más: el que se hunde, queda afuera.
 - Monedas para juntar y cajas en paracaídas con armas especiales: triple, granada, teledirigido, bomba gorda, láser y mina.
 - Ranking al final con puesto, bajas, monedas y puntos. El anfitrión elige qué tan rápido sube el agua.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.14.0 = Cohete Royale como el original 🚀
+- El mapa ahora son bloques flotando en el espacio, como en Rocket Bot Royale: anillos y «U» de tierra a cuadros con borde verde, fondo violeta con nieve y plantitas arriba. Los cráteres también quedan con borde verde.
+- El tanque se pega a todo: maneja por el piso, las paredes y los techos (cabeza abajo también). Para despegarte, disparás para el lado contrario.
+- Los cohetes van derecho y tenés 3, que se recargan de a uno.
+- Al empezar llegan todos en una nave: «¡Preparate!», después «Disparo para saltar» y bajás en paracaídas.
+- Pantalla como la del original: los 3 cohetes y las casillas abajo, y el círculo de tanques que quedan arriba a la derecha.
