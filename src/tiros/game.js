@@ -16,14 +16,18 @@ import { MAPS } from './maps.js';
 import { dealCards, CARDS } from './cards.js';
 
 export const GAME_TYPE = 'tiros';
-export const MAX_PLAYERS = 4;
+export const MAX_PLAYERS = 15;
 export const MIN_PLAYERS = 2;
 export const COUNTDOWN_MS = 3000;   // cuenta regresiva antes de cada pelea
 export const BATTLE_END_MS = 2500;  // cuánto se muestra quién ganó la pelea
 export const PICK_MS = 20000;       // tiempo de cada uno para elegir carta
 export const REVEAL_MS = 1800;      // la carta elegida se ve 1 s y después se va con el jugador
 export const MAX_BATTLE_MS = 120000; // si una pelea se estira tanto, se repite
-export const COLORS = ['#f28c28', '#3d8fe0', '#3fb36b', '#a463d9'];
+// Un color por jugador (hasta 15): los cuatro de siempre primero.
+export const COLORS = [
+  '#f28c28', '#3d8fe0', '#3fb36b', '#a463d9', '#e5484d', '#f2d22e', '#2ec4c4', '#ec6fb6',
+  '#8d6e4a', '#f5f5f5', '#7a8597', '#9be15d', '#1f3fae', '#ff9f9f', '#5a2e8a',
+];
 
 // `cardLimit`: modo «Fila de cartas». 0 = apagado; si no, cada uno tiene como mucho esa cantidad de
 // cartas y, al elegir una más, se le va la más vieja (como una fila).

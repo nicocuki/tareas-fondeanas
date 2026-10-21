@@ -10,7 +10,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
-import { MAPS, WORLD_H, WORLD_W } from './maps.js';
+import { MAPS, WORLD_H, WORLD_W, spawnPoint } from './maps.js';
 import { EXPLOSION_TIME, MARK_TIME, burst, drawScene } from './render.js';
 import { applyBox, boxSolid, claimBox, driftBoxes, encodeBox, newBoxes, pushBox, stepBoxes } from './boxes.js';
 import { statsFor } from './cards.js';
@@ -73,7 +73,7 @@ export default function TirosGame({ room, me, code, offset, onDied, onReportGone
     const s = sim.current;
     if (s.n === battle.n) return;
     const map = MAPS[battle.map];
-    const [x, y] = map.spawns[battle.spawns[me.id] ?? 0];
+    const [x, y] = spawnPoint(map, battle.spawns[me.id] ?? 0);
     s.n = battle.n;
     s.mapSolids = map.solids;
     s.boxes = newBoxes(map.boxes);

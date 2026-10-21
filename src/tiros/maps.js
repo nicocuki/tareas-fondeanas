@@ -3,9 +3,9 @@
 //   shapes  piezas sólidas (ver `shapes.js`: rect, poly, circle, capsule, group)
 //   decor   piezas oscuras de fondo que no chocan (pilares)
 //   boxes   cajas sueltas [x, y, lado]: se caen, giran y las empujan las balas y los jugadores
-//   spawns  cuatro lugares donde aparecen los jugadores
+//   spawns  cuatro lugares donde aparecen los jugadores (del 5.º en adelante, ver `spawnPoint`)
 // Fuera del mundo no hay paredes: el que se cae sale disparado para arriba y pierde vida (ver `sim.js`).
-import { compileShape } from './shapes.js';
+import { compileShape, touchesAny } from './shapes.js';
 
 export const WORLD_W = 64;
 export const WORLD_H = 36;
@@ -189,5 +189,19 @@ export const MAPS = [
 
 // Los sólidos de cada mapa, armados una sola vez.
 for (const map of MAPS) map.solids = map.shapes.flatMap(compileShape);
+
+// Dónde aparece el jugador `i` de la pelea. Los mapas tienen cuatro lugares (los del original); del
+// quinto en adelante (hasta 15) cada uno aparece corrido al costado de uno de esos, y si queda adentro
+// de un bloque se lo sube hasta que quede libre (después cae al piso).
+export function spawnPoint(map, i) {
+  const base = map.spawns[i % map.spawns.length];
+  const k = Math.floor(i / map.spawns.length);
+  if (!k) return base;
+  const side = base[0] < WORLD_W / 2 ? 1 : -1; // hacia el medio del mapa
+  const x = Math.max(2, Math.min(WORLD_W - 2, base[0] + side * k * 2.2));
+  let y = base[1] - 0.4;
+  for (let n = 0; n < 40 && touchesAny(x, y, 0.95, map.solids); n++) y -= 0.5;
+  return [x, Math.max(1, y)];
+}
 
 export const themeOf = (map) => THEMES[map?.theme] || THEMES.rosa;

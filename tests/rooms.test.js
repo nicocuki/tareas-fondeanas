@@ -4,7 +4,7 @@ import { isFull, summarizeRoom } from '../src/ui/roomSummary.js';
 
 test('resumen de sala: dice de qué juego es, quién la armó y cuántos hay', () => {
   const raw = JSON.stringify({ gameType: 'tiros', phase: 'lobby', hostId: 'b', players: [{ id: 'a', name: 'Ana', avatar: '🐸' }, { id: 'b', name: 'Beto', avatar: '🦊' }] });
-  assert.deepEqual(summarizeRoom('ABCD', null, raw), { code: 'ABCD', game: 'tiros', host: 'Beto', hostAvatar: '🦊', players: 2, max: 4, phase: 'lobby', local: false });
+  assert.deepEqual(summarizeRoom('ABCD', null, raw), { code: 'ABCD', game: 'tiros', host: 'Beto', hostAvatar: '🦊', players: 2, max: 15, phase: 'lobby', local: false });
   // Las salas de Código Secreto no tienen gameType.
   const cs = summarizeRoom('ABCD', null, JSON.stringify({ phase: 'playing', hostId: 'a', players: [{ id: 'a', name: 'Ana' }] }));
   assert.equal(cs.game, 'codigo-secreto');

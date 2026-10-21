@@ -395,7 +395,8 @@ todos, uno por uno, de 1 a 5 estrellas.
 
 ## A los Tiros
 
-Inspirado en ROUNDS (de Landfall): duelos de 2 a 4 con bolitas armadas. Los nombres de las cartas son
+Inspirado en ROUNDS (de Landfall): duelos de 2 a 15 con bolitas armadas (hasta 15 desde la 1.12.2; los mapas tienen
+4 lugares de aparición y del 5.º en adelante salen al costado, ver `spawnPoint` en `maps.js`). Los nombres de las cartas son
 nuestros; los números (daño, vida, recarga, munición, rebotes) siguen los del original.
 
 - **Lo que es por turnos va en la sala** (`rooms/{código}`, `gameType: 'tiros'`, reducer `game.js`):

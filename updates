@@ -455,6 +455,12 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.12.1 = Las salas abandonadas se cierran solas
+1.12.1 = Las salas abandonadas se cierran solas
 - Si en una sala nadie hace nada durante 15 minutos, se cierra y se borra, aunque alguien haya dejado la pestaña abierta. También sale de la lista de salas públicas.
 - Los que todavía estaban adentro ven «Esa sala ya no existe» y pueden crear otra.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.12.2 = A los Tiros: hasta 15 jugadores
+- Ahora entran hasta 15 jugadores por sala (antes, 4), cada uno con su color.
+- Los que pasan de 4 aparecen al costado de los lugares de siempre de cada mapa.

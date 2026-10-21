@@ -5,7 +5,7 @@ import { LISTING_TTL_MS, MAX_LISTED, roomListing, visibleListings } from '../wor
 import { writeError } from '../worker/rules.js';
 import { SalaCore, newAttachment } from '../worker/core.js';
 import { newRoom as newCodigo, serializeRoom } from '../src/codigo-secreto/game.js';
-import { newRoom as newTiros } from '../src/tiros/game.js';
+import { MAX_PLAYERS as MAX_TIROS, newRoom as newTiros } from '../src/tiros/game.js';
 
 const tree = (code, room, extra = {}) => ({ rooms: { [code]: typeof room === 'string' ? room : JSON.stringify(room) }, ...extra });
 const pub = (code) => ({ publica: { [code]: true } });
@@ -18,7 +18,7 @@ test('una sala sin marcar como pública no se lista', () => {
 test('una sala pública en la sala de espera se lista con juego, anfitrión y jugadores', () => {
   const room = newTiros('a', 'Nico', '🐸', 0);
   assert.deepEqual(roomListing(tree('ABCD', room, pub('ABCD')), 'ABCD', 1), {
-    code: 'ABCD', game: 'tiros', host: 'Nico', players: 1, max: 4,
+    code: 'ABCD', game: 'tiros', host: 'Nico', players: 1, max: MAX_TIROS,
   });
 });
 
@@ -41,7 +41,7 @@ test('una partida empezada se lista «en curso» si el juego deja entrar en medi
 
 test('no se lista si está llena o si no hay nadie conectado', () => {
   const room = newTiros('a', 'Nico', '🐸', 0);
-  const full = { ...room, players: ['a', 'b', 'c', 'd'].map((id) => ({ id, name: id })) };
+  const full = { ...room, players: Array.from({ length: MAX_TIROS }, (_, i) => ({ id: `p${i}`, name: `J${i}` })) };
   assert.equal(roomListing(tree('ABCD', full, pub('ABCD')), 'ABCD', 4), null);
   assert.equal(roomListing(tree('ABCD', room, pub('ABCD')), 'ABCD', 0), null);
 });

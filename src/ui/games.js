@@ -49,7 +49,7 @@ export const GAMES = [
     onColor: '#ffffff',
     tagline: 'Tiros, saltos y cartas',
     description: 'Duelos a los tiros en mapas chiquitos. El que pierde la ronda elige una carta y se vuelve más fuerte. Inspirado en ROUNDS.',
-    players: '2 a 4',
+    players: '2 a 15',
     duration: '10–20 min',
     input: 'Teclado y mouse',
     badge: 'Nuevo',

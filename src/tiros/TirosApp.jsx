@@ -313,7 +313,7 @@ export default function TirosApp({ onBackToMenu }) {
       const playerId = makeId();
       const result = await backend.updateRoom(target, (current) => applyAction(current, { type: 'join', playerId, name: cleanName(name), avatar }));
       if (!result.room || result.room.gameType !== GAME_TYPE) { setError('No encontramos esa sala de A los Tiros.'); return; }
-      if (!findPlayer(result.room, playerId)) { setError('La sala está llena (son hasta 4).'); return; }
+      if (!findPlayer(result.room, playerId)) { setError(`La sala está llena (son hasta ${MAX_PLAYERS}).`); return; }
       enterRoom({ code: target, playerId, name: cleanName(name) });
     } catch {
       setError('No se pudo conectar con la sala. Probá de nuevo.');

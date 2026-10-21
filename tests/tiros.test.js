@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BATTLE_END_MS, COUNTDOWN_MS, PICK_MS, REVEAL_MS, applyAction, currentPicker, findPlayer, newRoom } from '../src/tiros/game.js';
+import { BATTLE_END_MS, COLORS, MAX_PLAYERS, COUNTDOWN_MS, PICK_MS, REVEAL_MS, applyAction, currentPicker, findPlayer, newRoom } from '../src/tiros/game.js';
 import { CARDS, CARD_IDS, dealCards, statsFor } from '../src/tiros/cards.js';
-import { MAPS, WORLD_H, WORLD_W } from '../src/tiros/maps.js';
+import { MAPS, WORLD_H, WORLD_W, spawnPoint } from '../src/tiros/maps.js';
 import { compileShape, hitSolid, touchesAny } from '../src/tiros/shapes.js';
 import { applyBox, boxSolid, claimBeats, claimBox, encodeBox, newBoxes, pushBox, stepBoxes } from '../src/tiros/boxes.js';
 
@@ -538,4 +538,24 @@ test('tiros: con más vida el jugador es un poco más grande y más lento', () =
   const normal = run(100), big = run(300);
   assert.ok(big.x < normal.x, 'el grande avanza menos');
   assert.ok(big.onGround && Math.abs(big.y + radiusFor(300) - 20) < 0.05, 'el grande apoya los pies en el piso');
+});
+
+test('tiros: entran hasta 15, cada uno con su color y su lugar libre en todos los mapas', () => {
+  let room = newRoom('p0', 'Nico', '🐸', 0);
+  for (let i = 1; i < MAX_PLAYERS + 2; i++) room = applyAction(room, { type: 'join', playerId: `p${i}`, name: `J${i}` }, { now: 0 }) || room;
+  assert.equal(room.players.length, 15);
+  assert.equal(new Set(room.players.map((p) => p.color)).size, 15);
+  assert.equal(COLORS.length, 15);
+  for (const map of MAPS) {
+    const pts = Array.from({ length: MAX_PLAYERS }, (_, i) => spawnPoint(map, i));
+    for (const [x, y] of pts) {
+      assert.ok(x > 0 && x < WORLD_W && y > 0 && y < WORLD_H, `${map.name}: lugar fuera del mundo`);
+      assert.ok(!touchesAny(x, y, 0.9, map.solids), `${map.name}: lugar (${x}, ${y}) adentro de un bloque`);
+    }
+    assert.equal(new Set(pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)).size, MAX_PLAYERS, `${map.name}: lugares repetidos`);
+  }
+  // Una partida larga con 15: muchas cartas por cabeza y la sala igual entra en el tope.
+  for (const p of room.players) p.cards = Array.from({ length: 60 }, (_, i) => CARD_IDS[i % CARD_IDS.length]);
+  const size = JSON.stringify(JSON.stringify(room)).length;
+  assert.ok(size < 30000, `la sala pesa ${size}`);
 });
