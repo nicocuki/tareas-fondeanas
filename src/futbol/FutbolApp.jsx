@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { backend } from '../storage.js';
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
+import { useAutoCreate } from '../ui/mudanza.js';
 import { useRegisterRoom } from '../ui/store.js';
 import { clearSession, loadName, loadSession, saveSession } from '../session.js';
 import { COLORS, panelStyle, inputStyle, ghostButton, labelStyle } from '../theme.js';
@@ -168,6 +169,9 @@ export default function FutbolApp({ onBackToMenu }) {
       setBusy(false);
     }
   }
+
+  // El anfitrión que se pasó de otro juego con todos: la sala se crea sola.
+  useAutoCreate(handleCreate, Boolean(cleanName(name)));
 
   // ─── Unirse a sala online ───────────────────────────────────────────────
   async function handleJoin(e) {

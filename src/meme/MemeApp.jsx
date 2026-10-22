@@ -6,6 +6,7 @@ import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
+import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
 import { gameUrl } from '../ui/games.js';
 import {
@@ -52,6 +53,8 @@ function Entry({ onCreate, onJoin, busy, error, onBack }) {
   // Con el link de una sala se ve directo «te estás uniendo a la sala de…».
   const [invite, setInvite] = useState(() => codeFromUrl().length === 4);
   const save = () => setProfile({ name, avatar });
+  // El anfitrión que se pasó de otro juego con todos: la sala se crea sola.
+  useAutoCreate(() => { save(); onCreate(name, avatar); }, Boolean(name.trim()));
   if (invite) {
     return (
       <div className="cs-root mm-page">

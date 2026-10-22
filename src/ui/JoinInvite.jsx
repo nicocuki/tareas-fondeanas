@@ -6,6 +6,7 @@ import { AVATARS } from './store.js';
 import { gameById, gameUrl } from './games.js';
 import { useRoomInfo } from './rooms.js';
 import { isFull } from './roomSummary.js';
+import { useAutoJoin } from './mudanza.js';
 
 export default function JoinInvite({
   gameId, code, name, onName, avatar, onAvatar, maxName = 20, busy, error, onJoin, onCancel, onBack,
@@ -16,6 +17,8 @@ export default function JoinInvite({
   const full = isFull(info);
   const started = info && info.phase !== 'lobby';
   const canJoin = Boolean(info) && !other && !full && name.trim().length > 0 && !busy;
+  // Siguiendo al anfitrión que cambió de juego: se entra solo.
+  useAutoJoin(canJoin, onJoin);
 
   let title;
   if (info === undefined) title = 'Buscando la sala…';

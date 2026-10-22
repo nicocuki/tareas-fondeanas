@@ -3,6 +3,7 @@
 // useSyncExternalStore, sin librerías.
 import { useEffect, useSyncExternalStore } from 'react';
 import { gameUrl } from './games.js';
+import { finishMove } from './mudanza.js';
 
 function createStore(initial) {
   let value = initial;
@@ -104,6 +105,7 @@ export function useRegisterRoom(game, code, onLeave) {
       return undefined;
     }
     syncProfileName();
+    finishMove(game, code);
     const entry = { game, code, onLeave };
     room.set(entry);
     lastRoom.set({ game, code });

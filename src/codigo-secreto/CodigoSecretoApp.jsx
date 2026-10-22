@@ -10,6 +10,7 @@ import { clearSession, loadName, loadSession, saveSession, savedPlayerId } from 
 import { useRegisterRoom } from '../ui/store.js';
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
+import { useAutoCreate } from '../ui/mudanza.js';
 import {
   CARD_COLORS, COLORS, PAPER_CARD, PICKED_CARD, TEAM_BG, TEAM_BUTTON, TEAM_TEXT,
   ghostButton, inputStyle, labelStyle, panelStyle,
@@ -155,6 +156,9 @@ export default function CodigoSecretoApp({ onBackToMenu }) {
       setBusy(false);
     }
   }
+
+  // El anfitrión que se pasó de otro juego con todos: la sala se crea sola.
+  useAutoCreate(handleCreate, Boolean(cleanName(name)));
 
   async function handleJoin(e) {
     e.preventDefault();

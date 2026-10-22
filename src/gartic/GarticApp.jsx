@@ -8,6 +8,8 @@ import Task from './Task.jsx';
 import Reveal from './Reveal.jsx';
 import Icon from './Icon.jsx';
 import { PublicCheckbox, PublicSwitch } from '../lobby/PublicRoom.jsx';
+import ChangeGame from '../lobby/ChangeGame.jsx';
+import { useAutoCreate, useAutoJoin, useMoveWatch } from '../ui/mudanza.js';
 import './gartic.css';
 import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
 import { gameById, gameUrl } from '../ui/games.js';
@@ -145,6 +147,11 @@ export default function GarticApp({onBackToMenu}){
     });
   }
   useRegisterRoom('gartic', room ? code : '', () => { leave(); });
+  // Cambiar de juego con todos (ver src/ui/mudanza.js): el anfitrión crea la sala sola, los demás entran solos
+  // y, desde la sala de espera, siguen al anfitrión si se pasa a otro juego.
+  useAutoCreate(()=>enter(true),Boolean(uid)&&Boolean(cleanName(name)));
+  useAutoJoin(Boolean(uid)&&Boolean(cleanName(name))&&canJoinInvite&&!code,()=>enter(false));
+  useMoveWatch(phase==='lobby'?code:'');
   async function copy(link){
     const url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('juego','gartic');url.searchParams.set('sala',code);
     const value=link?url.toString():code;
@@ -257,6 +264,7 @@ export default function GarticApp({onBackToMenu}){
       </div>
       {host && Object.keys(connected).length<3 && <p className="gp-note gp-center">Hacen falta al menos 3 jugadores conectados.</p>}
       <PublicSwitch code={code} host={host} players={playerCount} className="gp-public"/>
+      <ChangeGame code={code} host={host} players={playerCount} className="gp-change-game"/>
     </Frame>;
   }
   return <Frame onBack={leave} backLabel="Salir" wide>

@@ -8,6 +8,7 @@ import CafeOTeSecretWord from './CafeOTeSecretWord.jsx';
 import CafeOTeBoard from './CafeOTeBoard.jsx';
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
+import { useAutoCreate } from '../ui/mudanza.js';
 import { useRegisterRoom } from '../ui/store.js';
 
 function codeFromUrl() {
@@ -100,6 +101,9 @@ export default function CafeOTeApp({ onBackToMenu }) {
       setBusy(false);
     }
   }
+
+  // El anfitrión que se pasó de otro juego con todos: la sala se crea sola.
+  useAutoCreate(handleCreate, Boolean(cleanName(name)));
 
   async function handleJoin(e) {
     e.preventDefault();

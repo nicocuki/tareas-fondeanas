@@ -10,6 +10,8 @@ export const GAMES = [
     tagline: 'Tanques, cohetes y agua',
     description: 'Battle royale de tanquecitos que se pegan a las paredes, en bloques flotantes que se rompen a cohetazos mientras sube el agua. El último que queda gana. Como Rocket Bot Royale.',
     players: '2 a 25',
+    min: 2,
+    max: 25,
     duration: '3–6 min',
     input: 'Teclado y mouse',
     badge: 'Nuevo',
@@ -31,6 +33,8 @@ export const GAMES = [
     tagline: 'Among Us, en The Skeld',
     description: 'Hacé tus tareas en la nave… si sos tripulante. Los impostores matan, sabotean, se meten en las ventilaciones y mienten en las reuniones. Como Among Us.',
     players: '4 a 10',
+    min: 4,
+    max: 10,
     duration: '10–20 min',
     input: 'Teclado',
     badge: 'Nuevo',
@@ -51,6 +55,7 @@ export const GAMES = [
     tagline: 'El de la DS, online',
     description: 'El modo Mario vs Luigi de New Super Mario Bros, de 2 a 10 jugadores: juntá estrellas, robale las del otro y usá los poderes. Es el juego original de la comunidad, tal cual.',
     players: '2 a 10',
+    lobby: false, // no usa nuestras salas: no se puede elegir desde «Cambiar de juego»
     duration: '5–15 min',
     input: 'Teclado o joystick',
     badge: 'Nuevo',
@@ -71,6 +76,8 @@ export const GAMES = [
     tagline: 'Tiros, saltos y cartas',
     description: 'Duelos a los tiros en mapas chiquitos. El que pierde la ronda elige una carta y se vuelve más fuerte. Inspirado en ROUNDS.',
     players: '2 a 15',
+    min: 2,
+    max: 15,
     duration: '10–20 min',
     input: 'Teclado y mouse',
     badge: 'Nuevo',
@@ -91,6 +98,8 @@ export const GAMES = [
     tagline: 'Memes en vivo y a votar',
     description: 'Te toca una plantilla, le ponés el texto más gracioso que se te ocurra y después todos votan. Con modo «todos el mismo meme».',
     players: '2 a 12',
+    min: 2,
+    max: 12,
     duration: '10–20 min',
     input: 'Cualquier pantalla',
     howTo: [
@@ -110,6 +119,8 @@ export const GAMES = [
     tagline: 'Escribí antes de que explote',
     description: 'La bomba pasa de mano en mano con unas letras. Escribí una palabra que las tenga antes de que se termine la mecha… y que no te explote a vos.',
     players: '2 a 16',
+    min: 2,
+    max: 16,
     duration: '5–10 min',
     input: 'Teclado o celular',
     howTo: [
@@ -129,6 +140,8 @@ export const GAMES = [
     tagline: 'Teléfono descompuesto con dibujos',
     description: 'Escribí una frase, alguien la dibuja, otro adivina qué es… y al final se ve cómo se fue deformando la idea.',
     players: '3 a 20',
+    min: 3,
+    max: 20,
     duration: '10–20 min',
     input: 'Mouse o dedo',
     howTo: [
@@ -148,6 +161,8 @@ export const GAMES = [
     tagline: 'Espías, pistas y palabras',
     description: 'Dos a cuatro equipos. El espía da una pista de una palabra y su equipo tiene que encontrar las suyas sin tocar la bomba.',
     players: '4 a 20',
+    min: 4,
+    max: 20,
     duration: '15–30 min',
     input: 'Cualquier pantalla',
     howTo: [
@@ -167,6 +182,8 @@ export const GAMES = [
     tagline: 'Adivinar eligiendo entre dos',
     description: 'Los pensadores de los dos equipos acuerdan una palabra secreta. Cada adivinador se acerca a ella propuesta a propuesta: «¿café o té?».',
     players: '4 (2 vs 2)',
+    min: 4,
+    max: 4,
     duration: '10 min',
     input: 'Cualquier pantalla',
     howTo: [
@@ -186,6 +203,8 @@ export const GAMES = [
     tagline: 'HaxBall, con la física del original',
     description: 'Dos equipos, una pelota y mucho caos. Con pelotas, igual que HaxBall, o con autos que derrapan, en el modo coches.',
     players: '1 a 20',
+    min: 1,
+    max: 20,
     duration: '3–10 min',
     input: 'Teclado',
     badge: 'Beta',
@@ -200,6 +219,13 @@ export const GAMES = [
 ];
 
 export const gameById = (id) => GAMES.find((g) => g.id === id) || null;
+
+// Por qué no se puede pasar a ese juego con `count` jugadores (o null si se puede).
+export function playersProblem(game, count) {
+  if (count > game.max) return game.min === game.max ? `Es de ${game.max} justos y son ${count}.` : `Entran hasta ${game.max} y son ${count}.`;
+  if (count < game.min) return game.min === game.max ? `Es de ${game.min} justos y son ${count}.` : `Hacen falta al menos ${game.min} y son ${count}.`;
+  return null;
+}
 
 // Código Secreto vive en la raíz del sitio (por compatibilidad con los links viejos).
 export function gameUrl(id, code = '') {

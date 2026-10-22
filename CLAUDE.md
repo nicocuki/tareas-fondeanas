@@ -221,7 +221,7 @@ colores de equipo, las casillas de Código Secreto, la cancha del fútbol, la pa
 el HUD y la reunión, oscuros como el original) y Trazo Loco (copia el look
 de Gartic Phone, con sus variables `--gp-*` en `src/gartic/gartic.css`), que son iguales en los dos temas.
 
-- `games.js` es el catálogo (nombre, emoji, color, jugadores, «cómo jugar»). **Un juego nuevo se
+- `games.js` es el catálogo (nombre, emoji, color, jugadores con `min`/`max` en números, «cómo jugar»). **Un juego nuevo se
   agrega ahí, en `SCREENS` de `App.jsx` y en `ROOTS` de `worker/rules.js`.**
 - `store.js`: preferencias, perfil (el nombre usa la misma clave que `session.js`), la sala actual y
   los avisos. Cada juego llama a `useRegisterRoom(juego, código, salir)`: con eso el header muestra
@@ -303,6 +303,23 @@ con un clic (lleva a `?juego=…&sala=ABCD`, igual que un link de invitación).
   avisos en seis horas se descarta (`LISTING_TTL_MS`). **Un juego nuevo** que guarde la sala en
   `rooms/` con `phase`, `hostId` y `players` se lista solo; si tiene tope, sumalo a `MAX` en
   `worker/publicas.js`.
+
+### Cambiar de juego
+
+En la sala de espera, el anfitrión puede pasar a todos a otro juego (`ChangeGame` en `src/lobby/ChangeGame.jsx`, que va
+dentro de `LobbyLayout`; Trazo Loco lo pone a mano). Todo está en `src/ui/mudanza.js` y, como la marca de pública,
+**va aparte de las salas**: ningún reducer cambió.
+
+- El anfitrión elige el juego: se anota en `sessionStorage` (`tf:mudanza`) y va a `?juego=X&mudanza=1`. La entrada de
+  ese juego crea la sala sola (`useAutoCreate`) con el nombre del perfil.
+- Cuando el juego registra la sala nueva (`useRegisterRoom` → `finishMove`), se escribe `mudanza/{sala vieja}` =
+  «juego/CÓDIGO» (root en `ROOTS`) y la marca de pública pasa a la nueva.
+- Los de la sala de espera vieja lo ven (`useMoveWatch`) y van al link de la nueva con `&auto=1`: `JoinInvite`
+  entra solo (`useAutoJoin`). La sala vieja queda sola y se cierra por inactividad.
+- Los juegos donde no entran los que son quedan deshabilitados con el porqué (`playersProblem` en `games.js`).
+  Mario vs Luigi no aparece (`lobby: false`: no usa nuestras salas).
+- **Un juego nuevo**: `min`/`max` en `games.js` y `useAutoCreate` en su pantalla de entrada; si usa `JoinInvite` y
+  `LobbyLayout`, lo demás viene solo.
 
 ### Acciones del reducer
 

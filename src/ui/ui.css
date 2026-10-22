@@ -294,6 +294,19 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-public-knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--text-3); transition: transform 0.18s var(--ease), background 0.18s; }
 .tf-public-toggle.is-on .tf-public-knob { background: var(--accent); border-color: var(--accent); }
 .tf-public-toggle.is-on .tf-public-knob::after { transform: translateX(16px); background: var(--on-accent); }
+/* Cambiar de juego (src/lobby/ChangeGame.jsx): solo el anfitrión, en la sala de espera. */
+.tf-change-game-open { margin-top: 12px; }
+.tf-change-game { max-width: 620px; margin: 14px auto 0; padding: 14px; border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--surface); text-align: left; }
+.tf-change-game-title { margin: 0 0 10px; font-weight: 700; }
+.tf-change-game ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.tf-change-game li button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.tf-change-game li button.is-on { border-color: var(--chip-color, var(--accent)); box-shadow: 0 0 0 2px var(--chip-color, var(--accent)); }
+.tf-change-game li button:disabled { opacity: 0.55; cursor: not-allowed; }
+.tf-change-game-emoji { font-size: 24px; flex: none; }
+.tf-change-game-name { display: flex; flex-direction: column; min-width: 0; }
+.tf-change-game-name small { color: var(--text-2); font-size: 12px; }
+.tf-change-game li button:disabled small { color: var(--danger); }
+.tf-change-game-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
 .tf-lobby-unassigned { margin: 0 auto 16px; width: fit-content; max-width: 100%; padding: 6px 14px; border-radius: 999px; background: var(--surface-2); border: 1px dashed var(--border-strong); font-size: 13px; color: var(--text-2); text-align: center; }
 
 /* En celular, con una sala abierta, el código manda: el nombre del sitio queda solo como logo. */

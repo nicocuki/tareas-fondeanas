@@ -1,5 +1,7 @@
 import React from 'react';
 import { PublicSwitch } from './PublicRoom.jsx';
+import ChangeGame from './ChangeGame.jsx';
+import { useMoveWatch } from '../ui/mudanza.js';
 
 export default function LobbyLayout({
   code,
@@ -20,6 +22,8 @@ export default function LobbyLayout({
     (typeof window !== 'undefined'
       ? (new URLSearchParams(window.location.search).get('sala') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4)
       : '');
+  // Si el anfitrión se pasó a otro juego, todos atrás de él.
+  useMoveWatch(displayCode);
 
   return (
     <div className="cs-root tf-lobby" style={{ padding: '28px 16px 40px' }}>
@@ -46,6 +50,7 @@ export default function LobbyLayout({
           </div>
           {subtitle && <p className="tf-lobby-subtitle">{subtitle}</p>}
           {displayCode && (host || players > 0) && <PublicSwitch code={displayCode} host={host} players={players} />}
+          <ChangeGame code={displayCode} host={host} players={players} />
         </div>
 
         {/* Jugadores sin equipo asignado */}
