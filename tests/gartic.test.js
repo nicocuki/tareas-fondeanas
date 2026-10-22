@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeState, nextState, stepType, chainOwner, previousAuthor, buildAlbums, roundDuration, roomSettings, cleanSeconds, showDurations, showPosition, SHOW_TEXT_MS, SHOW_DRAWING_MS, SHOW_ALBUM_PAUSE_MS } from '../src/gartic/game.js';
+import { makeState, nextState, stepType, chainOwner, previousAuthor, buildAlbums, roundDuration, roomSettings, cleanSeconds, showDurations, showPosition, SHOW_TEXT_MS, SHOW_DRAWING_MS, SHOW_ALBUM_PAUSE_MS, ADVANCE_BACKUP_MS, myTurnToAdvance } from '../src/gartic/game.js';
 import { floodFill, makeReplayer, opUnits, parseStrokes } from '../src/gartic/drawing.js';
 const players={a:{name:'Ana'},b:{name:'Beto'},c:{name:'Cami'},d:{name:'Dani'}};
 test('cada cadena pasa por todos sin volver a su creador',()=>{
@@ -100,4 +100,14 @@ test('los trazos grabados se reproducen de a poco hasta el final',()=>{
  assert.equal(strokes,1); // el punto inicial y un tramo
  replay.advance(5);
  assert.ok(calls.includes('fillRect'));
+});
+test('si el que avanza la ronda tiene la conexión trabada, avanza el siguiente',()=>{
+  const ids=['c','a','b'],on={a:true,b:true,c:true};
+  assert.equal(myTurnToAdvance(ids,on,'a',0),true,'el primero, enseguida');
+  assert.equal(myTurnToAdvance(ids,on,'b',0),false);
+  assert.equal(myTurnToAdvance(ids,on,'b',ADVANCE_BACKUP_MS),true,'el segundo, si el primero no pudo');
+  assert.equal(myTurnToAdvance(ids,on,'c',ADVANCE_BACKUP_MS),false);
+  assert.equal(myTurnToAdvance(ids,on,'c',2*ADVANCE_BACKUP_MS),true);
+  assert.equal(myTurnToAdvance(ids,{b:true,c:true},'b',0),true,'uno desconectado no cuenta');
+  assert.equal(myTurnToAdvance(ids,on,'z',99999),false,'uno que no juega, nunca');
 });

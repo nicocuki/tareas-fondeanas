@@ -11,8 +11,10 @@ import {
 import { backgroundInterval, backgroundTimeout } from './ticker.js';
 
 const SECRET_KEY = 'tareas:secreto';
-const PING_MS = 20000;         // latido para que ni el navegador ni Cloudflare corten la conexión
-const DEAD_MS = 30000;         // un ping sin respuesta en este tiempo: la conexión se da por muerta
+// Latido para que ni el navegador ni Cloudflare corten la conexión, y para notar rápido una conexión que
+// quedó colgada (pasó en el colegio: con 20 s y 30 s se tardaba casi un minuto en reconectar).
+const PING_MS = 10000;
+const DEAD_MS = 15000;         // un ping sin respuesta en este tiempo: la conexión se da por muerta
 const IDLE_CLOSE_MS = 20000;   // una sala que ya nadie escucha se desconecta
 const MAX_TX_ATTEMPTS = 50;
 

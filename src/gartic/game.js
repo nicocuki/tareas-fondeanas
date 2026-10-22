@@ -128,3 +128,14 @@ export function showPosition(show, now, durations) {
   return { index, since: left };
 }
 export const showDone = (show, now, durations) => showPosition(show, now, durations).index >= durations.length - 1;
+
+// Quién avanza la ronda cuando están todos listos (o se acabó el tiempo). Lo hace el primero de los
+// conectados (por id) enseguida; si ese no puede (la conexión se le trabó, pero el servidor todavía lo
+// ve conectado), lo hace el segundo a los ADVANCE_BACKUP_MS, y así. El avance es una transacción que
+// mira la ronda, así que aunque lo intenten dos a la vez pasa una sola vez.
+export const ADVANCE_BACKUP_MS = 4000;
+export function myTurnToAdvance(participants, connected, uid, waited) {
+  const order = participants.filter((id) => connected[id]).sort();
+  const rank = order.indexOf(uid);
+  return rank >= 0 && waited >= rank * ADVANCE_BACKUP_MS;
+}

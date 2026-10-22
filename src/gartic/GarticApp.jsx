@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { loadName } from '../session.js';
 import { backend } from '../storage.js';
 import { backgroundInterval } from '../ticker.js';
-import { MODES, TIME_CHOICES, MIN_SECONDS, MAX_SECONDS, cleanName, cleanSeconds, previousAuthor, roomSettings } from './game.js';
+import { MODES, TIME_CHOICES, MIN_SECONDS, MAX_SECONDS, cleanName, cleanSeconds, previousAuthor, roomSettings, myTurnToAdvance } from './game.js';
 import * as network from './storage.js';
 import Task from './Task.jsx';
 import Reveal from './Reveal.jsx';
@@ -109,11 +109,13 @@ export default function GarticApp({onBackToMenu}){
   },[code,taskKey,phase,uid]);
   const currentReady=readyKey===taskKey?ready:{};
   const readyCount=Object.keys(currentReady).length;
+  // Desde cuándo esta pantalla ve que la ronda ya tiene que avanzar (ver myTurnToAdvance).
+  const dueSince=useRef({key:'',at:0});
   useEffect(()=>{
     if(!online || phase!=='playing' || state.positions?.[uid]===undefined || advancing.current || readyKey!==taskKey)return;
-    const coordinator=Object.keys(state.positions).sort().find((id)=>connected[id]);
-    if(coordinator!==uid)return;
     if(readyCount<state.count && now<state.startedAt+state.duration+5000)return;
+    if(dueSince.current.key!==taskKey)dueSince.current={key:taskKey,at:Date.now()};
+    if(!myTurnToAdvance(Object.keys(state.positions),connected,uid,Date.now()-dueSince.current.at))return;
     advancing.current=true;
     network.advance(code,state,readyCount,now).catch(()=>setError('No se pudo avanzar la ronda. Reintentando…')).finally(()=>{advancing.current=false;});
   },[tick,phase,readyCount,taskKey,online,readyKey,connected]);

@@ -28,6 +28,8 @@ El reloj usa `serverTimestamp()` (lo reemplaza el servidor al escribir) y `.info
 
 Como cualquier contenido que ya se entregó a un navegador, una referencia de Imitación podría conservarse fuera de la interfaz. El modo la oculta al terminar la memorización; no pretende borrar algo que el jugador ya vio.
 
+**Quién avanza la ronda** (cuando están todos listos o se acabó el tiempo más 5 s): una pantalla, la del primer participante conectado por id, enseguida. Si esa no puede (pasó en el colegio: la conexión se le trabó pero el servidor la seguía viendo conectada, y la partida quedaba frenada para todos), lo hace la segunda a los 4 s, la tercera a los 8, y así (`myTurnToAdvance`, `ADVANCE_BACKUP_MS`). El avance es una transacción que mira la ronda, así que pasa una sola vez.
+
 No hay un servidor ejecutando rondas cuando todos están desconectados: al volver un participante, se procesa el plazo vencido y la partida continúa. Una sala sin escrituras durante tres días se borra sola.
 
 ## Editor y resultados
