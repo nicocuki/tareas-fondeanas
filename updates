@@ -497,9 +497,14 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.15.1 = Cohete Royale: helicópteros desde el agua, tiros con gravedad y flecha al enemigo
+1.15.1 = Cohete Royale: helicópteros desde el agua, tiros con gravedad y flecha al enemigo
 - Los helicópteros salen al ras del agua, suben hasta el medio y bajan del otro lado. Si no saltás, te tiran antes de llegar al agua.
 - Los cohetes y los demás tiros ahora caen con la gravedad (menos el láser).
 - Una flecha roja alrededor de tu tanque te marca dónde está el enemigo más cercano.
 - Menos cajas tiradas por el mapa (8), y solo al empezar la partida. Las que caen en paracaídas siguen igual.
 - La curita se usa al agarrarla: cura el 30 % al instante, sin ocupar lugar en el inventario.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.15.15 = Cohete Royale: los tiros empujan un poco más
+- El retroceso de cada disparo es un poco más fuerte: te impulsás más alto en el aire.
