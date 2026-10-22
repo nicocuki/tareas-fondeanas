@@ -8,8 +8,8 @@ import JoinInvite from '../ui/JoinInvite.jsx';
 import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
 import { gameUrl } from '../ui/games.js';
 import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, inGame, makeId, newRoom, ranking, score } from './game.js';
-import { WEAPONS, CRATE_WEAPONS } from './sim.js';
-import CohetesGame from './CohetesGame.jsx';
+import { ITEMS, ITEM_LIST } from './sim.js';
+import CohetesGame, { ItemIcon } from './CohetesGame.jsx';
 import './cohetes.css';
 
 const GAME = 'cohetes';
@@ -93,11 +93,12 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
       <div className="ck-card ck-controls">
         <h2>Cómo se juega</h2>
         <ul>
-          <li>Arrancan todos en la nave: <b>disparás para saltar</b> y bajás en paracaídas donde quieras.</li>
-          <li><kbd>A</kbd> <kbd>D</kbd> (o las flechas) para manejar: el tanque <b>se pega a las paredes y los techos</b>. Apuntás con el mouse y disparás con el <b>clic</b> (o <kbd>Espacio</kbd>). Tenés 3 cohetes que se recargan solos.</li>
+          <li>Arrancan en <b>dos helicópteros</b>, uno de cada lado: <b>disparás para saltar</b> y bajás en paracaídas donde quieras.</li>
+          <li><kbd>A</kbd> <kbd>D</kbd> (o las flechas) para manejar: el tanque <b>se pega a las paredes y los techos</b>, y cada tecla lo lleva siempre para el mismo lado del tanque. Apuntás con el mouse y disparás con el <b>clic</b> (o <kbd>Espacio</kbd>). Tenés 3 cohetes que se recargan solos.</li>
           <li>Cada tiro te empuja para atrás: <b>disparando para el lado contrario te despegás y salís volando</b>.</li>
           <li>Los cohetes rompen el terreno. El agua sube: el que se hunde, queda afuera. Gana el último que queda.</li>
-          <li>Juntá monedas 🪙 y agarrá las cajas que caen en paracaídas: traen {CRATE_WEAPONS.map((w) => WEAPONS[w].name).join(', ')}.</li>
+          <li>Juntá monedas 🪙 y agarrá las cajas (hay por el mapa y caen más en paracaídas). Lo que traen se suma a tu inventario: <kbd>1</kbd> es el cohete, que nunca se acaba, y <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> lo que juntaste.</li>
+          <li className="ck-items">{ITEM_LIST.map((w) => <span key={w} title={ITEMS[w].name}><ItemIcon w={w} /> {ITEMS[w].name}</span>)}</li>
         </ul>
       </div>
       <div className="ck-start">
@@ -117,8 +118,10 @@ function Final({ room, me, onDispatch, onLeave }) {
   const medals = ['🥇', '🥈', '🥉'];
   return (
     <div className="ck-final">
-      <p className="ck-eyebrow">Fin de la partida</p>
-      <h1>{winner ? (winner.id === me.id ? '¡Ganaste! 🏆' : `¡Ganó ${winner.name}!`) : 'Se hundieron todos'}</h1>
+      <div className="ck-wins">
+        {winner ? <><span className="ck-dot" style={{ background: winner.color }} /> <b>{winner.name}</b> GANA</> : 'SE HUNDIERON TODOS'}
+      </div>
+      {winner?.id === me.id && <p className="ck-eyebrow">¡Ganaste! 🏆</p>}
       <table className="ck-table">
         <thead><tr><th>#</th><th>Jugador</th><th>💥 Bajas</th><th>🪙 Monedas</th><th>Puntos</th></tr></thead>
         <tbody>

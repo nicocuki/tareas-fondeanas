@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { COUNTDOWN_MS, MAX_PLAYERS, applyAction, findPlayer, newRoom, ranking } from '../src/cohetes/game.js';
 import { carve, decorations, makeTerrain, solid, surfaceY, waterY } from '../src/cohetes/terrain.js';
 import {
-  MAX_COINS, STEP, TANK_R, WEAPONS, blastOn, coinSpots, crateInfo, newTank, overlaps, projectilesFor, push, shipAt, stepProjectile, stepTank,
+  ITEMS, MAX_COINS, MAX_CRATES, SHIP_TIME, STEP, addItem, blastOn, coinSpots, crateInfo, mapItems, newTank, overlaps, projectilesFor, push, shipAt, shipFor,
+  stepProjectile, stepTank, useItem,
 } from '../src/cohetes/sim.js';
 
 const run = (t, p, seconds, dir = 0) => { for (let i = 0; i < seconds / STEP; i++) stepTank(p, dir, STEP, t); };
@@ -26,6 +27,16 @@ test('cohetes: la misma semilla arma el mismo mapa, y con los mismos cráteres q
   assert.ok(makeTerrain(1, 25).W > makeTerrain(1, 2).W, 'con más jugadores el mapa es más ancho');
   assert.ok(a.holes.length > 3, 'hay anillos huecos');
   assert.ok(decorations(a, 1234).length > 10, 'hay plantitas arriba de los bloques');
+});
+
+test('cohetes: hay mapas de tierra y de hielo, y los dos se arman bien', () => {
+  const themes = new Set();
+  for (let seed = 1; seed < 40; seed++) {
+    const t = makeTerrain(seed, 6);
+    themes.add(t.theme);
+    assert.ok(t.grid.some((v) => v), `mapa vacío con la semilla ${seed}`);
+  }
+  assert.deepEqual([...themes].sort(), ['hielo', 'tierra']);
 });
 
 test('cohetes: el agua espera a que bajen todos y después sube, más rápido con la opción rápida', () => {
@@ -68,6 +79,20 @@ test('cohetes: el tanque da toda la vuelta a un bloque pegado: piso, pared, tech
   assert.ok(ceiling, 'anduvo por el techo, cabeza abajo');
 });
 
+test('cohetes: cada tecla lleva siempre para el mismo lado del tanque, aunque se suelte y se vuelva a apretar', () => {
+  // Cabeza abajo, en el techo de un bloque, D lleva para la izquierda (el mismo sentido en el que da la vuelta).
+  const t = { W: 400, H: 400, grid: new Uint8Array(400 * 400), holes: [] };
+  for (let y = 150; y < 250; y++) for (let x = 150; x < 250; x++) t.grid[y * 400 + x] = 1;
+  const p = newTank(200, 120);
+  run(t, p, 1);
+  for (let i = 0; i < 12 / STEP && !(p.ny > 0.95 && Math.abs(p.x - 200) < 30); i++) stepTank(p, 1, STEP, t);
+  assert.ok(p.ny > 0.95, 'llegó al techo');
+  const x0 = p.x;
+  run(t, p, 0.1, 0); // suelta la tecla
+  run(t, p, 0.3, 1); // y la vuelve a apretar
+  assert.ok(p.x < x0 - 3, `siguió para la izquierda (${x0.toFixed(1)} → ${p.x.toFixed(1)})`);
+});
+
 test('cohetes: el retroceso de un tiro lo despega y lo hace volar; uno chiquito no', () => {
   const t = makeTerrain(7, 6);
   const p = landed(t, xWithGround(t));
@@ -79,9 +104,20 @@ test('cohetes: el retroceso de un tiro lo despega y lo hace volar; uno chiquito 
   assert.ok(!p.stuck && p.y < y0 - 15, `salió volando (${y0} → ${p.y})`);
 });
 
-test('cohetes: la nave cruza el mapa y con paracaídas se baja despacio', () => {
-  const a = shipAt(-5, 1000), b = shipAt(10, 1000), c = shipAt(30, 1000);
-  assert.ok(a.x < 0 && b.x > a.x && c.gone);
+test('cohetes: dos helicópteros, uno de cada lado, suben hasta el medio y bajan hasta la altura del principio', () => {
+  const W = 1000, end = SHIP_TIME - 1e-6;
+  const a0 = shipAt(-5, W, 0), a1 = shipAt(end, W, 0), am = shipAt((SHIP_TIME - 5) / 2, W, 0);
+  const b0 = shipAt(-5, W, 1), b1 = shipAt(end, W, 1);
+  assert.ok(a0.x < 0 && a1.x > W, 'el 0 va de izquierda a derecha');
+  assert.ok(b0.x > W && b1.x < 0, 'el 1 va de derecha a izquierda');
+  assert.ok(Math.abs(a0.y - a1.y) < 8, 'termina a la altura en que salió');
+  assert.ok(am.y < a0.y - 80, 'en el medio va más alto');
+  assert.ok(Math.abs(am.x - W / 2) < 5);
+  assert.ok(shipAt(SHIP_TIME + 1, W, 0).gone);
+  assert.deepEqual(['a', 'b', 'c', 'd'].map((id) => shipFor(['a', 'b', 'c', 'd'], id)), [0, 1, 0, 1], 'se reparten de a uno');
+});
+
+test('cohetes: con paracaídas se baja despacio', () => {
   const t = makeTerrain(7, 6);
   const p = newTank(xWithGround(t), 90, 'chute');
   run(t, p, 0.5);
@@ -103,11 +139,18 @@ test('cohetes: los cohetes van derecho, explotan contra la tierra y el daño baj
   const far = blastOn({ x: 0, y: 0 }, { x: 0, y: 25, w: 'rocket' });
   assert.ok(near.damage > far.damage);
   assert.equal(blastOn({ x: 0, y: 0 }, { x: 200, y: 0, w: 'rocket' }), null);
-  assert.ok(WEAPONS.nuke.radius > WEAPONS.rocket.radius);
+  assert.ok(ITEMS.nuke.radius > ITEMS.rocket.radius);
 });
 
-test('cohetes: la triple tira tres, la mina se queda pegada hasta que alguien pasa', () => {
-  assert.equal(projectilesFor({ k: 'a', x: 0, y: 0, a: 0, w: 'triple' }, 'yo').length, 3);
+test('cohetes: la metralla tira varios, el escudo devuelve, la mina se queda pegada hasta que alguien pasa', () => {
+  assert.equal(projectilesFor({ k: 'a', x: 0, y: 0, a: 0, w: 'flak' }, 'yo').length, ITEMS.flak.count);
+  assert.equal(projectilesFor({ k: 'a', x: 0, y: 0, a: 0, w: 'shield' }, 'yo').length, 0, 'el escudo no tira nada');
+  const empty = { W: 400, H: 400, grid: new Uint8Array(400 * 400), holes: [] };
+  const [r] = projectilesFor({ k: 'r', x: 100, y: 200, a: 0, w: 'rocket' }, 'yo');
+  for (let i = 0; i < 120 && !r.reflectedBy; i++) stepProjectile(r, STEP, empty, [{ id: 'otro', x: 200, y: 200, shield: true }]);
+  assert.equal(r.reflectedBy, 'otro');
+  assert.equal(r.owner, 'otro', 'el tiro devuelto es del que tenía el escudo');
+  assert.ok(r.vx < 0, 'vuelve para atrás');
   const t = makeTerrain(5, 6);
   const x = xWithGround(t);
   const [m] = projectilesFor({ k: 'm', x, y: surfaceY(t, x, 175) - 20, a: Math.PI / 2, w: 'mine' }, 'yo');
@@ -123,6 +166,26 @@ test('cohetes: monedas y cajas salen de la semilla, las monedas en el aire', () 
   assert.deepEqual(coins, coinSpots(makeTerrain(42, 10), 42));
   for (const c of coins) assert.ok(!solid(t, c.x, c.y), 'moneda adentro de la tierra');
   assert.deepEqual(crateInfo(3, 42, t.W), crateInfo(3, 42, t.W));
+  const items = mapItems(t, 42);
+  assert.ok(items.length > 5, 'hay cajas tiradas por el mapa');
+  for (const c of items) {
+    assert.ok(c.i < MAX_CRATES && ITEMS[c.weapon]);
+    assert.ok(solid(t, c.x, c.y + 1) && !solid(t, c.x, c.y - 3), 'apoyada arriba de la tierra');
+  }
+});
+
+test('cohetes: el inventario suma lo repetido, usa la primera casilla libre y se vacía al gastarse', () => {
+  let inv = [null, null, null];
+  inv = addItem(inv, 'nuke');
+  inv = addItem(inv, 'heal');
+  inv = addItem(inv, 'nuke');
+  assert.deepEqual(inv, [{ w: 'nuke', n: 2 }, { w: 'heal', n: 1 }, null]);
+  inv = addItem(inv, 'mine');
+  assert.equal(addItem(inv, 'laser'), null, 'lleno: no entra otra cosa');
+  assert.ok(addItem(inv, 'mine'), 'pero sí una que ya tiene');
+  inv = useItem(inv, 2);
+  assert.equal(inv[1], null);
+  assert.deepEqual(useItem(inv, 1)[0], { w: 'nuke', n: 1 });
 });
 
 // ─── Sala ────────────────────────────────────────────────────────────────────
@@ -144,7 +207,8 @@ test('cohetes: gana el último vivo; las bajas cuentan para el que pegó y el ra
   const m = room.match.n;
   const t0 = 1000 + COUNTDOWN_MS;
   assert.equal(applyAction(room, { type: 'died', playerId: 'p1', match: m }, { now: 1000 }), null, 'en la cuenta regresiva no se muere');
-  room = applyAction(room, { type: 'died', playerId: 'p1', match: m, by: 'p0' }, { now: t0 });
+  room = applyAction(room, { type: 'died', playerId: 'p1', match: m, by: 'p0', w: 'nuke' }, { now: t0 });
+  assert.equal(room.match.deaths.at(-1).w, 'nuke', 'guarda con qué lo eliminaron');
   assert.equal(applyAction(room, { type: 'died', playerId: 'p1', match: m }, { now: t0 }), null, 'no se muere dos veces');
   room = applyAction(room, { type: 'died', playerId: 'p2', match: m, by: 'p0' }, { now: t0 });
   room = applyAction(room, { type: 'died', playerId: 'p3', match: m, by: null }, { now: t0 });
@@ -181,7 +245,8 @@ test('cohetes: el que entra con la partida empezada mira, y si alguien se va la 
 test('cohetes: la sala con 25 jugadores y todo agarrado entra en el tope', () => {
   let room = start(lobby(MAX_PLAYERS));
   for (let i = 0; i < MAX_COINS; i++) room.match.coins[i] = `p${i % 25}`;
-  for (let i = 0; i < 40; i++) room.match.crates[i] = `p${i % 25}`;
+  for (let i = 0; i < 24; i++) room.match.deaths.push({ id: `p${i}`, by: `p${i + 1}`, w: 'homing' });
+  for (let i = 0; i < MAX_CRATES; i++) room.match.crates[i] = `p${i % 25}`;
   const size = JSON.stringify(JSON.stringify(room)).length;
   assert.ok(size < 20000, `la sala pesa ${size}`);
 });

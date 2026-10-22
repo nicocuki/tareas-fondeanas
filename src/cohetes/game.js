@@ -5,7 +5,7 @@
 // qué monedas y cajas ya se agarraron y el ranking. El movimiento, los tiros y las explosiones van en
 // tiempo real por otro lado (CohetesGame.jsx): cada pantalla es dueña de su tanque y avisa acá
 // cuando muere (`died`), igual que en A los Tiros.
-import { MAX_COINS, MAX_CRATES } from './sim.js';
+import { ITEMS, MAX_COINS, MAX_CRATES } from './sim.js';
 
 export const GAME_TYPE = 'cohetes';
 export const MAX_PLAYERS = 25;
@@ -74,10 +74,10 @@ function checkEnd(room) {
   room.match.winner = left[0]?.id || null;
 }
 
-function kill(room, target, byId) {
+function kill(room, target, byId, weapon) {
   target.alive = false;
   target.place = alive(room).length + 1; // los que siguen vivos van adelante
-  room.match.deaths.push({ id: target.id, by: byId || null });
+  room.match.deaths.push({ id: target.id, by: byId || null, w: byId && ITEMS[weapon] ? weapon : null });
   const by = byId && byId !== target.id ? findPlayer(room, byId) : null;
   if (by?.inGame) by.kills += 1;
 }
@@ -146,7 +146,7 @@ export function applyAction(room, action, ctx = {}) {
       const target = action.target ? (host ? findPlayer(next, action.target) : null) : me;
       if (next.phase !== 'playing' || !sameMatch || !target?.inGame || !target.alive || now < next.match.startsAt) return null;
       const by = action.by && findPlayer(next, action.by)?.inGame ? action.by : null;
-      kill(next, target, by);
+      kill(next, target, by, action.w);
       checkEnd(next);
       break;
     }

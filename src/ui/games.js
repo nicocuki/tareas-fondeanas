@@ -14,12 +14,12 @@ export const GAMES = [
     input: 'Teclado y mouse',
     badge: 'Nuevo',
     howTo: [
-      'Arrancan todos en una nave que cruza el mapa: disparás para saltar y bajás en paracaídas.',
-      'Manejás con A y D (o las flechas) y el tanque se pega a las paredes y los techos. Apuntás con el mouse y disparás con el clic o Espacio: tenés 3 cohetes que se recargan.',
+      'Arrancan en dos helicópteros, uno de cada lado del mapa: disparás para saltar y bajás en paracaídas.',
+      'Manejás con A y D (o las flechas) y el tanque se pega a las paredes y los techos (cada tecla lo lleva siempre para el mismo lado). Apuntás con el mouse y disparás con el clic o Espacio: tenés 3 cohetes que se recargan.',
       'Cada tiro te empuja para atrás: disparando para el lado contrario te despegás y salís volando.',
       'Los cohetes rompen el terreno y empujan a los demás. Si te quedás sin vida o te hundís, quedás afuera.',
       'El agua sube cada vez más: hay que buscar lo alto. Gana el último tanque que queda.',
-      'Juntá monedas y agarrá las cajas que caen en paracaídas: traen armas especiales (triple, granada, teledirigido, bomba gorda, láser y mina).',
+      'Juntá monedas y agarrá las cajas (hay por el mapa y caen en paracaídas): lo que traen va a tu inventario y lo elegís con 1, 2, 3 y 4. Hay 14 objetos, de la bomba nuclear al escudo, el láser y la curita.',
     ],
   },
   {

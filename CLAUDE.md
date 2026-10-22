@@ -552,38 +552,50 @@ rompe a cohetazos mientras sube el agua. De 2 a 25, solo compu. `id`: `cohetes` 
 `gameType: 'cohetes'`, raíz `cohetes/` en `ROOTS`). **La primera versión estaba mal entendida** (colinas,
 cohetes en arco); Nico mandó un video del original y se rehízo con esto, que es como funciona de verdad:
 
-- **El mapa** (`terrain.js`): bloques flotando en el espacio, acomodados en una grilla (`CELL`): anillos y
-  «U» huecas con las esquinas redondeadas, algún bloque lleno, y abajo islas sobre el agua. Fondo violeta con
-  columnas y nieve. La tierra va a cuadros grandes con **un borde verde en todos los lados (también en los
-  cráteres)** y una franja marrón oscura adentro (`render.js`, calculado con la distancia al aire), y plantitas
-  arriba (`decorations`). Es una grilla de «píxeles» armada desde la semilla: todas las pantallas tienen el
-  mismo mapa, y como cavar es borrar, con los mismos cráteres (en cualquier orden) queda igual.
+- **El mapa** (`terrain.js`): bloques flotando en el espacio, acomodados en una grilla (`CELL`). Dos temas
+  (`THEMES`, sale de la semilla): **tierra** (anillos y «U» huecas, tierra a cuadros con **borde verde en todos
+  los lados, también en los cráteres**, fondo violeta) y **hielo** (triángulos llenos y huecos, barras en
+  diagonal y «V», blanco con borde celeste en capas, fondo azul, picos de hielo). El borde se calcula con la
+  distancia al aire (`render.js`). Es una grilla de «píxeles» armada desde la semilla: todas las pantallas
+  tienen el mismo mapa, y como cavar es borrar, con los mismos cráteres (en cualquier orden) queda igual.
 - **El tanque se pega a cualquier superficie** (`stepTank` en `sim.js`): maneja por el piso, las paredes y los
-  techos y gira con ella (`nx`, `ny` = la normal). Hacia qué lado va se decide al apretar la tecla y se
-  mantiene mientras se sostiene (`side`), así se da la vuelta entera a un bloque sin trabarse en las esquinas
-  (hay un test). **No hay propulsor**: se despega solo con un empujón fuerte (`push`, más que `UNSTICK`):
-  el retroceso de un tiro (se dispara para el lado contrario) o una explosión (la propia empuja al 70 %).
-- **Los cohetes van derecho** (sin gravedad, estela celeste). Cargador de 3 (`MAX_AMMO`) que se recarga de a
-  uno (`RELOAD`). Las armas de las cajas se usan en vez del cohete hasta gastarlas.
-- **Al empezar**, todos van en una nave que cruza el mapa (`shipAt`, igual en todas las pantallas): 5 s de
-  «¡Preparate!» y después «Disparo para saltar»; se baja en paracaídas (`mode: 'chute'`). Si no saltás, te
-  tira sola al final del mapa.
+  techos y gira con ella (`nx`, `ny` = la normal). **Cada tecla lleva siempre para el mismo lado del tanque**
+  (por la tangente `(-ny, nx)`, con signo fijo): cabeza abajo en el techo de un cuadrado, D va para la
+  izquierda aunque se suelte y se vuelva a apretar. Pedido explícito de Nico: antes el sentido se decidía al
+  apretar y al soltar cambiaba. **No hay propulsor**: se despega solo con un empujón fuerte (`push`, más que
+  `UNSTICK`): el retroceso de un tiro (`KICK` por arma) o una explosión (la propia empuja al 70 %). Nico pidió
+  tanque más lento, menos gravedad y menos empujón (`DRIVE`, `GRAVITY`, `RECOIL`, `KNOCK`) y cámara más lejos (`VIEW_W`).
+- **Inventario** (`addItem`/`useItem`): 4 casillas (`SLOTS`), con 1 a 4 o un clic. La 1 es el cohete, infinito,
+  con cargador de 3 (`MAX_AMMO`) que se recarga de a uno; en las otras tres se apila lo que agarrás
+  (`{ w, n }`). Con las tres llenas no se agarra una caja de otra cosa: queda ahí.
+- **Los objetos** (`ITEMS`, de la wiki del original) tienen `kind`: `shot` (proyectiles: nuclear, mina, ráfaga de
+  5, metralla, granadas, taladro, teledirigido, veneno y humo, que dejan una zona `ZONES`), `self` (escudo,
+  jetpack, curita +30), `charge` (láser: 2 s cargando, después un rayo instantáneo) y `zone` (remolino, que se
+  arma en todas las pantallas desde el disparo con `zoneFromShot`). El escudo devuelve los tiros: lo decide la
+  pantalla del que tiró, que lo ve en la foto del otro (`sd`), y desde ahí el tiro es del dueño del escudo. El
+  taladro manda cada tramo del túnel como explosión `drillseg` (solo cava).
+- **Al empezar**, dos helicópteros (`shipAt(s, W, k)`): el 0 sale de la izquierda y el 1 de la derecha, suben
+  hasta el medio y bajan hasta la misma altura en la otra punta; `shipFor` reparte a los jugadores de a uno.
+  5 s de «¡Preparate!» y después «Disparo para saltar»; se baja en paracaídas (`mode: chute`). Si no saltás,
+  te tira solo cerca de la otra punta (siempre adentro del mapa). Un clic cortito cuenta igual (`pressed`).
 - **La sala** (`game.js`) guarda lo de a una vez: la semilla (`match.seed`), cuántos eran al empezar
-  (`match.size`, define el ancho), quién murió y quién lo mató (`died`, con `by`), las monedas y cajas
-  agarradas (`coin`/`crate`: el primero gana) y el ranking (`place`, `kills`, `coins`, `score`). Gana el
+  (`match.size`, define el ancho), quién murió, quién lo mató y con qué (`died`, con `by` y `w`), las monedas y
+  cajas agarradas (`coin`/`crate`: el primero gana) y el ranking (`place`, `kills`, `coins`, `score`). Gana el
   último vivo. El que entra tarde mira.
 - **En tiempo real, como A los Tiros**: cada pantalla es dueña de su tanque (paso de 1/120 s) y manda una foto
-  (WebRTC directo, respaldo en `cohetes/{sala}/p/{id}`) con posición, normal y `m` (nave, paracaídas o
-  tanque). Los disparos viajan en la foto (`sh`) y cada pantalla simula los proyectiles, pero **dónde explota
-  cada uno lo decide la pantalla del que tiró** y lo manda en `ex`: todas cavan ese cráter y cada una calcula
-  el daño y el empujón de su propio tanque (`blastOn`). Las copias de los demás solo se ven.
+  (WebRTC directo, respaldo en `cohetes/{sala}/p/{id}`) con posición, normal, `m` (helicóptero, paracaídas o
+  tanque), escudo (`sd`), jetpack (`jt`) y láser cargando (`ch`). Los disparos viajan en la foto (`sh`) y cada
+  pantalla simula los proyectiles, pero **dónde explota cada uno lo decide la pantalla del que tiró** y lo manda
+  en `ex`: todas cavan ese cráter y arman la misma zona, y cada una calcula el daño y el empujón de su propio
+  tanque (`blastOn`); el veneno lo calcula cada una para el suyo. Las copias de los demás solo se ven.
 - **El agua** sube con el tiempo de partida (`waterY`: 30 s quieta mientras bajan todos, después sube según la
   opción de velocidad). Hundirse o quedarse sin vida es quedar afuera; si alguien te pegó en los últimos 6 s,
-  la baja es suya.
-- **Monedas** en fila adentro de los anillos (de la semilla) y **cajas** (una cada 10 s, en paracaídas) con
-  armas: triple, granada, teledirigido, bomba gorda, láser y mina (la detecta la pantalla del dueño).
-- La pantalla imita la del original: los 3 cohetes y las casillas abajo al medio, el círculo «tanques quedan»
-  arriba a la derecha, monedas y bajas arriba a la izquierda. No hay mapa chico (el original no tiene).
+  la baja es suya (y con su arma).
+- **Monedas** en fila (de la semilla) y **cajas de metal**: `MAP_ITEMS` ya tiradas por el mapa al empezar
+  (`mapItems`, índices desde `MAX_DROPS`) y una cada 10 s en paracaídas (`crateInfo`).
+- La pantalla imita la del original: los 3 cohetes y las 4 casillas abajo al medio, el círculo «tanques quedan»
+  arriba a la derecha con las bajas abajo («X [arma] Y»), «Eliminaste a X» en el medio, el cartel
+  «¡ELIMINADO! por X con [arma]» con el puesto («N de M») y «X GANA» al final. No hay mapa chico.
 - El anfitrión da por muerto al que no manda fotos en 12 s (pestaña cerrada).
 - `window.__cohetes` (estado de la pantalla: tanque, demás, proyectiles, cajas) y `data-cohetes-canvas`
   existen para manejar el juego desde un navegador automatizado.
