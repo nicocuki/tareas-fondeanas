@@ -104,7 +104,7 @@ test('cohetes: el retroceso de un tiro lo despega y lo hace volar; uno chiquito 
   assert.ok(!p.stuck && p.y < y0 - 15, `salió volando (${y0} → ${p.y})`);
 });
 
-test('cohetes: dos helicópteros, uno de cada lado, salen del agua, suben hasta el medio y bajan hasta el agua', () => {
+test('cohetes: dos helicópteros, uno de cada lado, van al ras del agua, suben hasta el medio del mapa y bajan hasta el agua', () => {
   const W = 1000, end = SHIP_TIME - 1e-6;
   const H = 1100, level = waterY(0, H);
   const a0 = shipAt(-5, W, H, 0), a1 = shipAt(end, W, H, 0), am = shipAt((SHIP_TIME - 5) / 2, W, H, 0);
@@ -113,7 +113,9 @@ test('cohetes: dos helicópteros, uno de cada lado, salen del agua, suben hasta 
   assert.ok(a0.x < 0 && a1.x > W, 'el 0 va de izquierda a derecha');
   assert.ok(b0.x > W && b1.x < 0, 'el 1 va de derecha a izquierda');
   assert.ok(Math.abs(a0.y - a1.y) < 8, 'termina a la altura en que salió');
-  assert.ok(am.y < 120, 'en el medio va arriba de todo');
+  assert.ok(Math.abs(am.y - H / 2) < 5, `en el medio va a media altura (${am.y})`);
+  assert.ok(Math.abs(shipAt(-2.2, W, H, 0).y - a0.y) < 7, 'hasta que la cuenta llega a 2 va derecho');
+  assert.ok(shipAt(0, W, H, 0).y < a0.y - 40, 'después sube');
   assert.ok(Math.abs(am.x - W / 2) < 5);
   assert.ok(shipAt(SHIP_TIME + 1, W, H, 0).gone);
   assert.deepEqual(['a', 'b', 'c', 'd'].map((id) => shipFor(['a', 'b', 'c', 'd'], id)), [0, 1, 0, 1], 'se reparten de a uno');

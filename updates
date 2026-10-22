@@ -506,5 +506,11 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.15.15 = Cohete Royale: los tiros empujan un poco más
+1.15.15 = Cohete Royale: los tiros empujan un poco más
 - El retroceso de cada disparo es un poco más fuerte: te impulsás más alto en el aire.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.15.25 = Cohete Royale: recorrido de los helicópteros y recarga más lenta
+- Los helicópteros van derecho al ras del agua hasta que la cuenta llega a 2, suben hasta el medio del mapa (de ancho y de alto, ya no hasta arriba) y bajan del otro lado.
+- Cada cohete tarda un segundo más en recargarse (1,85 s).

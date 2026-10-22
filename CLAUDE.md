@@ -566,7 +566,7 @@ cohetes en arco); Nico mandó un video del original y se rehízo con esto, que e
   `UNSTICK`): el retroceso de un tiro (`KICK` por arma) o una explosión (la propia empuja al 70 %). Nico pidió
   tanque más lento, menos gravedad y menos empujón (`DRIVE`, `GRAVITY`, `RECOIL`, `KNOCK`) y cámara más lejos (`VIEW_W`).
 - **Inventario** (`addItem`/`useItem`): 4 casillas (`SLOTS`), con 1 a 4 o un clic. La 1 es el cohete, infinito,
-  con cargador de 3 (`MAX_AMMO`) que se recarga de a uno; en las otras tres se apila lo que agarrás
+  con cargador de 3 (`MAX_AMMO`) que se recarga de a uno cada 1,85 s (`RELOAD`); en las otras tres se apila lo que agarrás
   (`{ w, n }`). Con las tres llenas no se agarra una caja de otra cosa: queda ahí.
 - **Los objetos** (`ITEMS`, de la wiki del original) tienen `kind`: `shot` (proyectiles: nuclear, mina, ráfaga de
   5, metralla, granadas, taladro, teledirigido, veneno y humo, que dejan una zona `ZONES`), `self` (escudo,
@@ -575,7 +575,8 @@ cohetes en arco); Nico mandó un video del original y se rehízo con esto, que e
   pantalla del que tiró, que lo ve en la foto del otro (`sd`), y desde ahí el tiro es del dueño del escudo. El
   taladro manda cada tramo del túnel como explosión `drillseg` (solo cava).
 - **Al empezar**, dos helicópteros (`shipAt(s, W, H, k)`): el 0 sale de la izquierda y el 1 de la derecha, al ras
-  del agua; suben hasta el medio (`SHIP_HIGH`) y bajan hasta el agua de la otra punta. `shipFor` reparte a los jugadores de a uno.
+  del agua; van derecho hasta que la cuenta llega a 2 (`SHIP_FLAT`), suben hasta el medio del mapa (de ancho y de
+  alto, no hasta arriba: pedido de Nico) y bajan hasta el agua de la otra punta. `shipFor` reparte a los jugadores de a uno.
   5 s de «¡Preparate!» y después «Disparo para saltar»; se baja en paracaídas (`mode: chute`). Si no saltás,
   te tira solo pasados los tres cuartos del recorrido, antes de que baje hasta el agua. Un clic cortito cuenta igual (`pressed`).
 - **La sala** (`game.js`) guarda lo de a una vez: la semilla (`match.seed`), cuántos eran al empezar

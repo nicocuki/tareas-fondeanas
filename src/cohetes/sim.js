@@ -25,11 +25,11 @@ export const UNSTICK = 45;       // un empujón más fuerte que esto lo despega 
 export const HP = 100;
 export const MUZZLE = 11;
 export const MAX_AMMO = 3;       // cohetes en el cargador
-export const RELOAD = 0.85;      // segundos por cohete que vuelve
+export const RELOAD = 1.85;      // segundos por cohete que vuelve
 export const SHOT_GAP = 0.16;    // entre tiro y tiro
 export const KILL_CREDIT = 6;    // si te hundís hasta 6 s después de un golpe, la baja es del que te pegó
 export const SHIP_TIME = 18;     // lo que tardan los helicópteros en cruzar el mapa
-export const SHIP_HIGH = TOP * 0.45; // altura de los helicópteros en el medio (en las puntas van al ras del agua)
+export const SHIP_FLAT = 3;      // segundos que van derecho al ras del agua (hasta que la cuenta llega a 2)
 export const DEPLOY_AFTER = 1;   // segundos de partida antes de poder saltar
 export const SLOTS = 4;          // casillas del inventario (la primera es el cohete)
 export const LASER_CHARGE = 2;   // el láser carga 2 s antes de salir
@@ -247,14 +247,17 @@ export function jetForce(angle) {
 }
 
 // ─── Los helicópteros del principio ──────────────────────────────────────────
-// El 0 sale de la izquierda y el 1 de la derecha, al ras del agua. Suben hasta el medio y bajan hasta el
-// agua del otro lado. Arrancan con la cuenta regresiva (5 s antes de la partida).
+// El 0 sale de la izquierda y el 1 de la derecha, al ras del agua. Arrancan con la cuenta regresiva (5 s antes
+// de la partida) y van derecho hasta que la cuenta llega a 2; ahí suben hasta el medio del mapa (de ancho y de
+// alto, no hasta arriba) y bajan del otro lado igual, hasta el agua.
 export function shipAt(s, W, H, k = 0) {
   const f = clamp((s + 5) / (SHIP_TIME + 5), 0, 1);
   const span = W + 120;
   const x = k === 0 ? -60 + f * span : W + 60 - f * span;
   const low = H - 75; // justo arriba del agua del principio
-  const y = low - Math.sin(f * Math.PI) * (low - SHIP_HIGH) + Math.sin(s * 1.5 + k) * 3;
+  const flat = SHIP_FLAT / (SHIP_TIME + 5);
+  const bump = Math.sin(Math.PI * clamp((f - flat) / (1 - 2 * flat), 0, 1));
+  const y = low - bump * (low - H / 2) + Math.sin(s * 1.5 + k) * 3;
   return { x, y, dir: k === 0 ? 1 : -1, f, gone: f >= 1 };
 }
 // En cuál va cada uno: se reparten de a uno.
