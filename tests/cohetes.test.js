@@ -104,16 +104,18 @@ test('cohetes: el retroceso de un tiro lo despega y lo hace volar; uno chiquito 
   assert.ok(!p.stuck && p.y < y0 - 15, `salió volando (${y0} → ${p.y})`);
 });
 
-test('cohetes: dos helicópteros, uno de cada lado, suben hasta el medio y bajan hasta la altura del principio', () => {
+test('cohetes: dos helicópteros, uno de cada lado, salen del agua, suben hasta el medio y bajan hasta el agua', () => {
   const W = 1000, end = SHIP_TIME - 1e-6;
-  const a0 = shipAt(-5, W, 0), a1 = shipAt(end, W, 0), am = shipAt((SHIP_TIME - 5) / 2, W, 0);
-  const b0 = shipAt(-5, W, 1), b1 = shipAt(end, W, 1);
+  const H = 1100, level = waterY(0, H);
+  const a0 = shipAt(-5, W, H, 0), a1 = shipAt(end, W, H, 0), am = shipAt((SHIP_TIME - 5) / 2, W, H, 0);
+  const b0 = shipAt(-5, W, H, 1), b1 = shipAt(end, W, H, 1);
+  assert.ok(a0.y < level && a0.y > level - 60, `sale al ras del agua (${a0.y} con el agua en ${level})`);
   assert.ok(a0.x < 0 && a1.x > W, 'el 0 va de izquierda a derecha');
   assert.ok(b0.x > W && b1.x < 0, 'el 1 va de derecha a izquierda');
   assert.ok(Math.abs(a0.y - a1.y) < 8, 'termina a la altura en que salió');
-  assert.ok(am.y < a0.y - 80, 'en el medio va más alto');
+  assert.ok(am.y < 120, 'en el medio va arriba de todo');
   assert.ok(Math.abs(am.x - W / 2) < 5);
-  assert.ok(shipAt(SHIP_TIME + 1, W, 0).gone);
+  assert.ok(shipAt(SHIP_TIME + 1, W, H, 0).gone);
   assert.deepEqual(['a', 'b', 'c', 'd'].map((id) => shipFor(['a', 'b', 'c', 'd'], id)), [0, 1, 0, 1], 'se reparten de a uno');
 });
 
@@ -127,14 +129,18 @@ test('cohetes: con paracaídas se baja despacio', () => {
   assert.ok(p.stuck);
 });
 
-test('cohetes: los cohetes van derecho, explotan contra la tierra y el daño baja con la distancia', () => {
+test('cohetes: los cohetes caen un poco, explotan contra la tierra y el daño baja con la distancia', () => {
   const t = makeTerrain(3, 6);
   const x = xWithGround(t);
   const [b] = projectilesFor({ k: 's1', x: x - 100, y: surfaceY(t, x, 175) - 3, a: 0, w: 'rocket' }, 'yo');
   const y0 = b.y;
+  const empty = { W: 400, H: 400, grid: new Uint8Array(400 * 400), holes: [] };
+  const [b2] = projectilesFor({ k: 's2', x: 10, y: 100, a: 0, w: 'rocket' }, 'yo');
   let hit = null;
   for (let i = 0; i < 600 && !hit && !b.done; i++) hit = stepProjectile(b, STEP, t, []);
-  if (hit) assert.ok(Math.abs(hit.y - y0) < 0.01, 'sin caída: va derecho');
+  for (let i = 0; i < 30; i++) stepProjectile(b2, STEP, empty, []);
+  assert.ok(b2.y > 100 + 0.5 && b2.vy > 0, 'tienen gravedad');
+  if (hit) assert.ok(hit.y >= y0, 'cayó, no subió');
   const near = blastOn({ x: 0, y: 0 }, { x: 0, y: 5, w: 'rocket' });
   const far = blastOn({ x: 0, y: 0 }, { x: 0, y: 25, w: 'rocket' });
   assert.ok(near.damage > far.damage);

@@ -570,14 +570,14 @@ cohetes en arco); Nico mandó un video del original y se rehízo con esto, que e
   (`{ w, n }`). Con las tres llenas no se agarra una caja de otra cosa: queda ahí.
 - **Los objetos** (`ITEMS`, de la wiki del original) tienen `kind`: `shot` (proyectiles: nuclear, mina, ráfaga de
   5, metralla, granadas, taladro, teledirigido, veneno y humo, que dejan una zona `ZONES`), `self` (escudo,
-  jetpack, curita +30), `charge` (láser: 2 s cargando, después un rayo instantáneo) y `zone` (remolino, que se
+  jetpack; la curita +30 se usa al agarrarla, no entra al inventario), `charge` (láser: 2 s cargando, después un rayo instantáneo) y `zone` (remolino, que se
   arma en todas las pantallas desde el disparo con `zoneFromShot`). El escudo devuelve los tiros: lo decide la
   pantalla del que tiró, que lo ve en la foto del otro (`sd`), y desde ahí el tiro es del dueño del escudo. El
   taladro manda cada tramo del túnel como explosión `drillseg` (solo cava).
-- **Al empezar**, dos helicópteros (`shipAt(s, W, k)`): el 0 sale de la izquierda y el 1 de la derecha, suben
-  hasta el medio y bajan hasta la misma altura en la otra punta; `shipFor` reparte a los jugadores de a uno.
+- **Al empezar**, dos helicópteros (`shipAt(s, W, H, k)`): el 0 sale de la izquierda y el 1 de la derecha, al ras
+  del agua; suben hasta el medio (`SHIP_HIGH`) y bajan hasta el agua de la otra punta. `shipFor` reparte a los jugadores de a uno.
   5 s de «¡Preparate!» y después «Disparo para saltar»; se baja en paracaídas (`mode: chute`). Si no saltás,
-  te tira solo cerca de la otra punta (siempre adentro del mapa). Un clic cortito cuenta igual (`pressed`).
+  te tira solo pasados los tres cuartos del recorrido, antes de que baje hasta el agua. Un clic cortito cuenta igual (`pressed`).
 - **La sala** (`game.js`) guarda lo de a una vez: la semilla (`match.seed`), cuántos eran al empezar
   (`match.size`, define el ancho), quién murió, quién lo mató y con qué (`died`, con `by` y `w`), las monedas y
   cajas agarradas (`coin`/`crate`: el primero gana) y el ranking (`place`, `kills`, `coins`, `score`). Gana el
@@ -591,10 +591,11 @@ cohetes en arco); Nico mandó un video del original y se rehízo con esto, que e
 - **El agua** sube con el tiempo de partida (`waterY`: 30 s quieta mientras bajan todos, después sube según la
   opción de velocidad). Hundirse o quedarse sin vida es quedar afuera; si alguien te pegó en los últimos 6 s,
   la baja es suya (y con su arma).
-- **Monedas** en fila (de la semilla) y **cajas de metal**: `MAP_ITEMS` ya tiradas por el mapa al empezar
+- **Todos los tiros tienen gravedad** (pedido de Nico: «no pueden ser lineales»), menos el láser.
+- **Monedas** en fila (de la semilla) y **cajas de metal**: `MAP_ITEMS` (8) tiradas por el mapa solo al empezar
   (`mapItems`, índices desde `MAX_DROPS`) y una cada 10 s en paracaídas (`crateInfo`).
 - La pantalla imita la del original: los 3 cohetes y las 4 casillas abajo al medio, el círculo «tanques quedan»
-  arriba a la derecha con las bajas abajo («X [arma] Y»), «Eliminaste a X» en el medio, el cartel
+  arriba a la derecha con las bajas abajo («X [arma] Y»), «Eliminaste a X» en el medio, una flecha roja alrededor de tu tanque hacia el enemigo más cercano (`drawArrow`), el cartel
   «¡ELIMINADO! por X con [arma]» con el puesto («N de M») y «X GANA» al final. No hay mapa chico.
 - El anfitrión da por muerto al que no manda fotos en 12 s (pestaña cerrada).
 - `window.__cohetes` (estado de la pantalla: tanque, demás, proyectiles, cajas) y `data-cohetes-canvas`

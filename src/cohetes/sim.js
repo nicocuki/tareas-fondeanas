@@ -29,8 +29,7 @@ export const RELOAD = 0.85;      // segundos por cohete que vuelve
 export const SHOT_GAP = 0.16;    // entre tiro y tiro
 export const KILL_CREDIT = 6;    // si te hundís hasta 6 s después de un golpe, la baja es del que te pegó
 export const SHIP_TIME = 18;     // lo que tardan los helicópteros en cruzar el mapa
-export const SHIP_LOW = TOP - 35; // altura de los helicópteros en las puntas
-export const SHIP_RISE = 105;    // lo que suben hasta el medio
+export const SHIP_HIGH = TOP * 0.45; // altura de los helicópteros en el medio (en las puntas van al ras del agua)
 export const DEPLOY_AFTER = 1;   // segundos de partida antes de poder saltar
 export const SLOTS = 4;          // casillas del inventario (la primera es el cohete)
 export const LASER_CHARGE = 2;   // el láser carga 2 s antes de salir
@@ -46,15 +45,15 @@ export const HEAL = 30;          // la curita: +30 % de la vida
 // En los proyectiles: `crater` radio del pozo, `radius` alcance del daño y del empujón, `damage` en el
 // centro, `knock` empujón en el centro.
 export const ITEMS = {
-  rocket: { name: 'Cohete', icon: '🚀', kind: 'shot', speed: 290, gravity: 0, crater: 15, radius: 30, damage: 34, knock: 240, life: 2.4 },
+  rocket: { name: 'Cohete', icon: '🚀', kind: 'shot', speed: 290, gravity: 110, crater: 15, radius: 30, damage: 34, knock: 240, life: 2.4 },
   nuke: { name: 'Bomba nuclear', icon: '☢️', kind: 'shot', speed: 210, gravity: 60, crater: 44, radius: 88, damage: 96, knock: 420, life: 3.5, big: true },
   mine: { name: 'Mina', icon: '💣', kind: 'shot', speed: 160, gravity: 260, crater: 24, radius: 40, damage: 55, knock: 300, mine: true, trigger: 20, life: 45 },
-  rapid: { name: 'Ráfaga', icon: '⏩', kind: 'shot', speed: 320, gravity: 0, crater: 8, radius: 18, damage: 15, knock: 120, life: 2, burst: 5, small: true },
+  rapid: { name: 'Ráfaga', icon: '⏩', kind: 'shot', speed: 320, gravity: 110, crater: 8, radius: 18, damage: 15, knock: 120, life: 2, burst: 5, small: true },
   shield: { name: 'Escudo', icon: '🛡️', kind: 'self' },
-  flak: { name: 'Metralla', icon: '💥', kind: 'shot', speed: 470, gravity: 0, crater: 6, radius: 16, damage: 17, knock: 150, life: 0.32, count: 7, spread: 0.09, small: true },
+  flak: { name: 'Metralla', icon: '💥', kind: 'shot', speed: 470, gravity: 160, crater: 6, radius: 16, damage: 17, knock: 150, life: 0.32, count: 7, spread: 0.09, small: true },
   grenade: { name: 'Granadas', icon: '🧨', kind: 'shot', speed: 230, gravity: 300, crater: 14, radius: 28, damage: 26, knock: 210, life: 6, count: 3, spread: 0.2, fuse: 0.35, ball: true },
   drill: { name: 'Taladro', icon: '🔩', kind: 'shot', speed: 210, gravity: 150, crater: 14, radius: 26, damage: 30, knock: 200, life: 4, drill: 130 },
-  homing: { name: 'Teledirigido', icon: '🎯', kind: 'shot', speed: 190, gravity: 0, crater: 15, radius: 30, damage: 34, knock: 240, homing: true, life: 5 },
+  homing: { name: 'Teledirigido', icon: '🎯', kind: 'shot', speed: 190, gravity: 60, crater: 15, radius: 30, damage: 34, knock: 240, homing: true, life: 5 },
   whirl: { name: 'Remolino', icon: '🌪️', kind: 'zone', length: 95, width: 42, time: 4, push: 520 },
   jetpack: { name: 'Jetpack', icon: '🎒', kind: 'self' },
   poison: { name: 'Veneno', icon: '🧪', kind: 'shot', speed: 240, gravity: 300, crater: 0, radius: 0, damage: 0, knock: 0, life: 6, zone: 'poison', ball: true },
@@ -248,13 +247,14 @@ export function jetForce(angle) {
 }
 
 // ─── Los helicópteros del principio ──────────────────────────────────────────
-// El 0 sale de la izquierda y el 1 de la derecha. Suben hasta el medio y bajan hasta el otro lado, donde
-// quedan a la misma altura que al salir. Arrancan con la cuenta regresiva (5 s antes de la partida).
-export function shipAt(s, W, k = 0) {
+// El 0 sale de la izquierda y el 1 de la derecha, al ras del agua. Suben hasta el medio y bajan hasta el
+// agua del otro lado. Arrancan con la cuenta regresiva (5 s antes de la partida).
+export function shipAt(s, W, H, k = 0) {
   const f = clamp((s + 5) / (SHIP_TIME + 5), 0, 1);
   const span = W + 120;
   const x = k === 0 ? -60 + f * span : W + 60 - f * span;
-  const y = SHIP_LOW - Math.sin(f * Math.PI) * SHIP_RISE + Math.sin(s * 1.5 + k) * 3;
+  const low = H - 75; // justo arriba del agua del principio
+  const y = low - Math.sin(f * Math.PI) * (low - SHIP_HIGH) + Math.sin(s * 1.5 + k) * 3;
   return { x, y, dir: k === 0 ? 1 : -1, f, gone: f >= 1 };
 }
 // En cuál va cada uno: se reparten de a uno.
@@ -385,7 +385,7 @@ export function blastOn(p, ex) {
 export const MAX_COINS = 80;
 export const CRATE_EVERY = 10;     // segundos entre cajas que caen en paracaídas
 export const MAX_DROPS = 40;       // cajas que caen (índices 0 a 39)
-export const MAP_ITEMS = 24;       // cajas que ya están en el mapa (índices 40 a 63)
+export const MAP_ITEMS = 8;        // cajas que ya están en el mapa al empezar (índices 40 a 47); no vuelven a aparecer
 export const MAX_CRATES = MAX_DROPS + MAP_ITEMS;
 
 // Monedas en fila adentro de los huecos (como en el original), solo donde hay aire.

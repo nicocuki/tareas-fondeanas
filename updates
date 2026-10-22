@@ -485,7 +485,7 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.15.0 = Cohete Royale: inventario, 14 objetos y dos helicópteros 🚁
+1.15.0 = Cohete Royale: inventario, 14 objetos y dos helicópteros 🚁
 - Al empezar hay dos helicópteros, uno de cada lado del mapa: suben hasta el medio, bajan y terminan a la misma altura en la otra punta. Los jugadores se reparten entre los dos.
 - Inventario de 4 casillas, que se eligen con 1, 2, 3 y 4 (o con un clic): la 1 es siempre el cohete, que no se acaba, y lo que agarrás se suma en las otras (si ya lo tenés, se apila).
 - 14 objetos de la wiki del original: bomba nuclear, mina, ráfaga, escudo (devuelve los tiros), metralla, granadas, taladro (cava un túnel), teledirigido, remolino, jetpack, veneno, láser (carga 2 s), humo y la curita (✚ roja, cura 30 % de la vida).
@@ -494,3 +494,12 @@ LATEST 1.15.0 = Cohete Royale: inventario, 14 objetos y dos helicópteros 🚁
 - Cada tecla lleva siempre para el mismo lado del tanque: cabeza abajo, D sigue yendo para donde iba aunque la sueltes y la vuelvas a apretar.
 - Tanque más lento, menos gravedad, tiros que empujan menos y cámara más alejada.
 - Como en el original: «Eliminaste a X» en el medio, las bajas con el arma arriba a la derecha, el cartel «¡ELIMINADO! por X con…» con tu puesto, y «X GANA» al final.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.15.1 = Cohete Royale: helicópteros desde el agua, tiros con gravedad y flecha al enemigo
+- Los helicópteros salen al ras del agua, suben hasta el medio y bajan del otro lado. Si no saltás, te tiran antes de llegar al agua.
+- Los cohetes y los demás tiros ahora caen con la gravedad (menos el láser).
+- Una flecha roja alrededor de tu tanque te marca dónde está el enemigo más cercano.
+- Menos cajas tiradas por el mapa (8), y solo al empezar la partida. Las que caen en paracaídas siguen igual.
+- La curita se usa al agarrarla: cura el 30 % al instante, sin ocupar lugar en el inventario.

@@ -424,6 +424,22 @@ export function drawCrate(ctx, c, now) {
   }
 }
 
+// La flecha roja que apunta al enemigo más cercano, alrededor de mi tanque.
+export function drawArrow(ctx, p, angle) {
+  ctx.save();
+  ctx.translate(p.x + Math.cos(angle) * 26, p.y + Math.sin(angle) * 26);
+  ctx.rotate(angle);
+  ctx.fillStyle = '#ff2d3d';
+  ctx.strokeStyle = '#5a0010';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(7, 0); ctx.lineTo(-4, -5.5); ctx.lineTo(-1.5, 0); ctx.lineTo(-4, 5.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 // Explosiones y partículas: solo dibujo, no viajan por la red.
 export function burst(list, x, y, { n = 18, colors = ['#ffe066', '#ffffff', '#c9c9c9', '#9a5a2c'], speed = 90, life = 0.7, size = 2 } = {}) {
   for (let i = 0; i < n; i++) {

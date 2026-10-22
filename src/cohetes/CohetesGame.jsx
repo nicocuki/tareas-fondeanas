@@ -20,7 +20,7 @@ import {
   stepProjectile, stepTank, thrust, turret, useItem, zoneFromShot,
 } from './sim.js';
 import {
-  burst, drawCoin, drawCrate, drawDecorations, drawEffects, drawLabel, drawLaserAim, drawProjectile, drawShip, drawSky, drawTank,
+  burst, drawArrow, drawCoin, drawCrate, drawDecorations, drawEffects, drawLabel, drawLaserAim, drawProjectile, drawShip, drawSky, drawTank,
   drawTerrain, drawWater, drawZones, makeTerrainView, repaint, setWorld,
 } from './render.js';
 import { alive as alivePlayers, findPlayer, inGame } from './game.js';
@@ -239,7 +239,6 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       if (w === 'rapid') { p.burst = item.burst; p.burstAt = now; }
       else if (w === 'shield') p.shieldUntil = now + SHIELD_TIME;
       else if (w === 'jetpack') { p.jetUntil = now + JET_TIME; p.jetA = s.angle; }
-      else if (w === 'heal') { p.hp = Math.min(HP, p.hp + HEAL); burst(s.particles, p.x, p.y, { n: 16, colors: ['#ff4d5e', '#ffffff'], speed: 50 }); }
       else if (item.kind === 'charge') p.chargeUntil = now + LASER_CHARGE;
       else emit(p, m, now, w);
       p.inv = useItem(p.inv, slot);
@@ -261,12 +260,12 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       if (!p.dead) {
         if (p.mode === 'ship') {
           // En el helicóptero: se viaja con él y un tiro te tira (o te tira solo al llegar al otro lado).
-          const ship = shipAt(elapsed, s.t.W, s.ship);
+          const ship = shipAt(elapsed, s.t.W, s.t.H, s.ship);
           p.x = ship.x; p.y = ship.y + 18;
           if (!shoot) s.shootHeld = false;
           const wantOut = shoot && elapsed >= DEPLOY_AFTER && !s.shootHeld;
-          // Al llegar a la otra punta te tira solo, todavía arriba del mapa.
-          if (wantOut || ship.f > 0.9) {
+          // Si no saltaste, te tira solo antes de que baje hasta el agua.
+          if (wantOut || ship.f > 0.75) {
             p.mode = 'chute'; p.vx = 0; p.vy = 0;
             // El que entra (o recarga la página) con los helicópteros ya idos cae adentro del mapa.
             p.x = Math.max(80, Math.min(s.t.W - 80, p.x));
@@ -336,10 +335,18 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         if (!solid(s.t, c.x, c.y + 0.5)) { c.y += (c.falling ? 40 : 150) * STEP; if (c.y > s.t.H + 40) s.crates.delete(i); }
         else c.falling = false;
         if (p.dead || p.mode !== 'tank' || s.pendingCrates.has(i) || Math.hypot(c.x - p.x, c.y - 5 - p.y) > 12) continue;
-        if (!addItem(p.inv, c.weapon)) continue; // sin lugar en el inventario: queda ahí
+        // La curita se usa al agarrarla; lo demás va al inventario (sin lugar, la caja queda ahí).
+        const heal = c.weapon === 'heal';
+        if (!heal && !addItem(p.inv, c.weapon)) continue;
         s.pendingCrates.add(i);
         dispatchRef.current({ type: 'crate', match: m.n, i }).then((res) => {
           if (res?.committed && res.room?.match?.crates?.[i] === me.id) {
+            if (heal) {
+              p.hp = Math.min(HP, p.hp + HEAL);
+              burst(s.particles, p.x, p.y, { n: 16, colors: ['#ff4d5e', '#ffffff'], speed: 50 });
+              flash(`✚ +${HEAL}`);
+              return;
+            }
             const inv = addItem(p.inv, c.weapon);
             if (inv) { p.inv = inv; flash(`${ITEMS[c.weapon].name}`); }
           } else s.pendingCrates.delete(i);
@@ -479,7 +486,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       drawZones(ctx, s.zones.values(), now, false);
       s.coinSpots.forEach((c, i) => { if (!m.coins[i] && !s.pendingCoins.has(i)) drawCoin(ctx, c, now); });
       for (const c of s.crates.values()) drawCrate(ctx, c, now);
-      for (let kk = 0; kk < 2; kk++) { const ship = shipAt(elapsed, s.t.W, kk); if (!ship.gone) drawShip(ctx, ship, now); }
+      for (let kk = 0; kk < 2; kk++) { const ship = shipAt(elapsed, s.t.W, s.t.H, kk); if (!ship.gone) drawShip(ctx, ship, now); }
       for (const pl of alivePlayers(r)) {
         if (pl.id === me.id) continue;
         const v = s.remotes.get(pl.id);
@@ -494,6 +501,15 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         drawTank(ctx, p, mine.color, s.angle, { hurt: (p.hurtUntil || 0) > performance.now() / 1000, chute: p.mode === 'chute', shield: p.shieldUntil > now, now });
         if (p.chargeUntil) drawLaserAim(ctx, muzzle(p, s.angle), s.angle, 1 - (p.chargeUntil - now) / LASER_CHARGE);
         drawLabel(ctx, p, mine.name, p.hp, true);
+        // Flecha roja hacia el enemigo más cercano.
+        let near = null, nd = Infinity;
+        for (const pl of alivePlayers(r)) {
+          const v = pl.id !== me.id && s.remotes.get(pl.id);
+          if (!v || v.snap.d || v.snap.m === 'ship') continue;
+          const d = Math.hypot(v.x - p.x, v.y - p.y);
+          if (d < nd) { nd = d; near = v; }
+        }
+        if (near && nd > 60) drawArrow(ctx, p, Math.atan2(near.y - p.y, near.x - p.x));
       }
       for (const b of s.projectiles.values()) if (!b.done) drawProjectile(ctx, b);
       s.effects = s.effects.filter((e) => e.age < 0.35);
