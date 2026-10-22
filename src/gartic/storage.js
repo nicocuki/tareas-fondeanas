@@ -56,6 +56,7 @@ export async function joinRoom(code, uid, name, avatar) {
   const room = snap.val();
   if (!room) throw new Error('No encontramos esa sala.');
   if (room.players?.[uid]) return;
+  if (room.kicked?.[uid]) throw new Error('El anfitrión te sacó de esta sala.');
   if (Object.keys(room.players || {}).length >= roomSettings(room.settings).maxPlayers) throw new Error('La sala está llena.');
   for (let attempt = 0; attempt < 5; attempt++) {
     const fresh = (await get(at(roomPath(code)))).val();
@@ -87,6 +88,12 @@ export async function leaveRoom(code, uid, lobby) {
     const snap = await get(at(roomPath(code) + '/players/' + uid));
     if (snap.exists() && Object.keys((await get(at(roomPath(code) + '/players'))).val() || {}).length > 1) await update(at(roomPath(code)), { ['players/' + uid]: null, ['slots/' + snap.val().index]: null });
   }
+}
+// El anfitrión saca a alguien de la sala de espera; con esa pantalla no puede volver a entrar.
+export async function kickPlayer(code, uid) {
+  const snap = await get(at(roomPath(code) + '/players/' + uid));
+  if (!snap.exists()) return;
+  await update(at(roomPath(code)), { ['players/' + uid]: null, ['slots/' + snap.val().index]: null, ['kicked/' + uid]: true });
 }
 export async function configure(code, field, value) {
   await set(at(roomPath(code) + '/' + field), value);

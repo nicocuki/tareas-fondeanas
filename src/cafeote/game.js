@@ -1,4 +1,5 @@
 // Lógica de juego de Café o Té (2v2)
+import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
 export const DEFAULT_OPTIONS = {
   wordTime: 30, // 15, 30, 60 segundos
@@ -61,6 +62,13 @@ export function isHost(room, playerId) {
 
 export function applyAction(room, action) {
   if (!room) return room;
+  // El anfitrión saca a alguien: es su `leave`, y con esa pantalla no puede volver a entrar.
+  if (action.type === 'kick') {
+    const target = kickTarget(room, action);
+    const left = target && applyAction(room, { type: 'leave', playerId: target });
+    return left && left !== room ? markKicked(left, target) : room;
+  }
+  if (action.type === 'join' && isKicked(room, action.playerId)) return room;
   const next = JSON.parse(JSON.stringify(room));
 
   switch (action.type) {

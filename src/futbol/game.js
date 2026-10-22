@@ -1,6 +1,7 @@
 // Lógica de sala del juego de Fútbol (HaxBall-like)
 // Solo maneja el estado de sala (fase, jugadores, puntaje).
 // La física del partido corre en el cliente (FutbolGame.jsx + physics.js).
+import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
 export const DEFAULT_OPTIONS = {
   matchMinutes: 0,         // duración del partido en minutos (0 = ilimitado)
@@ -50,19 +51,42 @@ export function teamCount(room, team) {
   return room.players.filter((p) => p.team === team).length;
 }
 
+// Después de un partido cada uno vuelve a la sala cuando quiere (`back`). Los que siguen en la pantalla del
+// final aparecen esperando, y no se arranca hasta que vuelvan todos (o se vayan).
+export const waitingPlayers = (room) => (room?.phase === 'ended' ? room.players.filter((p) => !p.back) : []);
+
+// Si ya volvieron todos, la sala pasa a la sala de espera de verdad.
+function settleBack(next) {
+  if (next.phase !== 'ended' || next.players.some((p) => !p.back)) return next;
+  next.phase = 'lobby';
+  next.score = { red: 0, blue: 0 };
+  next.winner = null;
+  for (const p of next.players) delete p.back;
+  return next;
+}
+
 export function canStart(room) {
+  if (room?.phase !== 'lobby' && !room?.isTrainingMode) return false;
   if (room?.isTrainingMode) return (room?.players?.length || 0) >= 1;
   return teamCount(room, 'red') >= 1 && teamCount(room, 'blue') >= 1;
 }
 
 export function applyAction(room, action) {
   if (!room) return room;
+  // El anfitrión saca a alguien: es su `leave`, y con esa pantalla no puede volver a entrar.
+  if (action.type === 'kick') {
+    const target = kickTarget(room, action, ['lobby', 'ended']);
+    const left = target && applyAction(room, { type: 'leave', playerId: target });
+    return left && left !== room ? markKicked(left, target) : room;
+  }
+  if (action.type === 'join' && isKicked(room, action.playerId)) return room;
   const next = JSON.parse(JSON.stringify(room));
   next.updatedAt = Date.now();
 
   switch (action.type) {
     case 'join': {
-      if (next.phase !== 'lobby') return room;
+      // Con el partido terminado también se puede entrar: va directo a la sala de espera.
+      if (next.phase !== 'lobby' && next.phase !== 'ended') return room;
       const clean = cleanName(action.name);
       if (!clean) return room;
       let player = next.players.find((p) => p.id === action.playerId);
@@ -73,6 +97,7 @@ export function applyAction(room, action) {
         const defaultTeam = blueCount < redCount ? 'blue' : 'red';
         if (teamCount(next, defaultTeam) >= MAX_PER_TEAM) return room;
         player = { id: action.playerId, name: clean, team: defaultTeam };
+        if (next.phase === 'ended') player.back = true;
         next.players.push(player);
       } else {
         player.name = clean;
@@ -85,13 +110,12 @@ export function applyAction(room, action) {
       if (next.hostId === action.playerId && next.players.length > 0) {
         next.hostId = next.players[0].id;
       }
-      return next;
+      return settleBack(next);
     }
 
     case 'pickTeam': {
-      if (next.phase !== 'lobby') return room;
       const player = next.players.find((p) => p.id === action.playerId);
-      if (!player) return room;
+      if (!player || !(next.phase === 'lobby' || (next.phase === 'ended' && player.back))) return room;
       const { team } = action;
       if (!['red', 'blue'].includes(team)) return room;
       if (player.team === team) return room;
@@ -101,7 +125,8 @@ export function applyAction(room, action) {
     }
 
     case 'setOptions': {
-      if (next.hostId !== action.playerId || next.phase !== 'lobby') return room;
+      const host = findPlayer(next, action.playerId);
+      if (next.hostId !== action.playerId || !(next.phase === 'lobby' || (next.phase === 'ended' && host?.back))) return room;
       next.options = { ...next.options, ...action.options };
       return next;
     }
@@ -144,10 +169,20 @@ export function applyAction(room, action) {
       return next;
     }
 
+    // El que aprieta «Volver al lobby» al terminar el partido: vuelve solo él.
+    case 'backToLobby': {
+      const player = findPlayer(next, action.playerId);
+      if (next.phase !== 'ended' || !player || player.back) return room;
+      player.back = true;
+      return settleBack(next);
+    }
+
+    // «Volver a la sala» con el partido en juego (menú de pausa): vuelven todos.
     case 'toLobby': {
       next.phase = 'lobby';
       next.score = { red: 0, blue: 0 };
       next.winner = null;
+      for (const p of next.players) delete p.back;
       return next;
     }
 

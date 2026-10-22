@@ -86,7 +86,7 @@ export default function GarticApp({onBackToMenu}){
     setRoom(null);setConnected({});
     const off=network.watchRoom(code,(data)=>{
       if(!active)return;
-      if(!data?.players?.[uid]){setCode('');remember('',uid);setError('Ya no estás en esa sala. Podés volver a entrar.');return;}
+      if(!data?.players?.[uid]){setCode('');remember('',uid);setError(data?.kicked?.[uid]?'El anfitrión te sacó de la sala.':'Ya no estás en esa sala. Podés volver a entrar.');return;}
       setRoom(data);
     },()=>setError('No se pudo abrir la sala. Revisá la conexión.'));
     const offPresence=network.watchPresence(code,(data)=>setConnected(data||{}));
@@ -228,6 +228,7 @@ export default function GarticApp({onBackToMenu}){
                 <span className="gp-avatar">{p.avatar}{!connected[id] && <i className="gp-offline" title="Reconectando…"/>}</span>
                 <strong>{p.name}{id===uid?' (vos)':''}</strong>
                 {id===room.hostId && <i className="gp-crown" title="Anfitrión"><Icon name="crown" size={16}/></i>}
+                {host && id!==uid && <button type="button" className="gp-kick" title={'Sacar a '+p.name} aria-label={'Sacar a '+p.name} data-kick={id} onClick={()=>{if(window.confirm('¿Sacar a '+p.name+' de la sala? No va a poder volver a entrar desde esa pantalla.'))run(()=>network.kickPlayer(code,id));}}>✕</button>}
               </div>;
             })}
           </div>

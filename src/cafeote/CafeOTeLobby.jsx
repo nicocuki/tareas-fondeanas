@@ -35,6 +35,9 @@ export default function CafeOTeLobby({ room, code, me, onDispatch, onLeave, onCo
 
   return (
     <LobbyLayout
+      roster={room.players}
+      me={me?.id}
+      onKick={(id) => onDispatch({ type: 'kick', target: id })}
       code={code || room?.code}
       host={host}
       players={room.players.length}

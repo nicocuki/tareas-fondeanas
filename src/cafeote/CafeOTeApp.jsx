@@ -10,6 +10,7 @@ import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
 import { useAutoCreate } from '../ui/mudanza.js';
 import { useRegisterRoom } from '../ui/store.js';
+import { isKicked } from '../lobby/kick.js';
 
 function codeFromUrl() {
   const code = new URLSearchParams(window.location.search).get('sala') || '';
@@ -137,6 +138,15 @@ export default function CafeOTeApp({ onBackToMenu }) {
       backend.updateRoom(leaving.code, (current) => applyAction(current, { type: 'leave', playerId: leaving.playerId })).catch(() => {});
     }
   }
+
+  // Si el anfitrión te sacó, volvés a la entrada con el aviso.
+  const kicked = Boolean(room && session && !me && isKicked(room, session.playerId));
+  useEffect(() => {
+    if (!kicked) return;
+    handleLeave();
+    setInvite(false);
+    setError('El anfitrión te sacó de la sala.');
+  }, [kicked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function copyInvite() {
     if (!session?.code) return;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { PublicSwitch } from './PublicRoom.jsx';
 import ChangeGame from './ChangeGame.jsx';
+import KickPlayers from './KickPlayers.jsx';
 import { useMoveWatch } from '../ui/mudanza.js';
 
 export default function LobbyLayout({
@@ -15,6 +16,9 @@ export default function LobbyLayout({
   unassignedPlayers,
   host = false, // si es true, puede hacer la sala pública o privada
   players = 0, // cuántos hay en la sala
+  roster, // los jugadores ({ id, name, avatar }), para que el anfitrión pueda sacar a alguien con onKick
+  me,
+  onKick,
   children,
 }) {
   const displayCode =
@@ -51,6 +55,7 @@ export default function LobbyLayout({
           {subtitle && <p className="tf-lobby-subtitle">{subtitle}</p>}
           {displayCode && (host || players > 0) && <PublicSwitch code={displayCode} host={host} players={players} />}
           <ChangeGame code={displayCode} host={host} players={players} />
+          <KickPlayers roster={roster} me={me} host={host} onKick={onKick} />
         </div>
 
         {/* Jugadores sin equipo asignado */}

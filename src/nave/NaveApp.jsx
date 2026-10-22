@@ -16,6 +16,7 @@ import NaveGame from './NaveGame.jsx';
 import { Ejection, Meeting, Roles } from './Meeting.jsx';
 import Bean from './Bean.jsx';
 import './nave.css';
+import { isKicked } from '../lobby/kick.js';
 
 const GAME = 'nave';
 
@@ -98,7 +99,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const enough = room.players.length >= MIN_PLAYERS;
   const taken = new Set(room.players.filter((p) => p.id !== me.id).map((p) => p.color));
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} gameTitle="Entre Nosotros · sala de espera" subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos.' : 'El anfitrión elige las reglas y arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Entre Nosotros · sala de espera" subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos.' : 'El anfitrión elige las reglas y arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
       <div className="nv-card">
         <div className="nv-card-head"><h2>Tripulación</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="nv-crew">
@@ -308,8 +309,8 @@ export default function NaveApp({ onBackToMenu }) {
     return (
       <div className="cs-root nv-page">
         <div className="nv-card nv-center">
-          <p>Ya no estás en esta sala.</p>
-          {room.phase === 'lobby' && <button type="button" className="tf-btn tf-btn-primary" onClick={() => dispatch({ type: 'join', name: session.name, avatar: getProfile().avatar })}>Volver a entrar</button>}
+          <p>{isKicked(room, session.playerId) ? 'El anfitrión te sacó de la sala.' : 'Ya no estás en esta sala.'}</p>
+          {room.phase === 'lobby' && !isKicked(room, session.playerId) && <button type="button" className="tf-btn tf-btn-primary" onClick={() => dispatch({ type: 'join', name: session.name, avatar: getProfile().avatar })}>Volver a entrar</button>}
           <button type="button" className="tf-btn tf-btn-soft" onClick={handleLeave}>Salir</button>
         </div>
       </div>

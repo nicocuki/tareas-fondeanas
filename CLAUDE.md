@@ -321,6 +321,16 @@ dentro de `LobbyLayout`; Trazo Loco lo pone a mano). Todo está en `src/ui/mudan
 - **Un juego nuevo**: `min`/`max` en `games.js` y `useAutoCreate` en su pantalla de entrada; si usa `JoinInvite` y
   `LobbyLayout`, lo demás viene solo.
 
+### Sacar a alguien
+
+El anfitrión puede sacar jugadores desde la sala de espera («🚫 Sacar a alguien», `KickPlayers` dentro de `LobbyLayout`,
+que recibe `roster`, `me` y `onKick`). Cada reducer atiende la acción `kick` igual (`src/lobby/kick.js`): solo el
+anfitrión, a otro, en la sala de espera; se aplica el `leave` de ese jugador y se lo anota en `kicked` (tope
+`MAX_KICKED`), así un `join` con ese mismo id se rechaza y su pantalla dice «El anfitrión te sacó de la sala». Con
+otra pestaña puede volver a entrar: alcanza entre amigos. Trazo Loco, sin reducer, lo hace en `kickPlayer`
+(`garticRooms/{sala}/kicked/{uid}`). **Un juego nuevo**: el bloque de `kick` al principio de su `applyAction`
+(hay un test que recorre todos) y `roster`/`onKick` en su `LobbyLayout`.
+
 ### Acciones del reducer
 
 `join` `leave` `pickRole` `setOptions` `start` `setPaused` `chat` `clue` `vote` `unvote` `endTurn`
@@ -683,6 +693,11 @@ que haxball». El modo coches es nuestro y no cambió.
   la barrera del que saca (`playerMask`): la línea del medio y medio círculo central.
 - **Después del gol se sigue jugando 2,5 s** y el saque es enseguida: `goalMatch(..., HAX_PAUSES)`
   guarda `gp` (cuánto dura el festejo) en el partido. Durante el festejo `stepOnline` no declara goles.
+- **Al terminar el partido cada uno vuelve a la sala cuando quiere** (pedido de Nico): «Volver al lobby» manda
+  `backToLobby`, que marca solo a ese jugador (`back`). La fase sigue en `ended`: el que volvió ve la sala de espera
+  (puede elegir equipo; el anfitrión, cambiar opciones), los que siguen en el final aparecen «(Esperando...)»
+  (`waitingPlayers`) y `canStart` da falso. Cuando volvieron todos (o se fueron, o los sacaron) la sala pasa a
+  `lobby`. «Volver a la sala» del menú de pausa, con el partido en juego, sigue llevando a todos (`toLobby`).
 - En red, **la pelota atraviesa a los jugadores remotos** (`fixed` en `stepWorld`): cada uno la toca en
   su pantalla y la reclama, como antes.
 - `haxRender.js` es el dibujo del renderer por defecto de HaxBall: cámara que sigue al medio entre la

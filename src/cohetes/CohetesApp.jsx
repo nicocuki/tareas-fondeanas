@@ -12,6 +12,7 @@ import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer
 import { ITEMS, ITEM_LIST } from './sim.js';
 import CohetesGame, { ItemIcon } from './CohetesGame.jsx';
 import './cohetes.css';
+import { isKicked } from '../lobby/kick.js';
 
 const GAME = 'cohetes';
 
@@ -74,7 +75,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   const enough = room.players.length >= MIN_PLAYERS;
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} gameTitle="Cohete Royale · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Cohete Royale · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
       <div className="ck-card">
         <div className="ck-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="ck-players">
@@ -251,8 +252,8 @@ export default function CohetesApp({ onBackToMenu }) {
     return (
       <div className="cs-root ck-page">
         <div className="ck-card ck-center">
-          <p>Ya no estás en esta sala.</p>
-          {room.phase === 'lobby' && <button type="button" className="tf-btn tf-btn-primary" onClick={() => dispatch({ type: 'join', name: session.name, avatar: getProfile().avatar })}>Volver a entrar</button>}
+          <p>{isKicked(room, session.playerId) ? 'El anfitrión te sacó de la sala.' : 'Ya no estás en esta sala.'}</p>
+          {room.phase === 'lobby' && !isKicked(room, session.playerId) && <button type="button" className="tf-btn tf-btn-primary" onClick={() => dispatch({ type: 'join', name: session.name, avatar: getProfile().avatar })}>Volver a entrar</button>}
           <button type="button" className="tf-btn tf-btn-soft" onClick={handleLeave}>Salir</button>
         </div>
       </div>

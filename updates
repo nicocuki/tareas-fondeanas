@@ -517,7 +517,13 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.16.0 = Cambiar de juego desde la sala de espera 🔀
+1.16.0 = Cambiar de juego desde la sala de espera 🔀
 - En la sala de espera, el anfitrión tiene «Cambiar de juego»: elige otro y se pasan todos juntos a una sala nueva de ese juego, sin tener que pasar códigos.
 - Los demás entran solos atrás del anfitrión, con su nombre y su avatar. Si la sala era pública, la nueva también.
 - Los juegos donde no entran los que son aparecen deshabilitados con el porqué (por ejemplo «Hacen falta al menos 4 y son 3» o «Es de 4 justos y son 5»).
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.17.0 = Sacar jugadores y vuelta al lobby de a uno en el Fútbol 🚫
+- En la sala de espera de cualquier juego, el anfitrión puede sacar a alguien («🚫 Sacar a alguien»). El que sale ve «El anfitrión te sacó de la sala» y desde esa pantalla no puede volver a entrar.
+- Fútbol: al terminar el partido, «Volver al lobby» lleva solo al que lo aprieta. Los que siguen en la pantalla del final aparecen en la sala como «(Esperando...)», y el partido no se puede arrancar hasta que vuelvan o se vayan.

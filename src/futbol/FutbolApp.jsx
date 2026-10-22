@@ -9,6 +9,7 @@ import { COLORS, panelStyle, inputStyle, ghostButton, labelStyle } from '../them
 import { applyAction, cleanName, DEFAULT_OPTIONS, findPlayer, makeId, newRoom } from './game.js';
 import FutbolLobby from './FutbolLobby.jsx';
 import FutbolGame from './FutbolGame.jsx';
+import { isKicked } from '../lobby/kick.js';
 
 function codeFromUrl() {
   const code = new URLSearchParams(window.location.search).get('sala') || '';
@@ -208,6 +209,15 @@ export default function FutbolApp({ onBackToMenu }) {
     }
   }
 
+  // Si el anfitrión te sacó, volvés a la entrada con el aviso.
+  const kicked = Boolean(room && session && !me && isKicked(room, session.playerId));
+  useEffect(() => {
+    if (!kicked) return;
+    handleLeave();
+    setInvite(false);
+    setError('El anfitrión te sacó de la sala.');
+  }, [kicked]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function copyInvite() {
     if (!session?.code || session.isLocalGame) return;
     const link = inviteLink(session.code);
@@ -382,7 +392,8 @@ export default function FutbolApp({ onBackToMenu }) {
   }
 
   // ─── Lobby ─────────────────────────────────────────────────────────────
-  if (room.phase === 'lobby') {
+  // Con el partido terminado, el que ya volvió ve la sala de espera; los demás siguen en el final.
+  if (room.phase === 'lobby' || (room.phase === 'ended' && me?.back)) {
     return (
       <FutbolLobby
         room={room}
@@ -449,7 +460,8 @@ export default function FutbolApp({ onBackToMenu }) {
               className="cs-btn"
               onClick={() => {
                 setGameEnded(false);
-                dispatch({ type: 'toLobby' });
+                // Online vuelve solo el que aprieta; en el entrenamiento y el 1v1 local, la sala entera.
+                dispatch({ type: room.isTrainingMode || room.isLocalGame ? 'toLobby' : 'backToLobby' });
               }}
               style={{
                 width: '100%',

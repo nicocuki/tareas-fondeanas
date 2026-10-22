@@ -307,6 +307,14 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-change-game-name small { color: var(--text-2); font-size: 12px; }
 .tf-change-game li button:disabled small { color: var(--danger); }
 .tf-change-game-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+/* Sacar a alguien (src/lobby/KickPlayers.jsx): solo el anfitrión. */
+.tf-kick-open { margin-top: 8px; }
+.tf-kick { max-width: 460px; margin: 12px auto 0; padding: 14px; border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--surface); text-align: left; }
+.tf-kick-title { margin: 0 0 10px; font-weight: 700; }
+.tf-kick ul { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tf-kick li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 8px; border-radius: 10px; background: var(--surface-2); }
+.tf-kick li .tf-btn { padding: 6px 12px; font-size: 13px; }
+.tf-kick-confirm { display: flex; gap: 6px; }
 .tf-lobby-unassigned { margin: 0 auto 16px; width: fit-content; max-width: 100%; padding: 6px 14px; border-radius: 999px; background: var(--surface-2); border: 1px dashed var(--border-strong); font-size: 13px; color: var(--text-2); text-align: center; }
 
 /* En celular, con una sala abierta, el código manda: el nombre del sitio queda solo como logo. */

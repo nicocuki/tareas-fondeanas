@@ -119,6 +119,7 @@ export function TeamRoster({
                 {p.name}
                 {p.id === myPlayerId ? ' (vos)' : ''}
                 {hostId === p.id ? ' ★' : ''}
+                {p.note && <span style={{ color: COLORS.muted, fontWeight: 500 }}> {p.note}</span>}
               </span>
               {showReadyBadge && (
                 p.ready ? (

@@ -1,6 +1,7 @@
 // Armá el Meme: reducer puro (mismo patrón que Código Secreto y La Mecha). Corre dentro de la
 // transacción de la sala con `ctx = { now, rand }`. Las plantillas las elige la pantalla que manda
 // la acción (del catálogo de `catalog.js`) y viajan en la acción como `pool` o `template`.
+import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
 export const GAME_TYPE = 'meme';
 export const MAX_PLAYERS = 12;
@@ -152,6 +153,13 @@ export function votersFor(room, author) {
 
 export function applyAction(room, action, ctx = {}) {
   if (!room || room.gameType !== GAME_TYPE) return null;
+  // El anfitrión saca a alguien: es su `leave`, y con esa pantalla no puede volver a entrar.
+  if (action.type === 'kick') {
+    const target = kickTarget(room, action);
+    const left = target && applyAction(room, { type: 'leave', playerId: target }, ctx);
+    return left && left !== room ? markKicked(left, target) : null;
+  }
+  if (action.type === 'join' && isKicked(room, action.playerId)) return null;
   const now = ctx.now ?? Date.now();
   const rand = ctx.rand ?? Math.random;
   const next = structuredClone(room);

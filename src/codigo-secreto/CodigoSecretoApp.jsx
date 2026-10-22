@@ -20,6 +20,7 @@ import Chat from './Chat.jsx';
 import Rules from './Rules.jsx';
 import Players from './Players.jsx';
 import { LobbyLayout, LobbyTeamCard, TeamRoleSlot, LobbyActionSection } from '../lobby/index.js';
+import { isKicked } from '../lobby/kick.js';
 
 function gameFromUrl() {
   return new URLSearchParams(window.location.search).get('juego') || '';
@@ -241,8 +242,8 @@ export default function CodigoSecretoApp({ onBackToMenu }) {
       )}
       {session && room && !me && (
         <div style={{ ...panelStyle, padding: 14, marginBottom: 16, textAlign: 'center', fontSize: 14, color: COLORS.muted }}>
-          Ya no estás en esta sala.{' '}
-          <button type="button" className="cs-btn" onClick={() => dispatch({ type: 'join', name: session.name })} style={{ ...ghostButton, marginLeft: 6 }}>Volver a entrar</button>{' '}
+          {isKicked(room, session.playerId) ? 'El anfitrión te sacó de la sala.' : 'Ya no estás en esta sala.'}{' '}
+          {!isKicked(room, session.playerId) && <button type="button" className="cs-btn" onClick={() => dispatch({ type: 'join', name: session.name })} style={{ ...ghostButton, marginLeft: 6 }}>Volver a entrar</button>}{' '}
           <button type="button" className="cs-btn" onClick={handleLeave} style={{ ...ghostButton, marginLeft: 6 }}>Salir</button>
         </div>
       )}
@@ -384,6 +385,9 @@ export default function CodigoSecretoApp({ onBackToMenu }) {
 
     return (
       <LobbyLayout
+        roster={room.players}
+        me={me?.id}
+        onKick={(id) => dispatch({ type: 'kick', target: id })}
         code={session.code}
         host={host}
         players={totalPlayers}

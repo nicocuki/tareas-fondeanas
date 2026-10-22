@@ -3,6 +3,7 @@
 // y el diccionario en `ctx`. Devuelve la sala nueva o `null` si la acción no corresponde.
 import SYLLABLES from './syllables.js';
 import { BONUS_LETTERS, matchesSyllable, normalizeWord } from './words.js';
+import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
 export const GAME_TYPE = 'la-mecha';
 export const MAX_PLAYERS = 16;
@@ -136,6 +137,13 @@ export function wordProblem(room, rawWord, dict) {
 
 export function applyAction(room, action, ctx = {}) {
   if (!room || room.gameType !== GAME_TYPE) return null;
+  // El anfitrión saca a alguien: es su `leave`, y con esa pantalla no puede volver a entrar.
+  if (action.type === 'kick') {
+    const target = kickTarget(room, action);
+    const left = target && applyAction(room, { type: 'leave', playerId: target }, ctx);
+    return left && left !== room ? markKicked(left, target) : null;
+  }
+  if (action.type === 'join' && isKicked(room, action.playerId)) return null;
   const now = ctx.now ?? Date.now();
   const rand = ctx.rand ?? Math.random;
   const next = structuredClone(room);

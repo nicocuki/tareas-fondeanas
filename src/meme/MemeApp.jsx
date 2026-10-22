@@ -16,6 +16,7 @@ import {
 import { CATALOG, boxLabel, defaultTexts, findTemplate, toRoomTemplate } from './catalog.js';
 import MemeView from './MemeView.jsx';
 import './meme.css';
+import { isKicked } from '../lobby/kick.js';
 
 const GAME = 'meme';
 const STAR_LABELS = { 1: 'Meh', 2: 'Tiene algo', 3: 'Bueno', 4: 'Muy bueno', 5: '¡Me mató!' };
@@ -100,7 +101,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const set = (patch) => onDispatch({ type: 'setOptions', options: patch });
   const enough = room.players.length >= MIN_PLAYERS;
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} gameTitle="Armá el Meme · sala de espera" subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos.' : 'El anfitrión elige las reglas y arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Armá el Meme · sala de espera" subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos.' : 'El anfitrión elige las reglas y arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
       <div className="mm-card">
         <div className="mm-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="mm-players">
@@ -466,8 +467,8 @@ export default function MemeApp({ onBackToMenu }) {
     return (
       <div className="cs-root mm-page">
         <div className="mm-card mm-center">
-          <p>Ya no estás en esta sala.</p>
-          <button type="button" className="tf-btn tf-btn-primary" onClick={() => dispatch({ type: 'join', name: session.name, avatar: getProfile().avatar })}>Volver a entrar</button>
+          <p>{isKicked(room, session.playerId) ? 'El anfitrión te sacó de la sala.' : 'Ya no estás en esta sala.'}</p>
+          {!isKicked(room, session.playerId) && <button type="button" className="tf-btn tf-btn-primary" onClick={() => dispatch({ type: 'join', name: session.name, avatar: getProfile().avatar })}>Volver a entrar</button>}
           <button type="button" className="tf-btn tf-btn-soft" onClick={handleLeave}>Salir</button>
         </div>
       </div>

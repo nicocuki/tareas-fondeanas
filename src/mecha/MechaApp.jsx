@@ -16,6 +16,7 @@ import {
 import { BONUS_LETTERS } from './words.js';
 import { loadDictionary } from './dictionary.js';
 import './mecha.css';
+import { isKicked } from '../lobby/kick.js';
 
 const GAME = 'la-mecha';
 
@@ -98,6 +99,9 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   return (
     <LobbyLayout
       code={code}
+      roster={room.players}
+      me={me?.id}
+      onKick={(id) => onDispatch({ type: 'kick', target: id })}
       host={host}
       players={room.players.length}
       gameTitle="La Mecha · sala de espera"
@@ -451,8 +455,8 @@ export default function MechaApp({ onBackToMenu }) {
     return (
       <div className="cs-root lm-page">
         <div className="lm-card lm-center">
-          <p>Ya no estás en esta sala.</p>
-          <button type="button" className="tf-btn tf-btn-primary" onClick={() => dispatch({ type: 'join', name: session.name, avatar: getProfile().avatar })}>Volver a entrar</button>
+          <p>{isKicked(room, session.playerId) ? 'El anfitrión te sacó de la sala.' : 'Ya no estás en esta sala.'}</p>
+          {!isKicked(room, session.playerId) && <button type="button" className="tf-btn tf-btn-primary" onClick={() => dispatch({ type: 'join', name: session.name, avatar: getProfile().avatar })}>Volver a entrar</button>}
           <button type="button" className="tf-btn tf-btn-soft" onClick={handleLeave}>Salir</button>
         </div>
       </div>

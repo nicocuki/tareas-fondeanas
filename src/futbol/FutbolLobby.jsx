@@ -1,6 +1,6 @@
 import React from 'react';
 import { COLORS, TEAM_BUTTON } from '../theme.js';
-import { isHost, canStart, MAX_PER_TEAM } from './game.js';
+import { isHost, canStart, waitingPlayers, MAX_PER_TEAM } from './game.js';
 import { STADIUMS } from './haxball.js';
 import {
   LobbyLayout,
@@ -17,8 +17,11 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
   const options = room.options;
   const myTeam = me?.team;
 
-  const reds = room.players.filter((p) => p.team === 'red');
-  const blues = room.players.filter((p) => p.team === 'blue');
+  // Los que siguen en la pantalla del final del partido: aparecen «(Esperando...)» y no se puede arrancar.
+  const waiting = waitingPlayers(room);
+  const mark = (p) => (waiting.includes(p) ? { ...p, note: '(Esperando...)' } : p);
+  const reds = room.players.filter((p) => p.team === 'red').map(mark);
+  const blues = room.players.filter((p) => p.team === 'blue').map(mark);
   const ready = canStart(room);
 
   const subtitle = room?.isTrainingMode
@@ -31,6 +34,9 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
 
   return (
     <LobbyLayout
+      roster={room.players}
+      me={me?.id}
+      onKick={(id) => onDispatch({ type: 'kick', target: id })}
       code={code || room?.code}
       host={host && !room?.isTrainingMode && !room?.isLocalGame}
       players={room?.isTrainingMode || room?.isLocalGame ? 0 : room.players.length}
@@ -277,6 +283,8 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
             : host
             ? ready
               ? '⚽ ¡Iniciar Partido!'
+              : waiting.length
+              ? 'Esperando que vuelvan todos'
               : 'Faltan jugadores en los equipos'
             : 'Esperando que el anfitrión inicie el partido…'
         }
@@ -287,11 +295,13 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
         statusHint={
           room?.isTrainingMode
             ? '¡Todo listo! Configurá las opciones a tu gusto y comenzá el entrenamiento.'
+            : waiting.length
+            ? `Siguen en la pantalla del final: ${waiting.map((p) => p.name).join(', ')}. Se arranca cuando vuelvan o se vayan.`
             : ready
             ? (host ? '¡Equipos listos! El anfitrión puede dar el pitazo inicial.' : '¡Equipos listos! Esperando al anfitrión.')
             : 'Se necesita al menos 1 jugador en el Equipo Rojo y 1 en el Equipo Azul.'
         }
-        problems={!ready && !room?.isTrainingMode && room.players.length >= 1 ? ['Se necesita al menos 1 jugador en cada equipo para iniciar.'] : []}
+        problems={!ready && !waiting.length && !room?.isTrainingMode && room.players.length >= 1 ? ['Se necesita al menos 1 jugador en cada equipo para iniciar.'] : []}
       />
     </LobbyLayout>
   );

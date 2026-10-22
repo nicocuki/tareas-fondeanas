@@ -1,5 +1,6 @@
 // Lógica pura del juego: sin React ni red, para poder testearla y aplicarla dentro de transacciones.
 import { WORD_POOL } from './words.js';
+import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
 export { WORD_POOL };
 
@@ -551,6 +552,13 @@ function reduce(room, a, me, { rand, now }) {
 export function applyAction(room, action, { rand = Math.random, now = Date.now() } = {}) {
   if (!room) return null;
   const current = normalizeRoom(room);
+  // El anfitrión saca a alguien: es su `leave`, y con esa pantalla no puede volver a entrar.
+  if (action.type === 'kick') {
+    const target = kickTarget(room, action);
+    const left = target && applyAction(room, { type: 'leave', playerId: target }, { rand, now });
+    return left && left !== room ? markKicked(left, target) : null;
+  }
+  if (action.type === 'join' && isKicked(room, action.playerId)) return null;
   const next = reduce(current, action, findPlayer(current, action.playerId), { rand, now });
   return next ? { ...next, updatedAt: now } : null;
 }
