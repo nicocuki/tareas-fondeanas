@@ -19,9 +19,9 @@ export default function DomainNotice() {
     <div className="tf-notice" role="status" data-notice>
       <span className="tf-notice-icon" aria-hidden="true">⚠️</span>
       <p>
-        <strong>Aviso:</strong> depende el momento puede ser que la página esté en{' '}
+        <strong>aviso</strong>, depende el momento puede ser q la página esté en{' '}
         «<a href={`https://${LINKS[0]}`}>{LINKS[0]}</a>» o en «<a href={`https://${LINKS[1]}`}>{LINKS[1]}</a>».
-        Si no anda una, prueben la otra. ¡Abrazo!
+        si una no anda prueben con la otra, un abrazo
       </p>
       <span className="tf-notice-icon" aria-hidden="true">⚠️</span>
       <button type="button" className="tf-notice-close" aria-label="Cerrar el aviso" data-notice-close onClick={close}>✕</button>

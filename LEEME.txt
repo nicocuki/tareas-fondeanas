@@ -1,0 +1,9 @@
+Cambios de esta sesion: Monopoly (v1.18.0) y T.E.G. (v1.19.0).
+
+Esta carpeta tiene SOLO los archivos nuevos o modificados, con las mismas rutas que en el repo.
+Para aplicarlos: copia el contenido de esta carpeta encima de tu carpeta del repo tareas-fondeanas
+(aceptando reemplazar los archivos que ya existen). Despues: npm test y npm run build.
+
+Nuevos:  src/monopoly/, src/teg/, tests/monopoly.test.js, tests/teg.test.js
+Editados: CLAUDE.md, README.md, updates, src/App.jsx, src/ui/games.js, src/ui/roomSummary.js,
+          src/ui/tokens.css, tests/kick.test.js
