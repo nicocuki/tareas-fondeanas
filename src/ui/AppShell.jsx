@@ -1,6 +1,6 @@
 // Marco de toda la página: header fijo, menú lateral y avisos. Los juegos van adentro.
 import React, { useEffect, useRef, useState } from 'react';
-import { GAMES, gameById } from './games.js';
+import { MENU_GAMES, gameById } from './games.js';
 import { copyInvite, fullscreenElement, syncProfileName, toggleFullscreen, useCurrentRoom, useProfile, useToast } from './store.js';
 import SideMenu from './SideMenu.jsx';
 import { SuggestionsDialog } from './Suggestions.jsx';
@@ -140,7 +140,7 @@ export default function AppShell({ activeGame, onNavigate, children }) {
         onClose={close}
         activeGame={activeGame}
         onNavigate={(id, code) => { onNavigate(id, code); setMenu(null); }}
-        games={GAMES}
+        games={MENU_GAMES}
       />
 
       {suggest && <SuggestionsDialog onClose={() => setSuggest(false)} />}

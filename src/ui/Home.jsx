@@ -1,6 +1,6 @@
 // Portada: saludo, unirse con código, las salas públicas, los juegos, cómo funciona y la última novedad.
 import React from 'react';
-import { GAMES, gameById } from './games.js';
+import { MENU_GAMES, gameById } from './games.js';
 import { showToast, useLastRoom, useProfile } from './store.js';
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
@@ -124,10 +124,10 @@ export default function Home({ onNavigate }) {
       <section className="tf-section" aria-labelledby="tf-juegos">
         <div className="tf-section-head">
           <h2 id="tf-juegos">Elegí un juego</h2>
-          <p>{GAMES.length} juegos multijugador, todos online.</p>
+          <p>{MENU_GAMES.length} juegos multijugador, todos online.</p>
         </div>
         <div className="tf-game-grid">
-          {GAMES.map((g) => <GameCard key={g.id} game={g} onPlay={() => onNavigate(g.id)} />)}
+          {MENU_GAMES.map((g) => <GameCard key={g.id} game={g} onPlay={() => onNavigate(g.id)} />)}
         </div>
       </section>
 

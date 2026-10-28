@@ -125,6 +125,7 @@ export const GAMES = [
     description: 'El modo Mario vs Luigi de New Super Mario Bros, de 2 a 10 jugadores: juntá estrellas, robale las del otro y usá los poderes. Es el juego original de la comunidad, tal cual.',
     players: '2 a 10',
     lobby: false, // no usa nuestras salas: no se puede elegir desde «Cambiar de juego»
+    menu: false, // no aparece en la portada ni en el menú; sigue andando con ?juego=mvl
     duration: '5–15 min',
     input: 'Teclado o joystick',
     badge: 'Nuevo',
@@ -287,6 +288,8 @@ export const GAMES = [
   },
 ];
 
+// Los juegos que se muestran en la portada y en el menú (los que tienen `menu: false` quedan ocultos).
+export const MENU_GAMES = GAMES.filter((g) => g.menu !== false);
 export const gameById = (id) => GAMES.find((g) => g.id === id) || null;
 
 // Por qué no se puede pasar a ese juego con `count` jugadores (o null si se puede).

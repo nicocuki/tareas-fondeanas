@@ -227,6 +227,7 @@ colores de equipo, las casillas de Código Secreto, el tablero de Monopoly (pape
 el HUD y la reunión, oscuros como el original) y Trazo Loco (copia el look
 de Gartic Phone, con sus variables `--gp-*` en `src/gartic/gartic.css`), que son iguales en los dos temas.
 
+- **Mario vs Luigi está oculto del menú y la portada** (`menu: false` en `games.js`; las dos usan `MENU_GAMES`): el juego, `src/mvl/`, `public/mvl/` y `?juego=mvl` siguen andando. Para volver a mostrarlo, sacá esa línea.
 - `games.js` es el catálogo (nombre, emoji, color, jugadores con `min`/`max` en números, «cómo jugar»). **Un juego nuevo se
   agrega ahí, en `SCREENS` de `App.jsx` y en `ROOTS` de `worker/rules.js`.**
 - `store.js`: preferencias, perfil (el nombre usa la misma clave que `session.js`), la sala actual y

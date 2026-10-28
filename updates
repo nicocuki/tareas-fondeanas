@@ -631,5 +631,10 @@ OCULTA 1.23.1 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.23.25 = Texto del aviso de direcciones
+1.23.25 = Texto del aviso de direcciones
 - El aviso de la portada dice ahora: depende el momento puede ser que la página esté en una de las dos direcciones, y si no anda una, que prueben la otra. Los links se pueden tocar.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.23.3 = Mario vs Luigi sale del menú
+- Mario vs Luigi ya no aparece en la portada ni en el menú. El juego sigue en el proyecto, solo está oculto.
