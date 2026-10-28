@@ -343,7 +343,7 @@ export function busAt(route, elapsed) {
 // de GLIDE_AT se abre el planeador solo (o antes, con Espacio): más lento y más suave. En el aire
 // nada te toca. Al llegar al piso (z = 0) aterrizás en un lugar libre.
 export const FALL_SPEED = 135;
-export const GLIDE_SPEED = 92;
+export const GLIDE_SPEED = 58;
 export const GLIDE_AT = 0.3;
 export function boardBus(p, bus) {
   p.aboard = true; p.air = null;
@@ -387,7 +387,7 @@ export function stepAir(p, ax, ay, dt, t) {
   a.vx *= decay; a.vy *= decay;
   p.x = Math.max(-40, Math.min(t.W + 40, p.x));
   p.y = Math.max(-40, Math.min(t.H + 40, p.y));
-  a.z -= dt * (a.glide ? 0.045 : 0.105);
+  a.z -= dt * (a.glide ? 0.036 : 0.105);
   if (!a.glide && a.z <= GLIDE_AT) a.glide = true;
   if (a.z > 0) return null;
   const spot = landSpot(t, p.x, p.y);

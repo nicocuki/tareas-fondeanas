@@ -573,10 +573,16 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.21.0 = Pixel Royale: ahora más parecido a Fortnite 🚌
+1.21.0 = Pixel Royale: ahora más parecido a Fortnite 🚌
 - Lugares con nombre en la isla grande: Pibes Polvorín Polvoriento (una playa con búnker y cajas de munición), Muelle Mojito (un muelle de madera en el mar), Frontera del Fondo (un muro largo con portones y torres), Puente Pollín (un río con puente y gallineros), Cover (una cancha de fútbol con arcos), Arboleada Alianza (dos anillos de árboles entrelazados), Juvenil Judía (una chacra de judías con granero), Villa Vermut (el pueblo del medio) y Peñasco Pelado (un cerro de piedras).
 - Solo hay cofres: ya no hay nada tirado en el piso. Mantené Espacio cerca de un cofre para abrirlo y lo que trae va directo a tu inventario. Los de torres, búnkeres y pueblos traen cosas mejores, y los cofres dorados que caen del cielo, lo mejor.
 - Antes de empezar esperás en una isla de espera, donde podés caminar y probar la pistola. Después sale el bus de batalla (un colectivo colgado de un globo): mirás el mapa grande con los nombres, elegís dónde caer y saltás con Espacio.
 - Caída libre y planeador: bajás rápido con los brazos abiertos y a mitad de camino se abre el planeador (o antes, con Espacio). Se nota la altura con nubes, viento, sombra lejos en el piso y el personaje más grande. En el aire nadie te toca.
 - Tecla M para abrir el mapa grande con los nombres, y un cartel te avisa en qué lugar entraste.
 - Bug arreglado: al espectar, las balas de los demás se quedaban quietas; ahora se ven en tiempo real.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.21.1 = Pixel Royale: textos más legibles y planeo más lento
+- Los textos de la partida (nombres, lugares, mapa grande, daños) usan una fuente normal con borde, en vez de la de píxeles.
+- El planeador del bus ahora es más lento: avanzás menos para los costados y bajás más despacio, así tenés tiempo de elegir dónde aterrizar.

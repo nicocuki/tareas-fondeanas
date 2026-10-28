@@ -756,7 +756,7 @@ De 2 a 10, solo compu. `id`: `pixel` (`?juego=pixel`, `gameType: 'pixel'`, raíz
   **que tiró** y viaja en `ex` (`{k, x, y, w, o}`). Los eventos se deduplican por `k` (`s.seen`).
 - **La tormenta** (`zoneAt`, `PHASES`) y los cofres del cielo son determinísticos a partir de la semilla y la hora de inicio.
 - **Dibujo**: todo va a un canvas de 384 px de ancho que el CSS agranda con `image-rendering: pixelated`. Los sprites se arman con código
-  (`render.js`, sin imágenes) y el texto usa una fuente propia de 3 × 5 píxeles (`drawText`, con `scale`).
+  (`render.js`, sin imágenes) y el texto usa una fuente normal (Inter) con borde oscuro (`drawText`, con `scale`): la de 3 × 5 píxeles se leía mal.
 - **Todavía no tiene** (pedido de Nico, para ir sumando): construcción (paredes, pisos y rampas con materiales, activable en el lobby), rarezas de armas,
   munición por tipo, derribados y revivir, dúos y escuadras, y vehículos.
 - `window.__pixel` y `data-pixel-canvas` existen para manejar el juego desde un navegador automatizado. No los saques.

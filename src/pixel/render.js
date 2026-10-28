@@ -60,37 +60,27 @@ export function shade(hex, f) {
   return `rgb(${ch(n >> 16)},${ch((n >> 8) & 255)},${ch(n & 255)})`;
 }
 
-// ─── Letras de píxel (3 × 5) ────────────────────────────────────────────────
-const GLYPHS = {
-  0: '111101101101111', 1: '010110010010111', 2: '111001111100111', 3: '111001111001111', 4: '101101111001001',
-  5: '111100111001111', 6: '111100111101111', 7: '111001010010010', 8: '111101111101111', 9: '111101111001111',
-  A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111',
-  F: '111100110100100', G: '011100101101011', H: '101101111101101', I: '111010010010111', J: '001001001101010',
-  K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '110101101101101', O: '010101101101010',
-  P: '110101110100100', Q: '010101101111011', R: '110101110101101', S: '011100010001110', T: '111010010010010',
-  U: '101101101101111', V: '101101101101010', W: '101101111111101', X: '101101010101101', Y: '101101010010010',
-  Z: '111001010100111', '.': '000000000000010', ':': '000010000010000', '-': '000000111000000', '+': '000010111010000',
-  '!': '010010010000010', '/': '001001010100100', '%': '101001010100101', ' ': '000000000000000',
-};
-const clean = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
-export const textWidth = (s) => Math.max(0, String(s).length * 4 - 1);
+// ─── Texto ──────────────────────────────────────────────────────────────────
+// Los textos van con una fuente normal (no de píxeles) para que se lean bien, con un borde oscuro.
+const FONT = 'Inter, system-ui, sans-serif';
+let measure = null;
+const fontFor = (scale) => `800 ${8 * scale}px ${FONT}`;
+export function textWidth(s, scale = 1) {
+  measure ||= document.createElement('canvas').getContext('2d');
+  measure.font = fontFor(scale);
+  return Math.ceil(measure.measureText(String(s)).width);
+}
 export function drawText(g, str, x, y, color = '#fff', { align = 'left', shadow = '#14101c', scale = 1 } = {}) {
-  const s = clean(str);
-  const w = textWidth(s) * scale;
-  let cx = Math.round(align === 'center' ? x - w / 2 : align === 'right' ? x - w : x);
-  y = Math.round(y);
-  for (const ch of s) {
-    const gl = GLYPHS[ch];
-    if (gl) {
-      for (let i = 0; i < 15; i++) {
-        if (gl[i] !== '1') continue;
-        const gx = cx + (i % 3) * scale, gy = y + Math.floor(i / 3) * scale;
-        if (shadow) px(g, gx, gy + scale, shadow, scale, scale);
-        px(g, gx, gy, color, scale, scale);
-      }
-    }
-    cx += 4 * scale;
-  }
+  const s = String(str);
+  g.save();
+  g.font = fontFor(scale);
+  g.textBaseline = 'top';
+  g.textAlign = align === 'center' ? 'center' : align === 'right' ? 'right' : 'left';
+  g.lineJoin = 'round';
+  if (shadow) { g.lineWidth = 2 * scale; g.strokeStyle = shadow; g.strokeText(s, Math.round(x), Math.round(y) - scale); }
+  g.fillStyle = color;
+  g.fillText(s, Math.round(x), Math.round(y) - scale);
+  g.restore();
 }
 
 // ─── Sprites ────────────────────────────────────────────────────────────────
@@ -587,7 +577,7 @@ export function drawBus(g, bus, route, cam, time, riders) {
     g.restore();
   }
   disc(g, bx + sway - 7, by - 8, 5, 'rgba(255,255,255,0.55)');
-  drawText(g, 'BUS', bx + sway, by - 2, '#14101c', { align: 'center', shadow: null, scale: 2 });
+  drawText(g, 'BUS', bx + sway, by - 6, '#14101c', { align: 'center', shadow: null, scale: 2 });
 }
 
 // Un jugador en el aire visto desde arriba: brazos abiertos en caída libre; con el planeador, una
@@ -719,7 +709,7 @@ export function drawBigMap(g, big, t, me, z, o, time, W, H) {
     }
     lines.forEach((line, n) => {
       const w = textWidth(line);
-      drawText(g, line, Math.max(x0 + w / 2 + 1, Math.min(x0 + size - w / 2 - 1, lx)), ly + n * 6, '#ffffff', { align: 'center' });
+      drawText(g, line, Math.max(x0 + w / 2 + 1, Math.min(x0 + size - w / 2 - 1, lx)), ly + n * 9, '#ffffff', { align: 'center' });
     });
   }
 }
