@@ -191,6 +191,23 @@ function buildArt() {
       }
     }));
   }
+  // Construcción de madera: pared de tablones parados con frente oscuro, y piso de tablas claras.
+  {
+    const [c, g] = newCanvas(TILE, TILE);
+    px(g, 0, 0, '#5a3a1c', TILE, TILE);
+    for (let x = 0; x < TILE; x += 4) { px(g, x, 0, '#d6a25e', 3, 12); px(g, x, 0, '#eec283', 3, 1); px(g, x + 2, 3, '#a8763a', 1, 3); }
+    px(g, 0, 12, '#7c5128', TILE, 4); px(g, 0, 12, '#3f2812', TILE, 1);
+    for (let x = 0; x < TILE; x += 4) px(g, x, 13, '#8f6232', 3, 2);
+    a.bwall = c;
+  }
+  a.bfloor = [];
+  for (let v = 0; v < 2; v++) {
+    a.bfloor.push(groundTile('#e2c288', '#d4b374', '#efd49e', 880 + v, (g) => {
+      for (let y = 0; y < TILE; y += 4) px(g, 0, y, '#a8763a', TILE, 1);
+      px(g, 3 + v * 7, 1, '#8a5e2c', 1, 3); px(g, 11 - v * 6, 9, '#8a5e2c', 1, 3);
+      px(g, 0, 0, '#f4dfae', 1, TILE); px(g, 15, 0, '#b68a4c', 1, TILE);
+    }));
+  }
   // Cofres: cerrado con brillo dorado (según el valor), y abierto y vacío.
   const chestArt = (open, body, trim) => {
     const [c, g] = newCanvas(14, 12);
@@ -241,6 +258,7 @@ function buildArt() {
     shotgun: ['.............', 'kkkkkkkkkkkk.', 'kgggggggggkwk', 'kkkkkkkkkkkwk', '...........k.'],
     rifle: ['kkkkkkkkkkkkkk', 'kgggggggggggkk', 'kkkkkkkkkkkkkk', '.....kgk.kgk..', '.....kkk.kkk..'],
     sniper: ['.....kk.........', 'kkkkkkkkkkkkkkkk', 'kggggggggggggggk', 'kkkkkkkkkkkkkkkk', '........kgk.kk..'],
+    pickaxe: ['..kkkkkkkk..', '.kssssssssk.', 'kss.kwwk.ssk', 'ks..kwwk..sk', '....kwwk....', '....kwwk....', '....kwwk....', '....kkkk....'],
     bazooka: ['..kkkkkkkkkkkk', 'kkgggggggggggk', 'kkgggggggggggk', '..kkkkkkkkkkkk', '....kgk.......'],
   };
   for (const [name, rows] of Object.entries(SHAPES)) a.loot[name] = gun(rows, RARITY_COLORS[WEAPONS[name].rarity]);
@@ -292,6 +310,8 @@ export function drawGround(g, t, cam, W, H, time) {
         }
         case T.NET: spr = a.net; break;
         case T.CROP: spr = a.crop[v & 1]; break;
+        case T.BWALL: spr = a.bwall; break;
+        case T.BFLOOR: spr = a.bfloor[v & 1]; break;
         default: spr = a.rubble[v & 1];
       }
       const sx = tx * TILE - cam.x, sy = ty * TILE - cam.y;
@@ -303,6 +323,20 @@ export function drawGround(g, t, cam, W, H, time) {
       }
     }
   }
+}
+
+// La pieza que vas a poner, transparente: verde si se puede y roja si no.
+export function drawGhost(g, tx, ty, kind, ok, cam, time) {
+  const a = getArt();
+  const sx = tx * TILE - cam.x, sy = ty * TILE - cam.y;
+  g.globalAlpha = 0.6;
+  g.drawImage(kind === 'wall' ? a.bwall : a.bfloor[0], sx, sy);
+  g.globalAlpha = 0.35 + 0.1 * Math.sin(time * 8);
+  px(g, sx, sy, ok ? '#5dff7a' : '#ff4a4a', TILE, TILE);
+  g.globalAlpha = 1;
+  g.strokeStyle = ok ? '#c8ffd2' : '#ffd0d0';
+  g.lineWidth = 1;
+  g.strokeRect(sx + 0.5, sy + 0.5, TILE - 1, TILE - 1);
 }
 
 // Copas de los árboles: van encima de los jugadores.
@@ -433,6 +467,7 @@ export function drawDead(g, p, cam, color) {
 // ─── Balas, granadas, partículas ────────────────────────────────────────────
 const TRACER = { pistol: '#fff2a8', smg: '#ffe27a', shotgun: '#ffc46b', rifle: '#a8f0ff', sniper: '#ffffff', bazooka: '#ff9a3c' };
 export function drawBullet(g, b, cam) {
+  if (b.w === 'pickaxe') return;
   const x = Math.round(b.x - cam.x), y = Math.round(b.y - cam.y);
   if (b.w === 'bazooka') {
     disc(g, x, y, 2, '#14101c'); disc(g, x, y, 1, '#ff9a3c'); px(g, x, y, '#fff3a0');
@@ -648,7 +683,7 @@ export function drawPlaceLabels(g, t, cam, W, H, big) {
 
 // ─── Minimapa ───────────────────────────────────────────────────────────────
 export const MINI = 52;
-const MINI_COLORS = ['#1d3f80', '#3a86c4', '#d9c47e', '#4a9a43', '#2f7a33', '#8a5a3a', '#6b3a2a', '#2f7a33', '#777b88', '#8a5a3a', '#8a5a3a', '#c9a066', '#5ab84e', '#f3f7ee', '#e9edf2', '#8b6b3e'];
+const MINI_COLORS = ['#1d3f80', '#3a86c4', '#d9c47e', '#4a9a43', '#2f7a33', '#8a5a3a', '#6b3a2a', '#2f7a33', '#777b88', '#8a5a3a', '#8a5a3a', '#c9a066', '#5ab84e', '#f3f7ee', '#e9edf2', '#8b6b3e', '#c58a4a', '#e2c288'];
 // El mapa pintado en un canvas de `size` × `size` (el chico va al costado, el grande para elegir dónde caer).
 export function buildMinimap(t, size = MINI) {
   const [c, g] = newCanvas(size, size);

@@ -757,8 +757,17 @@ De 2 a 10, solo compu. `id`: `pixel` (`?juego=pixel`, `gameType: 'pixel'`, raíz
 - **La tormenta** (`zoneAt`, `PHASES`) y los cofres del cielo son determinísticos a partir de la semilla y la hora de inicio.
 - **Dibujo**: todo va a un canvas de 384 px de ancho que el CSS agranda con `image-rendering: pixelated`. Los sprites se arman con código
   (`render.js`, sin imágenes) y el texto usa una fuente normal (Inter) con borde oscuro (`drawText`, con `scale`): la de 3 × 5 píxeles se leía mal.
-- **Todavía no tiene** (pedido de Nico, para ir sumando): construcción (paredes, pisos y rampas con materiales, activable en el lobby), rarezas de armas,
-  munición por tipo, derribados y revivir, dúos y escuadras, y vehículos.
+- **4 slots y el pico** (pedido de Nico): `SLOTS = 4`. El slot 1 es siempre el pico (`WEAPONS.pickaxe`, `melee`, sin recarga): no se arranca con ninguna arma, esas salen de los
+  cofres. `giveContents` con el inventario lleno reemplaza la peor de las tres armas si la nueva es mejor y **nunca toca el pico**. El pico es una bala de 18 px de alcance:
+  la juzga la pantalla de la víctima como cualquier otra y, contra una casilla, hace `tileDmg` (el evento `ex` lleva `pk: 1`).
+- **Madera y construcción** (un solo material, por pedido de Nico). Romper cualquier cosa que tenga vida (`TILE_HP`) da madera al que la rompió (`WOOD_HIT` por golpe de pico,
+  `WOOD_BREAK` al romperla; la decide la pantalla del que tiró, igual que el daño a casillas). La madera vive solo en la pantalla del jugador (`p.wood`, tope `MAX_WOOD`) y se
+  vuelve a 0 al subir al bus. **Z = pared** (`T.BWALL`, sólida, frena balas, 90 de vida) y **X = piso** (`T.BFLOOR`, caminable, también sobre el agua), con click; la pieza va
+  donde está el mouse, hasta `BUILD_RANGE`, y `buildProblem` (puro, el mismo para el botón y el fantasma) dice por qué no se puede. **Cada pieza viaja en la foto** (`bd`:
+  `{ k, x, y, c, g }`, `g` = 0 isla de espera / 1 mapa real) y todas las pantallas la aplican con `placePiece` (se deduplica por `k`); `t.under` guarda lo que había
+  debajo para devolverlo al romperse (agua, pasto…). Si una pared aparece arriba de alguien, esa pantalla lo saca con `landSpot`. Como lo de `ex`, no se guarda: quien
+  recarga la página no ve lo construido antes.
+- **Todavía no tiene** (pedido de Nico, para ir sumando): rampas, rarezas de armas, munición por tipo, derribados y revivir, dúos y escuadras, y vehículos.
 - `window.__pixel` y `data-pixel-canvas` existen para manejar el juego desde un navegador automatizado. No los saques.
 
 ## Mario vs Luigi

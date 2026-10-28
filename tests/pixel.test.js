@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MAPS, T, TILE, makeMap, placeAt, reachable, tileAt, zoneAt, damageTile, isWalkable } from '../src/pixel/map.js';
-import { WEAPONS, GLIDE_AT, BUS_SPEED, bulletsForShot, stepBullet, dropInfo, spawnPoint, standable, newPlayer, hurt, take, canTake, startCast, finishCast, blastOn, MAX_DROPS, DROP_BASE, chestContents, giveContents, contentsOf, busRoute, busAt, boardBus, jump, stepAir, openGlider, landSpot } from '../src/pixel/sim.js';
+import { MAPS, T, TILE, TILE_HP, makeMap, placeAt, reachable, tileAt, zoneAt, damageTile, isWalkable } from '../src/pixel/map.js';
+import { WEAPONS, SLOTS, BUILD_CODE, BUILD_COST, MAX_WOOD, WOOD_BREAK, buildProblem, placePiece, GLIDE_AT, BUS_SPEED, bulletsForShot, stepBullet, dropInfo, spawnPoint, standable, newPlayer, hurt, take, canTake, startCast, finishCast, blastOn, MAX_DROPS, DROP_BASE, chestContents, giveContents, contentsOf, busRoute, busAt, boardBus, jump, stepAir, openGlider, landSpot } from '../src/pixel/sim.js';
 import { COUNTDOWN_MS, MAX_PLAYERS, applyAction, newRoom, startProblem, findPlayer } from '../src/pixel/game.js';
 
 test('pixel: la misma semilla arma el mismo mapa y cada mapa tiene su tamaño', () => {
@@ -55,12 +55,13 @@ test('pixel: el contenido de un cofre sale de la semilla, entra al inventario y 
   assert.equal(got.length, 3);
   // Con el inventario lleno solo cambia el arma de la mano si la nueva es mejor.
   take(p, 'smg');
+  take(p, 'shotgun');
   giveContents(p, { w: 'pistol', items: {} });
-  assert.equal(p.inv[0].w, 'pistol');
+  assert.ok(p.inv.every((g) => g?.w !== 'pistol'), 'una peor no reemplaza');
   giveContents(p, { w: 'sniper', items: {} });
-  assert.equal(p.inv[0].w, 'sniper');
-  giveContents(p, { w: 'pistol', items: {} });
-  assert.equal(p.inv[0].w, 'sniper');
+  assert.ok(p.inv.some((g) => g?.w === 'sniper'), 'una mejor reemplaza a la peor');
+  assert.equal(p.inv[0].w, 'pickaxe', 'el pico no se toca');
+  assert.ok(p.inv.some((g) => g?.w === 'rifle'));
   assert.ok(contentsOf(makeMap('grande', 9), 9, DROP_BASE + 1));
 });
 
@@ -146,15 +147,55 @@ test('pixel: el escudo absorbe primero, curarse lleva tiempo y se corta si te pe
   assert.equal(blastOn({ x: 200, y: 0 }, { w: 'grenade', x: 0, y: 0 }), null);
 });
 
-test('pixel: el inventario tiene tres lugares y levantar la misma arma la recarga', () => {
+test('pixel: el inventario tiene cuatro lugares (el pico fijo en el 1) y levantar la misma arma la recarga', () => {
   const p = newPlayer(0, 0);
+  assert.equal(SLOTS, 4);
+  assert.equal(p.inv[0].w, 'pickaxe');
+  assert.ok(p.inv.slice(1).every((g) => g === null), 'no se arranca con ninguna arma');
   assert.equal(take(p, 'smg'), 1);
   assert.equal(take(p, 'rifle'), 2);
+  assert.equal(take(p, 'shotgun'), 3);
   assert.equal(canTake(p, 'sniper'), false);
   assert.equal(canTake(p, 'smg'), true);
   p.inv[1].mag = 3;
   take(p, 'smg');
   assert.equal(p.inv[1].mag, WEAPONS.smg.mag);
+});
+
+test('pixel: la madera: lo que se rompe la da, las paredes y los pisos se construyen, frenan balas y al romperse dejan lo de abajo', () => {
+  const t = makeMap('grande', 21);
+  // Una casilla de pasto libre cerca del centro y una de agua profunda.
+  let gx = 0, gy = 0, wx = 0, wy = 0;
+  for (let y = 40; y < 60 && !gx; y++) for (let x = 40; x < 60; x++) if ([-3, -2, -1, 0, 1].every((d) => tileAt(t, x + d, y) === T.GRASS)) { gx = x; gy = y; break; }
+  for (let i = 0; i < t.tiles.length && !wx; i++) if (t.tiles[i] === T.DEEP && t.tiles[i + 1] === T.DEEP && i % t.N > 3 && i % t.N < t.N - 3 && i > t.N * 4 && i < t.N * (t.N - 4)) { wx = i % t.N; wy = Math.floor(i / t.N); }
+  const p = newPlayer(gx * TILE + TILE * 3, gy * TILE + TILE / 2);
+  assert.equal(p.wood, 0);
+  assert.equal(buildProblem(t, 'wall', gx, gy, p), null);
+  assert.ok(buildProblem(t, 'wall', gx + 30, gy, p), 'muy lejos');
+  assert.ok(buildProblem(t, 'wall', wx, wy, { x: wx * TILE, y: wy * TILE }), 'una pared no se apoya en el agua');
+  assert.equal(buildProblem(t, 'floor', wx, wy, { x: wx * TILE, y: wy * TILE }), null, 'un piso sí: es un puente');
+  const q = { x: gx * TILE + 8, y: gy * TILE + 8 };
+  assert.ok(buildProblem(t, 'wall', gx, gy, p, [q]), 'no se construye arriba de alguien');
+  // Pared: sólida, frena balas y se rompe de a poco.
+  assert.ok(placePiece(t, BUILD_CODE.wall, gx, gy));
+  assert.equal(tileAt(t, gx, gy), T.BWALL);
+  assert.equal(placePiece(t, BUILD_CODE.wall, gx, gy), false, 'ya hay algo');
+  const [b] = bulletsForShot({ k: 'w', x: (gx - 3) * TILE, y: (gy + 0.5) * TILE, a: 0, w: 'rifle', sd: 1 }, 'u');
+  let hit = null;
+  for (let i = 0; i < 60 && !hit; i++) hit = stepBullet(b, 1 / 60, t);
+  assert.ok(hit?.kind === 'tile' && hit.tx === gx);
+  assert.equal(damageTile(t, gx, gy, TILE_HP[T.BWALL] - 1), false);
+  assert.equal(damageTile(t, gx, gy, 5), true);
+  assert.equal(tileAt(t, gx, gy), T.GRASS, 'al romperse queda el pasto de antes');
+  // Piso sobre el agua: se camina, y al romperse vuelve el agua.
+  assert.ok(placePiece(t, BUILD_CODE.floor, wx, wy));
+  assert.equal(isWalkable(t, wx, wy), true);
+  assert.equal(damageTile(t, wx, wy, 99), true);
+  assert.equal(tileAt(t, wx, wy), T.DEEP);
+  // Todo lo que se rompe tiene su recompensa de madera, y el pico es un arma de cuerpo a cuerpo.
+  for (const kind of [T.TREE, T.CRATE, T.WALL, T.BWALL, T.BFLOOR]) assert.ok(WOOD_BREAK[kind] > 0 && TILE_HP[kind] > 0);
+  assert.ok(WEAPONS.pickaxe.melee && WEAPONS.pickaxe.range < 30 && WEAPONS.pickaxe.tileDmg > 0);
+  assert.ok(BUILD_COST.wall > 0 && BUILD_COST.floor > 0 && MAX_WOOD >= BUILD_COST.wall * 10);
 });
 
 function room(n, map = 'grande') {

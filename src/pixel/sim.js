@@ -8,12 +8,14 @@ export const PLAYER_R = 5;
 export const SPEED = 82;
 export const HP = 100;
 export const MAX_SHIELD = 100;
-export const SLOTS = 3;
+export const SLOTS = 4;   // el 1 es siempre el pico; del 2 al 4, las armas
 
 // ─── Armas ──────────────────────────────────────────────────────────────────
 // dmg por bala, rate = segundos entre tiros, mag = balas por cargador, speed en px/s, range en px.
 // kick = empujón hacia atrás, look = cuánto se adelanta la cámara hacia donde apuntás.
 export const WEAPONS = {
+  // El pico va siempre en el slot 1: rompe lo que toca (y da madera) y, de cerca, lastima. No se recarga.
+  pickaxe: { name: 'Pico', rarity: 0, dmg: 20, tileDmg: 25, pellets: 1, rate: 0.42, mag: 1, reload: 0, speed: 260, range: 18, spread: 0, auto: true, kick: 0, look: 0.2, len: 8, melee: true },
   pistol: { name: 'Pistola', rarity: 0, dmg: 14, pellets: 1, rate: 0.26, mag: 12, reload: 1.0, speed: 290, range: 210, spread: 0.025, auto: false, kick: 14, look: 0.4, len: 7 },
   smg: { name: 'Metralleta', rarity: 1, dmg: 6, pellets: 1, rate: 0.08, mag: 30, reload: 1.5, speed: 310, range: 160, spread: 0.1, auto: true, kick: 8, look: 0.45, len: 8 },
   shotgun: { name: 'Escopeta', rarity: 1, dmg: 9, pellets: 7, rate: 0.8, mag: 5, reload: 1.9, speed: 270, range: 110, spread: 0.26, auto: false, kick: 40, look: 0.4, len: 9 },
@@ -21,7 +23,7 @@ export const WEAPONS = {
   sniper: { name: 'Francotirador', rarity: 3, dmg: 75, pellets: 1, rate: 1.15, mag: 4, reload: 2.3, speed: 580, range: 500, spread: 0.004, auto: false, kick: 30, look: 1, len: 14 },
   bazooka: { name: 'Bazooka', rarity: 3, dmg: 0, pellets: 1, rate: 1.4, mag: 1, reload: 2.6, speed: 175, range: 340, spread: 0.01, auto: false, kick: 36, look: 0.5, len: 12, blast: 'rocket' },
 };
-export const WEAPON_LIST = Object.keys(WEAPONS);
+export const WEAPON_LIST = Object.keys(WEAPONS).filter((k) => !WEAPONS[k].melee);
 export const RARITY_COLORS = ['#c9ccd6', '#5ed36b', '#4aa0ff', '#c46bff'];
 
 // Explosiones: r = radio en px, dmg al jugador (más fuerte en el centro), tile = daño a lo que se rompe.
@@ -47,7 +49,7 @@ export const isWeapon = (kind) => Boolean(WEAPONS[kind]);
 export function newPlayer(x, y) {
   return {
     x, y, kx: 0, ky: 0, hp: HP, shield: 0, dead: false,
-    inv: [{ w: 'pistol', mag: WEAPONS.pistol.mag }, null, null], sel: 0, air: null, aboard: false, open: 0,
+    inv: [{ w: 'pickaxe', mag: 1 }, null, null, null], sel: 0, air: null, aboard: false, open: 0, wood: 0, build: null,
     items: { bandage: 0, medkit: 0, shield: 0, grenade: 0 },
     readyAt: 0, reloadUntil: 0, cast: null, grenadeAt: 0,
     lastBy: null, lastW: null, lastHitAt: 0, hurtUntil: 0, walked: 0,
@@ -239,7 +241,8 @@ export function blastTiles(t, ev) {
     for (let tx = x0; tx <= x1; tx++) {
       const d = Math.hypot(tx * TILE + TILE / 2 - ev.x, ty * TILE + TILE / 2 - ev.y);
       if (d > b.r + TILE / 2) continue;
-      if (damageTile(t, tx, ty, b.tile * (1 - (d / (b.r + TILE / 2)) * 0.6))) broken.push({ tx, ty });
+      const kind = tileAt(t, tx, ty);
+      if (damageTile(t, tx, ty, b.tile * (1 - (d / (b.r + TILE / 2)) * 0.6))) broken.push({ tx, ty, kind });
     }
   }
   return broken;
@@ -284,9 +287,13 @@ export function chestContents(seed, i, tier, extra = null) {
 export function giveContents(p, c) {
   const got = [];
   if (c.w) {
-    const held = p.inv[p.sel];
-    if (canTake(p, c.w)) { const slot = take(p, c.w); if (slot !== null) { if (!p.inv[p.sel]) p.sel = slot; got.push(WEAPONS[c.w].name); } }
-    else if (!held || WEAPONS[c.w].rarity > WEAPONS[held.w].rarity) { swapHeld(p, c.w); got.push(WEAPONS[c.w].name); }
+    if (canTake(p, c.w)) { if (take(p, c.w) !== null) got.push(WEAPONS[c.w].name); }
+    else {
+      // Inventario lleno: reemplaza la peor de las tres armas, solo si la nueva es mejor. El pico no se toca.
+      let worst = 1;
+      for (let i = 2; i < SLOTS; i++) if (WEAPONS[p.inv[i].w].rarity < WEAPONS[p.inv[worst].w].rarity) worst = i;
+      if (WEAPONS[c.w].rarity > WEAPONS[p.inv[worst].w].rarity) { p.inv[worst] = { w: c.w, mag: WEAPONS[c.w].mag }; if (p.sel === worst) p.reloadUntil = 0; got.push(WEAPONS[c.w].name); }
+    }
   }
   for (const [kind, n] of Object.entries(c.items)) {
     const before = p.items[kind];
@@ -408,3 +415,47 @@ export function spawnPoint(t, seed, index, size) {
 
 // ¿Está este punto libre para un jugador? (para los tests)
 export const standable = (t, x, y) => !circleBlocked(t, x, y, PLAYER_R);
+
+// ─── Madera y construcción ──────────────────────────────────────────────────
+// Un solo material: madera. Cualquier cosa que rompas (con el pico, a tiros o con explosiones) te da. Con madera
+// armás paredes (frenan balas y cuerpos) y pisos (se pisan, también sobre el agua: puentes). Lo construido se rompe
+// como todo, y al romperse deja lo que había debajo.
+export const MAX_WOOD = 300;
+export const WOOD_HIT = 6;       // por cada golpe de pico a algo que se rompe
+export const WOOD_BREAK = { [T.TREE]: 20, [T.CRATE]: 15, [T.WALL]: 30, [T.BWALL]: 5, [T.BFLOOR]: 2 }; // al romperlo
+export const BUILD_COST = { wall: 10, floor: 5 };
+export const BUILD_TILE = { wall: T.BWALL, floor: T.BFLOOR };
+export const BUILD_CODE = { wall: 1, floor: 2 };
+export const BUILD_RANGE = 88;   // px desde el jugador hasta el centro de la casilla
+export const BUILD_GAP = 0.12;   // segundos entre piezas (se puede mantener apretado)
+const BUILD_ON_WALL = new Set([T.SAND, T.GRASS, T.FOREST, T.FLOOR, T.RUBBLE, T.PLANK, T.FIELD, T.LINE, T.CROP]);
+const BUILD_ON_FLOOR = new Set([...BUILD_ON_WALL, T.SHALLOW, T.DEEP]);
+
+// ¿Se puede poner esa pieza en esa casilla? Devuelve null si sí, o el motivo. `others` son posiciones de jugadores.
+export function buildProblem(t, kind, tx, ty, p, others = []) {
+  if (tx < 1 || ty < 1 || tx >= t.N - 1 || ty >= t.N - 1) return 'Fuera del mapa';
+  const here = tileAt(t, tx, ty);
+  if (!(kind === 'wall' ? BUILD_ON_WALL : BUILD_ON_FLOOR).has(here)) return 'Ahí no se puede';
+  const cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2;
+  if (Math.hypot(cx - p.x, cy - p.y) > BUILD_RANGE) return 'Muy lejos';
+  if (t.chests?.some((c) => c.tx === tx && c.ty === ty)) return 'Hay un cofre';
+  if (kind === 'wall') {
+    for (const o of [p, ...others]) {
+      const nx = Math.max(tx * TILE, Math.min(o.x, tx * TILE + TILE)), ny = Math.max(ty * TILE, Math.min(o.y, ty * TILE + TILE));
+      if ((o.x - nx) ** 2 + (o.y - ny) ** 2 < (PLAYER_R + 1) ** 2) return 'Hay alguien ahí';
+    }
+  }
+  return null;
+}
+// Pone la pieza en el mapa (sin cobrar nada). Devuelve false si ya no se puede.
+export function placePiece(t, code, tx, ty) {
+  const kind = code === BUILD_CODE.wall ? 'wall' : code === BUILD_CODE.floor ? 'floor' : null;
+  if (!kind) return false;
+  const here = tileAt(t, tx, ty);
+  if (!(kind === 'wall' ? BUILD_ON_WALL : BUILD_ON_FLOOR).has(here)) return false;
+  const i = ty * t.N + tx;
+  t.under.set(i, here);
+  t.hp.delete(i);
+  t.tiles[i] = BUILD_TILE[kind];
+  return true;
+}

@@ -5,10 +5,10 @@ import { PLACE_DEFS } from './places.js';
 
 export const TILE = 16;
 
-export const T = { DEEP: 0, SHALLOW: 1, SAND: 2, GRASS: 3, FOREST: 4, FLOOR: 5, WALL: 6, TREE: 7, ROCK: 8, CRATE: 9, RUBBLE: 10, PLANK: 11, FIELD: 12, LINE: 13, NET: 14, CROP: 15 };
-const SOLID = [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0];          // no se camina (agua profunda incluida)
-const BLOCKS_SHOT = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0];    // frena las balas (sobre el agua pasan)
-export const TILE_HP = { [T.TREE]: 40, [T.CRATE]: 30, [T.WALL]: 110 };
+export const T = { DEEP: 0, SHALLOW: 1, SAND: 2, GRASS: 3, FOREST: 4, FLOOR: 5, WALL: 6, TREE: 7, ROCK: 8, CRATE: 9, RUBBLE: 10, PLANK: 11, FIELD: 12, LINE: 13, NET: 14, CROP: 15, BWALL: 16, BFLOOR: 17 };
+const SOLID = [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0];          // no se camina (agua profunda incluida)
+const BLOCKS_SHOT = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0];    // frena las balas (sobre el agua pasan)
+export const TILE_HP = { [T.TREE]: 40, [T.CRATE]: 30, [T.WALL]: 110, [T.BWALL]: 90, [T.BFLOOR]: 40 };
 
 // Los dos mapas: uno grande para 10 jugadores y uno chico para 5.
 export const MAPS = {
@@ -78,7 +78,9 @@ export function damageTile(t, tx, ty, amount) {
   const hp = (t.hp.get(i) ?? max) - amount;
   if (hp <= 0) {
     t.hp.delete(i);
-    t.tiles[i] = T.RUBBLE;
+    // Lo construido vuelve a lo que había debajo (pasto, arena, agua…); lo demás deja escombros.
+    t.tiles[i] = t.under?.get(i) ?? T.RUBBLE;
+    t.under?.delete(i);
     return true;
   }
   t.hp.set(i, hp);
@@ -122,7 +124,7 @@ export function makeMap(mapId, seed) {
       tiles[y * N + x] = h < 0.18 ? T.DEEP : h < 0.3 ? T.SHALLOW : h < 0.4 ? T.SAND : T.GRASS;
     }
   }
-  const t = { N, W: N * TILE, H: N * TILE, tiles, hp: new Map(), cfg, seed, buildings: [], places: [], chests: [], plan: null };
+  const t = { N, W: N * TILE, H: N * TILE, tiles, hp: new Map(), under: new Map(), cfg, seed, buildings: [], places: [], chests: [], plan: null };
   const land = (x, y) => tileAt(t, x, y) >= T.SAND;
   const busy = new Uint8Array(N * N); // lugares y casas (con un margen)
 

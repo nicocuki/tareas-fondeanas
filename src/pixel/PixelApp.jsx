@@ -102,8 +102,9 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
       <div className="px-card px-controls">
         <h2>Cómo se juega</h2>
         <ul>
-          <li>Antes de arrancar esperás en una <b>isla de espera</b> (podés probar la pistola). Después sube el <b>bus de batalla</b>: mirá el mapa, elegí un lugar con nombre y saltá con <kbd>Espacio</kbd>. Caés rápido y a mitad de camino se abre el planeador.</li>
-          <li><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> para moverte, <b>mouse</b> para apuntar y <b>clic</b> para disparar. <kbd>R</kbd> recarga, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> o la rueda cambian de arma, <kbd>M</kbd> abre el mapa grande con los nombres.</li>
+          <li>Arrancás solo con un <b>pico</b> (slot <kbd>1</kbd>): rompé árboles, cajas y paredes para juntar <b>madera</b>. Con <kbd>Z</kbd> armás una <b>pared</b> y con <kbd>X</kbd> un <b>piso</b> (también sobre el agua: puentes), todo de madera. Las armas están en los cofres.</li>
+          <li>Antes de arrancar esperás en una <b>isla de espera</b> (podés probar el pico). Después sube el <b>bus de batalla</b>: mirá el mapa, elegí un lugar con nombre y saltá con <kbd>Espacio</kbd>. Caés rápido y a mitad de camino se abre el planeador.</li>
+          <li><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> para moverte, <b>mouse</b> para apuntar y <b>clic</b> para disparar. <kbd>R</kbd> recarga, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> o la rueda cambian de slot, <kbd>M</kbd> abre el mapa grande con los nombres.</li>
           <li><kbd>Q</kbd> vendas, <kbd>E</kbd> botiquín, <kbd>F</kbd> escudo y <kbd>G</kbd> tira una granada. Si te pegan mientras te curás, se corta.</li>
           <li><b>No hay nada tirado en el piso: solo cofres.</b> Mantené <kbd>Espacio</kbd> cerca de uno para abrirlo y lo que trae va directo a tu inventario. Los hay en casas, torres, búnkeres y campos.</li>
           <li><b>Los árboles, las cajas y las paredes se rompen a tiros</b>: no te escondas siempre detrás de lo mismo.</li>
