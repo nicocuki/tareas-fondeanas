@@ -557,10 +557,15 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.20.0 = Nuevo juego: Pixel Royale 🪂
+1.20.0 = Nuevo juego: Pixel Royale 🪂
 - Battle royale en 2D con vista de arriba y pixel art: de 2 a 10 jugadores, con teclado y mouse (W A S D para moverte, clic para disparar).
 - Dos mapas: Isla Grande (hasta 10 jugadores, con casas, bosques, rocas y playas) e Isla Chica (hasta 5, partidas más cortas). Cada partida arma una isla distinta.
 - Seis armas (pistola, metralleta, escopeta, fusil, francotirador y bazooka), vendas, botiquines, escudos y granadas, repartidos en las casas y por el mapa. Cada tanto cae del cielo una caja con armas buenas.
 - Árboles, cajas y paredes se rompen a tiros y con explosiones, así que la cobertura no es para siempre.
 - Tormenta que se achica por fases y lastima cada vez más a los que quedan afuera, con minimapa. El anfitrión elige el mapa y qué tan rápido se cierra.
 - Ranking al final con bajas y botín, y el anfitrión puede sacar a alguien de la sala de espera.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.20.1 = La página cambió de dirección
+- Ahora está en https://tareas-fondeanas.donsatur.workers.dev (la anterior dejó de funcionar).
