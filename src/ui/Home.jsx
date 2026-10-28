@@ -5,6 +5,8 @@ import { setPrefs, showToast, useLastRoom, usePrefs, useProfile } from './store.
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
 import DomainNotice from './DomainNotice.jsx';
+import GameChat from './GameChat.jsx';
+import { MENU_CHAT_CODE } from './chat.js';
 import { usePublicRooms } from './publicas.js';
 import { closeRoom, useAdminKey } from './admin.js';
 
@@ -108,6 +110,21 @@ function PublicRooms({ onNavigate }) {
   );
 }
 
+// Chat global: solo para los que están en el menú principal (se conecta al abrirse la portada y se va al salir).
+const chatId = (() => {
+  try {
+    let id = sessionStorage.getItem('tf:chat-id');
+    if (!id) { id = Math.random().toString(36).slice(2, 10); sessionStorage.setItem('tf:chat-id', id); }
+    return id;
+  } catch { return Math.random().toString(36).slice(2, 10); }
+})();
+
+function MenuChat() {
+  const profile = useProfile();
+  const me = { id: chatId, name: profile.name.trim() || 'Invitado' };
+  return <GameChat code={MENU_CHAT_CODE} me={me} side="right" label="chat del menú" />;
+}
+
 export default function Home({ onNavigate }) {
   const profile = useProfile();
   const view = usePrefs().gameView === 'list' ? 'list' : 'grid';
@@ -119,6 +136,7 @@ export default function Home({ onNavigate }) {
   return (
     <div className="tf-page tf-home">
       <DomainNotice />
+      <MenuChat />
       <section className="tf-hero">
         <div className="tf-hero-copy">
           <p className="tf-eyebrow">Juegos para jugar con los del fondo</p>

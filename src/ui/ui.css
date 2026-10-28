@@ -363,6 +363,7 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-chat:not(.is-open) .tf-chat-list { pointer-events: none; }
 .tf-chat-list strong { color: var(--text-2); }
 .tf-chat-list .is-mine strong { color: var(--accent); }
+.tf-chat.is-right { left: auto; right: 12px; align-items: flex-end; }
 .tf-chat-input { width: 100%; }
 .tf-chat-hint { border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer; opacity: 0.75; }
 .tf-chat-hint:hover { opacity: 1; }

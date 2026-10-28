@@ -370,6 +370,10 @@ otra pestaña puede volver a entrar: alcanza entre amigos. Trazo Loco, sin reduc
 (`garticRooms/{sala}/kicked/{uid}`). **Un juego nuevo**: el bloque de `kick` al principio de su `applyAction`
 (hay un test que recorre todos) y `roster`/`onKick` en su `LobbyLayout`.
 
+### Chat global del menú
+
+Abajo a la derecha de la portada hay un chat para los que están en el menú (`MenuChat` en `Home.jsx`, que reusa `GameChat` con `side="right"`). Va por la sala fija `MENU` (`chat/MENU`, `MENU_CHAT_CODE` en `chat.js`): se conecta solo mientras la portada está abierta, así que nadie en una partida lo ve ni gasta conexión. Sin actividad 15 minutos la sala se cierra y se borra el historial (como cualquier sala).
+
 ### Acciones del reducer
 
 `join` `leave` `pickRole` `setOptions` `start` `setPaused` `chat` `clue` `vote` `unvote` `endTurn`

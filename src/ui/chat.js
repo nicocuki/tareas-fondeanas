@@ -6,6 +6,10 @@
 // (sirve de clave estable) y `m` los mensajes `{ k, i, n, x, t }` (número, id del jugador, nombre,
 // texto, hora). Se escribe con transacción, así dos mensajes al mismo tiempo no se pisan.
 
+// El chat global del menú principal vive en la sala fija `MENU` (`chat/MENU`): solo lo ven los que están en
+// la portada, porque se conecta únicamente mientras esa pantalla está abierta (ver `MenuChat` en Home.jsx).
+export const MENU_CHAT_CODE = 'MENU';
+
 export const CHAT_LEN = 140;
 export const MAX_MESSAGES = 40;
 export const MAX_NAME = 24;

@@ -10,7 +10,8 @@ const PEEK = 5;        // cuántos se ven a la vez con el chat cerrado
 
 const isTyping = (el) => el instanceof HTMLElement && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
 
-export default function GameChat({ code, me }) {
+// `side="right"` lo pone abajo a la derecha y `label` cambia el texto del botón (el chat del menú).
+export default function GameChat({ code, me, side = 'left', label = 'chat' }) {
   const [chat, setChat] = useState(() => parseChat(null));
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
@@ -72,7 +73,7 @@ export default function GameChat({ code, me }) {
 
   const shown = open ? chat.m : chat.m.filter((m) => m.t + SHOW_MS > now).slice(-PEEK);
   return (
-    <div className={`tf-chat${open ? ' is-open' : ''}`} data-game-chat>
+    <div className={`tf-chat${open ? ' is-open' : ''}${side === 'right' ? ' is-right' : ''}`} data-game-chat>
       {shown.length > 0 && (
         <ol ref={list} className="tf-chat-list" data-chat-list>
           {shown.map((m) => (
@@ -95,7 +96,7 @@ export default function GameChat({ code, me }) {
         />
       ) : (
         <button type="button" className="tf-chat-hint" onClick={() => setOpen(true)} title="Abrir el chat">
-          💬 <kbd>T</kbd> chat
+          💬 <kbd>T</kbd> {label}
         </button>
       )}
     </div>
