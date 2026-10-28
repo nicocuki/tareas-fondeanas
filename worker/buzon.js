@@ -15,6 +15,15 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 // Durable Object único (`idFromName('buzon')`): guarda las últimas sugerencias y los envíos de cada persona
 // (por un hash de su IP, no la IP). El worker le pasa la IP en `x-ip`.
 export class Buzon extends DurableObject {
+  // Modo admin (RPC desde admin.js): todas, la más nueva primero, con su `id` para poder borrarla.
+  async listar() {
+    return [...(await this.ctx.storage.list({ prefix: 'm:' }))].map(([id, entry]) => ({ id, ...entry })).reverse();
+  }
+
+  async borrar(id) {
+    if (typeof id === 'string' && id.startsWith('m:')) await this.ctx.storage.delete(id);
+  }
+
   async fetch(request) {
     if (request.method === 'GET') {
       // Para leerlas desde el navegador: /api/sugerencias?clave=… (con el secreto SUGERENCIAS_CLAVE).

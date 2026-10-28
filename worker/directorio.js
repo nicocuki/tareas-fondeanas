@@ -8,9 +8,11 @@ export class Directorio extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.entries = new Map();
+    this.all = new Map(); // todas las salas con gente, para el modo admin (`a:` en disco)
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     ctx.blockConcurrencyWhile(async () => {
       for (const [key, value] of await ctx.storage.list({ prefix: 's:' })) this.entries.set(key.slice(2), value);
+      for (const [key, value] of await ctx.storage.list({ prefix: 'a:' })) this.all.set(key.slice(2), value);
     });
   }
 
@@ -40,6 +42,24 @@ export class Directorio extends DurableObject {
     }
   }
 
+  // Modo admin: cada sala avisa lo suyo (`adminListing`) o null cuando ya no hay nadie.
+  async registrar(code, listing) {
+    if (!/^[A-Z]{4}$/.test(code)) return;
+    if (listing) {
+      const entry = { ...listing, code, at: Date.now() };
+      this.all.set(code, entry);
+      await this.ctx.storage.put('a:' + code, entry);
+      if (!(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(Date.now() + LISTING_TTL_MS);
+    } else if (this.all.delete(code)) {
+      await this.ctx.storage.delete('a:' + code);
+    }
+  }
+
+  todas() {
+    const now = Date.now();
+    return [...this.all.values()].filter((e) => now - e.at < LISTING_TTL_MS).sort((a, b) => b.at - a.at);
+  }
+
   async fetch(request) {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response(JSON.stringify(this.list()), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -65,6 +85,11 @@ export class Directorio extends DurableObject {
       this.entries.delete(code);
       await this.ctx.storage.delete('s:' + code);
     }
-    if (this.entries.size) await this.ctx.storage.setAlarm(now + LISTING_TTL_MS);
+    for (const [code, entry] of this.all) {
+      if (now - entry.at < LISTING_TTL_MS) continue;
+      this.all.delete(code);
+      await this.ctx.storage.delete('a:' + code);
+    }
+    if (this.entries.size || this.all.size) await this.ctx.storage.setAlarm(now + LISTING_TTL_MS);
   }
 }

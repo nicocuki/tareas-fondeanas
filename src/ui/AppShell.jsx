@@ -4,6 +4,7 @@ import { GAMES, gameById } from './games.js';
 import { copyInvite, fullscreenElement, syncProfileName, toggleFullscreen, useCurrentRoom, useProfile, useToast } from './store.js';
 import SideMenu from './SideMenu.jsx';
 import { SuggestionsDialog } from './Suggestions.jsx';
+import { useAdminKey } from './admin.js';
 
 export function Logo({ size = 34 }) {
   // Un avioncito de papel: lo que se tira desde el fondo del aula.
@@ -77,6 +78,7 @@ function FullscreenButton() {
 
 export default function AppShell({ activeGame, onNavigate, children }) {
   const [menu, setMenu] = useState(null); // null = cerrado; si no, la vista del menú
+  const admin = Boolean(useAdminKey());
   const [suggest, setSuggest] = useState(false); // la ventana del buzón de sugerencias («?»)
   const room = useCurrentRoom();
   const profile = useProfile();
@@ -121,6 +123,7 @@ export default function AppShell({ activeGame, onNavigate, children }) {
           <div className="tf-header-right">
             {room && <RoomChip room={room} />}
             {game && game.id !== 'mvl' && <FullscreenButton />}
+            {admin && <button type="button" className="tf-icon-btn" onClick={() => onNavigate('admin')} aria-label="Panel de admin" title="Panel de admin" data-admin-open>🤖</button>}
             <button type="button" className="tf-icon-btn tf-help-btn" onClick={() => setSuggest(true)} aria-label="Mandar una sugerencia" title="Mandar una sugerencia" data-suggest-open>?</button>
             <button type="button" className="tf-avatar-btn" onClick={() => { syncProfileName(); setMenu('perfil'); }} aria-label="Tu perfil">
               <span aria-hidden="true">{profile.avatar}</span>

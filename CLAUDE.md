@@ -202,6 +202,7 @@ por una versión anterior siga abriéndose sin romper.
 | `worker/tree.js` | Árbol de datos compartido por servidor y cliente: rutas, nulls, poda, `push` |
 | `src/ui/chat.js` `src/ui/GameChat.jsx` | Chat que se abre con T en T.E.G., Monopoly, Pixel Royale, Cohete Royale, A los Tiros y Fútbol: un string JSON en `chat/{código}` (root en `ROOTS`), aparte de las salas, con tope de mensajes y de tamaño. Para sumarlo a otro juego: `<GameChat code={código} me={me} />` dentro del contenedor de pantalla completa |
 | `worker/sugerencias.js` `worker/buzon.js` `src/ui/Suggestions.jsx` | Buzón de sugerencias del «?» del header (ver *Buzón de sugerencias*) |
+| `worker/admin.js` `src/ui/admin.js` `src/ui/AdminPanel.jsx` | Modo admin (ver *Modo admin*) |
 | `worker/publicas.js` `worker/directorio.js` | Salas públicas: qué sala se lista y el Durable Object con la lista (ver *Salas públicas*) |
 | `src/ui/publicas.js` | La lista en vivo de la portada y la marca de «pública» de cada sala |
 | `src/ui/JoinInvite.jsx` `src/ui/rooms.js` `src/ui/roomSummary.js` | Pantalla de «te estás uniendo a la sala de…» y qué se sabe de una sala por su código |
@@ -322,6 +323,22 @@ con `{ text, name }` (texto de 5 a 500 caracteres, nombre opcional de hasta 30).
   `npx wrangler dev --var SUGERENCIAS_CLAVE:prueba`.
 - Lo puro (`cleanSuggestion`, `allowSend`, `discordPayload`) está en `sugerencias.js`, sin `cloudflare:workers`, para probarlo con `node --test`. **La clase del Durable Object va aparte
   (`buzon.js`)** porque importa `cloudflare:workers`, que Node no tiene.
+
+### Modo admin
+
+Pedido de Nico: con el nombre «cuki» y el avatar 🤖, escribir CUKI en el campo del código (`JoinByCode`) lleva a `?admin`
+(`AdminPanel.jsx`). El panel lista **todas** las salas con gente (públicas o no) para entrar, cerrar una, cerrarlas todas o cerrar
+por código, y las sugerencias para leerlas, copiarlas o borrarlas. En la portada, cada sala pública tiene un 🗑 y el header, un 🤖.
+
+- **El disparador es solo de pantalla y está a la vista en el código de la página.** Lo que protege es el servidor: las rutas
+  `/api/admin/…` (`worker/admin.js`) piden el **secreto `ADMIN_CLAVE`** (o `SUGERENCIAS_CLAVE` si no hay otra) en `x-admin-clave`;
+  sin clave configurada, o con otra, dan 404. El panel la pide la primera vez y la guarda en `localStorage` (`tf:admin`). **No la
+  saques ni la reemplaces por el nombre**: con eso cualquiera podría borrar todas las salas.
+- **La lista de salas** la arma el Directorio (`registrar`/`todas`, claves `a:`), con lo que avisa cada sala en `Sala.publish()`
+  (`adminListing`: con alguien conectado y con datos). Mismo vencimiento que las públicas.
+- **Cerrar** es la RPC `Sala.cerrar()`, que hace lo mismo que el cierre por inactividad (`shutdown`): saca la sala de la portada y
+  de la lista, cierra los WebSocket con 4000 y borra todo. Las pantallas que estaban adentro muestran «Esa sala ya no existe».
+- Para probar en local: `npx wrangler dev --var ADMIN_CLAVE:prueba`.
 
 ### Cambiar de juego
 

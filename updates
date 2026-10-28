@@ -609,6 +609,14 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.22.3 = Sugerencias en una ventanita ❓
+1.22.3 = Sugerencias en una ventanita ❓
 - La portada vuelve a verse como antes: el buzón de sugerencias ya no corre todo a la izquierda.
 - Ahora las sugerencias se mandan desde el botón «?» de arriba a la derecha, en cualquier página. Se abre una ventana; Esc o un clic afuera la cierran.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.23.0 = Modo admin 🤖
+- Con el nombre «cuki» y el avatar 🤖, escribir CUKI en «¿Te pasaron un código?» abre el panel de admin. La primera vez pide la clave del servidor y queda guardada en ese dispositivo.
+- El panel muestra todas las salas con gente (públicas o no): de qué juego son, quién es el anfitrión, cuántos hay y en qué fase están. Se puede entrar a cualquiera, cerrarla (se saca a todos y se borra) o cerrarlas todas, y cerrar una por código.
+- También están las sugerencias que llegaron, para leerlas, copiarlas todas o borrarlas.
+- En modo admin, cada sala abierta de la portada tiene un 🗑 para cerrarla, y en el header aparece un 🤖 para volver al panel.

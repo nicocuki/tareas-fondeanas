@@ -1,6 +1,9 @@
 // Campo de 4 letras que te lleva a la sala, sea del juego que sea.
+// Con el perfil de admin, «CUKI» lleva al panel de admin (ver admin.js).
 import React, { useState } from 'react';
 import { cleanCode, findRoomGame } from './rooms.js';
+import { getProfile } from './store.js';
+import { isAdminTrigger } from './admin.js';
 
 export default function JoinByCode({ compact = false, onJoined }) {
   const [code, setCode] = useState('');
@@ -10,6 +13,7 @@ export default function JoinByCode({ compact = false, onJoined }) {
   async function submit(e) {
     e.preventDefault();
     if (code.length !== 4) { setError('El código tiene 4 letras.'); return; }
+    if (isAdminTrigger(getProfile(), code)) { setCode(''); onJoined('admin', ''); return; }
     setBusy(true);
     setError('');
     try {

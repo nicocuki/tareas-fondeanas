@@ -2,6 +2,7 @@
 import React, { useCallback, useState } from 'react';
 import AppShell from './ui/AppShell.jsx';
 import Home from './ui/Home.jsx';
+import AdminPanel from './ui/AdminPanel.jsx';
 import { gameUrl } from './ui/games.js';
 import { syncProfileName } from './ui/store.js';
 import { loadSession } from './session.js';
@@ -37,6 +38,7 @@ const SCREENS = {
 
 function gameFromUrl() {
   const params = new URLSearchParams(window.location.search);
+  if (params.has('admin')) return 'admin';
   const juego = params.get('juego') || '';
   if (SCREENS[juego]) return juego;
   // Los links de Código Secreto son solo ?sala=ABCD (como siempre fueron).
@@ -49,20 +51,22 @@ export default function App() {
   const [visit, setVisit] = useState(0); // cambia en cada navegación: el juego arranca de cero
 
   const navigate = useCallback((id, code = '') => {
-    const url = id === 'menu' ? `${window.location.origin}/` : gameUrl(id, code);
+    const url = id === 'menu' ? `${window.location.origin}/` : id === 'admin' ? `${window.location.origin}/?admin` : gameUrl(id, code);
     window.history.replaceState(null, '', url);
     syncProfileName();
-    setScreen(SCREENS[id] ? id : 'menu');
+    setScreen(SCREENS[id] || id === 'admin' ? id : 'menu');
     setVisit((v) => v + 1);
     window.scrollTo({ top: 0 });
   }, []);
 
   const Screen = SCREENS[screen];
   return (
-    <AppShell activeGame={screen === 'menu' ? null : screen} onNavigate={navigate}>
+    <AppShell activeGame={SCREENS[screen] ? screen : null} onNavigate={navigate}>
       {Screen
         ? <Screen key={visit} onBackToMenu={() => navigate('menu')} />
-        : <Home key={visit} onNavigate={navigate} />}
+        : screen === 'admin'
+          ? <AdminPanel key={visit} onNavigate={navigate} />
+          : <Home key={visit} onNavigate={navigate} />}
     </AppShell>
   );
 }

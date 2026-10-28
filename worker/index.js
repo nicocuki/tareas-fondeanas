@@ -4,10 +4,12 @@
 //   /api/salas         → salas públicas (WebSocket con la lista en vivo, o JSON)
 //   /api/photon/…      → puente a Photon para Mario vs Luigi (ver photon.js)
 //   /api/sugerencias   → buzón de sugerencias de la portada (POST las manda a Discord; ver sugerencias.js)
+//   /api/admin/…      → modo admin, con la clave ADMIN_CLAVE (ver admin.js)
 //   /api/photon-auth   → autenticación de nuestra app de Photon (deja pasar a todos)
 //   /api/mvl/…         → puente al servidor de ipodtouch (autenticación y novedades de Mario vs Luigi)
 //   cualquier otra ruta → los archivos de la página
 import { photonAuth, proxyMvl, proxyPhoton } from './photon.js';
+import { handleAdmin } from './admin.js';
 
 export { Sala } from './sala.js';
 export { Directorio } from './directorio.js';
@@ -37,6 +39,7 @@ export default {
       headers.set('x-ip', request.headers.get('cf-connecting-ip') || '');
       return env.BUZON.get(env.BUZON.idFromName('buzon')).fetch(new Request(request, { headers }));
     }
+    if (url.pathname.startsWith('/api/admin/')) return handleAdmin(request, env, url);
     if (url.pathname === '/api/photon-auth') return photonAuth();
     if (url.pathname.startsWith('/api/photon/')) return proxyPhoton(request, url);
     if (url.pathname.startsWith('/api/mvl/')) return proxyMvl(request, url);

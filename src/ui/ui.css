@@ -367,3 +367,32 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-chat-hint { border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer; opacity: 0.75; }
 .tf-chat-hint:hover { opacity: 1; }
 .tf-chat-hint kbd { font: 600 11px var(--font-body); padding: 0 5px; border: 1px solid var(--border-strong); border-radius: 4px; }
+
+/* Modo admin (AdminPanel y el 🗑 de las salas públicas) */
+.tf-rooms li.has-admin { position: relative; }
+.tf-rooms li.has-admin .tf-room { padding-right: 56px; }
+.tf-room-close { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); width: 36px; height: 36px; border: 1px solid transparent; border-radius: 50%; background: var(--danger-soft); color: var(--danger); font-size: 16px; cursor: pointer; }
+.tf-room-close:hover { border-color: var(--danger); }
+.tf-admin { max-width: 960px; }
+.tf-admin-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 24px 0 20px; }
+.tf-admin-top h1 { margin: 4px 0 0; font-size: clamp(28px, 4vw, 40px); }
+.tf-admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.tf-admin-stats { list-style: none; padding: 0; margin: 0 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.tf-admin-stats li { padding: 14px 16px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); color: var(--text-2); font-size: 14px; }
+.tf-admin-stats strong { display: block; font: 800 28px var(--font-display); color: var(--text); }
+.tf-admin-card { margin-bottom: 20px; padding: 20px; border-radius: var(--radius-xl); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.tf-admin-card h2 { margin: 0; font-size: 21px; }
+.tf-admin-card h2 small { color: var(--text-3); font-size: 15px; margin-left: 4px; }
+.tf-admin-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.tf-admin-hint { color: var(--text-2); margin: 0 0 12px; }
+.tf-admin-list { list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
+.tf-admin-list li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius); background: var(--surface-2); }
+.tf-admin-emoji { font-size: 24px; }
+.tf-admin-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tf-admin-info small { color: var(--text-2); }
+.tf-admin-info p { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tf-admin-inline { display: flex; gap: 8px; flex-wrap: wrap; }
+.tf-admin-inline .tf-code-input { width: 120px; }
+.tf-admin-key { max-width: 420px; display: flex; flex-direction: column; gap: 12px; }
+.tf-admin-key h2 { margin: 0; }
+@media (max-width: 560px) { .tf-admin-list li { flex-wrap: wrap; } .tf-admin-info { flex-basis: calc(100% - 40px); } }

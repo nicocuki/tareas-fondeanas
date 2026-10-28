@@ -1,10 +1,11 @@
 // Portada: saludo, unirse con código, las salas públicas, los juegos, cómo funciona y la última novedad.
 import React from 'react';
 import { GAMES, gameById } from './games.js';
-import { useLastRoom, useProfile } from './store.js';
+import { showToast, useLastRoom, useProfile } from './store.js';
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
 import { usePublicRooms } from './publicas.js';
+import { closeRoom, useAdminKey } from './admin.js';
 
 function GameCard({ game, onPlay }) {
   return (
@@ -32,8 +33,14 @@ function GameCard({ game, onPlay }) {
 }
 
 // Salas que alguien marcó como públicas: se entra con un clic, sin el código.
+// En modo admin, cada una tiene además un botón para cerrarla.
 function PublicRooms({ onNavigate }) {
   const rooms = usePublicRooms();
+  const admin = Boolean(useAdminKey());
+  async function close(code) {
+    if (!window.confirm(`¿Cerrar la sala ${code}? Se saca a todos y se borra todo lo que tenía.`)) return;
+    try { await closeRoom(code); showToast(`Sala ${code} cerrada`); } catch (err) { showToast(err.message); }
+  }
   // Primero las que esperan jugadores; después las que ya están jugando.
   const listed = (rooms || []).filter((r) => gameById(r.game)).sort((a, b) => Number(Boolean(a.playing)) - Number(Boolean(b.playing)));
   const waiting = listed.filter((r) => !r.playing).length;
@@ -48,7 +55,7 @@ function PublicRooms({ onNavigate }) {
           {listed.map((r) => {
             const game = gameById(r.game);
             return (
-              <li key={r.code}>
+              <li key={r.code} className={admin ? 'has-admin' : undefined}>
                 <button type="button" className={`tf-room${r.playing ? ' is-playing' : ''}`} style={{ '--chip-color': game.color }} data-room={r.code} onClick={() => onNavigate(r.game, r.code)}>
                   <span className="tf-room-emoji" aria-hidden="true">{game.emoji}</span>
                   <span className="tf-room-info">
@@ -59,6 +66,7 @@ function PublicRooms({ onNavigate }) {
                   <span className="tf-room-players">👥 {r.players}{r.max ? `/${r.max}` : ''}</span>
                   <em>Entrar</em>
                 </button>
+                {admin && <button type="button" className="tf-room-close" onClick={() => close(r.code)} aria-label={`Cerrar la sala ${r.code}`} title="Cerrar la sala (admin)">🗑</button>}
               </li>
             );
           })}

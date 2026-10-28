@@ -4,6 +4,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { IDLE_CLOSE_MS, SalaCore, newAttachment } from './core.js';
 import { roomListing } from './publicas.js';
+import { adminListing } from './admin.js';
 
 // Ramas que cambian lo que la sala muestra en la lista de salas públicas.
 const LISTING_ROOTS = new Set(['rooms', 'garticRooms', 'publica']);
@@ -24,6 +25,7 @@ export class Sala extends DurableObject {
     ctx.blockConcurrencyWhile(async () => {
       this.code = (await ctx.storage.get('code')) || null;
       this.listing = (await ctx.storage.get('listing')) ?? 'null'; // lo último que se le avisó al Directorio
+      this.adminSeen = (await ctx.storage.get('admin')) ?? 'null'; // ídem, para la lista del modo admin
       this.activeAt = (await ctx.storage.get('activeAt')) || Date.now();
       // `IDLE_CLOSE_MS` se puede achicar para probar: `wrangler dev --var IDLE_CLOSE_MS:60000`.
       this.idleMs = Number(env.IDLE_CLOSE_MS) || IDLE_CLOSE_MS;
@@ -72,16 +74,25 @@ export class Sala extends DurableObject {
 
   // Le avisa al Directorio si cambió lo que esta sala muestra en la portada.
   // `closing`: el WebSocket que se está cerrando, que todavía figura entre los abiertos.
+  // También le avisa lo que ve el modo admin (todas las salas con gente, públicas o no).
   publish(closing = null) {
     if (!this.code) return;
     const open = this.ctx.getWebSockets().filter((ws) => ws !== closing).length;
+    const directorio = this.env.DIRECTORIO.get(this.env.DIRECTORIO.idFromName('portada'));
     const listing = roomListing(this.core.tree, this.code, open);
     const text = JSON.stringify(listing);
-    if (text === this.listing) return;
-    this.listing = text;
-    this.ctx.storage.put('listing', text);
-    const directorio = this.env.DIRECTORIO.get(this.env.DIRECTORIO.idFromName('portada'));
-    this.ctx.waitUntil(directorio.publicar(this.code, listing).catch(() => {}));
+    if (text !== this.listing) {
+      this.listing = text;
+      this.ctx.storage.put('listing', text);
+      this.ctx.waitUntil(directorio.publicar(this.code, listing).catch(() => {}));
+    }
+    const admin = adminListing(this.core.tree, this.code, open);
+    const adminText = JSON.stringify(admin);
+    if (adminText !== this.adminSeen) {
+      this.adminSeen = adminText;
+      this.ctx.storage.put('admin', adminText);
+      this.ctx.waitUntil(directorio.registrar(this.code, admin).catch(() => {}));
+    }
   }
 
   async fetch(request) {
@@ -124,16 +135,25 @@ export class Sala extends DurableObject {
   async alarm() {
     const left = this.activeAt + this.idleMs - Date.now();
     if (left > 1000) { await this.ctx.storage.setAlarm(Date.now() + left); return; }
-    if (this.code && this.listing !== 'null') {
-      const directorio = this.env.DIRECTORIO.get(this.env.DIRECTORIO.idFromName('portada'));
-      await directorio.publicar(this.code, null).catch(() => {});
-    }
+    await this.shutdown('Sala cerrada por inactividad');
+  }
+
+  // El admin la cierra a mano (RPC desde worker/admin.js): lo mismo que por inactividad.
+  async cerrar() {
+    await this.shutdown('Sala cerrada por el admin');
+  }
+
+  async shutdown(reason) {
+    const directorio = this.env.DIRECTORIO.get(this.env.DIRECTORIO.idFromName('portada'));
+    if (this.code && this.listing !== 'null') await directorio.publicar(this.code, null).catch(() => {});
+    if (this.code && this.adminSeen !== 'null') await directorio.registrar(this.code, null).catch(() => {});
     for (const ws of this.ctx.getWebSockets()) {
-      try { ws.close(CLOSED_BY_IDLE, 'Sala cerrada por inactividad'); } catch {}
+      try { ws.close(CLOSED_BY_IDLE, reason); } catch {}
     }
     await this.ctx.storage.deleteAll();
     this.core.wipe();
     this.code = null;
     this.listing = 'null';
+    this.adminSeen = 'null';
   }
 }
