@@ -9,6 +9,8 @@ import * as tiros from '../src/tiros/game.js';
 import * as codigo from '../src/codigo-secreto/game.js';
 import * as cafe from '../src/cafeote/game.js';
 import * as futbol from '../src/futbol/game.js';
+import * as monopoly from '../src/monopoly/game.js';
+import * as teg from '../src/teg/game.js';
 
 // Sala de espera con el anfitrión h y dos más, a y b.
 function lobby(g) {
@@ -20,7 +22,7 @@ const ids = (room) => room.players.map((p) => p.id);
 // cafeote y futbol devuelven la sala igual cuando la acción no vale; los demás, null.
 const rejected = (before, after) => after === null || after === before;
 
-const GAMES = { cohetes, mecha, meme, nave, tiros, codigo, cafe, futbol };
+const GAMES = { cohetes, mecha, meme, nave, tiros, codigo, cafe, futbol, monopoly, teg };
 for (const [name, g] of Object.entries(GAMES)) {
   test(`expulsar (${name}): solo el anfitrión, en la sala de espera, y el expulsado no vuelve a entrar con esa pantalla`, () => {
     const room = lobby(g);

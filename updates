@@ -530,6 +530,27 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.17.05 = Trazo Loco ya no se traba si a uno se le corta la conexión
+1.17.05 = Trazo Loco ya no se traba si a uno se le corta la conexión
 - La ronda la pasaba una sola pantalla. Si justo a esa se le trababa la conexión («Reconectando…»), nadie avanzaba a la parte de dibujar. Ahora, si esa no puede, la pasa la siguiente a los pocos segundos.
 - Las conexiones colgadas se notan y se reconectan más rápido (en unos 25 s en vez de casi un minuto), en todos los juegos.
+
+--------------------------------------------------------------------------------------------------------------------
+
+1.18.0 = Nuevo juego: Monopoly 🎩
+- De 2 a 8 jugadores, con un tablero de barrios de Buenos Aires: 22 calles, 4 estaciones, 2 compañías, impuestos, Suerte, Caja comunal, cárcel y descanso.
+- En cada momento la pantalla te dice qué pasó y qué te toca hacer (tirar, comprar, terminar el turno), y tocando cualquier casillero se ve su ficha con precio, alquileres y dueño.
+- Comprar, subastar por turnos, cobrar alquileres (doble con la tanda completa), construir casas y hoteles (parejo, con el límite de casas del banco), hipotecar y levantar hipotecas.
+- Cárcel (pagar $50, usar la carta o sacar dobles), dobles, cartas con efectos, deudas que frenan la partida hasta pagarlas y quiebra contra otro jugador o contra el banco.
+- Tratos entre jugadores: propiedades, plata y cartas de «Salir de la cárcel», en cualquier momento.
+- Opciones de la sala: plata inicial, con o sin subastas y pozo del Descanso (los impuestos se juntan ahí).
+- Reglas explicadas dentro de la partida, y el anfitrión puede sacar a alguien que se fue sin avisar.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.19.0 = Nuevo juego: T.E.G. 🌍
+- De 2 a 6 jugadores, con los 50 países y los 6 continentes del T.E.G. de mesa (Asia 7, Europa 5, América del Norte 5, América del Sur 3, África 3 y Oceanía 2 de bonus).
+- Todos ponen a la vez los ejércitos iniciales (5 y después 3). En tu turno: refuerzos, ataque con hasta 3 dados (los empates los gana el defensor), reagrupe, y una carta si conquistaste algo.
+- Cartas con cañón, barco, globo y comodines: el canje da 4, 7, 10 y de ahí de a 5 ejércitos, con +2 en los países de las cartas que sean tuyos. Con 5 cartas es obligatorio canjear.
+- Objetivos secretos (continentes, países o destruir a un ejército de un color) y, para todos, conquistar 30 países. El anfitrión puede dejar solo esa meta común.
+- El mapa se toca directamente: los países donde podés poner se marcan, al atacar se iluminan los vecinos enemigos, y las batallas muestran los dados enfrentados. «Atacar hasta el final» tira solo hasta conquistar.
+- Cada fase dice qué hacer, y las reglas, tu objetivo con su avance y los bonus de cada continente están a la vista en la partida.

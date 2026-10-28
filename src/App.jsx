@@ -15,8 +15,12 @@ import TirosApp from './tiros/TirosApp.jsx';
 import MvlApp from './mvl/MvlApp.jsx';
 import NaveApp from './nave/NaveApp.jsx';
 import CohetesApp from './cohetes/CohetesApp.jsx';
+import MonopolyApp from './monopoly/MonopolyApp.jsx';
+import TegApp from './teg/TegApp.jsx';
 
 const SCREENS = {
+  teg: TegApp,
+  monopoly: MonopolyApp,
   cohetes: CohetesApp,
   nave: NaveApp,
   meme: MemeApp,

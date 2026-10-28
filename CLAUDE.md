@@ -181,6 +181,8 @@ por una versión anterior siga abriéndose sin romper.
 | `src/codigo-secreto/Options.jsx` `Chat.jsx` `Rules.jsx` `Players.jsx` | Paneles de la interfaz de Código Secreto |
 | `src/theme.js` | Colores y estilos para los estilos en línea de los juegos (apuntan a las variables de `src/ui/tokens.css`) |
 | `src/gartic/` | Trazo Loco: lógica (`game.js`), trazos y balde (`drawing.js`), red (`storage.js`), pantallas (ver `docs/GARTIC.md`) |
+| `src/teg/` | T.E.G.: mapa, cartas y objetivos (`board.js`), reducer (`game.js`), bitácora (`log.js`), el mapa en SVG (`Map.jsx`), ventanas de combate (`Dialogs.jsx`), paneles y pantallas (ver *T.E.G.*) |
+| `src/monopoly/` | Monopoly: tablero y mazos (`board.js`), reducer (`game.js`), bitácora en texto (`log.js`), pantallas (ver *Monopoly*) |
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), sprites de los efectos (`sprites/`, `sprites.js`), pelea en tiempo real (`TirosGame.jsx`) |
@@ -217,7 +219,7 @@ Todo pasa por **variables CSS** en `src/ui/tokens.css`: tema oscuro (pizarrón c
 claro (hoja con birome roja), elegidos en Ajustes y guardados en `tf:preferencias`. `theme.js`
 traduce `COLORS` a esas variables, así los estilos en línea viejos cambian de tema solos.
 **No escribas colores fijos en un componente**: usá `COLORS` o `var(--…)`. Las excepciones son los
-colores de equipo, las casillas de Código Secreto, la cancha del fútbol, la partida de Cohete Royale, la de Entre Nosotros (la nave,
+colores de equipo, las casillas de Código Secreto, el tablero de Monopoly (papel y verde, igual en los dos temas), el mapa del T.E.G. (mar, continentes y ejércitos fijos), la cancha del fútbol, la partida de Cohete Royale, la de Entre Nosotros (la nave,
 el HUD y la reunión, oscuros como el original) y Trazo Loco (copia el look
 de Gartic Phone, con sus variables `--gp-*` en `src/gartic/gartic.css`), que son iguales en los dos temas.
 
@@ -362,6 +364,91 @@ Notas sobre algunas:
   «la primera casilla roja sin destapar» va a encontrar otra vez la que ya eligió. Pasó.
 - **Los atributos `data-pick`, `data-opt`, `data-chat-list` y `data-players`** existen para poder
   manejar la app desde un navegador automatizado. No los saques.
+
+## T.E.G.
+
+Pedido de Nico, después del Monopoly: «el TEG, bien piola». Es el T.E.G. (Táctica y Estrategia de la Guerra) de mesa. De 2 a 6, mejor en compu.
+`id`: `teg` (`?juego=teg`, `gameType: 'teg'`). Como el Monopoly, **no tiene raíz propia en `ROOTS`**: todo vive en `rooms/{código}`.
+Los 50 países, los 6 continentes y sus bonus son los del juego de mesa; **los vecinos y las posiciones del dibujo son nuestros**.
+
+- **Mismo patrón que los demás**: reducer puro `applyAction(room, action, { now, rand })` (`ctx.dice = { a, d }` solo lo usan los tests).
+  Fases `lobby` → `playing` → `ended`; dentro de `playing`, `room.stage`: `setup1` y `setup2` (los ejércitos iniciales, **todos a la vez**, cada
+  uno con su `pend`), y por turno `reinforce` → `attack` → `regroup`. Opción de la sala: `goal` (`secret` o `conquer30`).
+- **El estado del mapa son dos listas de 50** (`room.own[c]` = posición del dueño en `room.players`, `room.arm[c]` = ejércitos). El orden de
+  `players` se sortea al empezar y **no cambia durante la partida** (los que se van quedan con `left`/`out`), por eso la bitácora guarda
+  posiciones y no ids. Una sala entera pesa ~5.000 caracteres en el peor caso (hay un test).
+- **Combate**: el atacante elige 1, 2 o 3 dados (siempre queda un ejército), el defensor tira hasta 3 sin pasarse de sus ejércitos, se comparan
+  de mayor a menor y **los empates los gana el defensor**. Al conquistar, el país pasa a ser del atacante con 0 ejércitos y `room.pending` obliga a
+  pasarle entre `min` (los dados que tiró) y `max` (todos menos uno): hasta entonces no se puede hacer otra cosa. `blitz` repite hasta
+  conquistar o quedarse con uno. `attack` y `blitz` llevan `seen` (= `room.rollN`) para que dos clics seguidos no tiren dos veces.
+- **Cartas**: mazo de 52 (`room.deck`: un país cada una, con símbolo cañón/barco/globo repartido de a tres, y 2 comodines). Al terminar el turno
+  se roba una si hubo conquista (`room.conq`). Canje (`trade`): 3 iguales, 3 distintas o con comodín; da 4, 7, 10 y de ahí +5 (`room.tradeN`,
+  **un solo contador para toda la partida**) y +2 en cada país de las cartas que sea tuyo. Con `FORCED_TRADE` (5) cartas no se puede poner ni
+  pasar a atacar sin canjear: con 5 siempre hay un canje posible. Quien elimina a alguien se queda con sus cartas.
+- **Reagrupe**: queda un ejército en cada país y los que llegan (`room.locked`) no se vuelven a mover en el turno (`movable`).
+- **Objetivos** (`OBJECTIVES` en `board.js`): 8 de continentes y países, «24 países», «18 países con 2 ejércitos» y uno de destruir a cada color.
+  Al repartirlos nadie recibe destruirse a sí mismo ni a un color que no juega. Si otro jugador elimina al que tenías que destruir, tu objetivo
+  pasa a `c30`. **Siempre vale ocupar 30 países**, tengas el objetivo que tengas. Se chequea al terminar de pasar ejércitos tras una conquista
+  (`occupy`), que es el único momento en que algo puede cumplirse. Los objetivos son secretos **solo en la interfaz**: la sala viaja entera
+  (igual que el chat de equipo de Código Secreto), alcanza para jugar entre amigos.
+- **Salirse o que te saquen** (`leave`, `kick` también en `playing`): sus países se quedan donde están, sin jugar, y se salta su turno (no se
+  reparten al azar). Si queda uno solo en pie, gana. En los ejércitos iniciales, el que se va no frena a los demás.
+- **El mapa** (`Map.jsx`) es un SVG de 1000 × 600: una mancha por continente (envolvente convexa con borde redondeado), líneas de frontera
+  (punteadas las que cruzan el mar; Alaska–Kamchatka da la vuelta por los bordes) y una ficha por país. Cada país se toca directamente: en
+  refuerzos pone ejércitos (por toque 1, 5, 10 o todos), en ataque se elige el origen y después un vecino enemigo (se marcan en rojo), en
+  reagrupe origen y vecino propio. El zoom es solo de pantalla (en celular arranca en 2,2 y el mapa se desplaza).
+- **Las animaciones de los anillos no pueden mover la caja del elemento** (`stroke-dashoffset` y `opacity`, no `rotate`): con un `rotate`
+  el navegador automatizado nunca daba el país por «estable» y no se podía tocar.
+- **`.tg-card` es de las tarjetas de la sala; las cartas de la mano son `.tg-hcard`**: usaron el mismo nombre y la sala de espera quedaba rota.
+- `data-act`, `data-country` (con `data-armies` y `data-owner`), `data-amount`, `data-card`, `data-pend`, `data-reinf`, `data-stage`, `data-map`,
+  `data-players`, `data-hand` y `data-log` existen para manejar el juego desde un navegador automatizado. No los saques.
+- Los países son nombres geográficos, pero el juego imita al T.E.G. de Yetem: entre amigos está bien; si llegara un pedido de bajarlo, se saca
+  la entrada de `games.js`.
+- **Todavía no tiene**: pactos entre jugadores, chat, relojes de turno ni entrar a mitad de partida (el anfitrión puede sacar a un ausente).
+
+## Monopoly
+
+Pedido de Nico: «el monopoly, bien hecho y que se entienda claro cada cosa». De 2 a 8, cualquier pantalla. `id`: `monopoly`
+(`?juego=monopoly`, `gameType: 'monopoly'`). **No tiene raíz propia en `ROOTS`**: todo vive en `rooms/{código}`, no hay fotos en
+tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires), las estaciones y los textos de las cartas son nuestros.
+
+- **Mismo patrón que los demás**: reducer puro `applyAction(room, action, { now, rand })` (`ctx.dice` solo lo usan los tests para fijar
+  los dados). Fases `lobby` → `playing` → `ended`. Opciones: `startCash`, `auctions`, `freeParking` (pozo del Descanso).
+- **El turno es una máquina de pasos** (`room.step`): `roll` → (`buy` | `auction`) → `act` → `endTurn`. Sacar dobles vuelve a `roll`
+  (`room.doubles` > 0). Cada paso valida quién y cuándo; las acciones llevan contadores que impiden la doble pulsación: `roll` lleva
+  `seen` (= `room.rollN`: dos clics seguidos no tiran dos veces) y `endTurn` lleva `turn` (= `room.turnNo`).
+- **Las deudas frenan todo** (`room.debts`): si no alcanza el efectivo, no se paga a medias; queda una deuda, nadie tira, compra ni
+  termina el turno hasta que se pague (`payDebt`) o se quiebre (`bankrupt`, solo si ni vendiendo todo alcanza: `liquidation`).
+  Hipotecar y vender casas se puede en cualquier momento (también fuera de turno) justamente para esto. Las deudas son por jugador,
+  así «cada uno te paga $10» o «pagale a cada jugador» funcionan sin casos especiales.
+- **Quiebra** (`eliminate`): contra un jugador, se queda con todo (las hipotecadas siguen hipotecadas y paga el 10 %); contra el
+  banco, las propiedades vuelven sin hipoteca y se subastan una por una (`room.queue`). Los edificios se venden al banco a la mitad
+  antes. Salirse en plena partida (`leave`) o que el anfitrión te saque (`kick`, también en `playing`) es quebrar contra el banco.
+  Los que se van quedan en `players` con `out` y `left` hasta volver a la sala, para el ranking (`room.eliminated`).
+- **Subasta por turnos** (`room.auction`): cada uno sube la oferta o se baja; gana el último que queda con la oferta más alta. El que
+  queda solo sin oferta decide si pone algo o nadie la compra. `auction.resume` es el paso al que se vuelve cuando termina.
+- **Tratos** (`room.trade`, uno a la vez): `give` es lo que da quien propone y `take` lo que recibe. Se revalida entero al aceptar.
+  Las propiedades con edificios en su color no se tratan. Quien recibe una hipotecada paga al banco el 10 % de su hipoteca.
+- **Cuentas con el 10 %: nada de decimales** (`mortgageFee` = `ceil(hipoteca / 10)`): `200 * 1.1` da `220.00000000000003` y
+  `Math.ceil` lo subía a 221. Ya mordió.
+- **Mazos**: `room.deck.chance|chest` son el orden de las cartas (índices de `CARDS`); al sacar una vuelve al fondo, salvo
+  «Salir gratis», que se la queda el jugador (`jf`) y vuelve al mazo al usarla. Una carta puede encadenar casilleros (retroceder 3
+  desde Suerte puede caer en Caja comunal): `land` lleva un `depth` con tope.
+- **Peor caso de sala** (8 jugadores con las 28 propiedades con hotel, bitácora llena, trato, subasta y deudas): ~7.500 caracteres,
+  muy por debajo de los 30.000. Hay un test. La bitácora (`MAX_LOG` 60) guarda entradas chicas `{ k, p, … }` y `log.js` las pasa a
+  texto con los nombres.
+- **Interfaz**: el tablero (`Board.jsx`) es una grilla de 11 × 11 con esquinas más grandes; los textos se miden en `cqw` (unidades del
+  contenedor) y por debajo de 470 px de ancho se esconden los nombres (queda color, precio y tocar para ver la ficha). En pantallas
+  de 860 px o más, el panel «qué hacer ahora» (`ActionPanel.jsx`) va en el centro del tablero; en celular, debajo. Las fichas
+  caminan casillero por casillero (solo dibujo). `Modals.jsx`: ficha de propiedad, subasta (no se puede cerrar), tratos y la carta
+  recién sacada (la ven todos unos segundos). **Un `Modal` solo enfoca al abrirse**: si enfocara en cada render, escribir en un campo
+  perdería el foco a cada letra. Los problemas de cada acción salen de las funciones `*Problem` de `game.js`, las mismas que usa el
+  reducer, así un botón deshabilitado dice por qué.
+- **Con `st.m` valiendo `0` (no `false`) no uses `{st.m && …}` en JSX**: React dibuja el «0». Pasó en el tablero y en la ficha.
+- `data-act`, `data-square`, `data-player`, `data-cash`, `data-log`, `data-board`, `data-prop`, `data-pos` existen para manejar el juego
+  desde un navegador automatizado. No los saques.
+- Es una imitación entre amigos (Monopoly es de Hasbro): si llegara un pedido de bajarlo, se saca la entrada de `games.js`.
+- **Todavía no tiene**: chat, relojes de turno ni entrar a mitad de partida (a propósito: el anfitrión puede sacar a un ausente).
 
 ## La Mecha
 
