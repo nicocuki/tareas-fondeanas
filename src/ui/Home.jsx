@@ -81,7 +81,7 @@ function PublicRooms({ onNavigate }) {
 export default function Home({ onNavigate }) {
   const profile = useProfile();
   const room = useLastRoom();
-  const latest = UPDATES.find((u) => u.latest) || UPDATES[0];
+  const latest = UPDATES[0]; // la más nueva que se muestra (las ocultas no cuentan)
   const roomGame = room && gameById(room.game);
   const firstName = profile.name.split(' ')[0];
 
@@ -144,7 +144,7 @@ export default function Home({ onNavigate }) {
         <section className="tf-section">
           <div className="tf-news-card">
             <div>
-              <p className="tf-eyebrow">Última novedad · {APP_VERSION}</p>
+              <p className="tf-eyebrow">Última novedad · v{latest.version}</p>
               <h3>{latest.title}</h3>
               <ul>{latest.notes.slice(0, 3).map((n) => <li key={n}>{n}</li>)}</ul>
             </div>

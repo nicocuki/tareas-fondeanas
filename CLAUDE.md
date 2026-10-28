@@ -339,6 +339,8 @@ por código, y las sugerencias para leerlas, copiarlas o borrarlas. En la portad
 - **Cerrar** es la RPC `Sala.cerrar()`, que hace lo mismo que el cierre por inactividad (`shutdown`): saca la sala de la portada y
   de la lista, cierra los WebSocket con 4000 y borra todo. Las pantallas que estaban adentro muestran «Esa sala ya no existe».
 - Para probar en local: `npx wrangler dev --var ADMIN_CLAVE:prueba`.
+- **No lo cuentes en `updates`**: su entrada va con `OCULTA` (`LATEST OCULTA 1.23.0 = …`), que cuenta para la versión pero no sale
+  en Novedades ni en «Última novedad» (pedido de Nico: ahí había quedado escrito cómo hacerse admin).
 
 ### Cambiar de juego
 
@@ -977,6 +979,7 @@ jugador en la versión anterior, donde el host corregía a todos hacia su propia
 
 ### Importante por cada nueva adicion al proyecto
 - El archivo `updates` (sin extensión, en la raíz) lleva un registro de las actualizaciones, por cada cambio que hagas, quiero que lo agregues ahi.
+- Una entrada que no conviene mostrar (como el modo admin) lleva `OCULTA` después de `LATEST` o al principio: cuenta para la versión pero no aparece en Novedades ni en la portada.
 - Si es un cambio muy pequeño, como un fix bug, a la version x.y.z sumale a Z+0.5
 - Si es un cambio pequeño, a la version x.y.z sumale a Z+1.
 - Si es un cambio grande, a la version x.y.z, sumale Y+1 y establece el Z en 0. 

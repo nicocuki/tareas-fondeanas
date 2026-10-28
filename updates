@@ -615,4 +615,10 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.23.0 = Modo admin 🤖
+OCULTA 1.23.0 = Herramientas internas
+- Cambios internos de mantenimiento. No se muestra en Novedades.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST OCULTA 1.23.1 = Ajuste interno
+- Las novedades internas ya no se muestran en la portada ni en Novedades.
