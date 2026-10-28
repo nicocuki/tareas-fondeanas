@@ -146,7 +146,6 @@ export default function Home({ onNavigate }) {
 
       <footer className="tf-footer">
         <span>Tareas Fondeanas · {APP_VERSION}</span>
-        <span>Hecho por Nicolas Cukier y Uriel Suti</span>
       </footer>
     </div>
   );

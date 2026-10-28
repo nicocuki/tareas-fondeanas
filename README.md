@@ -71,7 +71,3 @@ La lógica de los juegos está separada de la interfaz para poder probar las reg
 El repositorio está conectado a **Cloudflare Workers Builds**. Los cambios que se suben a la rama `master` se publican automáticamente mediante el proceso de build y despliegue configurado.
 
 Para comprobar el estado de una publicación, revisá el check del commit en GitHub o la sección **Workers & Pages → tareas-fondeanas → Deployments** en Cloudflare.
-
-## 👥 Autores
-
-Hecho por **Nicolas Cukier** y **Uriel Suti**.
