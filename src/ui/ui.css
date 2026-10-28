@@ -404,3 +404,18 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-notice-icon { font-size: 20px; flex: none; }
 .tf-notice-close { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font: inherit; font-weight: 900; cursor: pointer; }
 @media (max-width: 640px) { .tf-notice-icon:nth-of-type(2) { display: none; } }
+
+/* Juegos de la portada: botones cuadros / lista y la lista compacta. */
+.tf-section-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.tf-section-side p { margin: 0; color: var(--text-2); }
+.tf-view-toggle { display: inline-flex; gap: 4px; padding: 3px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--surface); }
+.tf-view-toggle button { display: grid; place-items: center; width: 38px; height: 32px; border: 0; border-radius: 9px; background: none; color: var(--text-2); cursor: pointer; }
+.tf-view-toggle button:hover { color: var(--text); }
+.tf-view-toggle button.is-on { background: var(--accent); color: var(--on-accent); }
+.tf-game-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; }
+.tf-game-row { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--border); border-left: 4px solid var(--chip-color); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.tf-game-row:hover { background: var(--surface-2); border-color: var(--chip-color); }
+.tf-game-row-emoji { font-size: 20px; flex: none; }
+.tf-game-row-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tf-game-row-meta { flex: none; color: var(--text-2); font-size: 13px; }
+@media (max-width: 640px) { .tf-game-list { grid-template-columns: 1fr; } }

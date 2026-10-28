@@ -40,7 +40,7 @@ const PREFS_KEY = 'tf:preferencias';
 // bossKey: la tecla de «Alt+Tab» (tapa la pantalla con un TP de mentira). Todavía no hace nada:
 // por ahora solo se prende, se apaga y se elige la tecla. `code` es KeyboardEvent.code; `label`, lo que se muestra.
 export const DEFAULT_BOSS_KEY = { code: 'F2', label: 'F2' };
-const prefs = createStore({ theme: 'system', reducedMotion: false, publicRooms: false, bossKey: false, bossKeyBinding: DEFAULT_BOSS_KEY, ...read(PREFS_KEY, {}) });
+const prefs = createStore({ theme: 'system', reducedMotion: false, publicRooms: false, gameView: 'grid', bossKey: false, bossKeyBinding: DEFAULT_BOSS_KEY, ...read(PREFS_KEY, {}) });
 
 function applyPrefs({ theme, reducedMotion }) {
   const dark = theme === 'dark' || (theme === 'system' && !window.matchMedia?.('(prefers-color-scheme: light)').matches);

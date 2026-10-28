@@ -1,7 +1,7 @@
 // Portada: saludo, unirse con código, las salas públicas, los juegos, cómo funciona y la última novedad.
 import React from 'react';
 import { MENU_GAMES, gameById } from './games.js';
-import { showToast, useLastRoom, useProfile } from './store.js';
+import { setPrefs, showToast, useLastRoom, usePrefs, useProfile } from './store.js';
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
 import DomainNotice from './DomainNotice.jsx';
@@ -30,6 +30,35 @@ function GameCard({ game, onPlay }) {
         </span>
       </div>
     </article>
+  );
+}
+
+// Una fila de la lista: sin imagen, para ver muchos juegos de una.
+function GameRow({ game, onPlay }) {
+  return (
+    <button type="button" className="tf-game-row" style={{ '--chip-color': game.color }} onClick={onPlay} aria-label={`Jugar ${game.title}`}>
+      <span className="tf-game-row-emoji" aria-hidden="true">{game.emoji}</span>
+      <span className="tf-game-row-name">{game.title}</span>
+      {game.badge && <em className="tf-badge">{game.badge}</em>}
+      <span className="tf-game-row-meta">👥 {game.players}</span>
+    </button>
+  );
+}
+
+// Los dos botones de arriba de los juegos: cuadros (tarjetas) o lista.
+function ViewToggle({ view, onChange }) {
+  const opts = [
+    { id: 'grid', label: 'Ver en cuadros', icon: <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" /> },
+    { id: 'list', label: 'Ver en lista', icon: <path d="M4 6h7M13 6h7M4 10h7M13 10h7M4 14h7M13 14h7M4 18h7M13 18h7" /> },
+  ];
+  return (
+    <div className="tf-view-toggle" role="group" aria-label="Cómo ver los juegos">
+      {opts.map((o) => (
+        <button key={o.id} type="button" data-view={o.id} aria-pressed={view === o.id} aria-label={o.label} title={o.label} className={view === o.id ? 'is-on' : ''} onClick={() => onChange(o.id)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill={o.id === 'grid' ? 'none' : 'none'} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{o.icon}</svg>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -81,6 +110,7 @@ function PublicRooms({ onNavigate }) {
 
 export default function Home({ onNavigate }) {
   const profile = useProfile();
+  const view = usePrefs().gameView === 'list' ? 'list' : 'grid';
   const room = useLastRoom();
   const latest = UPDATES[0]; // la más nueva que se muestra (las ocultas no cuentan)
   const roomGame = room && gameById(room.game);
@@ -124,11 +154,20 @@ export default function Home({ onNavigate }) {
       <section className="tf-section" aria-labelledby="tf-juegos">
         <div className="tf-section-head">
           <h2 id="tf-juegos">Elegí un juego</h2>
-          <p>{MENU_GAMES.length} juegos multijugador, todos online.</p>
+          <div className="tf-section-side">
+            <ViewToggle view={view} onChange={(v) => setPrefs({ gameView: v })} />
+            <p>{MENU_GAMES.length} juegos multijugador, todos online.</p>
+          </div>
         </div>
-        <div className="tf-game-grid">
-          {MENU_GAMES.map((g) => <GameCard key={g.id} game={g} onPlay={() => onNavigate(g.id)} />)}
-        </div>
+        {view === 'list' ? (
+          <div className="tf-game-list">
+            {MENU_GAMES.map((g) => <GameRow key={g.id} game={g} onPlay={() => onNavigate(g.id)} />)}
+          </div>
+        ) : (
+          <div className="tf-game-grid">
+            {MENU_GAMES.map((g) => <GameCard key={g.id} game={g} onPlay={() => onNavigate(g.id)} />)}
+          </div>
+        )}
       </section>
 
       <section className="tf-section" aria-labelledby="tf-como">

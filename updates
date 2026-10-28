@@ -636,5 +636,11 @@ OCULTA 1.23.1 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.23.3 = Mario vs Luigi sale del menú
+1.23.3 = Mario vs Luigi sale del menú
 - Mario vs Luigi ya no aparece en la portada ni en el menú. El juego sigue en el proyecto, solo está oculto.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.24.0 = Los juegos de la portada, en cuadros o en lista
+- Arriba de los juegos hay dos botones: cuadros (como siempre, con imagen) y lista (2 columnas, filas chicas, sin imágenes) para ver más juegos de una.
+- La página se acuerda de cuál elegiste.
