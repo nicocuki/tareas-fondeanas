@@ -625,6 +625,11 @@ OCULTA 1.23.1 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.23.15 = La página vuelve a su dirección de siempre
+1.23.15 = La página vuelve a su dirección de siempre
 - Vuelve a estar en https://tareas-fondeanas.nicocukier.workers.dev (también puede aparecer https://tareas-fondeanas.donsatur.workers.dev).
 - Aviso con ⚠️ arriba de todo en la portada, que se cierra con la X: cuenta en qué direcciones puede estar la página y que, para jugar juntos, hay que entrar todos por el mismo link.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.23.25 = Texto del aviso de direcciones
+- El aviso de la portada dice ahora: depende el momento puede ser que la página esté en una de las dos direcciones, y si no anda una, que prueben la otra. Los links se pueden tocar.
