@@ -200,6 +200,7 @@ por una versión anterior siga abriéndose sin romper.
 | `worker/core.js` | El servidor de una sala sin nada de Cloudflare (se prueba con `node --test`) |
 | `worker/rules.js` | Quién lee y escribe cada rama, qué se guarda en disco y qué no |
 | `worker/tree.js` | Árbol de datos compartido por servidor y cliente: rutas, nulls, poda, `push` |
+| `worker/sugerencias.js` `worker/buzon.js` `src/ui/Suggestions.jsx` | Buzón de sugerencias de la portada (ver *Buzón de sugerencias*) |
 | `worker/publicas.js` `worker/directorio.js` | Salas públicas: qué sala se lista y el Durable Object con la lista (ver *Salas públicas*) |
 | `src/ui/publicas.js` | La lista en vivo de la portada y la marca de «pública» de cada sala |
 | `src/ui/JoinInvite.jsx` `src/ui/rooms.js` `src/ui/roomSummary.js` | Pantalla de «te estás uniendo a la sala de…» y qué se sabe de una sala por su código |
@@ -306,6 +307,20 @@ con un clic (lleva a `?juego=…&sala=ABCD`, igual que un link de invitación).
   avisos en seis horas se descarta (`LISTING_TTL_MS`). **Un juego nuevo** que guarde la sala en
   `rooms/` con `phase`, `hostId` y `players` se lista solo; si tiene tope, sumalo a `MAX` en
   `worker/publicas.js`.
+
+### Buzón de sugerencias
+
+Cuadro de texto a la derecha de la portada (`Suggestions.jsx`, dentro de `Home.jsx`; en pantallas de menos de 1100 px va abajo). Manda `POST /api/sugerencias`
+con `{ text, name }` (texto de 5 a 500 caracteres, nombre opcional de hasta 30).
+
+- **Llega por Discord**: el Durable Object `Buzon` (`worker/buzon.js`, `idFromName('buzon')`) la guarda y la manda por webhook (`discordPayload`, **sin menciones**:
+  `allowed_mentions: { parse: [] }`). El webhook es el **secreto `SUGERENCIAS_WEBHOOK`** del Worker (Cloudflare → tareas-fondeanas → Configuración → Variables y secretos):
+  **nunca va en el repo**. Sin ese secreto igual se guarda y la persona ve que se mandó.
+- **Respaldo**: se guardan las últimas `MAX_KEPT` (200). Se leen en `/api/sugerencias?clave=…` con el secreto `SUGERENCIAS_CLAVE` (sin él, o con otra clave, da 404).
+- **Contra el spam**: `allowSend` (30 s entre una y otra, 5 por hora) por persona, con un **hash** de la IP (no la IP). Para probar en local:
+  `npx wrangler dev --var SUGERENCIAS_CLAVE:prueba`.
+- Lo puro (`cleanSuggestion`, `allowSend`, `discordPayload`) está en `sugerencias.js`, sin `cloudflare:workers`, para probarlo con `node --test`. **La clase del Durable Object va aparte
+  (`buzon.js`)** porque importa `cloudflare:workers`, que Node no tiene.
 
 ### Cambiar de juego
 

@@ -589,8 +589,14 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.22.0 = Pixel Royale: construcción con madera y el pico 🔨
+1.22.0 = Pixel Royale: construcción con madera y el pico 🔨
 - Ahora tenés 4 slots y ya no arrancás con pistola: el slot 1 es siempre un pico. Las armas (slots 2 al 4) salen de los cofres.
 - El pico rompe árboles, cajas, paredes y lo que construyas, y lastima de cerca. Todo lo que rompas, con el pico, a tiros o con explosiones, te da madera (un solo material).
 - Con la madera construís: Z arma una pared (frena balas y cuerpos) y X un piso (se pisa, también sobre el agua: puentes). Click para poner (mantené apretado para hacer una fila); la pieza se ve en verde si se puede y en roja si no. Lo construido lo ven todos y se rompe como todo lo demás, dejando lo que había debajo.
 - En la isla de espera podés probar el pico, la madera y la construcción. Al subir al bus la madera se vuelve a cero.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.22.1 = Buzón de sugerencias 💡
+- En la portada, a la derecha (abajo en pantallas angostas), hay un cuadro para mandar sugerencias: hasta 500 caracteres y un nombre opcional.
+- Cada sugerencia le llega al dueño por Discord y además queda guardada de respaldo. Hay un límite de envíos por persona para evitar spam.

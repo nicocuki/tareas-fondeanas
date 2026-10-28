@@ -339,3 +339,22 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-invite-join { min-height: 50px; font-size: 16px; }
 .tf-invite-other { margin: 14px auto 0; border: 0; background: none; color: var(--text-2); font-weight: 600; font-size: 14px; cursor: pointer; padding: 6px 10px; border-radius: 999px; }
 .tf-invite-other:hover { background: var(--surface-2); color: var(--text); }
+
+/* Portada con el buzón de sugerencias a la derecha */
+.tf-home.tf-page { max-width: 1440px; }
+.tf-home-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.tf-home-aside { margin-top: 48px; }
+@media (min-width: 1100px) {
+  .tf-home-layout { grid-template-columns: minmax(0, 1fr) 320px; gap: 32px; align-items: start; }
+  .tf-home-aside { position: sticky; top: 84px; margin-top: 40px; }
+}
+.tf-suggest { padding: 22px; border-radius: var(--radius-xl); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.tf-suggest h2 { margin: 2px 0 8px; font-size: 21px; line-height: 1.2; }
+.tf-suggest-text { margin: 0 0 14px; color: var(--text-2); font-size: 14.5px; }
+.tf-suggest .tf-field { display: block; margin-bottom: 12px; }
+.tf-suggest .tf-field > span { display: block; margin-bottom: 6px; font-weight: 700; font-size: 14px; }
+.tf-suggest-area { width: 100%; min-height: 110px; resize: vertical; font: inherit; line-height: 1.45; }
+.tf-suggest-count { display: block; text-align: right; color: var(--text-3); margin-top: 4px; }
+.tf-suggest-msg { margin: 0 0 12px; padding: 10px 14px; border-radius: var(--radius); font-size: 14px; }
+.tf-suggest-msg.is-error { background: var(--danger-soft); color: var(--danger); }
+.tf-suggest-msg.is-ok { background: var(--accent-soft); }

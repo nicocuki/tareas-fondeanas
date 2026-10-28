@@ -1,10 +1,12 @@
-// Portada: saludo, unirse con código, las salas públicas, los juegos, cómo funciona y la última novedad.
+// Portada: saludo, unirse con código, las salas públicas, los juegos, cómo funciona y la última novedad,
+// con el buzón de sugerencias a la derecha (abajo en pantallas angostas).
 import React from 'react';
 import { GAMES, gameById } from './games.js';
 import { useLastRoom, useProfile } from './store.js';
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
 import { usePublicRooms } from './publicas.js';
+import Suggestions from './Suggestions.jsx';
 
 function GameCard({ game, onPlay }) {
   return (
@@ -79,6 +81,8 @@ export default function Home({ onNavigate }) {
 
   return (
     <div className="tf-page tf-home">
+      <div className="tf-home-layout">
+      <div className="tf-home-main">
       <section className="tf-hero">
         <div className="tf-hero-copy">
           <p className="tf-eyebrow">Juegos para jugar con los del fondo</p>
@@ -143,6 +147,10 @@ export default function Home({ onNavigate }) {
           </div>
         </section>
       )}
+
+      </div>
+      <aside className="tf-home-aside"><Suggestions /></aside>
+      </div>
 
       <footer className="tf-footer">
         <span>Tareas Fondeanas · {APP_VERSION}</span>
