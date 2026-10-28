@@ -8,7 +8,7 @@ import { previousAuthor } from '../src/gartic/game.js';
 import { MAX_DRAWING, MAX_STROKES, MAX_TEXT } from '../src/gartic/game.js';
 import { getAt } from './tree.js';
 
-export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps', 'mecha', 'tiros', 'nave', 'cohetes', 'publica', 'mudanza'];
+export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps', 'mecha', 'tiros', 'nave', 'cohetes', 'pixel', 'publica', 'mudanza'];
 // `publica/{sala}`: true si el anfitrión la quiere en la lista de la portada (ver publicas.js).
 // `mudanza/{sala}`: «juego/CÓDIGO» cuando el anfitrión se pasó con todos a otro juego (ver src/ui/mudanza.js).
 
@@ -17,12 +17,12 @@ export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garti
 const EPHEMERAL_FUTBOL = new Set(['players', 'ball', 'signal', 'peers']);
 // Lo mismo con lo que se va escribiendo en La Mecha (`mecha/{sala}/typing`).
 // Y todo lo de A los Tiros (`tiros/{sala}`), Entre Nosotros (`nave/{sala}`) y Cohete Royale
-// (`cohetes/{sala}`): fotos y señalización.
-export const isEphemeral = (segs) => (segs[0] === 'futbol' && EPHEMERAL_FUTBOL.has(segs[2])) || segs[0] === 'mecha' || segs[0] === 'tiros' || segs[0] === 'nave' || segs[0] === 'cohetes';
+// (`cohetes/{sala}`, `pixel/{sala}`): fotos y señalización.
+export const isEphemeral = (segs) => (segs[0] === 'futbol' && EPHEMERAL_FUTBOL.has(segs[2])) || segs[0] === 'mecha' || segs[0] === 'tiros' || segs[0] === 'nave' || segs[0] === 'cohetes' || segs[0] === 'pixel';
 
 // Cada cuánto se parte el árbol para guardarlo: cada dibujo de Trazo Loco va aparte, porque
 // pueden pesar cientos de KB y un solo valor guardado no puede pasar de 2 MB.
-export const unitDepth = (root) => (root === 'garticSteps' ? 5 : root === 'futbol' || root === 'tiros' || root === 'nave' || root === 'cohetes' ? 3 : 2);
+export const unitDepth = (root) => (root === 'garticSteps' ? 5 : root === 'futbol' || root === 'tiros' || root === 'nave' || root === 'cohetes' || root === 'pixel' ? 3 : 2);
 
 export const MAX_ROOM_STRING = 30000;
 

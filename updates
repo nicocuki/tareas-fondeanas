@@ -547,10 +547,20 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.19.0 = Nuevo juego: T.E.G. 🌍
+1.19.0 = Nuevo juego: T.E.G. 🌍
 - De 2 a 6 jugadores, con los 50 países y los 6 continentes del T.E.G. de mesa (Asia 7, Europa 5, América del Norte 5, América del Sur 3, África 3 y Oceanía 2 de bonus).
 - Todos ponen a la vez los ejércitos iniciales (5 y después 3). En tu turno: refuerzos, ataque con hasta 3 dados (los empates los gana el defensor), reagrupe, y una carta si conquistaste algo.
 - Cartas con cañón, barco, globo y comodines: el canje da 4, 7, 10 y de ahí de a 5 ejércitos, con +2 en los países de las cartas que sean tuyos. Con 5 cartas es obligatorio canjear.
 - Objetivos secretos (continentes, países o destruir a un ejército de un color) y, para todos, conquistar 30 países. El anfitrión puede dejar solo esa meta común.
 - El mapa se toca directamente: los países donde podés poner se marcan, al atacar se iluminan los vecinos enemigos, y las batallas muestran los dados enfrentados. «Atacar hasta el final» tira solo hasta conquistar.
 - Cada fase dice qué hacer, y las reglas, tu objetivo con su avance y los bonus de cada continente están a la vista en la partida.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.20.0 = Nuevo juego: Pixel Royale 🪂
+- Battle royale en 2D con vista de arriba y pixel art: de 2 a 10 jugadores, con teclado y mouse (W A S D para moverte, clic para disparar).
+- Dos mapas: Isla Grande (hasta 10 jugadores, con casas, bosques, rocas y playas) e Isla Chica (hasta 5, partidas más cortas). Cada partida arma una isla distinta.
+- Seis armas (pistola, metralleta, escopeta, fusil, francotirador y bazooka), vendas, botiquines, escudos y granadas, repartidos en las casas y por el mapa. Cada tanto cae del cielo una caja con armas buenas.
+- Árboles, cajas y paredes se rompen a tiros y con explosiones, así que la cobertura no es para siempre.
+- Tormenta que se achica por fases y lastima cada vez más a los que quedan afuera, con minimapa. El anfitrión elige el mapa y qué tan rápido se cierra.
+- Ranking al final con bajas y botín, y el anfitrión puede sacar a alguien de la sala de espera.

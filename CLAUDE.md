@@ -187,6 +187,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), sprites de los efectos (`sprites/`, `sprites.js`), pelea en tiempo real (`TirosGame.jsx`) |
 | `src/nave/` | Entre Nosotros (Among Us): mapa (`map.js`), tareas (`tasks.js`), reducer (`game.js`), movimiento y vista (`sim.js`), dibujo (`render.js`), la nave en vivo (`NaveGame.jsx`), minijuegos, reunión (ver *Entre Nosotros*) |
+| `src/pixel/` | Pixel Royale: mapa y tormenta (`map.js`), armas, botín y balas (`sim.js`), reducer (`game.js`), dibujo pixelado (`render.js`), la partida en vivo (`PixelGame.jsx`) (ver *Pixel Royale*) |
 | `src/cohetes/` | Cohete Royale (Rocket Bot Royale): mapa (`terrain.js`), tanque pegajoso, nave y armas (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`CohetesGame.jsx`) (ver *Cohete Royale*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
@@ -717,6 +718,27 @@ cohetes en arco); Nico mandó un video del original y se rehízo con esto, que e
   existen para manejar el juego desde un navegador automatizado.
 - Los dibujos son nuestros, pero el juego copia a Rocket Bot Royale: entre amigos está bien; si llegara un
   pedido de bajarlo, se saca la entrada de `games.js`.
+
+## Pixel Royale
+
+Battle royale 2D con cámara de arriba y pixel art, pedido de Nico. De 2 a 10, solo compu. `id`: `pixel` (`?juego=pixel`,
+`gameType: 'pixel'`, raíz `pixel/` en `ROOTS`). Dos mapas (`MAPS` en `map.js`): **Isla Grande** (100 × 100 casillas, hasta 10) e
+**Isla Chica** (60 × 60, hasta 5; `startProblem` no deja arrancar con más). Mapas nuevos: agregalos a `MAPS`.
+
+- **Mismo esquema que Cohete Royale**: lo de a una vez va en la sala (`game.js`: semilla, muertos, botín levantado, ranking) y lo
+  en vivo, directo entre navegadores (`futbol/p2p.js`) con respaldo en `pixel/{sala}/p/{id}` (`pixelChannel`, efímero). Cada pantalla es
+  dueña de su jugador y avisa `died`. El anfitrión da por muerto al que no manda fotos en 12 s.
+- **El mapa sale de la semilla** (`makeMap`, sin `Math.random()`): isla con ruido, casas con puertas, bosques, rocas y cajas. **No uses
+  `sort` con comparador aleatorio** (cada navegador ordena distinto y los mapas dejan de coincidir). Árboles, cajas y paredes se rompen
+  (`damageTile`, `TILE_HP`); la vida de cada casilla vive en `t.hp` de cada pantalla.
+- **Quién decide cada cosa**: una bala común la juzga la pantalla de **a quien le pega** (avisa en `hi` para que desaparezca en las demás);
+  lo que rompe casillas (balas contra paredes, cohetes, granadas) lo decide la del **que tiró** y viaja en `ex` (`{k, x, y, w, o}`): todas
+  rompen lo mismo y cada víctima calcula su daño (`blastOn`). Los eventos se deduplican por `k` (`s.seen`).
+- **La tormenta** (`zoneAt`, `PHASES`) y las **cajas del cielo** (`dropInfo`, índices de botín desde `DROP_BASE`) son determinísticas: todas
+  las pantallas calculan lo mismo a partir de la semilla y la hora de inicio. El botín (`lootSpots`) lo levanta el primero que llega (`loot`).
+- **Dibujo**: todo va a un canvas de 384 px de ancho que el CSS agranda con `image-rendering: pixelated`. Los sprites se arman con código
+  (`render.js`, sin imágenes) y el texto del mundo usa una fuente propia de 3 × 5 píxeles (`drawText`). El borde de la zona se pinta fila por fila para que quede en píxeles.
+- `window.__pixel` y `data-pixel-canvas` existen para manejar el juego desde un navegador automatizado. No los saques.
 
 ## Mario vs Luigi
 

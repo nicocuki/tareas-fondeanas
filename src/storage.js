@@ -147,6 +147,8 @@ function tirosChannel(code) {
 const naveChannel = (code) => peerChannel('nave', code);
 // Cohete Royale, igual: tanques directo entre navegadores y respaldo en cohetes/{sala}/p/{id}.
 const cohetesChannel = (code) => peerChannel('cohetes', code);
+// Pixel Royale, igual: jugadores directo entre navegadores y respaldo en pixel/{sala}/p/{id}.
+const pixelChannel = (code) => peerChannel('pixel', code);
 
 // Diferencia entre este reloj y el del servidor: con eso todas las pantallas comparten la misma hora.
 function subscribeServerOffset(onOffset) {
@@ -154,5 +156,5 @@ function subscribeServerOffset(onOffset) {
 }
 
 export const backend = {
-  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, subscribeServerOffset,
+  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, subscribeServerOffset,
 };
