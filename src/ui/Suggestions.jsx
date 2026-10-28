@@ -1,5 +1,6 @@
-// Buzón de sugerencias de la portada: un cuadro de texto que le llega al dueño (ver worker/sugerencias.js).
-import React, { useState } from 'react';
+// Buzón de sugerencias: un cuadro de texto que le llega al dueño (ver worker/sugerencias.js).
+// Se abre en una ventana con el botón «?» del header (`SuggestionsDialog`).
+import React, { useEffect, useRef, useState } from 'react';
 import { useProfile } from './store.js';
 
 const MAX_TEXT = 500;
@@ -59,5 +60,24 @@ export default function Suggestions() {
         </button>
       </form>
     </section>
+  );
+}
+
+// La ventana: Escape o un clic afuera la cierran.
+export function SuggestionsDialog({ onClose }) {
+  const box = useRef(null);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } };
+    document.addEventListener('keydown', onKey);
+    box.current?.querySelector('textarea')?.focus();
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="tf-suggest-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={box} className="tf-suggest-dialog" role="dialog" aria-modal="true" aria-labelledby="tf-sugerencias">
+        <button type="button" className="tf-icon-btn tf-suggest-close" onClick={onClose} aria-label="Cerrar">✕</button>
+        <Suggestions />
+      </div>
+    </div>
   );
 }

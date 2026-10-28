@@ -603,6 +603,12 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.22.2 = Chat con la T 💬
+1.22.2 = Chat con la T 💬
 - En T.E.G., Monopoly, Pixel Royale, Cohete Royale, A los Tiros y Fútbol, apretá T para abrir un chat con los de tu sala (también en la sala de espera). Enter manda y Esc cierra; mientras escribís, el juego no se mueve.
 - Con el chat cerrado, los mensajes nuevos aparecen unos segundos abajo a la izquierda. También se abre tocando «💬 T chat».
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.22.3 = Sugerencias en una ventanita ❓
+- La portada vuelve a verse como antes: el buzón de sugerencias ya no corre todo a la izquierda.
+- Ahora las sugerencias se mandan desde el botón «?» de arriba a la derecha, en cualquier página. Se abre una ventana; Esc o un clic afuera la cierran.
