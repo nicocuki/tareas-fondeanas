@@ -1,19 +1,23 @@
 // Pixel Royale: el mapa. Lógica pura (sin React, sin red, sin Math.random): la misma semilla arma la
 // misma isla en todas las pantallas. Una grilla de casillas de 16 px: agua, arena, pasto, bosque,
 // casas con paredes, árboles, rocas y cajas. Árboles, cajas y paredes se rompen a tiros.
+import { PLACE_DEFS } from './places.js';
+
 export const TILE = 16;
 
-export const T = { DEEP: 0, SHALLOW: 1, SAND: 2, GRASS: 3, FOREST: 4, FLOOR: 5, WALL: 6, TREE: 7, ROCK: 8, CRATE: 9, RUBBLE: 10 };
-const SOLID = [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0];          // no se camina (agua profunda incluida)
-const BLOCKS_SHOT = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0];    // frena las balas (sobre el agua pasan)
+export const T = { DEEP: 0, SHALLOW: 1, SAND: 2, GRASS: 3, FOREST: 4, FLOOR: 5, WALL: 6, TREE: 7, ROCK: 8, CRATE: 9, RUBBLE: 10, PLANK: 11, FIELD: 12, LINE: 13, NET: 14, CROP: 15 };
+const SOLID = [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0];          // no se camina (agua profunda incluida)
+const BLOCKS_SHOT = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0];    // frena las balas (sobre el agua pasan)
 export const TILE_HP = { [T.TREE]: 40, [T.CRATE]: 30, [T.WALL]: 110 };
 
 // Los dos mapas: uno grande para 10 jugadores y uno chico para 5.
 export const MAPS = {
-  grande: { id: 'grande', name: 'Isla Grande', emoji: '🏝️', size: 100, buildings: 15, scatter: 46, noise: 0.055, zoneTime: 1, players: 10 },
-  chica: { id: 'chica', name: 'Isla Chica', emoji: '⛱️', size: 60, buildings: 6, scatter: 20, noise: 0.09, zoneTime: 0.7, players: 5 },
+  grande: { id: 'grande', name: 'Isla Grande', emoji: '🏝️', size: 100, buildings: 6, scatter: 22, noise: 0.055, zoneTime: 1, players: 10 },
+  chica: { id: 'chica', name: 'Isla Chica', emoji: '⛱️', size: 60, buildings: 2, scatter: 8, noise: 0.09, zoneTime: 0.7, players: 5 },
+  // La isla de espera de antes de subir al bus: no se elige, es siempre la misma chiquita.
+  espera: { id: 'espera', name: 'Isla de espera', emoji: '🏖️', size: 28, buildings: 0, scatter: 0, noise: 0.14, zoneTime: 1, players: 0, hidden: true },
 };
-export const MAP_IDS = Object.keys(MAPS);
+export const MAP_IDS = Object.keys(MAPS).filter((id) => !MAPS[id].hidden);
 
 // ─── Azar determinístico ────────────────────────────────────────────────────
 export function mulberry32(a) {
@@ -118,13 +122,85 @@ export function makeMap(mapId, seed) {
       tiles[y * N + x] = h < 0.18 ? T.DEEP : h < 0.3 ? T.SHALLOW : h < 0.4 ? T.SAND : T.GRASS;
     }
   }
-  const t = { N, W: N * TILE, H: N * TILE, tiles, hp: new Map(), cfg, seed, buildings: [], plan: null };
+  const t = { N, W: N * TILE, H: N * TILE, tiles, hp: new Map(), cfg, seed, buildings: [], places: [], chests: [], plan: null };
   const land = (x, y) => tileAt(t, x, y) >= T.SAND;
-  const busy = new Uint8Array(N * N); // casas (con un margen)
+  const busy = new Uint8Array(N * N); // lugares y casas (con un margen)
 
-  // Casas: rectángulos de pared con una o dos puertas, piso de madera y unas cajas en las esquinas.
-  const wanted = cfg.buildings;
-  for (let tries = 0; tries < 600 && t.buildings.length < wanted; tries++) {
+  // Herramientas que usan los lugares con nombre (places.js).
+  const set = (x, y, kind) => { if (x > 0 && y > 0 && x < N - 1 && y < N - 1) tiles[y * N + x] = kind; };
+  const ctx = {
+    T, rng, set, get: (x, y) => tileAt(t, x, y),
+    fill: (x, y, w, h, kind) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) set(xx, yy, kind); },
+    ellipse: (cx, cy, rx, ry, fn) => {
+      for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
+        for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+          const d = Math.hypot((x - cx) / rx, (y - cy) / ry);
+          if (d <= 1) fn(x, y, d);
+        }
+      }
+    },
+    // Tierra firme a la fuerza: pasto adentro y una orilla de arena donde había agua.
+    land: (cx, cy, rx, ry) => ctx.ellipse(cx, cy, rx, ry, (x, y, d) => { if (tileAt(t, x, y) < T.SAND) set(x, y, d <= 0.8 ? T.GRASS : T.SAND); }),
+    chest: (tx, ty, tier = 1) => {
+      if (isSolid(t, tx, ty) || t.chests.some((ch) => ch.tx === tx && ch.ty === ty) || tx < 1 || ty < 1 || tx >= N - 1 || ty >= N - 1) return false;
+      t.chests.push({ i: t.chests.length, tx, ty, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, tier });
+      return true;
+    },
+    // Una casa de paredes con una o dos puertas de dos casillas, piso de madera y cofres adentro.
+    house: (bx, by, w, h, o = {}) => {
+      for (let y = by; y < by + h; y++) {
+        for (let x = bx; x < bx + w; x++) set(x, y, x === bx || y === by || x === bx + w - 1 || y === by + h - 1 ? T.WALL : T.FLOOR);
+      }
+      const first = Math.floor(rng() * 4);
+      const sides = [first, (first + 1 + Math.floor(rng() * 3)) % 4];
+      for (const side of sides) {
+        const horizontal = side < 2;
+        const len = horizontal ? w : h;
+        const at = 1 + Math.floor(rng() * Math.max(1, len - 3));
+        for (let k = 0; k < 2; k++) {
+          const x = horizontal ? bx + at + k : side === 2 ? bx : bx + w - 1;
+          const y = horizontal ? (side === 0 ? by : by + h - 1) : by + at + k;
+          set(x, y, T.FLOOR);
+        }
+      }
+      if (o.crates !== false) {
+        for (const [cx, cy] of [[bx + 1, by + 1], [bx + w - 2, by + 1], [bx + 1, by + h - 2], [bx + w - 2, by + h - 2]]) {
+          if (rng() < 0.45 && tiles[cy * N + cx] === T.FLOOR) tiles[cy * N + cx] = T.CRATE;
+        }
+      }
+      for (let n = 0, tries = 0; n < (o.chests ?? 0) && tries < 30; tries++) {
+        const tx = bx + 1 + Math.floor(rng() * (w - 2)), ty = by + 1 + Math.floor(rng() * (h - 2));
+        if (tileAt(t, tx, ty) === T.FLOOR && ctx.chest(tx, ty, o.tier ?? 1)) n++;
+      }
+      t.buildings.push({ x: bx, y: by, w, h });
+    },
+  };
+
+  // Lugares con nombre: primero se les abre camino de tierra hasta el centro, después se estampan.
+  const spots = PLACE_DEFS.filter((d) => d.pos[mapId]).map((d) => {
+    const k = d.k[mapId] ?? 1;
+    const [cx, cy] = d.pos[mapId];
+    return { d, k, cx, cy, w: Math.max(3, Math.round(d.size[0] * k)), h: Math.max(3, Math.round(d.size[1] * k)) };
+  });
+  for (const s of spots) {
+    if (s.d.center) continue;
+    const [ax, ay] = s.d.anchor ? s.d.anchor(s.cx, s.cy, s.k) : [s.cx, s.cy];
+    const steps = Math.max(1, Math.ceil(Math.hypot(ax - c, ay - c)));
+    for (let i = 0; i <= steps; i++) {
+      const px = Math.round(ax + ((c - ax) * i) / steps), py = Math.round(ay + ((c - ay) * i) / steps);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (tileAt(t, px + dx, py + dy) < T.SAND) set(px + dx, py + dy, T.SAND);
+    }
+  }
+  for (const s of spots) {
+    s.d.stamp(ctx, s.cx, s.cy, s.k);
+    const place = { id: s.d.id, name: s.d.name, cx: s.cx, cy: s.cy, x: s.cx - (s.w >> 1), y: s.cy - (s.h >> 1), w: s.w, h: s.h };
+    t.places.push(place);
+    for (let y = place.y - 3; y < place.y + place.h + 3; y++) for (let x = place.x - 3; x < place.x + place.w + 3; x++) if (x >= 0 && y >= 0 && x < N && y < N) busy[y * N + x] = 1;
+  }
+
+  // Casas sueltas en los huecos que dejan los lugares.
+  let loose = 0;
+  for (let tries = 0; tries < 600 && loose < cfg.buildings; tries++) {
     const w = 5 + Math.floor(rng() * 4), h = 5 + Math.floor(rng() * 3);
     const bx = 3 + Math.floor(rng() * (N - w - 6)), by = 3 + Math.floor(rng() * (N - h - 6));
     let ok = true;
@@ -135,32 +211,11 @@ export function makeMap(mapId, seed) {
     }
     if (!ok) continue;
     for (let y = by - 2; y < by + h + 2; y++) for (let x = bx - 2; x < bx + w + 2; x++) busy[y * N + x] = 1;
-    for (let y = by; y < by + h; y++) {
-      for (let x = bx; x < bx + w; x++) {
-        const edge = x === bx || y === by || x === bx + w - 1 || y === by + h - 1;
-        tiles[y * N + x] = edge ? T.WALL : T.FLOOR;
-      }
-    }
-    // Puertas de dos casillas en dos lados distintos.
-    const first = Math.floor(rng() * 4);
-    const sides = [first, (first + 1 + Math.floor(rng() * 3)) % 4];
-    for (const side of sides) {
-      const horizontal = side < 2;
-      const len = horizontal ? w : h;
-      const at = 1 + Math.floor(rng() * (len - 3));
-      for (let k = 0; k < 2; k++) {
-        const x = horizontal ? bx + at + k : side === 2 ? bx : bx + w - 1;
-        const y = horizontal ? (side === 0 ? by : by + h - 1) : by + at + k;
-        tiles[y * N + x] = T.FLOOR;
-      }
-    }
-    for (const [cx, cy] of [[bx + 1, by + 1], [bx + w - 2, by + 1], [bx + 1, by + h - 2], [bx + w - 2, by + h - 2]]) {
-      if (rng() < 0.45 && tiles[cy * N + cx] === T.FLOOR) tiles[cy * N + cx] = T.CRATE;
-    }
-    t.buildings.push({ x: bx, y: by, w, h });
+    ctx.house(bx, by, w, h, { chests: 2, tier: 1 });
+    loose++;
   }
 
-  // Bosques, árboles sueltos, rocas y alguna caja tirada.
+  // Bosques, árboles sueltos y rocas.
   for (let y = 1; y < N - 1; y++) {
     for (let x = 1; x < N - 1; x++) {
       const i = y * N + x;
@@ -177,8 +232,55 @@ export function makeMap(mapId, seed) {
       else if (kind === T.GRASS && rng() < 0.004) tiles[i] = T.CRATE;
     }
   }
+
+  // Cofres perdidos por el campo (solo hay cofres: nada tirado en el piso).
+  for (let k = 0, tries = 0; k < cfg.scatter && tries < 4000; tries++) {
+    const tx = 2 + Math.floor(rng() * (N - 4)), ty = 2 + Math.floor(rng() * (N - 4));
+    const tile = tileAt(t, tx, ty);
+    if (tile !== T.GRASS && tile !== T.FOREST && tile !== T.SAND) continue;
+    if (t.chests.some((ch) => Math.hypot(ch.tx - tx, ch.ty - ty) < 4)) continue;
+    if (ctx.chest(tx, ty, 1)) k++;
+  }
+  if (mapId === 'espera') {
+    // La isla de espera: unas palmeras y cajas, sin zona.
+    for (let n = 0, tries = 0; n < 10 && tries < 200; tries++) {
+      const x = 3 + Math.floor(rng() * (N - 6)), y = 3 + Math.floor(rng() * (N - 6));
+      if (tileAt(t, x, y) === T.GRASS && Math.hypot(x - c, y - c) > 4) { tiles[y * N + x] = n % 3 ? T.TREE : T.CRATE; n++; }
+    }
+  }
+  // Red de seguridad: un cofre que quedó encerrado entre árboles o rocas no sirve.
+  const reach = reachable(t);
+  t.chests = t.chests.filter((ch) => reach[ch.ty * N + ch.tx]).map((ch, i) => ({ ...ch, i }));
   t.plan = zonePlan(t, seed);
   return t;
+}
+
+// Casillas a las que se llega a pie desde el centro de la isla (a lo ancho y a lo alto).
+export function reachable(t) {
+  const N = t.N, seen = new Uint8Array(N * N), c = N >> 1;
+  let start = null;
+  for (let r = 0; r < N && !start; r++) {
+    for (let dy = -r; dy <= r && !start; dy++) for (let dx = -r; dx <= r; dx++) if (!isSolid(t, c + dx, c + dy)) { start = [c + dx, c + dy]; break; }
+  }
+  const stack = start ? [start] : [];
+  if (start) seen[start[1] * N + start[0]] = 1;
+  while (stack.length) {
+    const [x, y] = stack.pop();
+    for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + a, ny = y + b;
+      if (nx < 0 || ny < 0 || nx >= N || ny >= N || seen[ny * N + nx] || isSolid(t, nx, ny)) continue;
+      seen[ny * N + nx] = 1;
+      stack.push([nx, ny]);
+    }
+  }
+  return seen;
+}
+
+// ¿En qué lugar con nombre está este punto del mundo (en píxeles)? null si en ninguno.
+export function placeAt(t, x, y) {
+  const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+  for (const p of t.places) if (tx >= p.x - 1 && tx <= p.x + p.w && ty >= p.y - 1 && ty <= p.y + p.h) return p;
+  return null;
 }
 
 // ─── La zona (la tormenta que se achica) ────────────────────────────────────

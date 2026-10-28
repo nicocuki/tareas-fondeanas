@@ -2,7 +2,7 @@
 // `rooms/{código}` con `ctx = { now, rand }` y devuelve null si la acción no vale.
 //
 // Acá va lo que es de a una vez: quién juega, el mapa y su semilla, quién murió (y quién lo mató),
-// qué botín ya se levantó y el ranking. El movimiento, los tiros y las explosiones van en tiempo
+// qué cofres ya se abrieron y el ranking. El movimiento, los tiros y las explosiones van en tiempo
 // real por otro lado (PixelGame.jsx): cada pantalla es dueña de su jugador y avisa acá cuando muere.
 import { LOOT_LIMIT, WEAPONS } from './sim.js';
 import { MAPS, MAP_IDS } from './map.js';
@@ -11,7 +11,7 @@ import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 export const GAME_TYPE = 'pixel';
 export const MAX_PLAYERS = 10;
 export const MIN_PLAYERS = 2;
-export const COUNTDOWN_MS = 5000; // «¡Preparate!» antes de poder moverse
+export const COUNTDOWN_MS = 15000; // la isla de espera: se camina y se prueba la pistola antes de subir al bus
 
 export const COLORS = ['#ff5a5f', '#4aa0ff', '#5ed36b', '#ffd23f', '#c46bff', '#ff9a3c', '#3fe0d0', '#ff7ac8', '#a5e04a', '#e9edf2'];
 
@@ -164,7 +164,7 @@ export function applyAction(room, action, ctx = {}) {
       break;
     }
 
-    // Botín: lo levanta el primero que llega (la transacción deja pasar a uno).
+    // Cofre: lo abre el primero que llega (la transacción deja pasar a uno). El contenido sale de la semilla.
     case 'loot': {
       const i = action.i;
       if (next.phase !== 'playing' || !sameMatch || !me?.alive || !Number.isInteger(i) || i < 0 || i >= LOOT_LIMIT || next.match.loot[i]) return null;

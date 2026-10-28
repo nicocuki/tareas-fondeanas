@@ -721,23 +721,44 @@ cohetes en arco); Nico mandó un video del original y se rehízo con esto, que e
 
 ## Pixel Royale
 
-Battle royale 2D con cámara de arriba y pixel art, pedido de Nico. De 2 a 10, solo compu. `id`: `pixel` (`?juego=pixel`,
-`gameType: 'pixel'`, raíz `pixel/` en `ROOTS`). Dos mapas (`MAPS` en `map.js`): **Isla Grande** (100 × 100 casillas, hasta 10) e
-**Isla Chica** (60 × 60, hasta 5; `startProblem` no deja arrancar con más). Mapas nuevos: agregalos a `MAPS`.
+Battle royale 2D con cámara de arriba y pixel art, pedido de Nico: la idea es que sea «un Fortnite 2D en pixel art» y se le van sumando mecánicas.
+De 2 a 10, solo compu. `id`: `pixel` (`?juego=pixel`, `gameType: 'pixel'`, raíz `pixel/` en `ROOTS`). Dos mapas (`MAPS` en `map.js`): **Isla Grande**
+(100 × 100 casillas, hasta 10) e **Isla Chica** (60 × 60, hasta 5; `startProblem` no deja arrancar con más). La **isla de espera**
+(`espera`, 28 × 28, `hidden`) no se elige. Mapas nuevos: agregalos a `MAPS`.
 
-- **Mismo esquema que Cohete Royale**: lo de a una vez va en la sala (`game.js`: semilla, muertos, botín levantado, ranking) y lo
+- **Mismo esquema que Cohete Royale**: lo de a una vez va en la sala (`game.js`: semilla, muertos, cofres abiertos, ranking) y lo
   en vivo, directo entre navegadores (`futbol/p2p.js`) con respaldo en `pixel/{sala}/p/{id}` (`pixelChannel`, efímero). Cada pantalla es
   dueña de su jugador y avisa `died`. El anfitrión da por muerto al que no manda fotos en 12 s.
-- **El mapa sale de la semilla** (`makeMap`, sin `Math.random()`): isla con ruido, casas con puertas, bosques, rocas y cajas. **No uses
-  `sort` con comparador aleatorio** (cada navegador ordena distinto y los mapas dejan de coincidir). Árboles, cajas y paredes se rompen
+- **El mapa sale de la semilla** (`makeMap`, sin `Math.random()`). **No uses `sort` con comparador aleatorio**. Árboles, cajas y paredes se rompen
   (`damageTile`, `TILE_HP`); la vida de cada casilla vive en `t.hp` de cada pantalla.
-- **Quién decide cada cosa**: una bala común la juzga la pantalla de **a quien le pega** (avisa en `hi` para que desaparezca en las demás);
-  lo que rompe casillas (balas contra paredes, cohetes, granadas) lo decide la del **que tiró** y viaja en `ex` (`{k, x, y, w, o}`): todas
-  rompen lo mismo y cada víctima calcula su daño (`blastOn`). Los eventos se deduplican por `k` (`s.seen`).
-- **La tormenta** (`zoneAt`, `PHASES`) y las **cajas del cielo** (`dropInfo`, índices de botín desde `DROP_BASE`) son determinísticas: todas
-  las pantallas calculan lo mismo a partir de la semilla y la hora de inicio. El botín (`lootSpots`) lo levanta el primero que llega (`loot`).
+- **Lugares con nombre** (`places.js`, `PLACE_DEFS`): cada uno se «estampa» sobre el terreno con las herramientas que da `makeMap` (`ctx`:
+  `land`, `fill`, `house`, `chest`…) y el nombre dice cómo es: Pibes Polvorín Polvoriento (playa con búnker), Muelle Mojito, Frontera del Fondo (muro con
+  portones), Puente Pollín (río con puente), Cover (cancha de fútbol), Arboleada Alianza (dos anillos de árboles), Juvenil Judía (chacra de judías), más
+  Villa Vermut y Peñasco Pelado, que elegimos nosotros. Primero se les abre camino de arena hasta el centro y después se estampan; las casas sueltas y el
+  bosque esquivan los lugares. Los de Isla Chica van más chicos (`k`) y son menos. Tiles nuevos: `PLANK` (muelle, puente), `FIELD`/`LINE`/`NET` (cancha; el arco
+  es sólido), `CROP` (chacra). **Un lugar nuevo**: una entrada en `PLACE_DEFS` con su `stamp` y su posición por mapa. `makeMap` **descarta los cofres a los que
+  no se llega a pie** (`reachable`) y hay un test que mira todos los mapas.
+- **Solo hay cofres, nada en el piso** (pedido de Nico). Los de `t.chests` (en casas, torres, búnkeres y sueltos por el campo; `tier` 1 a 3) y los
+  cofres dorados que caen del cielo (`dropInfo`, números desde `DROP_BASE`). Se abren **manteniendo Espacio** `OPEN_TIME` cerca; la sala solo
+  anota quién lo abrió primero (`loot`) y el contenido (`chestContents`, de la semilla y el número) va **directo al inventario** (`giveContents`:
+  el arma cambia la de la mano solo si es de más rareza).
+- **Isla de espera → bus → caída**: `COUNTDOWN_MS` (15 s) es la isla de espera: se camina y se prueba la pistola (balas infinitas, sin daño). Al
+  llegar a 0 la pantalla pasa al mapa de verdad y todos suben al **bus** (`busRoute`/`busAt`, sale de la semilla: nadie se avisa nada). Cada uno salta con
+  Espacio (o el bus lo tira al llegar al final) y cae (`jump`, `stepAir`): caída libre rápida y, al bajar de `GLIDE_AT`, planeador (o antes con
+  Espacio). En el aire y en el bus nadie te lastima ni disparás. Aterrizás con `landSpot` (nunca adentro de una pared ni en el mar). La foto lleva
+  `am` (1 bus, 2 caída, 3 planeo) y `z` (altura). El reloj de la tormenta y de los cofres del cielo cuenta desde `PREGAME` (25 s) después de subir.
+- **La altura en 2D** se muestra con nubes que pasan más rápido que el piso, sombra desplazada, el personaje más grande (`heightScale`), viento
+  y los nombres de los lugares sobre el piso. Las nubes van **debajo** del bus y de los que caen (una nube llegó a tapar el bus). Tecla **M**: mapa grande
+  con nombres (`drawBigMap`); en el bus se muestra solo, en la esquina.
+- **Espectar**: `step` ya no corta con `p.dead`: si cortara, las balas de los demás nunca avanzarían y se verían clavadas en el lugar. El jugador muerto
+  sigue simulando balas y granadas.
+- **Quién decide cada cosa**: una bala común la juzga la pantalla de **a quien le pega** (avisa en `hi`); lo que rompe casillas lo decide la del
+  **que tiró** y viaja en `ex` (`{k, x, y, w, o}`). Los eventos se deduplican por `k` (`s.seen`).
+- **La tormenta** (`zoneAt`, `PHASES`) y los cofres del cielo son determinísticos a partir de la semilla y la hora de inicio.
 - **Dibujo**: todo va a un canvas de 384 px de ancho que el CSS agranda con `image-rendering: pixelated`. Los sprites se arman con código
-  (`render.js`, sin imágenes) y el texto del mundo usa una fuente propia de 3 × 5 píxeles (`drawText`). El borde de la zona se pinta fila por fila para que quede en píxeles.
+  (`render.js`, sin imágenes) y el texto usa una fuente propia de 3 × 5 píxeles (`drawText`, con `scale`).
+- **Todavía no tiene** (pedido de Nico, para ir sumando): construcción (paredes, pisos y rampas con materiales, activable en el lobby), rarezas de armas,
+  munición por tipo, derribados y revivir, dúos y escuadras, y vehículos.
 - `window.__pixel` y `data-pixel-canvas` existen para manejar el juego desde un navegador automatizado. No los saques.
 
 ## Mario vs Luigi

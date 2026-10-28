@@ -47,7 +47,7 @@ export const isWeapon = (kind) => Boolean(WEAPONS[kind]);
 export function newPlayer(x, y) {
   return {
     x, y, kx: 0, ky: 0, hp: HP, shield: 0, dead: false,
-    inv: [{ w: 'pistol', mag: WEAPONS.pistol.mag }, null, null], sel: 0,
+    inv: [{ w: 'pistol', mag: WEAPONS.pistol.mag }, null, null], sel: 0, air: null, aboard: false, open: 0,
     items: { bandage: 0, medkit: 0, shield: 0, grenade: 0 },
     readyAt: 0, reloadUntil: 0, cast: null, grenadeAt: 0,
     lastBy: null, lastW: null, lastHitAt: 0, hurtUntil: 0, walked: 0,
@@ -245,11 +245,19 @@ export function blastTiles(t, ev) {
   return broken;
 }
 
-// ─── Botín ──────────────────────────────────────────────────────────────────
-const WORLD_TABLE = [['pistol', 6], ['smg', 14], ['shotgun', 14], ['rifle', 10], ['sniper', 3], ['bazooka', 2], ['bandage', 17], ['medkit', 7], ['shield', 10], ['grenade', 11]];
-const HOUSE_TABLE = [['pistol', 3], ['smg', 14], ['shotgun', 14], ['rifle', 14], ['sniper', 6], ['bazooka', 4], ['bandage', 12], ['medkit', 9], ['shield', 12], ['grenade', 10]];
-const DROP_TABLE = [['rifle', 3], ['sniper', 4], ['bazooka', 4], ['shotgun', 2]];
-const SUPPLY_TABLE = [['medkit', 3], ['shield', 3], ['grenade', 2]];
+// ─── Cofres ─────────────────────────────────────────────────────────────────
+// Solo hay cofres: nada tirado en el piso. Abrir uno (mantener Espacio) te da el contenido directo,
+// sin que caiga nada al suelo. El contenido sale de la semilla y del número del cofre: todas las
+// pantallas lo calculan igual y la sala solo anota quién lo abrió primero.
+export const OPEN_TIME = 0.9;   // segundos manteniendo Espacio
+export const OPEN_RANGE = 15;   // a qué distancia se abre
+
+const CHEST_WEAPONS = {
+  1: [['pistol', 4], ['smg', 16], ['shotgun', 16], ['rifle', 10], ['sniper', 2], ['bazooka', 1]],
+  2: [['smg', 8], ['shotgun', 12], ['rifle', 18], ['sniper', 6], ['bazooka', 3]],
+  3: [['rifle', 10], ['sniper', 12], ['bazooka', 8], ['shotgun', 6]],
+};
+const CHEST_ITEMS = [['bandage', 14], ['medkit', 8], ['shield', 12], ['grenade', 10]];
 
 function roll(rng, table) {
   const total = table.reduce((n, [, w]) => n + w, 0);
@@ -258,36 +266,40 @@ function roll(rng, table) {
   return table[0][0];
 }
 
-// El botín de la isla: adentro de las casas y desparramado afuera. Todas las pantallas arman lo mismo.
-export const DROP_BASE = 200; // los índices de las cajas que caen empiezan acá
-export const MAX_DROPS = 8;
-export const LOOT_LIMIT = DROP_BASE + MAX_DROPS * 2;
-
-export function lootSpots(t, seed) {
-  const rng = mulberry32(seed ^ 0x5bd1e995);
-  const spots = [];
-  const add = (tx, ty, table) => spots.push({ i: spots.length, x: tx * TILE + TILE / 2 + Math.round((rng() - 0.5) * 4), y: ty * TILE + TILE / 2 + Math.round((rng() - 0.5) * 4), kind: roll(rng, table) });
-  for (const b of t.buildings) {
-    const n = 3 + Math.floor(rng() * 3);
-    for (let k = 0; k < n; k++) {
-      for (let tries = 0; tries < 12; tries++) {
-        const tx = b.x + 1 + Math.floor(rng() * (b.w - 2)), ty = b.y + 1 + Math.floor(rng() * (b.h - 2));
-        if (tileAt(t, tx, ty) === T.FLOOR && !spots.some((s) => Math.floor(s.x / TILE) === tx && Math.floor(s.y / TILE) === ty)) { add(tx, ty, HOUSE_TABLE); break; }
-      }
-    }
+// Qué trae un cofre: un arma y algunas cosas para curarse o tirar. `extra` suma lo del cofre del cielo.
+export function chestContents(seed, i, tier, extra = null) {
+  const rng = mulberry32(seed ^ (0x5bd1e995 + i * 7919));
+  const w = roll(rng, CHEST_WEAPONS[tier] || CHEST_WEAPONS[1]);
+  const items = { ...(extra || {}) };
+  for (let k = 0; k < (tier >= 2 ? 3 : 2); k++) {
+    const kind = roll(rng, CHEST_ITEMS);
+    const n = kind === 'bandage' ? 2 + Math.floor(rng() * 3) : kind === 'grenade' ? 1 + Math.floor(rng() * 2) : 1;
+    items[kind] = (items[kind] || 0) + n;
   }
-  for (let k = 0, tries = 0; k < t.cfg.scatter && tries < 4000; tries++) {
-    const tx = 2 + Math.floor(rng() * (t.N - 4)), ty = 2 + Math.floor(rng() * (t.N - 4));
-    const tile = tileAt(t, tx, ty);
-    if (tile !== T.GRASS && tile !== T.FOREST && tile !== T.SAND) continue;
-    if (spots.some((s) => Math.hypot(s.x - tx * TILE, s.y - ty * TILE) < 40)) continue;
-    add(tx, ty, WORLD_TABLE);
-    k++;
-  }
-  return spots;
+  return { w, items };
 }
 
-// Las cajas que caen del cielo: cada tanto, adentro de la zona de ese momento. Cada una trae dos cosas.
+// Se queda con lo que entre: el arma va a un lugar libre (o cambia la que tenés en la mano si es mejor)
+// y las cosas hasta su tope. Devuelve los nombres de lo que se llevó.
+export function giveContents(p, c) {
+  const got = [];
+  if (c.w) {
+    const held = p.inv[p.sel];
+    if (canTake(p, c.w)) { const slot = take(p, c.w); if (slot !== null) { if (!p.inv[p.sel]) p.sel = slot; got.push(WEAPONS[c.w].name); } }
+    else if (!held || WEAPONS[c.w].rarity > WEAPONS[held.w].rarity) { swapHeld(p, c.w); got.push(WEAPONS[c.w].name); }
+  }
+  for (const [kind, n] of Object.entries(c.items)) {
+    const before = p.items[kind];
+    p.items[kind] = Math.min(ITEMS[kind].max, before + n);
+    if (p.items[kind] > before) got.push(`${ITEMS[kind].name} x${p.items[kind] - before}`);
+  }
+  return got;
+}
+
+// Los cofres del cielo: cada tanto cae uno adentro de la zona de ese momento, con lo mejor.
+export const DROP_BASE = 200; // los números de los cofres del cielo empiezan acá
+export const MAX_DROPS = 8;
+export const LOOT_LIMIT = DROP_BASE + MAX_DROPS;
 export const DROP_FIRST = 50;
 export const DROP_EVERY = 45;
 export const DROP_FALL = 4; // segundos que tarda en bajar
@@ -298,16 +310,99 @@ export function dropInfo(t, seed, n, speed = 1) {
   const z = zoneAt(t, at, speed);
   const a = rng() * Math.PI * 2, d = rng() * z.r * 0.6;
   const pos = nearestWalkable(t, z.cx + Math.cos(a) * d, z.cy + Math.sin(a) * d);
-  return { n, at, x: pos.x, y: pos.y, kinds: [roll(rng, DROP_TABLE), roll(rng, SUPPLY_TABLE)] };
+  return { n, i: DROP_BASE + n, at, x: pos.x, y: pos.y, tier: 3, extra: { medkit: 1, shield: 1 } };
+}
+// Todos los cofres de la partida, los del mapa y los del cielo, con su contenido.
+export const chestOf = (t, seed, i, speed = 1) => (i >= DROP_BASE ? dropInfo(t, seed, i - DROP_BASE, speed) : t.chests[i]);
+export const contentsOf = (t, seed, i, speed = 1) => {
+  const ch = chestOf(t, seed, i, speed);
+  return ch ? chestContents(seed, i, ch.tier, ch.extra) : null;
+};
+
+// ─── El bus de batalla ──────────────────────────────────────────────────────
+// Cruza la isla en línea recta. Sale de la semilla, así que todas las pantallas lo ven en el mismo
+// lugar sin avisarse nada. Cada uno decide cuándo saltar (Espacio); si no, lo tira al llegar al final.
+export const BUS_SPEED = 70;     // px/s
+export const PREGAME = 25;       // segundos de bus y caída antes de que corra el reloj de la tormenta
+export function busRoute(t, seed) {
+  const rng = mulberry32(seed ^ 0x1b873593);
+  const ang = rng() * Math.PI * 2;
+  const dx = Math.cos(ang), dy = Math.sin(ang);
+  const off = (rng() - 0.5) * 0.5 * t.W;
+  const mx = t.W / 2 - dy * off, my = t.H / 2 + dx * off;
+  const half = t.W * 0.6;
+  return { x0: mx - dx * half, y0: my - dy * half, x1: mx + dx * half, y1: my + dy * half, dx, dy, ang, len: half * 2 };
+}
+export function busAt(route, elapsed) {
+  const d = Math.min(route.len, Math.max(0, elapsed) * BUS_SPEED);
+  return { x: route.x0 + route.dx * d, y: route.y0 + route.dy * d, d, done: d >= route.len };
+}
+
+// ─── Caída y planeador ──────────────────────────────────────────────────────
+// Al saltar arrancás a gran altura (`z` = 1) en caída libre: rápido y sin poder disparar. Cuando bajás
+// de GLIDE_AT se abre el planeador solo (o antes, con Espacio): más lento y más suave. En el aire
+// nada te toca. Al llegar al piso (z = 0) aterrizás en un lugar libre.
+export const FALL_SPEED = 135;
+export const GLIDE_SPEED = 92;
+export const GLIDE_AT = 0.3;
+export function boardBus(p, bus) {
+  p.aboard = true; p.air = null;
+  p.x = bus.x; p.y = bus.y;
+}
+export function jump(p, bus, route) {
+  p.aboard = false;
+  p.air = { z: 1, glide: false, vx: route.dx * BUS_SPEED * 0.8, vy: route.dy * BUS_SPEED * 0.8 };
+  p.x = bus.x; p.y = bus.y;
+}
+export function openGlider(p) {
+  if (!p.air || p.air.glide) return false;
+  p.air.glide = true;
+  return true;
+}
+// Un lugar donde entre un jugador, cerca del punto (por si aterrizás sobre una pared o el mar).
+export function landSpot(t, x, y) {
+  const free = (px, py) => !circleBlocked(t, px, py, PLAYER_R) && tileAt(t, Math.floor(px / TILE), Math.floor(py / TILE)) !== T.DEEP;
+  if (free(x, y)) return { x, y };
+  const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE);
+  for (let r = 1; r < 12; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const px = (cx + dx) * TILE + TILE / 2, py = (cy + dy) * TILE + TILE / 2;
+        if (free(px, py)) return { x: px, y: py };
+      }
+    }
+  }
+  return nearestWalkable(t, x, y);
+}
+// Avanza la caída. Devuelve 'landed' cuando toca el piso.
+export function stepAir(p, ax, ay, dt, t) {
+  const a = p.air;
+  if (!a) return null;
+  const len = Math.hypot(ax, ay);
+  const sp = a.glide ? GLIDE_SPEED : FALL_SPEED;
+  p.x += ((len ? (ax / len) * sp : 0) + a.vx) * dt;
+  p.y += ((len ? (ay / len) * sp : 0) + a.vy) * dt;
+  const decay = Math.exp(-0.8 * dt);
+  a.vx *= decay; a.vy *= decay;
+  p.x = Math.max(-40, Math.min(t.W + 40, p.x));
+  p.y = Math.max(-40, Math.min(t.H + 40, p.y));
+  a.z -= dt * (a.glide ? 0.045 : 0.105);
+  if (!a.glide && a.z <= GLIDE_AT) a.glide = true;
+  if (a.z > 0) return null;
+  const spot = landSpot(t, p.x, p.y);
+  p.x = spot.x; p.y = spot.y;
+  p.air = null;
+  return 'landed';
 }
 
 // ─── Aparición ──────────────────────────────────────────────────────────────
-// Todos arrancan repartidos en un anillo alrededor del centro de la isla.
+// En la isla de espera, todos arrancan repartidos en un anillo alrededor del centro.
 export function spawnPoint(t, seed, index, size) {
   const rng = mulberry32(seed ^ 0x2545f491);
   const phase = rng() * Math.PI * 2;
   const a = phase + (index / Math.max(1, size)) * Math.PI * 2;
-  const r = t.W / 2 * 0.5;
+  const r = t.W / 2 * 0.4;
   return nearestWalkable(t, t.W / 2 + Math.cos(a) * r, t.H / 2 + Math.sin(a) * r);
 }
 

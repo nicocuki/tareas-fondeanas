@@ -74,9 +74,9 @@ const GLYPHS = {
 };
 const clean = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
 export const textWidth = (s) => Math.max(0, String(s).length * 4 - 1);
-export function drawText(g, str, x, y, color = '#fff', { align = 'left', shadow = '#14101c' } = {}) {
+export function drawText(g, str, x, y, color = '#fff', { align = 'left', shadow = '#14101c', scale = 1 } = {}) {
   const s = clean(str);
-  const w = textWidth(s);
+  const w = textWidth(s) * scale;
   let cx = Math.round(align === 'center' ? x - w / 2 : align === 'right' ? x - w : x);
   y = Math.round(y);
   for (const ch of s) {
@@ -84,12 +84,12 @@ export function drawText(g, str, x, y, color = '#fff', { align = 'left', shadow 
     if (gl) {
       for (let i = 0; i < 15; i++) {
         if (gl[i] !== '1') continue;
-        const gx = cx + (i % 3), gy = y + Math.floor(i / 3);
-        if (shadow) px(g, gx, gy + 1, shadow);
-        px(g, gx, gy, color);
+        const gx = cx + (i % 3) * scale, gy = y + Math.floor(i / 3) * scale;
+        if (shadow) px(g, gx, gy + scale, shadow, scale, scale);
+        px(g, gx, gy, color, scale, scale);
       }
     }
-    cx += 4;
+    cx += 4 * scale;
   }
 }
 
@@ -107,7 +107,7 @@ function groundTile(base, dark, light, seed, extra) {
 }
 
 function buildArt() {
-  const a = { grass: [], forest: [], sand: [], water: [], shallow: [], floor: [], wall: [], rubble: [], rock: [], tree: [], loot: {}, items: {}, cracks: [] };
+  const a = { grass: [], forest: [], sand: [], water: [], shallow: [], floor: [], wall: [], rubble: [], rock: [], tree: [], loot: {}, items: {}, cracks: [], plank: [], field: [], crop: [] };
   for (let v = 0; v < 4; v++) {
     a.grass.push(groundTile('#58b04b', '#489a3e', '#6cc45a', 100 + v, (g, rng) => {
       if (v === 1) { px(g, 4, 9, '#3e8a35'); px(g, 5, 8, '#3e8a35'); px(g, 5, 9, '#3e8a35'); px(g, 11, 4, '#3e8a35'); px(g, 12, 3, '#3e8a35'); }
@@ -173,6 +173,48 @@ function buildArt() {
     px(g, 2, 13, '#8d5d2a', 12, 1);
     a.crate = c;
   }
+  // Muelle: tablones de madera clara sobre el agua.
+  for (let v = 0; v < 2; v++) {
+    a.plank.push(groundTile('#c9a066', '#b58a52', '#d9b57c', 800 + v, (g) => {
+      for (let x = 0; x < TILE; x += 5) px(g, x + (v ? 2 : 0), 0, '#7e5a30', 1, TILE);
+      px(g, 0, 0, '#e2c288', TILE, 1); px(g, 0, 15, '#8b6334', TILE, 1);
+    }));
+  }
+  // Cancha: pasto cortado en franjas, líneas blancas y red del arco.
+  for (let v = 0; v < 2; v++) a.field.push(groundTile(v ? '#4fa545' : '#5ab84e', v ? '#479a3d' : '#52ad47', v ? '#58b04b' : '#63c256', 850 + v, null));
+  a.line = (() => { const [c, g] = newCanvas(TILE, TILE); g.drawImage(a.field[0], 0, 0); px(g, 0, 6, '#f3f7ee', TILE, 4); return c; })();
+  a.lineV = (() => { const [c, g] = newCanvas(TILE, TILE); g.drawImage(a.field[0], 0, 0); px(g, 6, 0, '#f3f7ee', 4, TILE); return c; })();
+  a.lineX = (() => { const [c, g] = newCanvas(TILE, TILE); g.drawImage(a.field[0], 0, 0); px(g, 0, 6, '#f3f7ee', TILE, 4); px(g, 6, 0, '#f3f7ee', 4, TILE); return c; })();
+  {
+    const [c, g] = newCanvas(TILE, TILE);
+    g.drawImage(a.field[0], 0, 0);
+    px(g, 0, 0, '#2a2e3a', TILE, 2); px(g, 0, 14, '#2a2e3a', TILE, 2);
+    for (let i = 0; i < TILE; i += 4) { px(g, i, 2, 'rgba(240,244,250,0.85)', 1, 12); px(g, 0, 2 + i, 'rgba(240,244,250,0.85)', TILE, 1); }
+    a.net = c;
+  }
+  // Chacra: surcos de tierra con plantas de judías (vainas verdes colgando).
+  for (let v = 0; v < 2; v++) {
+    a.crop.push(groundTile('#8b6b3e', '#7a5c33', '#9c7a4a', 870 + v, (g) => {
+      for (let x = 1 + v; x < TILE; x += 4) {
+        px(g, x, 3, '#2f8a3a', 2, 9); px(g, x - 1, 5, '#3fa84a', 1, 3); px(g, x + 2, 7, '#3fa84a', 1, 3);
+        px(g, x, 8, '#8fd860', 1, 3); px(g, x + 1, 10, '#a6e873');
+      }
+    }));
+  }
+  // Cofres: cerrado con brillo dorado (según el valor), y abierto y vacío.
+  const chestArt = (open, body, trim) => {
+    const [c, g] = newCanvas(14, 12);
+    px(g, 0, 11, 'rgba(0,0,0,0.3)', 14, 1);
+    px(g, 1, 3, '#2a1a0c', 12, 8);
+    px(g, 2, 4, body, 10, 6);
+    px(g, 2, 4, shade(body, 0.25), 10, 1);
+    px(g, 1, 6, trim, 12, 1); px(g, 6, 5, trim, 2, 4); px(g, 6, 6, '#2a1a0c', 2, 2);
+    if (open) { px(g, 2, 1, '#2a1a0c', 10, 3); px(g, 3, 2, shade(body, -0.35), 8, 1); px(g, 2, 4, '#1a0f06', 10, 4); }
+    else { px(g, 1, 2, '#2a1a0c', 12, 3); px(g, 2, 2, shade(body, 0.1), 10, 2); px(g, 2, 2, shade(body, 0.35), 10, 1); }
+    return c;
+  };
+  a.chest = [chestArt(false, '#b57434', '#ffd23f'), chestArt(false, '#c98a3a', '#fff0a0'), chestArt(false, '#a85cd6', '#ffe9a0')];
+  a.chestOpen = chestArt(true, '#8a5a2a', '#c9a040');
   // Árbol: el tronco va en la casilla, la copa se dibuja arriba de todo.
   for (let v = 0; v < 3; v++) {
     const [c, g] = newCanvas(TILE, TILE);
@@ -251,6 +293,15 @@ export function drawGround(g, t, cam, W, H, time) {
         case T.TREE: spr = a.tree[v % 3]; break;
         case T.ROCK: spr = a.rock[v & 1]; break;
         case T.CRATE: spr = a.crate; break;
+        case T.PLANK: spr = a.plank[v & 1]; break;
+        case T.FIELD: spr = a.field[(tx + ty) & 1]; break;
+        case T.LINE: {
+          const l = tileAt(t, tx - 1, ty) === T.LINE || tileAt(t, tx + 1, ty) === T.LINE, vv = tileAt(t, tx, ty - 1) === T.LINE || tileAt(t, tx, ty + 1) === T.LINE;
+          spr = l && vv ? a.lineX : vv ? a.lineV : a.line;
+          break;
+        }
+        case T.NET: spr = a.net; break;
+        case T.CROP: spr = a.crop[v & 1]; break;
         default: spr = a.rubble[v & 1];
       }
       const sx = tx * TILE - cam.x, sy = ty * TILE - cam.y;
@@ -280,36 +331,40 @@ export function drawCanopies(g, t, cam, W, H) {
   }
 }
 
-// ─── Botín y cajas ──────────────────────────────────────────────────────────
-export function drawLoot(g, items, cam, W, H, time, nearId) {
+// ─── Cofres ─────────────────────────────────────────────────────────────────
+const TIER_GLOW = ['#ffd23f', '#ffd23f', '#fff0a0', '#d890ff'];
+// Los cofres del mapa (`opened` dice cuáles ya se abrieron) con un brillo dorado que parpadea.
+export function drawChests(g, chests, opened, cam, W, H, time, nearId, progress) {
   const a = getArt();
-  for (const it of items) {
-    const x = Math.round(it.x - cam.x), y = Math.round(it.y - cam.y);
+  for (const ch of chests) {
+    const x = Math.round(ch.x - cam.x), y = Math.round(ch.y - cam.y);
     if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
-    const icon = a.loot[it.kind];
-    const rar = WEAPONS[it.kind] ? WEAPONS[it.kind].rarity : 1;
-    const color = RARITY_COLORS[rar];
-    const bob = Math.round(Math.sin(time * 3 + it.i) * 1);
-    // Un brillo del color de la rareza abajo.
-    g.fillStyle = 'rgba(0,0,0,0.28)';
-    g.fillRect(x - 5, y + 4, 10, 2);
-    g.globalAlpha = 0.35 + 0.15 * Math.sin(time * 4 + it.i);
-    ring(g, x, y, 7, color);
-    g.globalAlpha = 1;
-    g.drawImage(icon, Math.round(x - icon.width / 2), Math.round(y - icon.height / 2 + bob));
-    if (rar >= 2 && Math.floor(time * 3 + it.i) % 3 === 0) px(g, x + 5, y - 6 + bob, color, 1, 1);
-    if (it.i === nearId) { g.strokeStyle = '#fff'; g.lineWidth = 1; g.strokeRect(x - 8.5, y - 8.5, 17, 17); }
+    const open = Boolean(opened[ch.i]);
+    const spr = open ? a.chestOpen : a.chest[ch.tier - 1] || a.chest[0];
+    if (!open) {
+      const glow = TIER_GLOW[ch.tier] || TIER_GLOW[1];
+      g.globalAlpha = 0.3 + 0.2 * Math.sin(time * 4 + ch.i);
+      ring(g, x, y, 9, glow);
+      g.globalAlpha = 1;
+      const f = Math.floor(time * 5 + ch.i * 3) % 14;
+      if (f < 3) px(g, x + (f - 1) * 4, y - 8 - f, '#ffffff', 1, 1);
+    }
+    g.drawImage(spr, x - 7, y - 7);
+    if (ch.i === nearId) {
+      g.strokeStyle = '#fff'; g.lineWidth = 1; g.strokeRect(x - 9.5, y - 9.5, 19, 19);
+      if (progress > 0) { px(g, x - 8, y + 10, '#14101c', 17, 4); px(g, x - 7, y + 11, '#ffd23f', Math.round(15 * Math.min(1, progress)), 2); }
+    }
   }
 }
 
-// Una caja que cae en paracaídas (o ya aterrizó). `k` va de 0 (arriba) a 1 (en el piso).
-export function drawAirdrop(g, d, cam, time, k) {
+// El cofre que cae del cielo con paracaídas (o ya aterrizó). `k` va de 0 (arriba) a 1 (en el piso).
+export function drawAirdrop(g, d, cam, time, k, opened) {
   const a = getArt();
   const x = Math.round(d.x - cam.x);
   const y = Math.round(d.y - cam.y - (1 - k) * 220 * (1 - k));
   g.fillStyle = 'rgba(0,0,0,0.3)';
   g.fillRect(x - 7, Math.round(d.y - cam.y) + 5, 14, 3);
-  g.drawImage(a.box, x - 7, y - 9);
+  g.drawImage(opened ? a.chestOpen : a.chest[2], x - 7, y - 7);
   if (k < 1) {
     disc(g, x, y - 26, 12, '#14141c');
     disc(g, x, y - 26, 11, '#ffffff');
@@ -317,7 +372,7 @@ export function drawAirdrop(g, d, cam, time, k) {
     g.fillStyle = '#14141c';
     g.fillRect(x - 12, y - 26, 25, 1);
     pline(g, x - 11, y - 25, x - 4, y - 9, '#14141c'); pline(g, x + 11, y - 25, x + 4, y - 9, '#14141c');
-  } else if (Math.floor(time * 2) % 2) {
+  } else if (!opened && Math.floor(time * 2) % 2) {
     ring(g, x, y - 2, 11, '#ffd23f');
   }
 }
@@ -465,20 +520,162 @@ export function drawZone(g, z, cam, W, H, time) {
   }
 }
 
+// ─── Bus de batalla, caída y planeador ──────────────────────────────────────
+// Vista de arriba, así que la altura se muestra con tres trucos: lo que está alto se dibuja más grande,
+// su sombra queda lejos en el piso y pasan nubes por encima del suelo, más rápido que la cámara.
+export const heightScale = (z) => 1 + z * 1.6;
+
+// Nubes: manchas fijas del mundo (salen de un hash) que se mueven más rápido que el piso.
+export function drawClouds(g, cam, W, H, alpha, seed) {
+  if (alpha <= 0.02) return;
+  const CELL = 120, par = 1.7;
+  const cx0 = Math.floor((cam.x * par) / CELL) - 1, cx1 = Math.floor((cam.x * par + W) / CELL) + 1;
+  const cy0 = Math.floor((cam.y * par) / CELL) - 1, cy1 = Math.floor((cam.y * par + H) / CELL) + 1;
+  g.globalAlpha = Math.min(0.8, alpha);
+  for (let cy = cy0; cy <= cy1; cy++) {
+    for (let cx = cx0; cx <= cx1; cx++) {
+      const h = hash2(cx, cy, seed);
+      if (h < 0.45) continue;
+      const x = Math.round(cx * CELL + h * 60 - cam.x * par), y = Math.round(cy * CELL + hash2(cy, cx, seed) * 60 - cam.y * par);
+      const r = 10 + Math.floor(h * 14);
+      disc(g, x, y + 3, r, 'rgba(120,140,170,0.5)');
+      disc(g, x, y, r, '#f4f8ff');
+      disc(g, x - r * 0.8, y + 2, Math.round(r * 0.6), '#f4f8ff');
+      disc(g, x + r * 0.8, y + 2, Math.round(r * 0.6), '#eaf1fb');
+    }
+  }
+  g.globalAlpha = 1;
+}
+
+// El bus: un colectivo azul colgado de un globo a rayas, con su sombra lejos en el piso.
+export function drawBus(g, bus, route, cam, time, riders) {
+  const sx = Math.round(bus.x - cam.x), sy = Math.round(bus.y - cam.y);
+  g.save();
+  // Sombra en el piso, desplazada: la altura se nota de un vistazo.
+  g.translate(sx + 22, sy + 30);
+  g.rotate(route.ang);
+  g.fillStyle = 'rgba(0,0,0,0.28)';
+  g.fillRect(-18, -8, 36, 16);
+  g.restore();
+  g.save();
+  g.translate(sx, sy);
+  g.rotate(route.ang);
+  // Carrocería (la parte de adelante va hacia +x).
+  px(g, -19, -9, '#14141c', 38, 18);
+  px(g, -18, -8, '#2f6fd8', 36, 16);
+  px(g, -18, -8, '#5b94f0', 36, 3);
+  px(g, -18, 5, '#1d4ea0', 36, 3);
+  px(g, 10, -7, '#bfe4ff', 7, 14);     // parabrisas
+  px(g, 10, -7, '#ffffff', 2, 14);
+  for (let i = 0; i < 4; i++) px(g, -15 + i * 6, -6, '#bfe4ff', 4, 4);
+  px(g, -18, -1, '#ffd23f', 28, 2);    // franja amarilla
+  px(g, -19, 9, '#14141c', 4, 2); px(g, 12, 9, '#14141c', 4, 2); px(g, -19, -11, '#14141c', 4, 2); px(g, 12, -11, '#14141c', 4, 2);
+  // Pasajeros: cabecitas del color de cada uno en el techo.
+  riders.slice(0, 10).forEach((color, i) => { px(g, -16 + (i % 5) * 5, i < 5 ? 0 : -5, '#14101c', 4, 4); px(g, -15 + (i % 5) * 5, i < 5 ? 1 : -4, color, 2, 2); });
+  g.restore();
+  // Globo: se ve encima, un poco corrido hacia arriba de la pantalla.
+  const bx = sx, by = sy - 26;
+  const sway = Math.round(Math.sin(time * 2) * 1);
+  pline(g, sx - 12, sy - 6, bx - 14 + sway, by + 10, '#14101c');
+  pline(g, sx + 12, sy - 6, bx + 14 + sway, by + 10, '#14101c');
+  disc(g, bx + sway, by, 22, '#14141c');
+  disc(g, bx + sway, by, 21, '#ffffff');
+  for (let i = -18; i <= 18; i += 9) {
+    g.save();
+    g.beginPath(); g.arc(bx + sway, by, 21, 0, Math.PI * 2); g.clip();
+    px(g, bx + sway + i - 2, by - 22, '#e0434f', 5, 44);
+    g.restore();
+  }
+  disc(g, bx + sway - 7, by - 8, 5, 'rgba(255,255,255,0.55)');
+  drawText(g, 'BUS', bx + sway, by - 2, '#14101c', { align: 'center', shadow: null, scale: 2 });
+}
+
+// Un jugador en el aire visto desde arriba: brazos abiertos en caída libre; con el planeador, una
+// vela grande encima. Cuanto más alto, más grande, y su sombra queda lejos en el piso.
+export function drawAirPlayer(g, p, cam, color, z, glide, o = {}) {
+  const k = heightScale(z);
+  const gx = Math.round(p.x - cam.x), gy = Math.round(p.y - cam.y);
+  // Sombra en el piso.
+  g.fillStyle = 'rgba(0,0,0,0.3)';
+  const sr = Math.max(3, Math.round(4 * (1 + z * 0.5)));
+  disc(g, gx + Math.round(z * 14), gy + Math.round(z * 18), sr, 'rgba(0,0,0,0.3)');
+  g.save();
+  g.translate(gx, gy - Math.round(z * 20));
+  g.scale(k, k);
+  if (glide) {
+    // Planeador: una vela de listones del color del jugador y los cordones hasta el personaje.
+    pline(g, -8, -4, -2, 1, '#14101c'); pline(g, 8, -4, 2, 1, '#14101c');
+    disc(g, 0, -7, 9, '#14101c');
+    disc(g, 0, -7, 8, color);
+    for (let i = -6; i <= 6; i += 4) px(g, i - 1, -14, '#ffffff', 2, 14);
+    disc(g, -3, -10, 3, 'rgba(255,255,255,0.35)');
+  } else {
+    // Caída libre: brazos y piernas abiertos en cruz.
+    px(g, -6, -1, '#14101c', 13, 3); px(g, -1, -6, '#14101c', 3, 13);
+    px(g, -5, 0, color, 11, 1); px(g, 0, -5, color, 1, 11);
+    px(g, -6, -6, '#f2cda4', 2, 2); px(g, 5, -6, '#f2cda4', 2, 2);
+  }
+  disc(g, 0, 0, 4, '#17121f');
+  disc(g, 0, 0, 3, color);
+  disc(g, 0, -1, 2, '#f2cda4');
+  px(g, -2, -3, shade(color, -0.45), 4, 2);
+  g.restore();
+  if (o.name) drawText(g, o.name, gx, gy - Math.round(z * 20) - Math.round(14 * k), '#ffffff', { align: 'center' });
+}
+
+// Rayitas de viento mientras te caés: pasan hacia arriba de la pantalla.
+export function drawWind(g, W, H, time, fast) {
+  g.fillStyle = 'rgba(255,255,255,0.55)';
+  for (let i = 0; i < 14; i++) {
+    const h = hash2(i, 3, 7);
+    const sp = (fast ? 260 : 120) * (0.7 + h * 0.6);
+    const y = (((time * sp + h * 1000) % (H + 40)) - 20);
+    const len = fast ? 10 + Math.floor(h * 12) : 5 + Math.floor(h * 6);
+    g.fillRect(Math.round(hash2(i, 9, 3) * W), Math.round(H - y), 1, len);
+  }
+}
+
+// La ruta del bus, en el mundo: rayitas blancas hacia adelante.
+export function drawRoute(g, route, bus, cam, W, H) {
+  g.fillStyle = 'rgba(255,255,255,0.55)';
+  const step = 18;
+  for (let d = Math.ceil(bus.d / step) * step; d < route.len; d += step) {
+    const x = Math.round(route.x0 + route.dx * d - cam.x), y = Math.round(route.y0 + route.dy * d - cam.y);
+    if (x < -2 || y < -2 || x > W + 2 || y > H + 2) continue;
+    g.fillRect(x, y, 2, 2);
+  }
+}
+
+// Los nombres de los lugares, sobre el piso. `big` los agranda (desde el aire se leen de lejos).
+export function drawPlaceLabels(g, t, cam, W, H, big) {
+  const scale = big ? 2 : 1;
+  for (const p of t.places) {
+    const x = Math.round((p.x + p.w / 2) * TILE - cam.x), y = Math.round(p.y * TILE - cam.y - 6 * scale);
+    if (x < -120 || x > W + 120 || y < -20 || y > H + 20) continue;
+    drawText(g, p.name, x, y, '#ffffff', { align: 'center', scale });
+  }
+}
+
 // ─── Minimapa ───────────────────────────────────────────────────────────────
 export const MINI = 52;
-const MINI_COLORS = ['#1d3f80', '#3a86c4', '#d9c47e', '#4a9a43', '#2f7a33', '#8a5a3a', '#6b3a2a', '#2f7a33', '#777b88', '#8a5a3a', '#8a5a3a'];
-export function buildMinimap(t) {
-  const [c, g] = newCanvas(MINI, MINI);
-  for (let y = 0; y < MINI; y++) {
-    for (let x = 0; x < MINI; x++) {
-      const kind = tileAt(t, Math.floor((x / MINI) * t.N), Math.floor((y / MINI) * t.N));
+const MINI_COLORS = ['#1d3f80', '#3a86c4', '#d9c47e', '#4a9a43', '#2f7a33', '#8a5a3a', '#6b3a2a', '#2f7a33', '#777b88', '#8a5a3a', '#8a5a3a', '#c9a066', '#5ab84e', '#f3f7ee', '#e9edf2', '#8b6b3e'];
+// El mapa pintado en un canvas de `size` × `size` (el chico va al costado, el grande para elegir dónde caer).
+export function buildMinimap(t, size = MINI) {
+  const [c, g] = newCanvas(size, size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const kind = tileAt(t, Math.floor((x / size) * t.N), Math.floor((y / size) * t.N));
       px(g, x, y, MINI_COLORS[kind]);
     }
   }
   return c;
 }
-export function drawMinimap(g, mini, t, me, z, drops, time) {
+function route2(g, route, x0, y0, k) {
+  g.fillStyle = '#ffffff';
+  const n = Math.floor(route.len / 14);
+  for (let i = 0; i < n; i += 2) px(g, Math.round(x0 + (route.x0 + route.dx * i * 14) * k), Math.round(y0 + (route.y0 + route.dy * i * 14) * k), '#ffffff');
+}
+export function drawMinimap(g, mini, t, me, z, drops, time, extra = {}) {
   const x0 = 5, y0 = 5, k = MINI / t.W;
   px(g, x0 - 2, y0 - 2, '#14101c', MINI + 4, MINI + 4);
   px(g, x0 - 1, y0 - 1, '#e9edf2', MINI + 2, MINI + 2);
@@ -487,7 +684,42 @@ export function drawMinimap(g, mini, t, me, z, drops, time) {
   g.beginPath(); g.rect(x0, y0, MINI, MINI); g.clip();
   ring(g, x0 + z.cx * k, y0 + z.cy * k, z.r * k, '#ff8cff');
   if (z.state === 'wait') ring(g, x0 + z.next.cx * k, y0 + z.next.cy * k, z.next.r * k, '#ffffff');
+  if (extra.route) route2(g, extra.route, x0, y0, k);
+  if (extra.bus) px(g, Math.round(x0 + extra.bus.x * k) - 1, Math.round(y0 + extra.bus.y * k) - 1, '#5b94f0', 3, 3);
   for (const d of drops) px(g, Math.round(x0 + d.x * k) - 1, Math.round(y0 + d.y * k) - 1, '#ffd23f', 3, 3);
   if (me && Math.floor(time * 3) % 2 === 0) px(g, Math.round(x0 + me.x * k) - 1, Math.round(y0 + me.y * k) - 1, '#ff3b4f', 3, 3);
   g.restore();
+}
+
+// El mapa grande con los nombres de los lugares (tecla M, y al subir al bus para elegir dónde caer).
+export function drawBigMap(g, big, t, me, z, o, time, W, H) {
+  const size = big.width;
+  const x0 = o.corner ? 6 : Math.round((W - size) / 2), y0 = o.corner ? 6 : Math.round((H - size) / 2);
+  const k = size / t.W;
+  px(g, x0 - 3, y0 - 3, '#14101c', size + 6, size + 6);
+  px(g, x0 - 2, y0 - 2, '#e9edf2', size + 4, size + 4);
+  g.drawImage(big, x0, y0);
+  g.save();
+  g.beginPath(); g.rect(x0, y0, size, size); g.clip();
+  ring(g, x0 + z.cx * k, y0 + z.cy * k, z.r * k, '#ff8cff');
+  if (o.route) route2(g, o.route, x0, y0, k);
+  for (const p of t.places) px(g, Math.round(x0 + p.cx * TILE * k) - 1, Math.round(y0 + p.cy * TILE * k) - 1, '#ffd23f', 3, 3);
+  if (o.bus) { px(g, Math.round(x0 + o.bus.x * k) - 3, Math.round(y0 + o.bus.y * k) - 3, '#14101c', 7, 7); px(g, Math.round(x0 + o.bus.x * k) - 2, Math.round(y0 + o.bus.y * k) - 2, '#5b94f0', 5, 5); }
+  if (me && Math.floor(time * 3) % 2 === 0) px(g, Math.round(x0 + me.x * k) - 1, Math.round(y0 + me.y * k) - 1, '#ff3b4f', 3, 3);
+  g.restore();
+  for (const p of t.places) {
+    const lx = Math.round(x0 + p.cx * TILE * k), ly = Math.round(y0 + p.cy * TILE * k) + 3;
+    // Los nombres largos van en dos renglones para que no se pisen.
+    const words = p.name.split(' ');
+    let lines = [p.name];
+    if (p.name.length > 14 && words.length > 1) {
+      let best = 1;
+      for (let i = 1; i < words.length; i++) if (Math.abs(words.slice(0, i).join(' ').length - p.name.length / 2) < Math.abs(words.slice(0, best).join(' ').length - p.name.length / 2)) best = i;
+      lines = [words.slice(0, best).join(' '), words.slice(best).join(' ')];
+    }
+    lines.forEach((line, n) => {
+      const w = textWidth(line);
+      drawText(g, line, Math.max(x0 + w / 2 + 1, Math.min(x0 + size - w / 2 - 1, lx)), ly + n * 6, '#ffffff', { align: 'center' });
+    });
+  }
 }

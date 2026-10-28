@@ -97,3 +97,14 @@
 .px-table th { color: var(--text-2); font-size: 13px; }
 .px-table tr.is-me td { background: color-mix(in srgb, var(--game-pixel) 14%, transparent); }
 .px-final-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; margin-top: 20px; }
+
+/* Cofres, bus y caída */
+.px-near { flex-direction: column; gap: 4px; }
+.px-open { display: block; width: 120px; height: 8px; border: 2px solid #14101c; background: rgba(0, 0, 0, 0.6); }
+.px-open b { display: block; height: 100%; background: #ffd23f; }
+.px-sky { position: absolute; left: 50%; bottom: 178px; transform: translateX(-50%); margin: 0; padding: 8px 14px; max-width: min(92%, 520px); text-align: center; border: 3px solid #14101c; background: rgba(20, 16, 44, 0.9); font: 700 13px/1.45 Inter, sans-serif; box-shadow: 0 4px 0 #14101c; }
+.px-sky b { display: block; font: 900 16px ui-monospace, 'Courier New', monospace; color: #ffd23f; margin-bottom: 2px; }
+.px-sky kbd { background: #ffd23f; color: #14101c; padding: 0 5px; font: inherit; font-weight: 900; }
+.px-place { position: absolute; left: 50%; top: 84px; transform: translateX(-50%); margin: 0; padding: 4px 16px; border: 3px solid #14101c; background: rgba(224, 67, 79, 0.92); font: 900 15px ui-monospace, 'Courier New', monospace; text-transform: uppercase; white-space: nowrap; pointer-events: none; animation: px-place 3.2s forwards; }
+@keyframes px-place { 0% { opacity: 0; transform: translate(-50%, -8px); } 8%, 70% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+.px-countdown em { font: 700 14px Inter, sans-serif; font-style: normal; text-shadow: 0 2px 0 #14101c; margin-top: 8px; }
