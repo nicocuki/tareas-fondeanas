@@ -2,7 +2,7 @@
 
 **Juegos multijugador para jugar con los del fondo.** Armá una sala, compartí el código y jueguen desde sus propios dispositivos: gratis, sin cuentas y sin instalar nada.
 
-👉 **[Entrar a Tareas Fondeanas](https://tareas-fondeanas.donsatur.workers.dev)**
+👉 **[Entrar a Tareas Fondeanas](https://tareas-fondeanas.nicocukier.workers.dev)**
 
 ## 🕹️ Juegos disponibles
 
@@ -19,7 +19,7 @@
 
 ## 🚀 Cómo empezar a jugar
 
-1. Entrá a [la página](https://tareas-fondeanas.donsatur.workers.dev).
+1. Entrá a [la página](https://tareas-fondeanas.nicocukier.workers.dev).
 2. Elegí un juego y creá una sala.
 3. Compartí el código o el enlace de la sala con tus amigos.
 4. Cada persona entra desde su propio dispositivo y ¡a jugar!

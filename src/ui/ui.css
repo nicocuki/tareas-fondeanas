@@ -396,3 +396,11 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-admin-key { max-width: 420px; display: flex; flex-direction: column; gap: 12px; }
 .tf-admin-key h2 { margin: 0; }
 @media (max-width: 560px) { .tf-admin-list li { flex-wrap: wrap; } .tf-admin-info { flex-basis: calc(100% - 40px); } }
+
+/* Aviso de arriba de la portada (DomainNotice.jsx). */
+.tf-notice { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; padding: 10px 12px 10px 14px; border-radius: var(--radius-lg); border: 1px solid var(--accent); background: var(--surface); }
+.tf-notice p { flex: 1; margin: 0; font-size: 14px; line-height: 1.45; }
+.tf-notice a { color: var(--accent); font-weight: 700; word-break: break-all; }
+.tf-notice-icon { font-size: 20px; flex: none; }
+.tf-notice-close { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font: inherit; font-weight: 900; cursor: pointer; }
+@media (max-width: 640px) { .tf-notice-icon:nth-of-type(2) { display: none; } }

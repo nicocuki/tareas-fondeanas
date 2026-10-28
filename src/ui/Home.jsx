@@ -4,6 +4,7 @@ import { GAMES, gameById } from './games.js';
 import { showToast, useLastRoom, useProfile } from './store.js';
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
+import DomainNotice from './DomainNotice.jsx';
 import { usePublicRooms } from './publicas.js';
 import { closeRoom, useAdminKey } from './admin.js';
 
@@ -87,6 +88,7 @@ export default function Home({ onNavigate }) {
 
   return (
     <div className="tf-page tf-home">
+      <DomainNotice />
       <section className="tf-hero">
         <div className="tf-hero-copy">
           <p className="tf-eyebrow">Juegos para jugar con los del fondo</p>

@@ -51,7 +51,7 @@ Cloudflare Workers Builds: corre `npm run build` y `npx wrangler deploy` con lo 
 `wrangler.jsonc`. El resultado se ve como check en el commit de GitHub y en el panel de Cloudflare
 (Workers & Pages → tareas-fondeanas → Deployments).
 
-Sitio: https://tareas-fondeanas.donsatur.workers.dev · Cuenta de Cloudflare: la de Nico.
+Sitio: https://tareas-fondeanas.nicocukier.workers.dev (a veces también https://tareas-fondeanas.donsatur.workers.dev; la portada avisa con `DomainNotice`) · Cuenta de Cloudflare: la de Nico.
 
 `npm run deploy` publica a mano desde una compu con `npx wrangler login` hecho; normalmente no hace falta.
 
@@ -824,7 +824,7 @@ No es un juego nuestro: es la compilación web (Unity WebGL, Unity 6000.3.10f1) 
 - **Nuestra app de Photon Quantum 3** («TF MVL», `097c581c-…`, de Nico) se usa sin recompilar: el
   App ID viaja en texto en los primeros mensajes de cada conexión y `index.html` lo cambia ahí
   (`OLD_APP` → `NEW_APP`). En su panel de Photon tiene:
-  - **Autenticación personalizada** con la URL `https://tareas-fondeanas.donsatur.workers.dev/api/photon-auth`
+  - **Autenticación personalizada** con la URL `https://tareas-fondeanas.nicocukier.workers.dev/api/photon-auth`
     (deja pasar a todos). El juego siempre pide autenticación «Custom»: sin proveedor, Photon
     responde «Authentication type not supported (none configured)»; con la URL mal escrita
     (pasó: `https://https://…`), «CustomAuth service error». Los cambios tardan unos minutos en llegar.

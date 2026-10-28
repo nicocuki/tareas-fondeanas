@@ -620,5 +620,11 @@ OCULTA 1.23.0 = Herramientas internas
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST OCULTA 1.23.1 = Ajuste interno
+OCULTA 1.23.1 = Ajuste interno
 - Las novedades internas ya no se muestran en la portada ni en Novedades.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.23.15 = La página vuelve a su dirección de siempre
+- Vuelve a estar en https://tareas-fondeanas.nicocukier.workers.dev (también puede aparecer https://tareas-fondeanas.donsatur.workers.dev).
+- Aviso con ⚠️ arriba de todo en la portada, que se cierra con la X: cuenta en qué direcciones puede estar la página y que, para jugar juntos, hay que entrar todos por el mismo link.
