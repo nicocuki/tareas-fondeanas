@@ -597,6 +597,12 @@
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.22.1 = Buzón de sugerencias 💡
+1.22.1 = Buzón de sugerencias 💡
 - En la portada, a la derecha (abajo en pantallas angostas), hay un cuadro para mandar sugerencias: hasta 500 caracteres y un nombre opcional.
 - Cada sugerencia le llega al dueño por Discord y además queda guardada de respaldo. Hay un límite de envíos por persona para evitar spam.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.22.2 = Chat con la T 💬
+- En T.E.G., Monopoly, Pixel Royale, Cohete Royale, A los Tiros y Fútbol, apretá T para abrir un chat con los de tu sala (también en la sala de espera). Enter manda y Esc cierra; mientras escribís, el juego no se mueve.
+- Con el chat cerrado, los mensajes nuevos aparecen unos segundos abajo a la izquierda. También se abre tocando «💬 T chat».

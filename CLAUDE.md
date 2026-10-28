@@ -200,6 +200,7 @@ por una versión anterior siga abriéndose sin romper.
 | `worker/core.js` | El servidor de una sala sin nada de Cloudflare (se prueba con `node --test`) |
 | `worker/rules.js` | Quién lee y escribe cada rama, qué se guarda en disco y qué no |
 | `worker/tree.js` | Árbol de datos compartido por servidor y cliente: rutas, nulls, poda, `push` |
+| `src/ui/chat.js` `src/ui/GameChat.jsx` | Chat que se abre con T en T.E.G., Monopoly, Pixel Royale, Cohete Royale, A los Tiros y Fútbol: un string JSON en `chat/{código}` (root en `ROOTS`), aparte de las salas, con tope de mensajes y de tamaño. Para sumarlo a otro juego: `<GameChat code={código} me={me} />` dentro del contenedor de pantalla completa |
 | `worker/sugerencias.js` `worker/buzon.js` `src/ui/Suggestions.jsx` | Buzón de sugerencias de la portada (ver *Buzón de sugerencias*) |
 | `worker/publicas.js` `worker/directorio.js` | Salas públicas: qué sala se lista y el Durable Object con la lista (ver *Salas públicas*) |
 | `src/ui/publicas.js` | La lista en vivo de la portada y la marca de «pública» de cada sala |

@@ -358,3 +358,15 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-suggest-msg { margin: 0 0 12px; padding: 10px 14px; border-radius: var(--radius); font-size: 14px; }
 .tf-suggest-msg.is-error { background: var(--danger-soft); color: var(--danger); }
 .tf-suggest-msg.is-ok { background: var(--accent-soft); }
+
+/* Chat de la partida (GameChat): abajo a la izquierda, se abre con T. */
+.tf-chat { position: fixed; left: 12px; bottom: 12px; z-index: 90; width: min(340px, calc(100vw - 24px)); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; font-size: 13px; }
+.tf-chat > * { pointer-events: auto; }
+.tf-chat-list { list-style: none; margin: 0; padding: 8px 10px; width: 100%; max-height: 40vh; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--text); box-shadow: var(--shadow); overflow-wrap: anywhere; }
+.tf-chat:not(.is-open) .tf-chat-list { pointer-events: none; }
+.tf-chat-list strong { color: var(--text-2); }
+.tf-chat-list .is-mine strong { color: var(--accent); }
+.tf-chat-input { width: 100%; }
+.tf-chat-hint { border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer; opacity: 0.75; }
+.tf-chat-hint:hover { opacity: 1; }
+.tf-chat-hint kbd { font: 600 11px var(--font-body); padding: 0 5px; border: 1px solid var(--border-strong); border-radius: 4px; }

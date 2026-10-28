@@ -8,6 +8,7 @@ import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
 import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
+import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
 import { ARMY_COLORS, COUNTRIES, NEIGHBORS, areNeighbors, objectiveById } from './board.js';
 import {
@@ -476,7 +477,7 @@ export default function TegApp({ onBackToMenu }) {
       </div>
     );
   }
-  if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} /></>;
-  if (room.phase === 'ended') return <Ended room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />;
-  return <>{banner}<Game room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} /></>;
+  if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} /><GameChat code={code} me={me} /></>;
+  if (room.phase === 'ended') return <><Ended room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} /><GameChat code={code} me={me} /></>;
+  return <>{banner}<Game room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} /><GameChat code={code} me={me} /></>;
 }

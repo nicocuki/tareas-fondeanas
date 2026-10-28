@@ -4,6 +4,7 @@ import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
 import { useAutoCreate } from '../ui/mudanza.js';
 import { useRegisterRoom } from '../ui/store.js';
+import GameChat from '../ui/GameChat.jsx';
 import { clearSession, loadName, loadSession, saveSession } from '../session.js';
 import { COLORS, panelStyle, inputStyle, ghostButton, labelStyle } from '../theme.js';
 import { applyAction, cleanName, DEFAULT_OPTIONS, findPlayer, makeId, newRoom } from './game.js';
@@ -391,19 +392,25 @@ export default function FutbolApp({ onBackToMenu }) {
     );
   }
 
+  // El chat de la T: solo online (en el 1v1 local no hay con quién hablar).
+  const chat = !session.isLocalGame && session.code && <GameChat code={session.code} me={me} />;
+
   // ─── Lobby ─────────────────────────────────────────────────────────────
   // Con el partido terminado, el que ya volvió ve la sala de espera; los demás siguen en el final.
   if (room.phase === 'lobby' || (room.phase === 'ended' && me?.back)) {
     return (
-      <FutbolLobby
-        room={room}
-        code={session?.code}
-        me={me}
-        onDispatch={dispatch}
-        onLeave={handleLeave}
-        onCopyInvite={copyInvite}
-        copied={copied}
-      />
+      <>
+        <FutbolLobby
+          room={room}
+          code={session?.code}
+          me={me}
+          onDispatch={dispatch}
+          onLeave={handleLeave}
+          onCopyInvite={copyInvite}
+          copied={copied}
+        />
+        {chat}
+      </>
     );
   }
 
@@ -488,15 +495,18 @@ export default function FutbolApp({ onBackToMenu }) {
   // ─── Partido en curso ──────────────────────────────────────────────────
   if (room.phase === 'playing') {
     return (
-      <FutbolGame
-        room={room}
-        code={session.code}
-        me={me}
-        onGoal={handleGoal}
-        onTimeEnd={handleTimeEnd}
-        onBackToLobby={() => dispatch({ type: 'toLobby' })}
-        onLeave={handleLeave}
-      />
+      <>
+        <FutbolGame
+          room={room}
+          code={session.code}
+          me={me}
+          onGoal={handleGoal}
+          onTimeEnd={handleTimeEnd}
+          onBackToLobby={() => dispatch({ type: 'toLobby' })}
+          onLeave={handleLeave}
+        />
+        {chat}
+      </>
     );
   }
 

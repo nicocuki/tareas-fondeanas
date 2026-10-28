@@ -8,6 +8,7 @@ import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
 import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
+import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
 import { CARDS } from './cards.js';
 import {
@@ -360,7 +361,7 @@ export default function TirosApp({ onBackToMenu }) {
       </div>
     );
   }
-  if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} /></>;
+  if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} /><GameChat code={code} me={me} /></>;
   let content;
   if (room.phase === 'picking') content = <Picking room={room} me={me} code={code} now={now} onDispatch={dispatch} />;
   else if (room.phase === 'final') content = <Final room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />;
@@ -386,6 +387,7 @@ export default function TirosApp({ onBackToMenu }) {
     <div ref={screenRef} className="tt-screen">
       {banner}
       {content}
+      <GameChat code={code} me={me} />
       <button type="button" className="tt-screen-exit" onClick={() => { if (fullscreenElement()) toggleFullscreen(); }}>Salir de pantalla completa <kbd>Esc</kbd></button>
     </div>
   );

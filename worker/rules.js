@@ -7,10 +7,12 @@
 import { previousAuthor } from '../src/gartic/game.js';
 import { MAX_DRAWING, MAX_STROKES, MAX_TEXT } from '../src/gartic/game.js';
 import { getAt } from './tree.js';
+import { MAX_CHAT_STRING } from '../src/ui/chat.js';
 
-export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps', 'mecha', 'tiros', 'nave', 'cohetes', 'pixel', 'publica', 'mudanza'];
+export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps', 'mecha', 'tiros', 'nave', 'cohetes', 'pixel', 'publica', 'mudanza', 'chat'];
 // `publica/{sala}`: true si el anfitrión la quiere en la lista de la portada (ver publicas.js).
 // `mudanza/{sala}`: «juego/CÓDIGO» cuando el anfitrión se pasó con todos a otro juego (ver src/ui/mudanza.js).
+// `chat/{sala}`: el chat que se abre con T, un string JSON (ver src/ui/chat.js).
 
 // Fotos del fútbol: cambian muchas veces por segundo y no hace falta guardarlas en disco.
 // Si la sala se duerme (nadie conectado) se pierden, y está bien.
@@ -61,6 +63,10 @@ export function writeError(segs, uid, value, tree) {
   }
   if (root === 'mudanza') {
     if (segs.length !== 2 || (value !== null && !/^[a-z-]{1,20}[/][A-Z]{4}$/.test(String(value)))) return 'La mudanza es «juego/CÓDIGO».';
+    return null;
+  }
+  if (root === 'chat') {
+    if (segs.length !== 2 || (value !== null && (typeof value !== 'string' || value.length > MAX_CHAT_STRING))) return 'El chat es un texto y no puede pasar el tope.';
     return null;
   }
   if (root === 'garticPresence') {
