@@ -647,6 +647,11 @@ OCULTA 1.23.1 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.25.0 = Chat global del menú 💬
+1.25.0 = Chat global del menú 💬
 - Abajo a la derecha del menú principal hay un chat para hablar con los que están en el menú en ese momento. Se abre con la T (o tocando el botón), Enter manda y Esc cierra.
 - Solo existe en el menú: al entrar a un juego se desconecta, y dentro de las partidas sigue el chat de siempre.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.25.5 = Las salas vacías se borran enseguida
+- Cuando se cierran todas las pestañas de una sala, a los 60 segundos la sala se borra sola (antes quedaba hasta 15 minutos). Si alguien vuelve antes, por ejemplo al recargar, no pasa nada.

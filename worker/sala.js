@@ -12,6 +12,9 @@ const LISTING_ROOTS = new Set(['rooms', 'garticRooms', 'publica']);
 // La actividad se anota (en disco y en la alarma) como mucho una vez por minuto: el cierre puede
 // llegar hasta un minuto tarde, y a cambio no se escribe en disco con cada movimiento.
 const ACTIVITY_SAVE_MS = 60 * 1000;
+// Cuando se cierra la última pestaña, la sala espera esto antes de borrarse: alcanza para recargar la página o
+// para que la conexión vuelva sola, pero no para que una sala vacía quede días en la portada.
+export const EMPTY_CLOSE_MS = 60 * 1000;
 export const CLOSED_BY_IDLE = 4000; // código con el que se cierran los WebSocket de una sala inactiva
 
 export class Sala extends DurableObject {
@@ -27,6 +30,7 @@ export class Sala extends DurableObject {
       this.listing = (await ctx.storage.get('listing')) ?? 'null'; // lo último que se le avisó al Directorio
       this.adminSeen = (await ctx.storage.get('admin')) ?? 'null'; // ídem, para la lista del modo admin
       this.activeAt = (await ctx.storage.get('activeAt')) || Date.now();
+      this.emptyAt = (await ctx.storage.get('emptyAt')) || 0; // desde cuándo no hay nadie conectado (0 = hay alguien)
       // `IDLE_CLOSE_MS` se puede achicar para probar: `wrangler dev --var IDLE_CLOSE_MS:60000`.
       this.idleMs = Number(env.IDLE_CLOSE_MS) || IDLE_CLOSE_MS;
       this.core = this.makeCore(this.code);
@@ -108,6 +112,7 @@ export class Sala extends DurableObject {
     const att = newAttachment(code);
     server.serializeAttachment(att);
     this.atts.set(server, att);
+    this.noLongerEmpty();
     this.markActive();
     this.publish();
     return new Response(null, { status: 101, webSocket: client });
@@ -118,9 +123,26 @@ export class Sala extends DurableObject {
     await this.core.message(this.conn(ws), message);
   }
 
+  // Alguien se conectó: la sala ya no está vacía.
+  noLongerEmpty() {
+    if (!this.emptyAt) return;
+    this.emptyAt = 0;
+    this.ctx.storage.delete('emptyAt');
+  }
+
+  // Se cerró una conexión: si era la última, empieza la cuenta para borrar la sala.
+  checkEmpty(closing) {
+    if (this.ctx.getWebSockets().some((ws) => ws !== closing)) return;
+    const now = Date.now();
+    this.emptyAt = now;
+    this.ctx.storage.put('emptyAt', now);
+    this.ctx.storage.setAlarm(now + EMPTY_CLOSE_MS);
+  }
+
   async webSocketClose(ws, code) {
     this.core.close(this.conn(ws));
     this.publish(ws);
+    this.checkEmpty(ws);
     const valid = code >= 1000 && code < 5000 && code !== 1005 && code !== 1006;
     try { ws.close(valid ? code : 1000, 'chau'); } catch {}
   }
@@ -128,11 +150,19 @@ export class Sala extends DurableObject {
   async webSocketError(ws) {
     this.core.close(this.conn(ws));
     this.publish(ws);
+    this.checkEmpty(ws);
   }
 
   // Sin actividad en IDLE_CLOSE_MS: se cierran las conexiones, se saca de la portada y se borra todo.
   // Las pantallas que quedaron abiertas se reconectan a una sala vacía y muestran que ya no existe.
   async alarm() {
+    // Sin nadie conectado desde hace EMPTY_CLOSE_MS: se borra (cerraron todas las pestañas).
+    if (this.emptyAt && this.ctx.getWebSockets().length === 0) {
+      const wait = this.emptyAt + EMPTY_CLOSE_MS - Date.now();
+      if (wait > 1000) { await this.ctx.storage.setAlarm(Date.now() + wait); return; }
+      await this.shutdown('Sala cerrada: no quedó nadie');
+      return;
+    }
     const left = this.activeAt + this.idleMs - Date.now();
     if (left > 1000) { await this.ctx.storage.setAlarm(Date.now() + left); return; }
     await this.shutdown('Sala cerrada por inactividad');
@@ -153,6 +183,7 @@ export class Sala extends DurableObject {
     await this.ctx.storage.deleteAll();
     this.core.wipe();
     this.code = null;
+    this.emptyAt = 0;
     this.listing = 'null';
     this.adminSeen = 'null';
   }

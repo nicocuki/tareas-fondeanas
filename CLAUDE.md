@@ -55,6 +55,8 @@ Sitio: https://tareas-fondeanas.nicocukier.workers.dev (a veces también https:/
 
 `npm run deploy` publica a mano desde una compu con `npx wrangler login` hecho; normalmente no hace falta.
 
+**Cuando se cierra la última pestaña, la sala se borra a los 60 segundos** (`EMPTY_CLOSE_MS` en `worker/sala.js`, `emptyAt`): da tiempo a recargar la página o a que la conexión vuelva sola. Alguien que se conecta antes cancela el borrado. **No sacamos a cada jugador al cerrar su pestaña** (salvo que quede la sala vacía): `pagehide` no distingue cerrar de recargar, y recargar no tiene que sacarte de la partida.
+
 No hay base aparte que limpiar: **una sala sin actividad durante 15 minutos se cierra y se borra sola**
 (`IDLE_CLOSE_MS` en `worker/core.js`, alarma del Durable Object en `worker/sala.js`), aunque haya pestañas
 abiertas: antes había que esperar tres días y que no quedara nadie conectado, y una pestaña olvidada la dejaba
