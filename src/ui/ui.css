@@ -420,3 +420,23 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-game-row-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tf-game-row-meta { flex: none; color: var(--text-2); font-size: 13px; }
 @media (max-width: 640px) { .tf-game-list { grid-template-columns: 1fr; } }
+
+/* Buzón chico al costado de la portada: ocupa el margen derecho y no mueve nada; en pantallas angostas no se ve. */
+.tf-home { position: relative; }
+.tf-suggest-side { display: none; }
+@media (min-width: 1800px) {
+  .tf-suggest-side { display: block; position: absolute; top: 36px; left: calc(100% + 16px); width: 280px; }
+}
+.tf-suggest.is-compact { position: relative; padding: 14px; border-radius: var(--radius-lg); }
+.tf-suggest.is-compact .tf-eyebrow { font-size: 10px; margin: 0; }
+.tf-suggest.is-compact h2 { font-size: 15px; margin: 2px 22px 4px 0; }
+.tf-suggest.is-compact .tf-suggest-text { font-size: 11.5px; margin: 0 0 10px; }
+.tf-suggest.is-compact .tf-field { margin-bottom: 8px; }
+.tf-suggest.is-compact .tf-field > span { font-size: 10.5px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.tf-suggest.is-compact .tf-suggest-area { min-height: 70px; font-size: 12px; padding: 8px 10px; }
+.tf-suggest.is-compact .tf-input { font-size: 12px; padding: 8px 10px; }
+.tf-suggest.is-compact .tf-btn { font-size: 12.5px; padding: 8px 12px; }
+.tf-suggest.is-compact .tf-suggest-count { font-size: 10px; }
+.tf-suggest.is-compact .tf-suggest-msg { font-size: 12px; padding: 8px 10px; margin-bottom: 8px; }
+.tf-suggest-x { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: none; color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; }
+.tf-suggest-x:hover { background: var(--surface-2); color: var(--text); }

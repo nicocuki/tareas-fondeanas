@@ -6,7 +6,8 @@ import { useProfile } from './store.js';
 const MAX_TEXT = 500;
 const MAX_NAME = 30;
 
-export default function Suggestions() {
+// `compact`: la versión chica que va al costado de la portada (con su ✕ para cerrarla).
+export default function Suggestions({ compact = false, onClose }) {
   const profile = useProfile();
   const [text, setText] = useState('');
   const [name, setName] = useState('');
@@ -31,10 +32,12 @@ export default function Suggestions() {
     }
   }
 
+  const titleId = compact ? 'tf-sugerencias-lado' : 'tf-sugerencias';
   return (
-    <section className="tf-suggest" aria-labelledby="tf-sugerencias" data-suggest>
+    <section className={`tf-suggest${compact ? ' is-compact' : ''}`} aria-labelledby={titleId} data-suggest={compact ? 'side' : ''}>
+      {compact && onClose && <button type="button" className="tf-suggest-x" onClick={onClose} aria-label="Cerrar el buzón" data-suggest-side-close>✕</button>}
       <p className="tf-eyebrow">Buzón</p>
-      <h2 id="tf-sugerencias">¿Una idea o algo que arreglar?</h2>
+      <h2 id={titleId}>¿Una idea o algo que arreglar?</h2>
       <p className="tf-suggest-text">Contanos qué juego, mecánica o cambio te gustaría. Nos llega directo.</p>
       <form onSubmit={submit}>
         <label className="tf-field">
@@ -43,7 +46,7 @@ export default function Suggestions() {
             className="tf-input tf-suggest-area"
             value={text}
             maxLength={MAX_TEXT}
-            rows={5}
+            rows={compact ? 4 : 5}
             placeholder="Ej.: me gustaría poder elegir el color de mi personaje…"
             onChange={(e) => { setText(e.target.value); if (state.phase !== 'idle') setState({ phase: 'idle', error: '' }); }}
           />

@@ -6,6 +6,7 @@ import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
 import DomainNotice from './DomainNotice.jsx';
 import GameChat from './GameChat.jsx';
+import Suggestions from './Suggestions.jsx';
 import { MENU_CHAT_CODE } from './chat.js';
 import { usePublicRooms } from './publicas.js';
 import { closeRoom, useAdminKey } from './admin.js';
@@ -119,6 +120,16 @@ const chatId = (() => {
   } catch { return Math.random().toString(36).slice(2, 10); }
 })();
 
+// El buzón chico del costado de la portada (otra forma de mandar sugerencias; la otra es el «?» del header).
+// Solo se ve en pantallas anchas, donde sobra lugar a la derecha sin mover nada; la ✕ lo cierra para siempre.
+const SIDE_KEY = 'tf:buzon-lateral';
+function SideSuggestions() {
+  const [open, setOpen] = React.useState(() => { try { return localStorage.getItem(SIDE_KEY) !== 'cerrado'; } catch { return true; } });
+  if (!open) return null;
+  const close = () => { setOpen(false); try { localStorage.setItem(SIDE_KEY, 'cerrado'); } catch {} };
+  return <aside className="tf-suggest-side"><Suggestions compact onClose={close} /></aside>;
+}
+
 function MenuChat() {
   const profile = useProfile();
   const me = { id: chatId, name: profile.name.trim() || 'Invitado' };
@@ -137,6 +148,7 @@ export default function Home({ onNavigate }) {
     <div className="tf-page tf-home">
       <DomainNotice />
       <MenuChat />
+      <SideSuggestions />
       <section className="tf-hero">
         <div className="tf-hero-copy">
           <p className="tf-eyebrow">Juegos para jugar con los del fondo</p>

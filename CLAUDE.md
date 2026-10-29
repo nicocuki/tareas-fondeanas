@@ -318,6 +318,7 @@ con un clic (lleva a `?juego=…&sala=ABCD`, igual que un link de invitación).
 Ventana que se abre con el botón «?» del header, arriba a la derecha, en todas las páginas (`SuggestionsDialog` en `Suggestions.jsx`, montada en `AppShell.jsx`). Antes era una columna a la derecha de la portada, pero corría todo lo demás a la izquierda. Manda `POST /api/sugerencias`
 con `{ text, name }` (texto de 5 a 500 caracteres, nombre opcional de hasta 30).
 
+- **Además**, en pantallas de 1800 px o más la portada muestra la misma tarjeta chica en el margen derecho (`SideSuggestions` en `Home.jsx`, `Suggestions compact`; `position: absolute` fuera de la columna, así no mueve nada; la ✕ la cierra y queda en `tf:buzon-lateral`).
 - **Llega por Discord**: el Durable Object `Buzon` (`worker/buzon.js`, `idFromName('buzon')`) la guarda y la manda por webhook (`discordPayload`, **sin menciones**:
   `allowed_mentions: { parse: [] }`). El webhook es el **secreto `SUGERENCIAS_WEBHOOK`** del Worker (Cloudflare → tareas-fondeanas → Configuración → Variables y secretos):
   **nunca va en el repo**. Sin ese secreto igual se guarda y la persona ve que se mandó.
