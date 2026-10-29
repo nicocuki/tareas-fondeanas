@@ -184,7 +184,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/theme.js` | Colores y estilos para los estilos en línea de los juegos (apuntan a las variables de `src/ui/tokens.css`) |
 | `src/gartic/` | Trazo Loco: lógica (`game.js`), trazos y balde (`drawing.js`), red (`storage.js`), pantallas (ver `docs/GARTIC.md`) |
 | `src/teg/` | T.E.G.: mapa, cartas y objetivos (`board.js`), reducer (`game.js`), bitácora (`log.js`), el mapa en SVG (`Map.jsx`), ventanas de combate (`Dialogs.jsx`), paneles y pantallas (ver *T.E.G.*) |
-| `src/monopoly/` | Monopoly: tablero y mazos (`board.js`), reducer (`game.js`), bitácora en texto (`log.js`), pantallas (ver *Monopoly*) |
+| `src/monopoly/` | Monopoly: tablero y mazos (`board.js`), reducer (`game.js`), bitácora en texto y avisos (`log.js`), escena de los dados y avisos (`Stage.jsx`), guardado local (`saves.js`), sonidos (`sfx.js`), pantallas (ver *Monopoly*) |
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), sprites de los efectos (`sprites/`, `sprites.js`), pelea en tiempo real (`TirosGame.jsx`) |
@@ -457,7 +457,8 @@ Pedido de Nico: «el monopoly, bien hecho y que se entienda claro cada cosa». D
 tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires), las estaciones y los textos de las cartas son nuestros.
 
 - **Mismo patrón que los demás**: reducer puro `applyAction(room, action, { now, rand })` (`ctx.dice` solo lo usan los tests para fijar
-  los dados). Fases `lobby` → `playing` → `ended`. Opciones: `startCash`, `auctions`, `freeParking` (pozo del Descanso).
+  los dados). Fases `lobby` → `playing` → `ended`, y `resume` (sala de una partida guardada, ver *Guardar y retomar*). Opciones: `startCash`,
+  `auctionChance` (0, 25, 50, 75 o 100 %: reemplaza al viejo `auctions`; `auctionChance(room)` traduce las salas viejas), `freeParking` (pozo del Descanso).
 - **El turno es una máquina de pasos** (`room.step`): `roll` → (`buy` | `auction`) → `act` → `endTurn`. Sacar dobles vuelve a `roll`
   (`room.doubles` > 0). Cada paso valida quién y cuándo; las acciones llevan contadores que impiden la doble pulsación: `roll` lleva
   `seen` (= `room.rollN`: dos clics seguidos no tiran dos veces) y `endTurn` lleva `turn` (= `room.turnNo`).
@@ -469,6 +470,9 @@ tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires
   banco, las propiedades vuelven sin hipoteca y se subastan una por una (`room.queue`). Los edificios se venden al banco a la mitad
   antes. Salirse en plena partida (`leave`) o que el anfitrión te saque (`kick`, también en `playing`) es quebrar contra el banco.
   Los que se van quedan en `players` con `out` y `left` hasta volver a la sala, para el ranking (`room.eliminated`).
+- **La subasta no sale siempre** (pedido de Nico: «tiene que tener un porcentaje de salir»): al no comprar, `declineBuy` tira `rand()` contra
+  `auctionChance` (100 y 0 no tiran nada). Si no sale, la propiedad queda libre y la bitácora lo dice (`noauction`). Al quebrar contra el banco,
+  cada propiedad tira por separado. Por defecto 50 %; los tests usan 100 (el helper `game()`) para no depender del azar.
 - **Subasta por turnos** (`room.auction`): cada uno sube la oferta o se baja; gana el último que queda con la oferta más alta. El que
   queda solo sin oferta decide si pone algo o nadie la compra. `auction.resume` es el paso al que se vuelve cuando termina.
 - **Tratos** (`room.trade`, uno a la vez): `give` es lo que da quien propone y `take` lo que recibe. Se revalida entero al aceptar.
@@ -492,6 +496,28 @@ tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires
 - `data-act`, `data-square`, `data-player`, `data-cash`, `data-log`, `data-board`, `data-prop`, `data-pos` existen para manejar el juego
   desde un navegador automatizado. No los saques.
 - Es una imitación entre amigos (Monopoly es de Hasbro): si llegara un pedido de bajarlo, se saca la entrada de `games.js`.
+- **Suspenso y avisos (todo es dibujo, la sala ya cambió)**: `useStagedRoom` (`Stage.jsx`) detecta que `rollN` subió y durante ~1,7 s muestra la sala
+  *de antes* de tirar con los dados girando sobre el tablero (`DiceRoll`); después, ~130 ms por casillero, la misma sala con solo la ficha del que
+  tiró ya en su lugar (la camina `Board`); recién entonces pasa a la sala real, y con ella los avisos, la plata y las cartas. Todo `Game` usa esa
+  sala «mostrada», no la de la red. Los timers van con `backgroundTimeout` (si no, una pestaña de fondo se quedaría clavada en la sala vieja).
+  Los botones quedan deshabilitados (`is-busy`) mientras dura.
+- **`logN`** cuenta todas las entradas de la bitácora (que guarda solo las últimas `MAX_LOG`): así `Announcer` sabe cuáles son nuevas sin comparar
+  largos. `announce(e, room, meId)` (`log.js`) las pasa a avisos en segunda persona con tono (`gain`, `loss`, `good`, `info`); `weak` = relleno
+  que se descarta si viene algo después (el «cayó en…» seguido de un alquiler); `big` = dura más y se sacude. Los dados y las cartas no se avisan
+  (ya tienen su animación). `land` anota `at` («X cayó en Y») en cada caída, también las de las cartas. Una entrada de bitácora nueva necesita su caso
+  en `describe` y, si hay que destacarla, en `announce`. Cada aviso ilumina su casillero (`is-flash`) y `CashAmount` muestra el +/− flotante.
+- **Guardar y retomar**: las salas se cierran a los 15 minutos de inactividad y una partida dura mucho más, así que **cada pantalla guarda su copia de la sala
+  en `localStorage`** (`saves.js`, clave `tf:monopoly:guardadas`, hasta 5, por `room.saveId` = hora de inicio) en cada cambio mientras se juega, y la borra al
+  terminar. Nada de esto va por el servidor. En la entrada, «Continuar» llama a `roomFromSave` y abre una sala nueva en fase `resume`: están todos los
+  jugadores pero nadie sentado (`p.by`); el dispositivo que la abre retoma su lugar y es el anfitrión. Los demás entran por el código (`join` en `resume`
+  los deja mirando) y eligen quién eran con `claim`, y desde ahí usan el id de ese jugador (`enterRoom` con `playerId` = el del lugar). `resumeStart`
+  (anfitrión, con 2 sentados o más) vuelve a `playing` y los lugares libres quiebran contra el banco. Soltar un lugar (`leave`/`kick` en `resume`) lo deja libre.
+  Un trato abierto no se retoma. Como los dos dispositivos de una prueba comparten `localStorage`, en pruebas con dos pestañas el guardado es el del último que escribió.
+- **Bots** (`bots.js`): el anfitrión los agrega en la sala de espera (`addBot`, con `bot: true` y id `bot-xxxxxx`). `botMove(room)` es puro y devuelve `{ botId, action }`;
+  **los juega la pantalla del anfitrión** (efecto en `Game`, 1,1 s después de que termina la escena de los dados) mandando `dispatch(action, botId)`, así el reducer valida
+  todo como con una persona. Si no hay anfitrión humano nadie los mueve: por eso `transferHost` nunca elige un bot. Prioridad: deudas de bots > tratos para bots > subasta > turno.
+  Aceptan tratos si salen ganando (`tradeMove`) pero no los proponen: una partida solo de bots puede trabarse sin ningún color completo. Hay un test con una partida entera.
+- **Sonido** (`sfx.js`): sintetizado con Web Audio y **apagado por defecto** (clave `tf:monopoly:sonido`): en clase, quince celulares sonando a la vez no sirven.
 - **Todavía no tiene**: chat, relojes de turno ni entrar a mitad de partida (a propósito: el anfitrión puede sacar a un ausente).
 
 ## La Mecha

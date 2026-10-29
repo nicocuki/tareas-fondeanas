@@ -119,7 +119,7 @@
 .mp-die.is-rolling { animation: mp-roll 0.18s linear infinite; }
 @keyframes mp-roll { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(14deg) scale(1.08); } 100% { transform: rotate(-12deg) scale(1); } }
 
-.mp-card-toast { position: absolute; left: 50%; top: 4%; transform: translateX(-50%); z-index: 6; width: min(86%, 440px); display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; text-align: left; border: 3px solid #1d2a20; border-radius: 12px; font: inherit; cursor: pointer; box-shadow: var(--shadow-lg); animation: mp-drop 0.35s var(--ease); }
+.mp-card-toast { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); z-index: 6; width: min(86%, 440px); display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; text-align: left; border: 3px solid #1d2a20; border-radius: 12px; font: inherit; cursor: pointer; box-shadow: var(--shadow-lg); animation: mp-drop 0.35s var(--ease); }
 .mp-card-toast small { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
 .mp-card-toast strong { font-size: 15px; line-height: 1.35; font-weight: 650; }
 .mp-card-toast.is-chance { background: #ffd9a0; color: #3a2100; }
@@ -232,3 +232,84 @@
   .mp-sides, .mp-trade-sum { grid-template-columns: 1fr; }
   .mp-page { padding: 12px 10px 40px; }
 }
+
+/* ─── Suspenso: los dados sobre el tablero ─── */
+.mp-diceroll { --ds: clamp(58px, 15vmin, 108px); position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #fff; pointer-events: none; background: radial-gradient(circle at 50% 50%, rgba(8, 24, 14, 0.86), rgba(8, 24, 14, 0.6)); animation: mp-fade-in 0.18s ease-out, mp-fade-out 0.25s ease-in 1.5s forwards; }
+.mp-diceroll-who { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(16px, 3.6vmin, 26px); text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); }
+.mp-diceroll-dice { display: flex; gap: clamp(12px, 3vmin, 26px); }
+.mp-diceroll .mp-die { width: var(--ds); height: var(--ds); padding: calc(var(--ds) * 0.13); border-radius: 20%; box-shadow: 0 5px 0 #bdb7a3, 0 14px 28px rgba(0, 0, 0, 0.55); }
+.mp-diceroll .mp-die i { margin: calc(var(--ds) * 0.02); }
+.mp-diceroll .mp-die.is-rolling { animation: mp-tumble 0.42s linear infinite; }
+.mp-diceroll .mp-die.is-rolling:nth-child(2) { animation-duration: 0.5s; animation-direction: reverse; }
+.mp-diceroll-dice.is-landed .mp-die { animation: mp-land 0.5s var(--ease); }
+.mp-diceroll-total { margin: 0; min-height: 1.2em; font-family: var(--font-display); font-weight: 900; font-size: clamp(30px, 8vmin, 64px); line-height: 1; opacity: 0; }
+.mp-diceroll-total.is-on { opacity: 1; animation: mp-pop-big 0.45s var(--ease); text-shadow: 0 3px 14px rgba(0, 0, 0, 0.5); }
+.mp-diceroll-total b { color: #ffd34e; }
+.mp-diceroll-double { margin: 0; padding: 4px 16px; border-radius: 999px; background: #ffd34e; color: #3a2a00; font-family: var(--font-display); font-weight: 900; font-size: clamp(16px, 4vmin, 28px); letter-spacing: 0.08em; animation: mp-pop-big 0.5s var(--ease) 0.1s both, mp-wiggle 0.5s ease-in-out 0.6s 2; }
+@keyframes mp-tumble {
+  0% { transform: translateY(0) rotate(0deg) scale(1); }
+  25% { transform: translateY(-22%) rotate(110deg) scale(1.06); }
+  50% { transform: translateY(0) rotate(200deg) scale(0.97); }
+  75% { transform: translateY(-14%) rotate(290deg) scale(1.04); }
+  100% { transform: translateY(0) rotate(360deg) scale(1); }
+}
+@keyframes mp-land { 0% { transform: translateY(-30%) scale(1.25) rotate(-12deg); } 55% { transform: translateY(0) scale(0.94) rotate(4deg); } 100% { transform: none; } }
+@keyframes mp-pop-big { 0% { transform: scale(0.3); opacity: 0; } 70% { transform: scale(1.18); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes mp-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+@keyframes mp-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mp-fade-out { to { opacity: 0; } }
+
+.mp-action.is-busy { opacity: 0.6; pointer-events: none; }
+.mp-sq.is-flash { z-index: 3; animation: mp-flash 1.8s ease-out; }
+@keyframes mp-flash { 0%, 30%, 60% { box-shadow: inset 0 0 0 100px rgba(255, 211, 78, 0.75), 0 0 0 3px #ffb300; } 15%, 45%, 100% { box-shadow: inset 0 0 0 100px rgba(255, 211, 78, 0), 0 0 0 0 transparent; } }
+
+/* ─── Avisos de lo que pasa ─── */
+.mp-announce { position: fixed; z-index: 250; top: calc(var(--header-h, 56px) + 10px); left: 50%; transform: translateX(-50%); width: min(calc(100vw - 24px), 520px); pointer-events: none; }
+.mp-toast { pointer-events: auto; width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 16px; text-align: left; font: inherit; font-size: 15px; font-weight: 650; line-height: 1.35; color: var(--text); background: var(--surface); border: 2px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); cursor: pointer; animation: mp-toast-in 0.35s var(--ease); }
+.mp-toast-icon { font-size: 28px; line-height: 1; flex: none; }
+.mp-toast.is-gain { background: var(--success-soft); border-color: var(--success); }
+.mp-toast.is-loss { background: var(--danger-soft); border-color: var(--danger); }
+.mp-toast.is-good { background: #fff3c4; border-color: #e0a800; color: #3a2a00; }
+.mp-toast.is-big { font-size: 17px; padding: 15px 18px; animation: mp-toast-in 0.35s var(--ease), mp-shake 0.5s ease-in-out 0.25s; }
+.mp-toast.is-big .mp-toast-icon { font-size: 34px; }
+@keyframes mp-toast-in { from { opacity: 0; transform: translateY(-18px) scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes mp-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+
+/* ─── La plata que sube y baja ─── */
+.mp-cash-wrap { position: relative; display: inline-flex; }
+.mp-cash-amount.is-up { color: var(--success); animation: mp-bump 0.5s var(--ease); }
+.mp-cash-amount.is-down { color: var(--danger); animation: mp-bump 0.5s var(--ease); }
+.mp-delta { position: absolute; right: 0; top: -6px; font-style: normal; font-family: var(--font-display); font-weight: 900; font-size: 15px; pointer-events: none; text-shadow: 0 1px 0 var(--surface); animation: mp-float 1.9s ease-out forwards; }
+.mp-delta.is-up { color: var(--success); }
+.mp-delta.is-down { color: var(--danger); }
+@keyframes mp-float { 0% { opacity: 0; transform: translateY(6px) scale(0.8); } 15% { opacity: 1; transform: translateY(-6px) scale(1.15); } 100% { opacity: 0; transform: translateY(-30px) scale(1); } }
+@keyframes mp-bump { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
+
+.mp-sound { padding: 4px 12px; border-radius: 999px; border: 1px solid #1d2a20; background: rgba(255, 255, 255, 0.6); color: #1d2a20; font: inherit; font-size: 12px; font-weight: 650; line-height: 1.4; cursor: pointer; }
+.mp-sound[aria-pressed='true'] { background: #fff; }
+.mp-saved-note { flex-basis: 100%; margin: 0; }
+
+/* ─── Partidas guardadas y retomar ─── */
+.mp-saves { max-width: 460px; margin: 0 auto 20px; }
+.mp-saves ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mp-saves li { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); }
+.mp-saves li strong { display: block; }
+.mp-saves li small { color: var(--text-3); font-size: 12px; }
+.mp-seats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mp-seats li { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); }
+.mp-seats li > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mp-seats li small { color: var(--text-3); font-size: 12px; }
+.mp-seats li.is-taken { border-color: color-mix(in srgb, var(--mp) 60%, var(--border)); }
+.mp-seat-state { color: var(--text-2); font-size: 13px; font-weight: 650; }
+
+/* ─── Confetti del final ─── */
+.mp-confetti { position: fixed; inset: 0; z-index: 200; pointer-events: none; overflow: hidden; }
+.mp-confetti i { position: absolute; top: -16px; border-radius: 2px; opacity: 0; animation-name: mp-confetti; animation-timing-function: linear; animation-iteration-count: infinite; }
+@keyframes mp-confetti { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(105vh) rotate(var(--spin)); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-diceroll, .mp-diceroll *, .mp-toast, .mp-delta, .mp-sq.is-flash, .mp-cash-amount, .mp-confetti i { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; }
+  .mp-confetti { display: none; }
+}
+.mp-bots { align-items: center; margin-top: 10px; }
+.mp-bots small { color: var(--text-3); font-size: 12px; }

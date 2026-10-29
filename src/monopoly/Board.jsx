@@ -57,7 +57,7 @@ function useShownPositions(players) {
   return shown;
 }
 
-function Square({ pos, room, here, onPick, selected }) {
+function Square({ pos, room, here, onPick, selected, flash }) {
   const sq = SQUARES[pos];
   const { row, col, side } = cellOf(pos);
   const st = room.props[pos];
@@ -67,7 +67,7 @@ function Square({ pos, room, here, onPick, selected }) {
   return (
     <button
       type="button"
-      className={`mp-sq mp-sq-${sq.t} mp-side-${side}${st?.m ? ' is-mortgaged' : ''}${selected ? ' is-selected' : ''}${owner ? ' is-owned' : ''}`}
+      className={`mp-sq mp-sq-${sq.t} mp-side-${side}${st?.m ? ' is-mortgaged' : ''}${selected ? ' is-selected' : ''}${owner ? ' is-owned' : ''}${flash ? ' is-flash' : ''}`}
       style={{ gridRow: row, gridColumn: col, ...(owner ? { '--own': tokenColor(owner) } : {}) }}
       onClick={() => onPick(pos)}
       data-square={pos}
@@ -97,7 +97,8 @@ function Square({ pos, room, here, onPick, selected }) {
   );
 }
 
-export default function Board({ room, onPick, selected, children }) {
+// `flash`: casillero que se resalta un instante (el del último aviso).
+export default function Board({ room, onPick, selected, flash, children }) {
   const shown = useShownPositions(room.players);
   const byPos = {};
   for (const p of room.players) {
@@ -107,7 +108,7 @@ export default function Board({ room, onPick, selected, children }) {
   }
   return (
     <div className="mp-board" data-board>
-      {SQUARES.map((_, pos) => <Square key={pos} pos={pos} room={room} here={byPos[pos] || []} onPick={onPick} selected={selected === pos} />)}
+      {SQUARES.map((_, pos) => <Square key={pos} pos={pos} room={room} here={byPos[pos] || []} onPick={onPick} selected={selected === pos} flash={flash === pos} />)}
       <div className="mp-center">{children}</div>
     </div>
   );

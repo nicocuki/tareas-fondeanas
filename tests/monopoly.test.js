@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CARDS, GROUPS, GROUP_KEYS, SQUARES, STATIONS, UTILITIES, groupSquares, mortgageValue, unmortgageCost } from '../src/monopoly/board.js';
 import {
-  MAX_LOG, MAX_PLAYERS, applyAction, buildProblem, debtTotal, findPlayer, liquidation, makeId, netWorth, newRoom, ownedBy, rentFor,
+  MAX_LOG, MAX_PLAYERS, applyAction, auctionChance, buildProblem, debtTotal, findPlayer, liquidation, makeId, netWorth, newRoom, ownedBy, rentFor, roomFromSave,
 } from '../src/monopoly/game.js';
+import { botMove } from '../src/monopoly/bots.js';
 import { serializeRoom } from '../src/codigo-secreto/game.js';
 import { summarizeRoom } from '../src/ui/roomSummary.js';
 import { writeError } from '../worker/rules.js';
@@ -23,7 +24,8 @@ const roll = (room, who, d1, d2) => act(room, who, { type: 'roll', seen: room.ro
 function game(n = 3, options = {}) {
   let room = newRoom('a', 'Ana', '🐸', NOW);
   for (let i = 1; i < n; i++) room = act(room, ids[i], { type: 'join', name: `J${ids[i]}`, avatar: '🦊' });
-  if (Object.keys(options).length) room = act(room, 'a', { type: 'setOptions', options });
+  // Para los tests la subasta sale siempre (así es más fácil probarla); la probabilidad tiene sus propios tests.
+  room = act(room, 'a', { type: 'setOptions', options: { auctionChance: 100, ...options } });
   room = act(room, 'a', { type: 'start' });
   room.players.sort((x, y) => ids.indexOf(x.id) - ids.indexOf(y.id));
   room.current = 'a';
@@ -82,8 +84,8 @@ test('arranque: solo el anfitrión, con 2 o más; cada uno recibe la plata inici
   rejects(room, 'a', { type: 'start' });
   room = act(room, 'b', { type: 'join', name: 'Beto' });
   rejects(room, 'b', { type: 'start' });
-  room = act(room, 'a', { type: 'setOptions', options: { startCash: 2000, freeParking: true, auctions: false, nope: 1 } });
-  assert.deepEqual(room.options, { startCash: 2000, freeParking: true, auctions: false });
+  room = act(room, 'a', { type: 'setOptions', options: { startCash: 2000, freeParking: true, auctionChance: 25, auctions: false, nope: 1 } });
+  assert.deepEqual(room.options, { startCash: 2000, freeParking: true, auctionChance: 25 });
   rejects(room, 'b', { type: 'setOptions', options: { startCash: 1000 } });
   assert.equal(act(room, 'a', { type: 'setOptions', options: { startCash: 1 } }).options.startCash, 2000, 'un valor inválido se ignora');
   room = act(room, 'a', { type: 'start' });
@@ -541,7 +543,7 @@ test('subasta: si nadie ofrece, la propiedad queda sin dueño', () => {
 });
 
 test('subasta: con la opción apagada, no comprar deja la propiedad libre', () => {
-  let room = game(3, { auctions: false });
+  let room = game(3, { auctionChance: 0 });
   room = roll(room, 'a', 1, 2);
   room = act(room, 'a', { type: 'declineBuy' });
   assert.equal(room.step, 'act');
@@ -803,4 +805,273 @@ test('una propiedad inexistente o mal escrita no rompe nada: se rechaza', () => 
   }
   rejects(room, 'a', { type: 'tradeOffer', to: 'zz', give: { cash: 5 }, take: {} });
   rejects(room, 'a', { type: 'bid', amount: 'mucho' });
+});
+
+// ─── Subasta con probabilidad ────────────────────────────────────────────────
+test('subasta con chances: por defecto es del 50 % y se puede elegir entre 0, 25, 50, 75 y 100', () => {
+  const room = newRoom('a', 'Ana', '🐸', NOW);
+  assert.equal(room.options.auctionChance, 50);
+  let r = act(room, 'a', { type: 'setOptions', options: { auctionChance: 75 } });
+  assert.equal(r.options.auctionChance, 75);
+  r = act(r, 'a', { type: 'setOptions', options: { auctionChance: 60 } }); // un valor que no está en la lista no cambia nada
+  assert.equal(r.options.auctionChance, 75);
+});
+
+test('subasta con chances: si el azar cae dentro del porcentaje, se subasta y se anota el porcentaje', () => {
+  let room = game(3, { auctionChance: 50 });
+  room = roll(room, 'a', 1, 2);
+  room = act(room, 'a', { type: 'declineBuy' }, { rand: () => 0.49 });
+  assert.equal(room.step, 'auction');
+  assert.deepEqual(room.log.findLast((l) => l.k === 'auction'), { k: 'auction', s: 3, c: 50 });
+});
+
+test('subasta con chances: si el azar cae afuera, no hay subasta, la propiedad queda libre y se avisa', () => {
+  let room = game(3, { auctionChance: 50 });
+  room = roll(room, 'a', 1, 2);
+  room = act(room, 'a', { type: 'declineBuy' }, { rand: () => 0.5 });
+  assert.equal(room.step, 'act');
+  assert.equal(room.auction, null);
+  assert.equal(room.props[3], undefined);
+  assert.deepEqual(room.log.findLast((l) => l.k === 'noauction'), { k: 'noauction', s: 3, c: 50 });
+});
+
+test('subasta con chances: al 100 % siempre sale y al 0 % nunca, sin tirar el azar', () => {
+  const boom = () => { throw new Error('no debería tirar el azar'); };
+  let room = roll(game(3, { auctionChance: 100 }), 'a', 1, 2);
+  room = act(room, 'a', { type: 'declineBuy' }, { rand: boom });
+  assert.equal(room.step, 'auction');
+  room = roll(game(3, { auctionChance: 0 }), 'a', 1, 2);
+  room = act(room, 'a', { type: 'declineBuy' }, { rand: boom });
+  assert.equal(room.step, 'act');
+});
+
+test('subasta con chances: una sala vieja con «auctions» se lee como 100 % o 0 %', () => {
+  const room = newRoom('a', 'Ana', '🐸', NOW);
+  delete room.options.auctionChance;
+  assert.equal(auctionChance({ ...room, options: { ...room.options, auctions: true } }), 100);
+  assert.equal(auctionChance({ ...room, options: { ...room.options, auctions: false } }), 0);
+});
+
+test('subasta con chances: las propiedades de un quebrado también tiran el azar, una por una', () => {
+  let room = game(3, { auctionChance: 50 });
+  own(room, 'a', 1, 6);
+  room.players.find((p) => p.id === 'a').cash = 0;
+  room = roll(room, 'a', 1, 3); // impuesto de $200 al banco: no le alcanza
+  room = act(room, 'a', { type: 'bankrupt' }, { rand: (() => { const seq = [0.1, 0.9]; return () => seq.shift(); })() });
+  assert.deepEqual(room.queue, [], 'la primera salió a subasta y la segunda no');
+  assert.equal(room.auction.pos, 1);
+  assert.equal(room.props[6], undefined);
+});
+
+// ─── Contador de eventos ─────────────────────────────────────────────────────
+test('la bitácora cuenta todo lo que pasó (logN), aunque guarde solo las últimas', () => {
+  let room = game(3);
+  assert.equal(room.logN, 0);
+  room = roll(room, 'a', 1, 2);
+  assert.equal(room.logN, room.log.length, 'una entrada por cada cosa: tirada y casillero');
+  assert.deepEqual(room.log.map((l) => l.k), ['roll', 'at']);
+  assert.deepEqual(room.log[1], { k: 'at', p: 'a', s: 3 });
+  for (let i = 0; i < MAX_LOG + 5; i++) room.log.push({ k: 'drop', p: 'a', s: 1 });
+  room.logN += MAX_LOG + 5;
+  room.log = room.log.slice(-MAX_LOG);
+  assert.ok(room.logN > room.log.length);
+});
+
+// ─── Guardar y retomar ───────────────────────────────────────────────────────
+// Una partida en curso con propiedades, plata y una deuda, lista para guardar.
+function midGame() {
+  let room = game(3);
+  own(room, 'b', 1, 3);
+  room = roll(room, 'a', 1, 2); // cae en una propiedad de b (pos 3) y le paga
+  room = act(room, 'a', { type: 'endTurn', turn: room.turnNo });
+  return room;
+}
+
+test('guardar: la partida empezada lleva su saveId y se reconoce igual en una sala nueva', () => {
+  const room = midGame();
+  assert.equal(room.saveId, String(NOW));
+  const { room: restored, seatId } = roomFromSave(room, 'b', NOW + 5);
+  assert.equal(restored.saveId, room.saveId);
+  assert.equal(restored.phase, 'resume');
+  assert.equal(seatId, 'b');
+  assert.equal(restored.hostId, 'b');
+  assert.deepEqual(restored.players.map((p) => !!p.by), [false, true, false]);
+  assert.deepEqual(restored.props, room.props);
+  assert.equal(restored.current, room.current);
+  assert.equal(room.phase, 'playing', 'la original no se toca');
+});
+
+test('retomar: nadie juega hasta que el anfitrión retoma, y no se puede empezar de cero por error', () => {
+  const { room } = roomFromSave(midGame(), 'b', NOW);
+  rejects(room, 'b', { type: 'roll', seen: room.rollN });
+  rejects(room, 'b', { type: 'start' });
+  rejects(room, 'b', { type: 'resumeStart' }, {}); // solo hay uno sentado
+});
+
+test('retomar: cada uno que entra elige su lugar; no se puede tomar uno ocupado ni dos lugares', () => {
+  let { room } = roomFromSave(midGame(), 'b', NOW);
+  room = act(room, 'tmp1', { type: 'join', name: 'Cami', avatar: '🦊' }); // entra mirando
+  assert.equal(room.players.length, 3);
+  rejects(room, 'tmp1', { type: 'claim', seat: 'b' }); // ocupado por el anfitrión
+  rejects(room, 'tmp1', { type: 'claim', seat: 'zz' });
+  room = act(room, 'tmp1', { type: 'claim', seat: 'a' });
+  assert.equal(findPlayer(room, 'a').by, 'tmp1');
+  rejects(room, 'tmp1', { type: 'claim', seat: 'c' }); // ya tiene un lugar
+  rejects(room, 'tmp2', { type: 'claim', seat: 'a' }); // lo tomó otro
+});
+
+test('retomar: con al menos dos sentados se retoma, y los lugares libres quiebran contra el banco', () => {
+  let { room } = roomFromSave(midGame(), 'b', NOW);
+  const before = { cash: findPlayer(room, 'b').cash, current: room.current };
+  room = act(room, 'tmp1', { type: 'claim', seat: 'a' });
+  rejects(room, 'a', { type: 'resumeStart' }); // solo el anfitrión
+  room = act(room, 'b', { type: 'resumeStart' });
+  assert.equal(room.phase, 'playing');
+  assert.equal(findPlayer(room, 'c').out, true, 'nadie tomó el lugar de c');
+  assert.equal(findPlayer(room, 'c').left, true);
+  assert.equal(findPlayer(room, 'b').cash, before.cash);
+  assert.equal(room.log.at(-2).k === 'resumed' || room.log.some((l) => l.k === 'resumed'), true);
+  assert.notEqual(room.current, 'c');
+  // y se puede seguir jugando
+  const next = room.current;
+  room = roll(room, next, 1, 2);
+  assert.ok(room.rollN > 0);
+});
+
+test('retomar: si el que le tocaba jugar no se sienta, el turno pasa al siguiente', () => {
+  const played = midGame();
+  played.current = 'c';
+  played.step = 'roll';
+  let { room } = roomFromSave(played, 'a', NOW);
+  room = act(room, 'tmp1', { type: 'claim', seat: 'b' });
+  room = act(room, 'a', { type: 'resumeStart' });
+  assert.equal(findPlayer(room, 'c').out, true);
+  assert.equal(room.step, 'roll');
+  assert.ok(['a', 'b'].includes(room.current));
+});
+
+test('retomar: soltar el lugar lo deja libre y, si era el anfitrión, el mando pasa a otro sentado', () => {
+  let { room } = roomFromSave(midGame(), 'b', NOW);
+  room = act(room, 'tmp1', { type: 'claim', seat: 'a' });
+  room = act(room, 'b', { type: 'leave' });
+  assert.equal(findPlayer(room, 'b').by, null);
+  assert.equal(room.hostId, 'a');
+  // el primero que se sienta cuando no queda nadie queda de anfitrión
+  room = act(room, 'a', { type: 'leave' });
+  room = act(room, 'tmp9', { type: 'claim', seat: 'c' });
+  assert.equal(room.hostId, 'c');
+});
+
+test('retomar: el anfitrión puede liberar un lugar con «sacar»', () => {
+  let { room } = roomFromSave(midGame(), 'b', NOW);
+  room = act(room, 'tmp1', { type: 'claim', seat: 'a' });
+  room = act(room, 'b', { type: 'kick', target: 'a' });
+  assert.equal(findPlayer(room, 'a').by, null);
+});
+
+test('retomar: los que ya quebraron no tienen lugar para tomar', () => {
+  const played = midGame();
+  const c = findPlayer(played, 'c');
+  c.out = true;
+  played.eliminated = ['c'];
+  const { room } = roomFromSave(played, 'c', NOW); // el dispositivo era de un jugador que ya no está: retoma el primero que sigue
+  assert.notEqual(room.hostId, 'c');
+  rejects(room, 'tmp1', { type: 'claim', seat: 'c' });
+});
+
+test('retomar: la sala de una partida guardada se lee como Monopoly en la fase «resume»', () => {
+  const { room } = roomFromSave(midGame(), 'b', NOW);
+  const sum = summarizeRoom('ABCD', null, serializeRoom(room));
+  assert.equal(sum.game, 'monopoly');
+  assert.equal(sum.phase, 'resume');
+  assert.equal(writeError(['rooms', 'ABCD'], 'u', serializeRoom(room), null), null);
+});
+
+// ─── Bots ────────────────────────────────────────────────────────────────────
+test('bots: solo el anfitrión los agrega, en la sala de espera, con un id válido y hasta el tope', () => {
+  let room = newRoom('a', 'Ana', '🐸', NOW);
+  rejects(room, 'b', { type: 'addBot', botId: 'bot-abc123', name: 'Bot X' });
+  rejects(room, 'a', { type: 'addBot', botId: 'abc123', name: 'Bot X' });
+  rejects(room, 'a', { type: 'addBot', botId: 'bot-abc123', name: '' });
+  room = act(room, 'a', { type: 'addBot', botId: 'bot-abc123', name: 'Bot Lola' });
+  assert.equal(findPlayer(room, 'bot-abc123').bot, true);
+  rejects(room, 'a', { type: 'addBot', botId: 'bot-abc123', name: 'Bot Lola' }); // repetido
+  for (let i = 0; i < MAX_PLAYERS - 2; i++) room = act(room, 'a', { type: 'addBot', botId: `bot-x${i}yz`, name: `Bot ${i}` });
+  assert.equal(room.players.length, MAX_PLAYERS);
+  rejects(room, 'a', { type: 'addBot', botId: 'bot-zzzzzz', name: 'Bot de más' });
+  room = act(room, 'a', { type: 'start' });
+  rejects(room, 'a', { type: 'addBot', botId: 'bot-qqqqqq', name: 'Tarde' });
+});
+
+test('bots: el anfitrión puede sacarlos y el mando nunca pasa a un bot', () => {
+  let room = newRoom('a', 'Ana', '🐸', NOW);
+  room = act(room, 'a', { type: 'addBot', botId: 'bot-abc123', name: 'Bot Lola' });
+  room = act(room, 'a', { type: 'kick', target: 'bot-abc123' });
+  assert.equal(room.players.length, 1);
+  room = act(room, 'a', { type: 'addBot', botId: 'bot-abc123', name: 'Bot Lola' });
+  room = act(room, 'b', { type: 'join', name: 'Beto', avatar: '🦊' });
+  room = act(room, 'a', { type: 'leave' });
+  assert.equal(room.hostId, 'b');
+});
+
+test('bots: compra con colchón, rechaza sin plata y se baja de una subasta cara', () => {
+  let room = game(2, { auctionChance: 100 });
+  room.players[0].bot = true;
+  room = roll(room, 'a', 1, 2); // pos 3
+  assert.deepEqual(botMove(room), { botId: 'a', action: { type: 'buy' } });
+  me(room, 'a').cash = 100;
+  assert.deepEqual(botMove(room).action, { type: 'declineBuy' });
+  me(room, 'a').cash = 1500;
+  room = act(room, 'a', { type: 'declineBuy' });
+  room.players[1].bot = true;
+  room.auction.bid = 500;
+  assert.equal(botMove(room).botId, 'b');
+  assert.equal(botMove(room).action.type, 'passBid');
+});
+
+test('bots: aceptan un trato que los favorece y rechazan uno que no', () => {
+  let room = game(2);
+  room.players[1].bot = true;
+  own(room, 'a', 1);
+  own(room, 'b', 3);
+  room = act(room, 'a', { type: 'tradeOffer', to: 'b', give: { cash: 300 }, take: { props: [3] } });
+  assert.equal(botMove(room).action.type, 'tradeAccept', 'le dan 300 por una de 60');
+  room = act(room, 'b', { type: 'tradeDecline' });
+  room = act(room, 'a', { type: 'tradeOffer', to: 'b', give: { cash: 10 }, take: { props: [3] } });
+  assert.equal(botMove(room).action.type, 'tradeDecline', 'le dan 10 por una de 60');
+});
+
+test('bots: no se mueven si no es su turno, si debe una persona o si la partida no está en curso', () => {
+  let room = game(2);
+  room.players[1].bot = true; // b es bot pero juega a
+  assert.equal(botMove(room), null);
+  room.current = 'b';
+  assert.equal(botMove(room).action.type, 'roll');
+  room.debts = [{ from: 'a', to: null, n: 50 }];
+  assert.equal(botMove(room), null, 'espera a que la persona pague');
+  assert.equal(botMove({ ...room, phase: 'lobby' }), null);
+});
+
+test('bots: una partida entera entre bots avanza sin que el reducer rechace ninguna jugada', () => {
+  let room = newRoom('a', 'Ana', '🐸', NOW);
+  for (const id of ['bot-b11111', 'bot-c22222', 'bot-d33333']) room = applyAction(room, { type: 'addBot', playerId: 'a', botId: id, name: id }, { now: NOW });
+  room.players[0].bot = true;
+  let seed = 11;
+  const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  room = applyAction(room, { type: 'start', playerId: 'a' }, { now: NOW, rand });
+  let steps = 0;
+  const seen = new Set();
+  while (room.phase === 'playing' && steps < 30000) {
+    const move = botMove(room);
+    assert.ok(move, `ningún bot puede jugar (paso ${room.step}, turno de ${room.current}, ${steps} jugadas)`);
+    const next = applyAction(room, { ...move.action, playerId: move.botId }, { now: NOW + steps, rand });
+    assert.ok(next, `el reducer rechazó ${JSON.stringify(move)} en el paso ${room.step} (${steps} jugadas)`);
+    for (const p of next.players) assert.ok(p.cash >= 0, `${p.name} quedó con plata negativa`);
+    seen.add(move.action.type);
+    room = next;
+    steps += 1;
+  }
+  assert.ok(steps > 100, 'la partida avanzó');
+  for (const type of ['roll', 'buy', 'endTurn']) assert.ok(seen.has(type), `nunca jugaron ${type}`);
+  assert.equal(room.phase, 'ended', `no terminó en ${steps} jugadas`); // con esta semilla termina; un empate sin ningún color completo no es un bug de reglas
 });

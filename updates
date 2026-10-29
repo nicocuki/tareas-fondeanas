@@ -656,7 +656,17 @@ OCULTA 1.23.1 = Ajuste interno
 1.25.5 = Las salas vacías se borran enseguida
 - Cuando se cierran todas las pestañas de una sala, a los 60 segundos la sala se borra sola (antes quedaba hasta 15 minutos). Si alguien vuelve antes, por ejemplo al recargar, no pasa nada.
 
+----------------------------------------------------------------------------------------------------
+
+1.26.0 = Monopoly: suspenso, avisos claros, subasta al azar, partidas guardadas y bots 🎲
+- Los dados giran sobre el tablero y frenan mostrando lo que salió (con cartel de «¡DOBLES!»); después la ficha camina casillero por casillero y recién ahí aparecen las consecuencias.
+- Cada cosa que pasa se avisa en pantalla hablándote a vos («Pagás $50 de alquiler a Beto»): verde si cobrás, rojo si pagás, dorado si comprás o construís. El casillero se ilumina y la plata de cada jugador sube o baja con un +/− flotante.
+- La subasta ya no sale siempre: el anfitrión elige las chances (nunca, 25, 50, 75 % o siempre; por defecto 50 %). Si no sale, la propiedad queda sin dueño y se avisa.
+- La partida se guarda sola en tu dispositivo: si la sala se cierra, desde la entrada tocás «Continuar», cada uno elige quién era y el anfitrión retoma justo donde quedó.
+- Bots: el anfitrión puede agregarlos en la sala de espera para jugar sin tener a todos conectados.
+- Sonidos opcionales (apagados por defecto) y confetti al ganar.
+
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.26.0 = Buzón de sugerencias en la portada
+LATEST 1.26.1 = Buzón de sugerencias en la portada
 - En pantallas anchas, el buzón también aparece chico a la derecha de la portada (con una ✕ para cerrarlo), sin mover nada. El «?» del header sigue andando.
