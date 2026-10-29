@@ -40,7 +40,7 @@ export const GAMES = [
     badge: 'Nuevo',
     howTo: [
       'En tu turno tirás los dos dados y tu ficha avanza por el tablero. Cada vez que pasás por la Salida cobrás $200.',
-      'Si caés en una propiedad sin dueño, podés comprarla; si no, se subasta entre todos. Si es de otro, le pagás alquiler.',
+      'Si caés en una propiedad sin dueño, podés comprarla; si no, con cierta chance (la elige el anfitrión) se subasta entre todos. Si es de otro, le pagás alquiler.',
       'Con todas las calles de un mismo color podés construir casas y hoteles: el alquiler sube un montón.',
       'Si necesitás plata, hipotecá propiedades, vendé casas o hacé un trato con otro jugador (propiedades, plata y cartas).',
       'Si sacás dobles tirás de nuevo; tres seguidos o el casillero «Andá a la cárcel» te mandan preso. Para salir pagás $50, usás una carta o sacás dobles.',

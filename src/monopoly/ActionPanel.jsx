@@ -1,12 +1,12 @@
 // Lo que hay que hacer ahora: dice con palabras qué pasó, de quién es el turno y qué botones corresponden.
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { JAIL_BAIL, SQUARES } from './board.js';
-import { currentPlayer, debtTotal, debtsOf, findPlayer, liquidation } from './game.js';
+import { auctionChance, currentPlayer, debtTotal, debtsOf, findPlayer, liquidation } from './game.js';
 import { Token } from './Board.jsx';
 
 const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 
-function Die({ value, rolling }) {
+export function Die({ value, rolling }) {
   const spots = PIPS[value] || [];
   return (
     <span className={`mp-die${rolling ? ' is-rolling' : ''}`} aria-hidden="true">
@@ -15,24 +15,13 @@ function Die({ value, rolling }) {
   );
 }
 
-// Los dados giran un instante cada vez que cambia la tirada.
+// Los dados de la última tirada. Girar y frenar lo hace `DiceRoll` (Stage.jsx), sobre el tablero.
 export function Dice({ dice, rollN }) {
-  const [rolling, setRolling] = useState(false);
-  const [faces, setFaces] = useState(dice);
-  const first = useRef(rollN);
-  useEffect(() => {
-    if (rollN === first.current) { setFaces(dice); return undefined; }
-    first.current = rollN;
-    setRolling(true);
-    const spin = setInterval(() => setFaces([1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)]), 80);
-    const stop = setTimeout(() => { clearInterval(spin); setFaces(dice); setRolling(false); }, 650);
-    return () => { clearInterval(spin); clearTimeout(stop); };
-  }, [rollN]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!rollN) return null;
   return (
     <div className="mp-dice" aria-label={`Dados: ${dice[0]} y ${dice[1]}`} data-dice={dice.join(',')}>
-      <Die value={faces[0]} rolling={rolling} />
-      <Die value={faces[1]} rolling={rolling} />
+      <Die value={dice[0]} />
+      <Die value={dice[1]} />
     </div>
   );
 }
@@ -71,7 +60,7 @@ function DebtBox({ room, me, dispatch }) {
   );
 }
 
-export default function ActionPanel({ room, me, dispatch, onTrade }) {
+export default function ActionPanel({ room, me, dispatch, onTrade, busy }) {
   if (room.phase !== 'playing') return null;
   const cur = currentPlayer(room);
   const myTurn = cur.id === me?.id;
@@ -116,14 +105,15 @@ export default function ActionPanel({ room, me, dispatch, onTrade }) {
   } else if (room.step === 'buy') {
     const sq = SQUARES[room.offer];
     const short = sq.price - me.cash;
+    const chance = auctionChance(room);
     body = (
       <>
         <p className="mp-say"><b>Caíste en {sq.name}</b>, que no tiene dueño. Cuesta ${sq.price}. Si la comprás, cada vez que otro caiga acá te paga alquiler.{short > 0 ? <> Te faltan ${short}: hipotecá algo si querés comprarla.</> : null}</p>
         <div className="mp-btn-row">
           <button type="button" className="tf-btn tf-btn-primary" disabled={short > 0} data-act="buy" onClick={() => dispatch({ type: 'buy' })}>Comprar por ${sq.price}</button>
-          <button type="button" className="tf-btn tf-btn-soft" data-act="declineBuy" onClick={() => dispatch({ type: 'declineBuy' })}>{room.options.auctions ? 'No comprar (subasta)' : 'No comprar'}</button>
+          <button type="button" className="tf-btn tf-btn-soft" data-act="declineBuy" onClick={() => dispatch({ type: 'declineBuy' })}>{chance > 0 ? `No comprar (${chance < 100 ? `${chance} % de subasta` : 'subasta'})` : 'No comprar'}</button>
         </div>
-        {room.options.auctions && <p className="mp-hint">Si no la comprás, se subasta entre todos (vos también podés ofrecer).</p>}
+        {chance > 0 && <p className="mp-hint">{chance < 100 ? `Si no la comprás, hay un ${chance} % de chances de que se subaste entre todos; si no sale, queda sin dueño.` : 'Si no la comprás, se subasta entre todos (vos también podés ofrecer).'}</p>}
       </>
     );
   } else {
@@ -138,7 +128,7 @@ export default function ActionPanel({ room, me, dispatch, onTrade }) {
   }
 
   return (
-    <div className="mp-action" data-step={room.step}>
+    <div className={`mp-action${busy ? ' is-busy' : ''}`} data-step={room.step}>
       <div className="mp-turn">
         <Token player={cur} size={30} current />
         <span>{myTurn ? 'Tu turno' : `Turno de ${cur.name}`}</span>

@@ -22,12 +22,16 @@ export const MAX_PLAYERS = 8;
 export const MAX_LOG = 60;
 export const MAX_TRADE_PROPS = 12;
 
-export const DEFAULT_OPTIONS = { startCash: 1500, freeParking: false, auctions: true };
+// `auctionChance`: probabilidad (en %) de que, cuando alguien no compra una propiedad, se subaste.
+export const DEFAULT_OPTIONS = { startCash: 1500, freeParking: false, auctionChance: 50 };
 export const OPTION_VALUES = {
   startCash: [1000, 1500, 2000, 3000],
   freeParking: [false, true],
-  auctions: [true, false],
+  auctionChance: [0, 25, 50, 75, 100],
 };
+
+// Una sala hecha antes de que existiera `auctionChance` tenía `auctions` (sí o no): se traduce a 100 % o 0 %.
+export const auctionChance = (room) => room.options.auctionChance ?? (room.options.auctions === false ? 0 : 100);
 
 export const cleanName = (name) => String(name || '').trim().slice(0, 20);
 export const makeId = () => Math.random().toString(36).slice(2, 10);
@@ -53,13 +57,29 @@ export function newRoom(hostId, hostName, avatar, now = Date.now()) {
   };
 }
 
+// Una partida guardada vuelve a abrirse en una sala nueva, en la fase `resume`: queda todo como estaba, pero nadie
+// ocupa su lugar hasta que entra y lo toma (`claim`). Quien la abre retoma el lugar `seatId` y es el anfitrión.
+export function roomFromSave(saved, seatId, now = Date.now()) {
+  const room = structuredClone(saved);
+  const seat = room.players.find((p) => p.id === seatId && !p.out) || room.players.find((p) => !p.out);
+  room.phase = 'resume';
+  room.hostId = seat.id;
+  room.players = room.players.map((p) => ({ ...p, by: p.id === seat.id || p.bot ? p.id : null })); // los bots no necesitan que se sienten
+  room.trade = null; // un trato a medias no se retoma
+  room.card = null;
+  delete room.kicked;
+  room.createdAt = now;
+  room.updatedAt = now;
+  return { room, seatId: seat.id };
+}
+
 // Todo lo que cambia durante la partida (se rearma al empezar y al volver a la sala de espera).
 function freshGame() {
   return {
     turnNo: 0, current: null, step: null, doubles: 0, dice: [0, 0], rollN: 0,
     props: {}, deck: { chance: [], chest: [] }, pot: 0, offer: null,
     debts: [], auction: null, queue: [], trade: null,
-    card: null, cardN: 0, log: [], eliminated: [], winner: null,
+    card: null, cardN: 0, log: [], logN: 0, eliminated: [], winner: null,
   };
 }
 
@@ -213,7 +233,17 @@ function shuffle(list, rand) {
   return a;
 }
 
-const addLog = (room, entry) => { room.log = [...room.log, entry].slice(-MAX_LOG); };
+// `logN` cuenta todas las entradas que hubo (la bitácora guarda solo las últimas): así cada pantalla sabe cuáles son nuevas.
+const addLog = (room, entry) => {
+  room.log = [...room.log, entry].slice(-MAX_LOG);
+  room.logN = (room.logN ?? 0) + 1;
+};
+
+// ¿Sale la subasta? Con 100 % o 0 % no se tira nada.
+const auctionHappens = (room, rand) => {
+  const chance = auctionChance(room);
+  return chance >= 100 || (chance > 0 && rand() * 100 < chance);
+};
 
 // ─── Plata ───────────────────────────────────────────────────────────────────
 // `to`: id de un jugador, 'pot' (el pozo del Descanso) o null (el banco). Si no le alcanza el efectivo queda una deuda.
@@ -302,6 +332,7 @@ function drawCard(room, p, kind, ctx, depth) {
 function land(room, p, ctx, o = {}, depth = 0) {
   const pos = p.pos;
   const sq = SQUARES[pos];
+  addLog(room, { k: 'at', p: p.id, s: pos });
   switch (sq.t) {
     case 'parking':
       if (room.options.freeParking && room.pot > 0) {
@@ -388,11 +419,13 @@ function checkWin(room) {
 
 // ─── Subastas ────────────────────────────────────────────────────────────────
 // Por turnos: cada uno sube la oferta o se baja. Gana el último que queda con la oferta más alta.
+// Que salga o no la subasta depende de `auctionChance` (ver `auctionHappens`).
 function startAuction(room, pos, resume, afterId) {
   const order = orderFrom(room, afterId);
   room.auction = { pos, bid: 0, bidder: null, order, active: [...order], turn: order[0], resume };
   room.step = 'auction';
-  addLog(room, { k: 'auction', s: pos });
+  const chance = auctionChance(room);
+  addLog(room, { k: 'auction', s: pos, ...(chance < 100 ? { c: chance } : {}) });
 }
 
 function nextBidder(a, afterId) {
@@ -434,7 +467,8 @@ function settleAuction(room) {
 
 // ─── Quiebra ─────────────────────────────────────────────────────────────────
 // `creditor`: el jugador al que se le debe (se queda con todo) o null (todo vuelve al banco, y se subasta).
-function eliminate(room, p, creditor, why) {
+// Si el banco se queda con las propiedades, cada una sale a subasta con la misma probabilidad que al no comprar.
+function eliminate(room, p, creditor, why, rand = Math.random) {
   // Los edificios se venden al banco a la mitad; la plata pasa a engrosar lo que se entrega.
   for (const pos of ownedBy(room, p.id)) {
     const st = room.props[pos];
@@ -457,7 +491,7 @@ function eliminate(room, p, creditor, why) {
     for (const kind of p.jf) room.deck[kind].push(jailFreeIndex(kind));
     for (const pos of mine) {
       delete room.props[pos];
-      if (room.options.auctions) room.queue.push(pos);
+      if (auctionHappens(room, rand)) room.queue.push(pos);
     }
   }
   p.cash = 0;
@@ -478,14 +512,14 @@ function eliminate(room, p, creditor, why) {
   if (room.auction) settleAuction(room);
   if (room.step !== 'auction' && room.queue.length) startAuction(room, room.queue.shift(), room.step, p.id);
   if (room.hostId === p.id) {
-    const heir = room.players.find((o) => !o.out && !o.left) || room.players.find((o) => !o.left);
+    const heir = room.players.find((o) => !o.out && !o.left && !o.bot) || room.players.find((o) => !o.left && !o.bot);
     if (heir) room.hostId = heir.id;
   }
 }
 
 function transferHost(room, leaverId) {
   if (room.hostId !== leaverId) return;
-  const heir = room.players.find((o) => !o.out && !o.left && o.id !== leaverId) || room.players.find((o) => !o.left && o.id !== leaverId);
+  const heir = room.players.find((o) => !o.out && !o.left && !o.bot && o.id !== leaverId) || room.players.find((o) => !o.left && !o.bot && o.id !== leaverId);
   if (heir) room.hostId = heir.id;
 }
 
@@ -498,7 +532,7 @@ export function applyAction(room, action, ctx = {}) {
   if (!room || room.gameType !== GAME_TYPE) return null;
   // El anfitrión saca a alguien (también en plena partida: sirve para el que se fue sin avisar).
   if (action.type === 'kick') {
-    const target = kickTarget(room, action, ['lobby', 'playing', 'ended']);
+    const target = kickTarget(room, action, ['lobby', 'playing', 'ended', 'resume']);
     const left = target && applyAction(room, { type: 'leave', playerId: target }, ctx);
     return left && left !== room ? markKicked(left, target) : null;
   }
@@ -519,6 +553,7 @@ export function applyAction(room, action, ctx = {}) {
         if (action.avatar) me.avatar = action.avatar;
         return next;
       }
+      if (next.phase === 'resume') return next; // entra mirando y después elige su lugar (`claim`)
       if (next.phase !== 'lobby' || next.players.length >= MAX_PLAYERS) return null;
       const name = cleanName(action.name);
       if (!name) return null;
@@ -533,13 +568,55 @@ export function applyAction(room, action, ctx = {}) {
       if (!me) return null;
       if (next.phase === 'lobby') {
         next.players = next.players.filter((p) => p.id !== me.id);
-        if (next.players.length && next.hostId === me.id) next.hostId = next.players[0].id;
+        if (next.players.length && next.hostId === me.id) next.hostId = (next.players.find((p) => !p.bot) || next.players[0]).id;
+        return next;
+      }
+      if (next.phase === 'resume') { // solo suelta su lugar, que lo puede tomar otro
+        me.by = null;
+        if (next.hostId === me.id) next.hostId = next.players.find((p) => p.by && p.id !== me.id)?.id ?? me.id;
         return next;
       }
       // En plena partida el que se va quiebra contra el banco; queda anotado para el ranking.
       transferHost(next, me.id);
       me.left = true;
-      if (next.phase === 'playing' && !me.out) eliminate(next, me, null, 'left');
+      if (next.phase === 'playing' && !me.out) eliminate(next, me, null, 'left', rand);
+      return next;
+    }
+
+    // ─── Retomar una partida guardada ────────────────────────────────────────
+    // Cada uno que entra a la sala nueva elige quién era (`seat`) y pasa a usar ese lugar. Mientras tanto nadie juega.
+    case 'claim': {
+      const seat = findPlayer(next, action.seat);
+      if (next.phase !== 'resume' || !seat || seat.out || seat.by || me || next.players.some((p) => p.by === action.playerId)) return null;
+      if (!next.players.some((p) => p.by)) next.hostId = seat.id; // el primero en llegar manda
+      seat.by = action.playerId;
+      return next;
+    }
+
+    case 'resumeStart': {
+      if (next.phase !== 'resume' || next.hostId !== action.playerId) return null;
+      const seated = next.players.filter((p) => !p.out && p.by);
+      if (seated.length < MIN_PLAYERS) return null;
+      next.phase = 'playing';
+      addLog(next, { k: 'resumed' });
+      // Los lugares que nadie tomó quiebran contra el banco, como si se hubieran ido.
+      for (const p of next.players.filter((o) => !o.out && !o.by)) {
+        p.left = true;
+        eliminate(next, p, null, 'left', rand);
+      }
+      return next;
+    }
+
+    // Un bot es un jugador más que mueve la pantalla del anfitrión (ver bots.js). El id y el nombre los pone quien lo agrega.
+    case 'addBot': {
+      if (next.phase !== 'lobby' || next.hostId !== action.playerId || next.players.length >= MAX_PLAYERS) return null;
+      const name = cleanName(action.name);
+      const id = String(action.botId || '');
+      if (!name || !/^bot-[a-z0-9]{3,10}$/.test(id) || findPlayer(next, id)) return null;
+      const used = new Set(next.players.map((p) => p.color));
+      let color = 0;
+      while (used.has(color)) color += 1;
+      next.players.push({ ...newPlayer(id, name, '🤖', color), bot: true });
       return next;
     }
 
@@ -552,10 +629,11 @@ export function applyAction(room, action, ctx = {}) {
     }
 
     case 'start': {
-      if (next.hostId !== action.playerId || next.phase === 'playing') return null;
+      if (next.hostId !== action.playerId || next.phase === 'playing' || next.phase === 'resume') return null;
       next.players = next.players.filter((p) => !p.left);
       if (next.players.length < MIN_PLAYERS) return null;
       Object.assign(next, freshGame());
+      next.saveId = String(now); // con esto se reconoce la partida en el guardado, aunque cambie de sala
       next.players = shuffle(next.players, rand);
       for (const p of next.players) Object.assign(p, { cash: next.options.startCash, pos: 0, jail: 0, jf: [], out: false });
       next.deck = {
@@ -656,8 +734,12 @@ export function applyAction(room, action, ctx = {}) {
       if (!live || !isTurn(next, me.id, 'buy') || next.offer === null) return null;
       const pos = next.offer;
       next.offer = null;
-      if (next.options.auctions) startAuction(next, pos, restStep(next), me.id);
-      else next.step = restStep(next);
+      if (auctionHappens(next, rand)) {
+        startAuction(next, pos, restStep(next), me.id);
+      } else {
+        addLog(next, { k: 'noauction', s: pos, c: auctionChance(next) });
+        next.step = restStep(next);
+      }
       return next;
     }
 
@@ -787,7 +869,7 @@ export function applyAction(room, action, ctx = {}) {
       if (liquidation(next, me.id) >= debtTotal(next, me.id)) return null; // todavía puede pagar: que venda o hipoteque
       const first = debtsOf(next, me.id)[0];
       const creditor = first.to && first.to !== 'pot' ? findPlayer(next, first.to) : null;
-      eliminate(next, me, creditor && !creditor.out ? creditor : null, 'debt');
+      eliminate(next, me, creditor && !creditor.out ? creditor : null, 'debt', rand);
       return next;
     }
 

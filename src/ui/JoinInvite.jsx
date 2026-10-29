@@ -15,7 +15,7 @@ export default function JoinInvite({
   const info = useRoomInfo(code);
   const other = info && info.game !== gameId ? gameById(info.game) : null;
   const full = isFull(info);
-  const started = info && info.phase !== 'lobby';
+  const started = info && info.phase !== 'lobby' && info.phase !== 'resume';
   const canJoin = Boolean(info) && !other && !full && name.trim().length > 0 && !busy;
   // Siguiendo al anfitrión que cambió de juego: se entra solo.
   useAutoJoin(canJoin, onJoin);

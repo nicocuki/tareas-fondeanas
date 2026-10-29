@@ -7,6 +7,7 @@ import {
 } from './game.js';
 import { describe } from './log.js';
 import { Token, tokenColor } from './Board.jsx';
+import { CashAmount } from './Stage.jsx';
 
 const money = (n) => `$${n}`;
 
@@ -57,7 +58,7 @@ export function PlayersPanel({ room, me, onPick, onTrade, onKick }) {
                     {p.jf.length > 0 ? ` · 🎟 ${p.jf.length}` : ''}
                   </small>
                 </div>
-                <b className="mp-cash-amount" data-cash>{p.out ? '—' : money(p.cash)}</b>
+                <CashAmount value={p.out ? null : p.cash} />
               </div>
               {debt > 0 && <small className="mp-owes">Debe {money(debt)}</small>}
               <Deeds room={room} id={p.id} onPick={onPick} />
@@ -168,7 +169,7 @@ export function LogPanel({ room }) {
 const RULES = [
   ['Objetivo', 'Quedarte con toda la plata del tablero. Cuando un jugador no puede pagar lo que debe, quiebra y sale. Gana el último que queda.'],
   ['Tu turno', 'Tirás los dos dados y avanzás esa cantidad de casilleros. Según donde caigas: comprás la propiedad si no tiene dueño, pagás alquiler si es de otro, sacás una carta, pagás un impuesto, etc. Si sacás dobles (los dos dados iguales) tirás otra vez; tres dobles seguidos te mandan a la cárcel. Cada vez que pasás por la Salida cobrás $200.'],
-  ['Comprar y subastar', 'Si caés en una propiedad sin dueño podés comprarla al precio de lista. Si no la querés (o no podés), se subasta entre todos por turnos: cada uno sube la oferta o se baja, y gana la oferta más alta.'],
+  ['Comprar y subastar', 'Si caés en una propiedad sin dueño podés comprarla al precio de lista. Si no la querés (o no podés), puede salir una subasta: el anfitrión elige las chances (por defecto 50 %). Si sale, se subasta entre todos por turnos: cada uno sube la oferta o se baja, y gana la oferta más alta. Si no sale, la propiedad queda sin dueño.'],
   ['Alquileres', 'Cuando caés en una propiedad ajena le pagás alquiler al dueño. Si el dueño tiene todas las calles de un color (una «tanda»), el alquiler básico se duplica. Las estaciones cobran más cuantas más tenga el dueño, y las compañías cobran según lo que sacaste con los dados. Una propiedad hipotecada no cobra.'],
   ['Construir', 'Con la tanda completa podés comprar casas (hasta 4) y después un hotel en cada calle. Cada casa sube mucho el alquiler. Hay que construir parejo: no podés poner la 2.ª casa en una calle si otra del color tiene 0. Solo se construye en tu turno, y el banco tiene 32 casas y 12 hoteles.'],
   ['Hipotecas', 'Si necesitás plata, hipotecá una propiedad: el banco te da la mitad de su precio, pero deja de cobrar alquiler. Para levantar la hipoteca devolvés lo que te dieron más un 10 %. Si hay casas en el color, primero hay que venderlas (el banco te paga la mitad de lo que costaron).'],
