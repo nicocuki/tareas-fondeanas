@@ -859,6 +859,8 @@ De 2 a 8, solo compu. `id`: `mine` (`?juego=mine`, `gameType: 'mine'`, raíz `mi
 - **El mundo es de 512 × 128 bloques** (`world.js`, y crece hacia abajo: `y = 0` es el cielo) y sale **entero de la semilla**, igual en todas las pantallas (`mulberry32` y ruido propio: nada de
   `Math.random()`). Biomas por columna (llanura, bosque, desierto, tundra, montañas), océanos, capas, cuevas (túneles y salones por ruido), lava en el fondo, lecho de roca, menas por profundidad
   (diamante desde y 102) y árboles/cactus. Cada jugador aparece repartido a lo ancho (`spawnPoint`). Hay tests que miran semillas distintas (nadie aparece en el mar ni adentro de un bloque).
+- **Los árboles del mundo se atraviesan** (pedido de Nico, para moverse fácil): el mundo genera `treelog` y `treeleaves` (`natural: true`, no sólidos, sin ítem propio) que se rompen igual y sueltan
+  `log` y `leaves`. Los `log` y `leaves` que se ponen son los bloques sólidos de siempre. Los tests verifican que el mundo no trae ninguno sólido.
 - **Los bloques cambiados viajan como eventos `ed` = `[x, y, bloque, hora, ¿suelta?]`** en las fotos (6 s, con la hora de cada cambio: gana el más nuevo). Como una foto perdida dejaría un mundo distinto,
   cada pantalla además va repasando todo lo que sabe en pedazos de 32 columnas (`cs`), así el que se atrasa o recarga la página se pone al día (también lo que pasó antes de que entrara).
   Lo que suelta un bloque **no viaja**: cada pantalla lo calcula igual a partir del evento (clave `b{x}_{y}_{hora}`); solo se avisan lo tirado a mano o por una muerte (`dr`) y lo recogido (`pk`).

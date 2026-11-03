@@ -94,6 +94,8 @@ const PAINT = {
     for (const [x, h] of [[3, 7], [6, 10], [9, 8], [12, 6]]) { fill(g, ox, oy, '#4f9439', x, 16 - h, 2, h); fill(g, ox, oy, '#74bd58', x, 16 - h, 1, 3); }
   },
 };
+PAINT.treelog = PAINT.log;
+PAINT.treeleaves = PAINT.leaves;
 const VARIANTS = 4;
 let atlas = null;
 function getAtlas() {

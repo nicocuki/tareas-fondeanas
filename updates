@@ -687,10 +687,16 @@ OCULTA 1.23.1 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.29.0 = Cubolandia: Minecraft en 2D ⛏️
+1.29.0 = Cubolandia: Minecraft en 2D ⛏️
 - Juego nuevo, de 2 a 8: un mundo 2D visto de costado (como Terraria) con las mecánicas de Minecraft. Se genera entero desde una semilla: biomas (llanura, bosque, desierto, tundra y montañas), cuevas, océanos, lagos de lava, árboles y cactus.
 - Picás con el mouse (clic izquierdo mantenido), ponés bloques con el derecho y fabricás todo desde el inventario (E): tablones, mesa de crafteo, herramientas de madera, piedra, hierro, oro y diamante, espadas, hachas, baldes y armaduras de cuero, oro, hierro y diamante. Los minerales (carbón, hierro, oro y diamante) aparecen cada vez más hondo y se funden en el horno.
 - Vida, hambre, ahogarse, lava, cactus y daño por caída. Vacas y cerdos dan comida, de noche salen zombis y la manzana dorada cura mucho.
 - Modos: **UHC** (disponible) y **Supervivencia** (próximamente, deshabilitado en la sala de espera).
 - UHC: el anfitrión elige los minutos de tregua (1 a 30) en los que nadie puede hacerse daño. Cuando terminan aparece la **barra localizadora** con los jugadores cercanos (flechas si están más arriba o abajo) y empieza el PVP. Si te agachás (Shift) desaparecés de la barra de los demás. Al morir soltás todo y gana el último en pie.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.29.1 = Cubolandia: los árboles se atraviesan 🌳
+- Los troncos y las hojas de los árboles del mundo ya no frenan: pasás de largo para moverte más fácil. Se siguen rompiendo como cualquier bloque y sueltan lo mismo.
+- Los troncos y hojas que ponés vos son bloques normales y sólidos.
 

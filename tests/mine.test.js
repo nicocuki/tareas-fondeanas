@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { B, ITEMS, RECIPES, addItem, armorPoints, breakInfo, canCraft, count, craft, dropOf, emptyInv, reduceDamage } from '../src/mine/blocks.js';
+import { B, ITEMS, RECIPES, addItem, armorPoints, breakInfo, canCraft, count, craft, dropOf, emptyInv, isSolid, reduceDamage } from '../src/mine/blocks.js';
 import { H, SEA, W, animalSpawns, at, makeWorld, solidAt, spawnPoint } from '../src/mine/world.js';
 import { LOCATOR_RANGE, MOBS, STEP, computeLight, daylight, locatorMarks, newMob, newPlayer, placeProblem, stepMob, stepPlayer, stepVitals, takeHit } from '../src/mine/sim.js';
 import { GRACE_MINUTES, MAX_PLAYERS, MODES, PREP_MS, applyAction, graceEnd, newRoom, pvpOn, startProblem } from '../src/mine/game.js';
@@ -18,7 +18,7 @@ test('el mundo sale igual de la misma semilla y distinto de otra', () => {
 test('el mundo tiene lecho de roca abajo, cielo arriba, agua, lava, cuevas y todas las menas', () => {
   const w = makeWorld(SEED);
   const seen = new Set(w.t);
-  for (const k of ['grass', 'dirt', 'stone', 'log', 'leaves', 'coal_ore', 'iron_ore', 'gold_ore', 'diamond_ore', 'bedrock', 'lava']) {
+  for (const k of ['grass', 'dirt', 'stone', 'treelog', 'treeleaves', 'coal_ore', 'iron_ore', 'gold_ore', 'diamond_ore', 'bedrock', 'lava']) {
     assert.ok(seen.has(B[k]), `falta ${k}`);
   }
   // El agua y la arena dependen de que la semilla traiga mar o desierto: se miran varias.
@@ -87,6 +87,34 @@ test('la luz baja de cielo y se apaga en las cuevas', () => {
   const x = 100;
   assert.equal(light[(w.surf[x] - 1) * W + x], 15);
   assert.equal(light[(H - 5) * W + x], 0);
+});
+
+test('los árboles del mundo se atraviesan pero se rompen; los troncos y hojas puestos son sólidos', () => {
+  assert.equal(isSolid(B.treelog), false);
+  assert.equal(isSolid(B.treeleaves), false);
+  assert.equal(isSolid(B.log), true);
+  assert.equal(isSolid(B.leaves), true);
+  assert.ok(!ITEMS.treelog && !ITEMS.treeleaves, 'los árboles naturales no son ítems');
+  assert.equal(dropOf(B.treelog, true), 'log');
+  assert.equal(dropOf(B.treeleaves, true, () => 0.01), 'apple');
+  assert.equal(breakInfo(B.treelog, 'iron_axe').time, breakInfo(B.log, 'iron_axe').time);
+  assert.ok(Number.isFinite(breakInfo(B.treeleaves, null).time));
+  // El mundo solo trae árboles naturales: un tronco sólido solo aparece si lo pone un jugador.
+  const w = makeWorld(SEED);
+  assert.ok(!w.t.includes(B.log) && !w.t.includes(B.leaves));
+});
+
+test('el jugador camina a través de un árbol natural y se frena contra uno puesto', () => {
+  const w = flatWorld();
+  for (let y = 56; y < 60; y++) w.t[y * W + 55] = B.treelog;
+  const p = newPlayer(50.5, 60);
+  run(w, p, { ...noInput, right: true }, 3);
+  assert.ok(p.x > 58, `no atravesó el tronco: x = ${p.x}`);
+  const w2 = flatWorld();
+  for (let y = 56; y < 60; y++) w2.t[y * W + 55] = B.log;
+  const q = newPlayer(50.5, 60);
+  run(w2, q, { ...noInput, right: true }, 3);
+  assert.ok(q.x < 55, `atravesó un tronco puesto: x = ${q.x}`);
 });
 
 // ─── Bloques, herramientas y recetas ─────────────────────────────────────────

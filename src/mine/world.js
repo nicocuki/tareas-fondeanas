@@ -137,12 +137,12 @@ export function makeWorld(seed) {
     const dens = bio === 'forest' ? 0.16 : bio === 'plains' ? 0.035 : bio === 'snow' ? 0.06 : 0.015;
     if (rand() < dens && x - lastTree > 3) {
       const h = 4 + Math.floor(rand() * 3);
-      for (let k = 1; k <= h; k++) t[(s - k) * W + x] = B.log;
+      for (let k = 1; k <= h; k++) t[(s - k) * W + x] = B.treelog;
       for (let dy = -2; dy <= 1; dy++) {
         const r = dy >= 0 ? 1 : 2;
         for (let dx = -r; dx <= r; dx++) {
           const lx = x + dx, ly = s - h + dy;
-          if (ly > 0 && t[ly * W + lx] === B.air) t[ly * W + lx] = B.leaves;
+          if (ly > 0 && t[ly * W + lx] === B.air) t[ly * W + lx] = B.treeleaves;
         }
       }
       lastTree = x;

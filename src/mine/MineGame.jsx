@@ -38,7 +38,7 @@ const round1 = (v) => Math.round(v * 10) / 10;
 const fmtTime = (s) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.floor(Math.max(0, s) % 60)).padStart(2, '0')}`;
 const BLOCK_PARTICLES = {
   grass: ['#5da745', '#8a5a35'], dirt: ['#8a5a35', '#7a4a2b'], stone: ['#868686', '#7d7d7d'], cobble: ['#7b7b7b', '#5d5d5d'], sand: ['#e3d29a', '#d6c485'], gravel: ['#8a8581', '#6f6a66'],
-  log: ['#6b4a2a', '#523720'], leaves: ['#3d8a3a', '#2c6a2c'], planks: ['#b8914f', '#8e6d36'], snow: ['#f2f7fb', '#dce8f2'], cactus: ['#2f7a35', '#1f5a26'], sandstone: ['#d9c78a', '#bfa965'],
+  log: ['#6b4a2a', '#523720'], leaves: ['#3d8a3a', '#2c6a2c'], treelog: ['#6b4a2a', '#523720'], treeleaves: ['#3d8a3a', '#2c6a2c'], planks: ['#b8914f', '#8e6d36'], snow: ['#f2f7fb', '#dce8f2'], cactus: ['#2f7a35', '#1f5a26'], sandstone: ['#d9c78a', '#bfa965'],
   coal_ore: ['#868686', '#1d1d1d'], iron_ore: ['#868686', '#d8af93'], gold_ore: ['#868686', '#fcee4b'], diamond_ore: ['#868686', '#5decf5'], table: ['#8d5f2c', '#b8914f'], furnace: ['#868686', '#555'],
 };
 

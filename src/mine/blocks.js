@@ -30,6 +30,10 @@ const DEFS = [
   { key: 'sandstone', name: 'Arenisca', hard: 0.8, tool: 'pickaxe', need: 1, drop: 'self', solid: true },
   { key: 'flower', name: 'Flor', hard: 0, drop: null, solid: false, plant: true },
   { key: 'tallgrass', name: 'Pasto alto', hard: 0, drop: null, solid: false, plant: true },
+  // Los árboles del mundo se atraviesan (para moverse fácil) pero se rompen como cualquier bloque.
+  // Los troncos y hojas que ponés vos son los de arriba y son sólidos.
+  { key: 'treelog', name: 'Tronco', hard: 2, tool: 'axe', drop: 'log', solid: false, natural: true },
+  { key: 'treeleaves', name: 'Hojas', hard: 0.2, tool: null, drop: 'leaves', solid: false, natural: true },
 ];
 export const BLOCKS = DEFS.map((d, id) => ({ id, hard: 0, tool: null, need: 0, drop: null, ...d }));
 export const B = Object.fromEntries(BLOCKS.map((b) => [b.key, b.id]));
@@ -57,7 +61,7 @@ const ARMOR_POINTS = {
 };
 
 export const ITEMS = {};
-for (const b of BLOCKS) if (b.key !== 'air' && b.key !== 'water' && b.key !== 'lava' && b.key !== 'bedrock') ITEMS[b.key] = { key: b.key, name: b.name, block: b.id };
+for (const b of BLOCKS) if (b.key !== 'air' && b.key !== 'water' && b.key !== 'lava' && b.key !== 'bedrock' && !b.natural) ITEMS[b.key] = { key: b.key, name: b.name, block: b.id };
 const plain = (key, name, extra = {}) => { ITEMS[key] = { key, name, ...extra }; };
 plain('stick', 'Palo');
 plain('coal', 'Carbón');
@@ -110,7 +114,7 @@ export function breakInfo(block, held) {
 export function dropOf(block, canHarvest, rand = Math.random) {
   const def = BLOCKS[block];
   if (!def || !canHarvest) return null;
-  if (block === B.leaves) return rand() < 0.08 ? 'apple' : null;
+  if (block === B.leaves || block === B.treeleaves) return rand() < 0.08 ? 'apple' : null;
   if (!def.drop) return null;
   return def.drop === 'self' ? def.key : def.drop;
 }
