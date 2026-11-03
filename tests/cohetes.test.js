@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { COUNTDOWN_MS, MAX_PLAYERS, applyAction, findPlayer, newRoom, ranking } from '../src/cohetes/game.js';
 import { carve, decorations, makeTerrain, solid, surfaceY, waterY } from '../src/cohetes/terrain.js';
 import {
-  ITEMS, MAX_COINS, MAX_CRATES, SHIP_TIME, STEP, addItem, blastOn, coinSpots, crateInfo, mapItems, newTank, overlaps, projectilesFor, push, shipAt, shipFor,
+  ITEMS, MAX_COINS, MAX_CRATES, MAX_DROPS, SHIP_TIME, STEP, addItem, blastOn, coinSpots, crateInfo, enclosedPockets, mapItems, newTank, overlaps, projectilesFor, push, shipAt, shipFor,
   stepProjectile, stepTank, useItem,
 } from '../src/cohetes/sim.js';
 
@@ -29,14 +29,14 @@ test('cohetes: la misma semilla arma el mismo mapa, y con los mismos cráteres q
   assert.ok(decorations(a, 1234).length > 10, 'hay plantitas arriba de los bloques');
 });
 
-test('cohetes: hay mapas de tierra y de hielo, y los dos se arman bien', () => {
+test('cohetes: hay mapas de tierra, de hielo y el volcán, y los tres se arman bien', () => {
   const themes = new Set();
   for (let seed = 1; seed < 40; seed++) {
     const t = makeTerrain(seed, 6);
     themes.add(t.theme);
     assert.ok(t.grid.some((v) => v), `mapa vacío con la semilla ${seed}`);
   }
-  assert.deepEqual([...themes].sort(), ['hielo', 'tierra']);
+  assert.deepEqual([...themes].sort(), ['hielo', 'tierra', 'volcan']);
 });
 
 test('cohetes: el agua espera a que bajen todos y después sube, más rápido con la opción rápida', () => {
@@ -174,12 +174,38 @@ test('cohetes: monedas y cajas salen de la semilla, las monedas en el aire', () 
   assert.deepEqual(coins, coinSpots(makeTerrain(42, 10), 42));
   for (const c of coins) assert.ok(!solid(t, c.x, c.y), 'moneda adentro de la tierra');
   assert.deepEqual(crateInfo(3, 42, t.W), crateInfo(3, 42, t.W));
-  const items = mapItems(t, 42);
-  assert.ok(items.length > 5, 'hay cajas tiradas por el mapa');
-  for (const c of items) {
-    assert.ok(c.i < MAX_CRATES && ITEMS[c.weapon]);
-    assert.ok(solid(t, c.x, c.y + 1) && !solid(t, c.x, c.y - 3), 'apoyada arriba de la tierra');
+});
+
+test('cohetes: las piezas del mapa flotan sueltas adentro de recintos cerrados, en todos los temas', () => {
+  const themes = new Set();
+  for (let seed = 1; seed < 40; seed++) {
+    const t = makeTerrain(seed, 8);
+    themes.add(t.theme);
+    const items = mapItems(t, seed);
+    assert.deepEqual(items, mapItems(makeTerrain(seed, 8), seed), 'salen de la semilla');
+    assert.ok(items.length >= 4, `${t.theme} ${seed}: ${items.length} piezas`);
+    const pockets = enclosedPockets(t);
+    for (const c of items) {
+      assert.ok(c.i >= MAX_DROPS && c.i < MAX_CRATES && ITEMS[c.weapon] && c.float);
+      assert.ok(!solid(t, c.x, c.y), 'en el aire, no adentro de la roca');
+      assert.ok(pockets.some((pk) => pk.cells.some((cell) => Math.abs(cell.x - c.x) <= 6 && Math.abs(cell.y - c.y) <= 6)), 'hay que romper bloques para llegar');
+    }
   }
+  assert.ok(themes.has('volcan'));
+});
+
+test('cohetes: el volcán tiene el cráter abierto y una cámara sellada con varias piezas', () => {
+  let seed = 1;
+  while (makeTerrain(seed, 8).theme !== 'volcan') seed++;
+  const t = makeTerrain(seed, 8);
+  const cx = Math.round(t.W / 2);
+  // Cráter: aire arriba del todo; más abajo, roca (el tapón) antes de la cámara.
+  assert.ok(!solid(t, cx, 300), 'el cráter está abierto');
+  assert.ok(solid(t, cx, 285 + 360), 'el tapón de roca cierra la chimenea');
+  const pockets = enclosedPockets(t);
+  assert.ok(pockets.some((pk) => pk.cells.some((c) => Math.abs(c.x - cx) < 30 && Math.abs(c.y - (285 + 480)) < 30)), 'la cámara de magma es un recinto cerrado');
+  const middle = mapItems(t, seed).filter((c) => Math.abs(c.x - cx) < 130 && c.y > 285 + 380 && c.y < 285 + 600);
+  assert.ok(middle.length >= 2, 'la cámara grande guarda más de una pieza');
 });
 
 test('cohetes: el inventario suma lo repetido, usa la primera casilla libre y se vacía al gastarse', () => {

@@ -736,8 +736,10 @@ rompe a cohetazos mientras sube el agua. De 2 a 25, solo compu. `id`: `cohetes` 
 `gameType: 'cohetes'`, raíz `cohetes/` en `ROOTS`). **La primera versión estaba mal entendida** (colinas,
 cohetes en arco); Nico mandó un video del original y se rehízo con esto, que es como funciona de verdad:
 
-- **El mapa** (`terrain.js`): bloques flotando en el espacio, acomodados en una grilla (`CELL`). Dos temas
-  (`THEMES`, sale de la semilla): **tierra** (anillos y «U» huecas, tierra a cuadros con **borde verde en todos
+- **El mapa** (`terrain.js`): bloques flotando en el espacio, acomodados en una grilla (`CELL`). Tres temas
+  (`THEMES`, sale de la semilla): **volcán** (un cono enorme en el medio, `volcano()`: cráter abierto, chimenea con un tapón de roca de 30 px, cámara de magma sellada
+  de 250 × 210 y cuatro bóvedas en los flancos; afuera, `basaltCell`: columnas, arcos, bóvedas, piedras y escaleras; roca oscura con vetas de lava, cielo rojo con
+  brasas que suben y **lava en lugar de agua**), **tierra** (anillos y «U» huecas, tierra a cuadros con **borde verde en todos
   los lados, también en los cráteres**, fondo violeta) y **hielo** (triángulos llenos y huecos, barras en
   diagonal y «V», blanco con borde celeste en capas, fondo azul, picos de hielo). El borde se calcula con la
   distancia al aire (`render.js`). Es una grilla de «píxeles» armada desde la semilla: todas las pantallas
@@ -777,8 +779,10 @@ cohetes en arco); Nico mandó un video del original y se rehízo con esto, que e
   opción de velocidad). Hundirse o quedarse sin vida es quedar afuera; si alguien te pegó en los últimos 6 s,
   la baja es suya (y con su arma).
 - **Todos los tiros tienen gravedad** (pedido de Nico: «no pueden ser lineales»), menos el láser.
-- **Monedas** en fila (de la semilla) y **cajas de metal**: `MAP_ITEMS` (8) tiradas por el mapa solo al empezar
-  (`mapItems`, índices desde `MAX_DROPS`) y una cada 10 s en paracaídas (`crateInfo`).
+- **Monedas** en fila (de la semilla) y **cajas de metal** que caen en paracaídas, una cada 10 s (`crateInfo`). Las `MAP_ITEMS` (8) del principio **no son cajas**:
+  son el ítem suelto, **flotando en el aire de recintos cerrados** (`enclosedPockets`: aire que no se conecta con el de afuera, hallado con una inundación sobre una grilla
+  de 6 px; hay que romper bloques para llegar). `mapItems` reparte una por recinto (índices desde `MAX_DROPS`, marcadas `float`: no caen aunque rompan la roca ni se
+  dibujan como caja, ver `drawLoose`) y los recintos enormes (`TREASURE_CELLS`, la cámara del volcán) guardan hasta tres. Sale todo de la semilla y del mapa sin tocar.
 - La pantalla imita la del original: los 3 cohetes y las 4 casillas abajo al medio, el círculo «tanques quedan»
   arriba a la derecha con las bajas abajo («X [arma] Y»), «Eliminaste a X» en el medio, una flecha roja alrededor de tu tanque hacia el enemigo más cercano (`drawArrow`), el cartel
   «¡ELIMINADO! por X con [arma]» con el puesto («N de M») y «X GANA» al final. No hay mapa chico.

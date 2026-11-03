@@ -77,7 +77,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     s.view = makeTerrainView(s.t);
     s.deco = decorations(s.t, m.seed);
     s.coinSpots = coinSpots(s.t, m.seed);
-    s.crates = new Map(mapItems(s.t, m.seed).map((c) => [c.i, { x: c.x, y: c.y, falling: false, weapon: c.weapon }]));
+    s.crates = new Map(mapItems(s.t, m.seed).map((c) => [c.i, { x: c.x, y: c.y, falling: false, weapon: c.weapon, float: true }]));
     s.zones = new Map();
     s.local = newTank(0, 0, 'ship');
     s.ship = shipFor(m.order, me.id);
@@ -324,7 +324,8 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         }
       }
 
-      // Cajas: las del mapa ya están; las otras caen en paracaídas cada tanto. Todas caen si les sacan el piso.
+      // Cajas: las que caen en paracaídas cada tanto, y las piezas sueltas que flotan en recintos cerrados del mapa
+      // (`float`: no caen aunque rompas la roca, hay que ir a buscarlas).
       for (let i = 0; i < MAX_DROPS; i++) {
         const info = crateInfo(i, m.seed, s.t.W);
         if (info.at > elapsed) break;
@@ -332,9 +333,9 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       }
       for (const [i, c] of s.crates) {
         if (m.crates[i]) { s.crates.delete(i); continue; }
-        if (!solid(s.t, c.x, c.y + 0.5)) { c.y += (c.falling ? 40 : 150) * STEP; if (c.y > s.t.H + 40) s.crates.delete(i); }
+        if (!c.float && !solid(s.t, c.x, c.y + 0.5)) { c.y += (c.falling ? 40 : 150) * STEP; if (c.y > s.t.H + 40) s.crates.delete(i); }
         else c.falling = false;
-        if (p.dead || p.mode !== 'tank' || s.pendingCrates.has(i) || Math.hypot(c.x - p.x, c.y - 5 - p.y) > 12) continue;
+        if (p.dead || p.mode !== 'tank' || s.pendingCrates.has(i) || Math.hypot(c.x - p.x, (c.float ? c.y : c.y - 5) - p.y) > 12) continue;
         // La curita se usa al agarrarla; lo demás va al inventario (sin lugar, la caja queda ahí).
         const heal = c.weapon === 'heal';
         if (!heal && !addItem(p.inv, c.weapon)) continue;

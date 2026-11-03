@@ -10,7 +10,7 @@
 //   y bajan hasta el otro lado. Cada uno salta cuando quiere y baja en paracaídas.
 // - Inventario de 4 casillas (teclas 1 a 4): la 1 es el cohete, infinito; las otras se llenan con lo
 //   que se agarra (cajas del mapa y las que caen en paracaídas).
-import { TOP, seeded, solid, surfaceY } from './terrain.js';
+import { seeded, solid } from './terrain.js';
 
 export const STEP = 1 / 120;
 export const TANK_R = 6.5;       // radio de choque del tanque (su centro es el medio del cuerpo)
@@ -414,18 +414,88 @@ export function crateInfo(i, seed, W) {
   return { at: 14 + i * CRATE_EVERY, x: 140 + rand() * (W - 280), weapon: ITEM_LIST[Math.floor(rand() * ITEM_LIST.length)] };
 }
 
-// Las cajas que ya están en el mapa al empezar: apoyadas arriba de alguna forma.
+// Recintos cerrados: aire que no se conecta con el de afuera, así que para entrar hay que romper la roca.
+// Se busca sobre una grilla gruesa (`STEP` px por casilla) con una inundación desde cada hueco; los que
+// llegan al borde del mapa son de afuera. De cada recinto devuelve sus casillas y, para cada una, qué tan
+// lejos está de las paredes (en casillas gruesas).
+const POCKET_STEP = 6;
+export function enclosedPockets(t, step = POCKET_STEP) {
+  const gw = Math.ceil(t.W / step), gh = Math.ceil(t.H / step);
+  const isAir = (gx, gy) => !t.grid[Math.min(t.H - 1, gy * step + (step >> 1)) * t.W + Math.min(t.W - 1, gx * step + (step >> 1))];
+  const seen = new Uint8Array(gw * gh);
+  const pockets = [];
+  for (let start = 0; start < gw * gh; start++) {
+    if (seen[start] || !isAir(start % gw, Math.floor(start / gw))) continue;
+    const cells = [];
+    const stack = [start];
+    seen[start] = 1;
+    let outside = false;
+    while (stack.length) {
+      const c = stack.pop(), gx = c % gw, gy = Math.floor(c / gw);
+      cells.push(c);
+      if (gx === 0 || gy === 0 || gx === gw - 1 || gy === gh - 1) outside = true;
+      for (const [nx, ny] of [[gx - 1, gy], [gx + 1, gy], [gx, gy - 1], [gx, gy + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+        const n = ny * gw + nx;
+        if (seen[n] || !isAir(nx, ny)) continue;
+        seen[n] = 1;
+        stack.push(n);
+      }
+    }
+    if (outside || cells.length < 12) continue;
+    // Distancia a la pared más cercana, de afuera para adentro.
+    const inside = new Set(cells);
+    const dist = new Map();
+    let frontier = [];
+    for (const c of cells) {
+      const gx = c % gw, gy = Math.floor(c / gw);
+      if ([[gx - 1, gy], [gx + 1, gy], [gx, gy - 1], [gx, gy + 1]].some(([nx, ny]) => !inside.has(ny * gw + nx))) { dist.set(c, 1); frontier.push(c); }
+    }
+    while (frontier.length) {
+      const next = [];
+      for (const c of frontier) {
+        const gx = c % gw, gy = Math.floor(c / gw);
+        for (const [nx, ny] of [[gx - 1, gy], [gx + 1, gy], [gx, gy - 1], [gx, gy + 1]]) {
+          const n = ny * gw + nx;
+          if (inside.has(n) && !dist.has(n)) { dist.set(n, dist.get(c) + 1); next.push(n); }
+        }
+      }
+      frontier = next;
+    }
+    pockets.push({ step, gw, cells: cells.map((c) => ({ x: (c % gw) * step + step / 2, y: Math.floor(c / gw) * step + step / 2, d: dist.get(c) })) });
+  }
+  return pockets;
+}
+
+// Los mejores lugares de un recinto para dejar algo: lo más lejos de las paredes que se pueda y separados
+// entre sí. Siempre con aire de sobra alrededor (la pieza no queda pegada a la roca).
+const SPOT_CLEAR = 2;     // casillas gruesas de aire alrededor, como mínimo
+const SPOT_APART = 42;    // distancia mínima entre dos lugares del mismo recinto
+export function pocketSpots(pocket, max = 3) {
+  const sorted = pocket.cells.filter((c) => c.d >= SPOT_CLEAR).sort((a, b) => b.d - a.d || b.y - a.y || a.x - b.x);
+  const spots = [];
+  for (const c of sorted) {
+    if (spots.length >= max) break;
+    if (spots.every((p) => Math.hypot(p.x - c.x, p.y - c.y) >= SPOT_APART)) spots.push({ x: c.x, y: c.y });
+  }
+  return spots;
+}
+
+// Las piezas que ya están en el mapa al empezar: sueltas, flotando en el aire de recintos cerrados (hay
+// que romper bloques para llegar). Los recintos enormes (la cámara de magma del volcán) son el tesoro: se
+// llevan hasta tres piezas. Con el resto se reparte una por recinto, en orden al azar, y después segundas.
+export const TREASURE_CELLS = 900;   // casillas gruesas (36 px² cada una) desde las que un recinto es un tesoro
 export function mapItems(t, seed) {
   const rand = seeded(seed ^ 0x17e5);
+  const pockets = enclosedPockets(t);
+  const spots = pockets.map((pk) => pocketSpots(pk));
   const list = [];
-  for (let tries = 0; list.length < MAP_ITEMS && tries < MAP_ITEMS * 20; tries++) {
-    const x = 130 + rand() * (t.W - 260);
-    const from = Math.floor(TOP - 10 + rand() * 300);
-    const y = surfaceY(t, x, from);
-    // Si arrancó adentro de una forma no es una superficie: tiene que haber aire arriba.
-    if (y <= from || y >= t.H - 70 || solid(t, x, y - 1) || solid(t, x, y - 12)) continue;
-    if (list.some((c) => Math.hypot(c.x - x, c.y - y) < 60)) continue;
-    list.push({ i: MAX_DROPS + list.length, x, y, weapon: ITEM_LIST[Math.floor(rand() * ITEM_LIST.length)] });
+  const add = (spot) => list.push({ i: MAX_DROPS + list.length, x: spot.x, y: spot.y, weapon: ITEM_LIST[Math.floor(rand() * ITEM_LIST.length)], float: true });
+  pockets.forEach((pk, k) => { if (pk.cells.length >= TREASURE_CELLS) for (const spot of spots[k]) if (list.length < MAP_ITEMS - 3) add(spot); });
+  const order = spots.map((_, k) => k).filter((k) => spots[k].length && pockets[k].cells.length < TREASURE_CELLS);
+  for (let k = order.length - 1; k > 0; k--) { const j = Math.floor(rand() * (k + 1)); [order[k], order[j]] = [order[j], order[k]]; }
+  for (let round = 0; round < 2 && list.length < MAP_ITEMS; round++) {
+    for (const k of order) if (spots[k][round] && list.length < MAP_ITEMS) add(spots[k][round]);
   }
   return list;
 }

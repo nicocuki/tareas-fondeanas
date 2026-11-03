@@ -673,7 +673,14 @@ OCULTA 1.23.1 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.27.0 = Pixel Royale: el botín queda en el piso 🎒
+1.27.0 = Pixel Royale: el botín queda en el piso 🎒
 - Al abrir un cofre, lo que trae ya no va directo al inventario: el arma y las pilas de curitas, botiquines, escudos y granadas caen alrededor del cofre.
 - Cada cosa se agarra apretando Espacio cerca (se resalta la que vas a agarrar y un cartel te dice qué es). El primero que llega se la lleva.
 - Con el inventario lleno, Espacio cambia el arma que tenés en la mano por la del piso, y la vieja queda tirada para que otro (o vos) la agarre. El pico no se cambia nunca.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.28.0 = Cohete Royale: el Volcán 🌋 y tesoros bajo la roca
+- Mapa nuevo, el Volcán: un cono gigante en el medio con el cráter abierto, una chimenea tapada por un tapón de roca y, abajo, la cámara de magma sellada con el mejor botín. Alrededor, columnas de basalto, arcos, bóvedas selladas y escaleras flotando. Roca negra con vetas de lava, cielo rojo con brasas y, en vez del agua, ¡sube la lava!
+- Las piezas que ya están al empezar ya no son cajas: son el ítem suelto, flotando en el aire, adentro de recintos cerrados. Para llegar hay que romper bloques a cohetazos. No caen aunque rompas la roca.
+- Esto vale para los tres mapas (tierra, hielo y volcán). Las cajas que caen en paracaídas siguen igual.

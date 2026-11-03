@@ -1,6 +1,7 @@
-// Dibujo de Cohete Royale, sin estado de juego, con el estilo de Rocket Bot Royale. Dos temas:
+// Dibujo de Cohete Royale, sin estado de juego, con el estilo de Rocket Bot Royale. Tres temas:
 //   tierra  tierra a cuadros grandes, borde verde brillante, franja marrón oscura, fondo violeta
 //   hielo   blanco con bandas celestes hacia el borde, fondo azul
+//   volcán  basalto oscuro con vetas de lava y borde incandescente, fondo rojo, lava en vez de agua
 // En los dos, el borde también aparece en los cráteres (se calcula con la distancia al aire). El terreno
 // es una imagen de un píxel por casilla que se agranda sin suavizar. Se dibuja en unidades del mundo:
 // `cam` = { x, y, scale, w, h }.
@@ -9,12 +10,21 @@ import { ITEMS, MUZZLE, SHIELD_R, TANK_R, ZONES, turret } from './sim.js';
 // ─── Terreno ─────────────────────────────────────────────────────────────────
 const EARTH = { edge: [61, 240, 110], band: [86, 48, 26], checks: [[176, 110, 58], [150, 88, 44], [196, 128, 70], [132, 76, 38]] };
 const ICE = [[94, 214, 255], [150, 228, 255], [205, 244, 255], [255, 255, 255]]; // del borde para adentro
+const VOLC = { edge: [255, 138, 40], glow: [214, 70, 28], rock: [[58, 44, 58], [48, 36, 50], [70, 54, 66], [40, 30, 44]], vein: [236, 96, 30] };
 const CHECK = 9;                      // tamaño de cada cuadro (tierra)
 const MAXD = 11;
 const hash = (x, y) => { const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return n - Math.floor(n); };
 
 function color(theme, d, x, y) {
   if (theme === 'hielo') return d <= 3 ? ICE[0] : d <= 6 ? ICE[1] : d <= 10 ? ICE[2] : ICE[3];
+  if (theme === 'volcan') {
+    if (d <= 2) return VOLC.edge;
+    if (d <= 4) return VOLC.glow;
+    // Vetas de lava: manchas finas que salen de un hash de bloques de 3 casillas.
+    if (hash(Math.floor(x / 3), Math.floor(y / 3)) > 0.965 && d > 6) return VOLC.vein;
+    const bx = Math.floor(x / CHECK), by = Math.floor(y / CHECK);
+    return VOLC.rock[((bx + by) & 1) * 2 + (hash(bx, by) > 0.5 ? 1 : 0)];
+  }
   if (d <= 2) return EARTH.edge;
   if (d <= 6) return EARTH.band;
   const bx = Math.floor(x / CHECK), by = Math.floor(y / CHECK);
@@ -96,6 +106,7 @@ const SNOW = Array.from({ length: 140 }, (_, i) => ({ x: hash(i, 7), y: hash(i, 
 const SKIES = {
   tierra: { stops: ['#2e2346', '#5a4479', '#7d5f97'], pillar: 'rgba(40,28,64,0.35)' },
   hielo: { stops: ['#0b3f78', '#1673c4', '#2aa0ea'], pillar: 'rgba(8,48,100,0.35)' },
+  volcan: { stops: ['#14070e', '#4a1519', '#b04a1c'], pillar: 'rgba(18,5,10,0.5)' },
 };
 
 export function setWorld(ctx, cam) {
@@ -121,11 +132,12 @@ export function drawSky(ctx, cam, now, theme) {
     ctx.roundRect(sx, top, w, cam.h - top + 20, w / 2);
     ctx.fill();
   }
-  // Nieve que cae.
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  // Nieve que cae (o brasas que suben, en el volcán).
+  const embers = theme === 'volcan';
+  ctx.fillStyle = embers ? 'rgba(255,150,50,0.85)' : 'rgba(255,255,255,0.8)';
   for (const f of SNOW) {
     const x = ((f.x * cam.w - cam.x * cam.scale * 0.4 + Math.sin(now * f.v + f.y * 9) * 20) % cam.w + cam.w) % cam.w;
-    const y = ((f.y * cam.h + now * 30 * f.v - cam.y * cam.scale * 0.4) % cam.h + cam.h) % cam.h;
+    const y = ((f.y * cam.h + now * (embers ? -42 : 30) * f.v - cam.y * cam.scale * 0.4) % cam.h + cam.h) % cam.h;
     ctx.beginPath(); ctx.arc(x, y, f.s * Math.max(1, cam.scale / 3), 0, Math.PI * 2); ctx.fill();
   }
 }
@@ -144,7 +156,18 @@ export function drawDecorations(ctx, cam, list, t) {
     if (d.x < x0 || d.x > x1 || d.y < y0 || d.y > y1) continue;
     if (!t.grid[d.y * t.W + d.x] || t.grid[(d.y - 1) * t.W + d.x]) continue;
     const s = d.s;
-    if (d.kind === 'spike' || d.kind === 'crystal') {
+    if (d.kind === 'shard') {
+      ctx.fillStyle = '#2a1830';
+      const h = 9 * s, w = 3.2 * s;
+      ctx.beginPath(); ctx.moveTo(d.x - w, d.y + 0.5); ctx.lineTo(d.x + (d.c - 1) * 0.9, d.y - h); ctx.lineTo(d.x + w, d.y + 0.5); ctx.fill();
+      ctx.strokeStyle = '#ff9a3c'; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(d.x - w, d.y + 0.5); ctx.lineTo(d.x + (d.c - 1) * 0.9, d.y - h); ctx.stroke();
+    } else if (d.kind === 'vent') {
+      ctx.fillStyle = '#2a1a22';
+      ctx.beginPath(); ctx.moveTo(d.x - 4 * s, d.y + 0.5); ctx.lineTo(d.x - 1.5 * s, d.y - 3 * s); ctx.lineTo(d.x + 1.5 * s, d.y - 3 * s); ctx.lineTo(d.x + 4 * s, d.y + 0.5); ctx.fill();
+      ctx.fillStyle = '#ff7a1f';
+      ctx.fillRect(d.x - 1.2 * s, d.y - 3.6 * s, 2.4 * s, 0.9 * s);
+    } else if (d.kind === 'spike' || d.kind === 'crystal') {
       ctx.fillStyle = d.kind === 'spike' ? '#bff0ff' : '#5ed6ff';
       const h = (d.kind === 'spike' ? 7 : 10) * s, w = (d.kind === 'spike' ? 3 : 2.4) * s;
       ctx.beginPath(); ctx.moveTo(d.x - w, d.y + 0.5); ctx.lineTo(d.x + (d.c - 1) * 0.8, d.y - h); ctx.lineTo(d.x + w, d.y + 0.5); ctx.fill();
@@ -178,13 +201,13 @@ export function drawWater(ctx, cam, level, now, theme) {
   setWorld(ctx, cam);
   const x0 = cam.x - cam.w / cam.scale, x1 = cam.x + cam.w / cam.scale;
   const wave = (x) => level + Math.sin(x * 0.045 + now * 2) * 2;
-  ctx.fillStyle = theme === 'hielo' ? 'rgba(40,210,230,0.55)' : 'rgba(58,150,235,0.6)';
+  ctx.fillStyle = theme === 'volcan' ? 'rgba(255,96,24,0.74)' : theme === 'hielo' ? 'rgba(40,210,230,0.55)' : 'rgba(58,150,235,0.6)';
   ctx.beginPath();
   ctx.moveTo(x0, level + 2000);
   for (let x = Math.floor(x0 / 4) * 4; x <= x1; x += 4) ctx.lineTo(x, wave(x));
   ctx.lineTo(x1, level + 2000);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(220,245,255,0.9)';
+  ctx.strokeStyle = theme === 'volcan' ? 'rgba(255,224,130,0.95)' : 'rgba(220,245,255,0.9)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   for (let x = Math.floor(x0 / 4) * 4; x <= x1; x += 4) { if (x === Math.floor(x0 / 4) * 4) ctx.moveTo(x, wave(x)); else ctx.lineTo(x, wave(x)); }
@@ -403,7 +426,35 @@ export function drawCoin(ctx, c, now) {
 }
 
 // Caja de arma: metálica con una X y destellos, como en el original (con paracaídas si viene cayendo).
+// Pieza suelta flotando en un recinto cerrado: el ítem en sí (sin caja), con un halo que late y chispas que giran.
+function drawLoose(ctx, c, now) {
+  const bob = Math.sin(now * 2.2 + c.x * 0.1) * 1.6, y = c.y + bob;
+  const pulse = 0.5 + 0.5 * Math.sin(now * 3 + c.x);
+  const halo = ctx.createRadialGradient(c.x, y, 1, c.x, y, 15);
+  halo.addColorStop(0, `rgba(255,236,150,${0.55 + pulse * 0.25})`);
+  halo.addColorStop(1, 'rgba(255,200,80,0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(c.x, y, 15, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = `rgba(255,245,200,${0.5 + pulse * 0.4})`;
+  ctx.lineWidth = 0.6;
+  for (let i = 0; i < 4; i++) {
+    const a = i * (Math.PI / 2) + now * 0.9, r0 = 9, r1 = 12.5 + pulse * 2;
+    ctx.beginPath(); ctx.moveTo(c.x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(c.x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.stroke();
+  }
+  if (c.weapon === 'heal') {
+    ctx.fillStyle = '#ff4d5e'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.roundRect(c.x - 1.7, y - 5, 3.4, 10, 0.8); ctx.roundRect(c.x - 5, y - 1.7, 10, 3.4, 0.8); ctx.fill(); ctx.stroke();
+    return;
+  }
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(ITEMS[c.weapon]?.icon || '🚀', c.x, y + 0.5);
+}
+
 export function drawCrate(ctx, c, now) {
+  if (c.float) { drawLoose(ctx, c, now); return; }
   if (c.falling) drawChute(ctx, c.x, c.y - 10);
   const x = c.x - 6, y = c.y - 10;
   ctx.fillStyle = '#c9ced6';

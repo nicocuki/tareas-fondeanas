@@ -2,6 +2,8 @@
 // una grilla, y abajo unas islas sobre el agua. Hay dos temas, como en el original:
 //   tierra  anillos y «U» huecas con esquinas redondeadas (tierra a cuadros, borde verde, fondo violeta)
 //   hielo   triángulos, marcos triangulares y barras en diagonal (blanco con bordes celestes, fondo azul)
+//   volcán  un volcán enorme en el medio, con el cráter abierto y cámaras selladas adentro, rodeado de
+//           columnas de basalto, arcos y bóvedas (roca negra con vetas de lava, fondo rojo, la lava sube)
 // Se guarda como grilla de «píxeles» (una casilla = una unidad; y crece hacia abajo) y los cohetes cavan
 // círculos. Todo sale de una semilla: todas las pantallas arman el mismo mapa, y como cavar es borrar
 // (el orden no importa), con los mismos cráteres quedan iguales. Puro: sin React ni red.
@@ -10,7 +12,7 @@ export const CELL = 230;      // cada forma ocupa una celda de la grilla
 export const TOP = 190;       // lugar arriba para los helicópteros que traen a los jugadores
 const MARGIN = 120;
 const ROWS = 4;
-export const THEMES = ['tierra', 'hielo'];
+export const THEMES = ['tierra', 'hielo', 'volcan'];
 
 // Columnas según cuántos juegan: con 25 hace falta lugar.
 export const colsFor = (players) => Math.max(5, Math.min(14, 4 + Math.ceil(players / 2.2)));
@@ -130,6 +132,103 @@ function iceCell(t, rand, x0, y0) {
   paintPoly(t, bar(mx, up ? y + h : y, x + w, up ? y : y + h, thick), 1);
 }
 
+// Una celda del tema volcán (afuera del volcán): columna con una losa flotando, arco, bóveda cerrada,
+// piedra suelta o escalera.
+function basaltCell(t, rand, x0, y0) {
+  const kind = rand();
+  if (kind < 0.1) return;
+  const pad = 16;
+  if (kind < 0.3) {
+    const w = 62 + rand() * 34, h = 140 + rand() * 50;
+    const x = x0 + (CELL - w) * (0.2 + rand() * 0.6), y = y0 + CELL - h - 6;
+    paint(t, { x, y, w, h, r: 14 }, 1);
+    paint(t, { x: x - 20 + rand() * 8, y: y - 32, w: w + 40 - rand() * 8, h: 20, r: 9 }, 1);
+    return;
+  }
+  if (kind < 0.48) {
+    const w = CELL - pad * 2, h = 150 + rand() * 40, x = x0 + pad, y = y0 + CELL - h - 10;
+    const thick = 38 + rand() * 12;
+    paint(t, { x, y, w, h, r: 70 }, 1);
+    const inner = { x: x + thick, y: y + thick, w: w - thick * 2, h: h - thick + 12, r: 38 }; // se abre por abajo
+    paint(t, inner, 0);
+    t.holes.push({ x: inner.x, y: inner.y, w: inner.w, h: inner.h - 22 });
+    return;
+  }
+  if (kind < 0.7) {
+    // Bóveda cerrada: hay que romper la roca para entrar.
+    const w = (CELL - pad * 2) * (0.8 + rand() * 0.2), h = (CELL - pad * 2) * (0.7 + rand() * 0.25);
+    const x = x0 + (CELL - w) / 2, y = y0 + (CELL - h) / 2;
+    const thick = 40 + rand() * 12;
+    paint(t, { x, y, w, h, r: 34 }, 1);
+    const inner = { x: x + thick, y: y + thick, w: w - thick * 2, h: h - thick * 2, r: 22 };
+    if (inner.w < 36 || inner.h < 36) return;
+    paint(t, inner, 0);
+    t.holes.push(inner);
+    return;
+  }
+  if (kind < 0.86) {
+    const cx = x0 + CELL / 2 + (rand() - 0.5) * 24, cy = y0 + CELL / 2 + (rand() - 0.5) * 24, n = 5 + Math.floor(rand() * 2);
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + rand() * 0.4, r = CELL * (0.28 + rand() * 0.18);
+      pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.85]);
+    }
+    paintPoly(t, pts, 1);
+    return;
+  }
+  // Escalera de tres escalones.
+  const w = 150 + rand() * 40, step = 40;
+  const left = rand() < 0.5;
+  for (let i = 0; i < 3; i++) {
+    const ww = w - i * 44, x = left ? x0 + pad : x0 + CELL - pad - ww;
+    paint(t, { x, y: y0 + CELL - pad - step * (i + 1), w: ww, h: step + 2, r: 6 }, 1);
+  }
+}
+
+// El volcán del medio: cono con el cráter abierto arriba, una chimenea tapada por un tapón de roca y,
+// debajo, la cámara de magma sellada (el tesoro grande). Cuatro bóvedas más chicas en los flancos,
+// cornisas para trepar y dos cuernos en el borde del cráter.
+function volcano(t, rand) {
+  const cx = Math.round(t.W / 2);
+  const half = Math.min(430, (t.W - MARGIN * 2) * 0.3);
+  const halfTop = half * 0.36;
+  const top = TOP + 95, base = t.H - 70;
+  const halfAt = (y) => halfTop + ((y - top) / (base - top)) * (half - halfTop);
+  // Isla ancha abajo y cono con los flancos un poco irregulares.
+  paint(t, { x: cx - half - 120, y: t.H - 110, w: (half + 120) * 2, h: 130, r: 40 }, 1);
+  const left = [], right = [];
+  for (let k = 0; k <= 6; k++) {
+    const y = base - (k * (base - top)) / 6;
+    left.push([cx - halfAt(y) - (k % 2 ? rand() * 16 : 0), y]);
+    right.push([cx + halfAt(y) + (k % 2 ? rand() * 16 : 0), y]);
+  }
+  paintPoly(t, [...left, ...right.reverse()], 1);
+  // Cornisas en los flancos.
+  for (const [dy, side] of [[300, -1], [470, 1], [640, -1]]) {
+    const y = top + dy;
+    paint(t, { x: side < 0 ? cx - halfAt(y) - 46 : cx + halfAt(y) - 34, y, w: 80, h: 26, r: 10 }, 1);
+  }
+  // Cráter abierto y cuernos.
+  const rim = halfTop * 0.78;
+  paintPoly(t, [[cx - rim, top - 4], [cx + rim, top - 4], [cx + rim * 0.55, top + 140], [cx - rim * 0.55, top + 140]], 0);
+  for (const s of [-1, 1]) paintPoly(t, [[cx + s * (halfTop + 6), top + 12], [cx + s * (halfTop - 30), top - 78], [cx + s * (halfTop - 58), top + 12]], 1);
+  // Chimenea que baja del cráter y se frena en un tapón de roca, y la cámara de magma.
+  const cyc = top + 380;
+  paint(t, { x: cx - 28, y: top + 130, w: 56, h: cyc - 30 - (top + 130), r: 0 }, 0);
+  const chamber = { x: cx - 125, y: cyc, w: 250, h: 210, r: 90 };
+  paint(t, chamber, 0);
+  t.holes.push(chamber);
+  // Bóvedas selladas en los flancos.
+  for (const [dy, k, w, h] of [[230, 0.5, 80, 70], [560, 0.58, 100, 84]]) {
+    const y = top + dy, off = halfAt(y) * k;
+    for (const s of [-1, 1]) {
+      const v = { x: cx + s * off - w / 2, y, w, h, r: 30 };
+      paint(t, v, 0);
+      t.holes.push(v);
+    }
+  }
+}
+
 // Arma el mapa. Devuelve { W, H, grid, holes, theme }.
 export function makeTerrain(seed, players) {
   const { W, H } = sizeFor(players);
@@ -140,10 +239,13 @@ export function makeTerrain(seed, players) {
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < cols; col++) {
       const x0 = MARGIN + col * CELL, y0 = TOP + row * CELL;
-      if (theme === 'hielo') iceCell(t, rand, x0, y0); else earthCell(t, rand, x0, y0);
+      if (theme === 'hielo') iceCell(t, rand, x0, y0);
+      else if (theme === 'volcan') { if (Math.abs(x0 + CELL / 2 - W / 2) >= Math.min(430, (W - MARGIN * 2) * 0.3) + CELL * 0.35) basaltCell(t, rand, x0, y0); }
+      else earthCell(t, rand, x0, y0);
     }
   }
-  // Islas bajas, apenas arriba del agua del principio.
+  if (theme === 'volcan') volcano(t, rand);
+  // Islas bajas, apenas arriba del agua (o de la lava) del principio.
   const islands = Math.ceil(cols / 2);
   for (let i = 0; i < islands; i++) {
     const w = 140 + rand() * 160;
@@ -194,7 +296,7 @@ export function decorations(t, seed) {
       for (let k = 2; k < 22 && free; k++) if (y - k < 0 || t.grid[(y - k) * t.W + x]) free = false;
       if (free && t.grid[y * t.W + x - 3] && t.grid[y * t.W + x + 3] && rand() < 0.55) {
         const r = rand();
-        const kind = t.theme === 'hielo' ? (r < 0.6 ? 'spike' : 'crystal') : r < 0.35 ? 'pine' : r < 0.5 ? 'birch' : r < 0.75 ? 'flower' : 'grass';
+        const kind = t.theme === 'volcan' ? (r < 0.6 ? 'shard' : 'vent') : t.theme === 'hielo' ? (r < 0.6 ? 'spike' : 'crystal') : r < 0.35 ? 'pine' : r < 0.5 ? 'birch' : r < 0.75 ? 'flower' : 'grass';
         list.push({ x, y, kind, s: 0.7 + rand() * 0.6, c: Math.floor(rand() * 3) });
       }
     }
