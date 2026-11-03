@@ -249,9 +249,9 @@ export function blastTiles(t, ev) {
 }
 
 // ─── Cofres ─────────────────────────────────────────────────────────────────
-// Solo hay cofres: nada tirado en el piso. Abrir uno (mantener Espacio) te da el contenido directo,
-// sin que caiga nada al suelo. El contenido sale de la semilla y del número del cofre: todas las
-// pantallas lo calculan igual y la sala solo anota quién lo abrió primero.
+// Solo hay cofres. Abrir uno (mantener Espacio) deja su contenido en el piso, alrededor, y cada cosa se agarra
+// apretando Espacio cerca. El contenido sale de la semilla y del número del cofre: todas las pantallas lo
+// calculan igual y la sala solo anota quién abrió el cofre y quién agarró cada cosa.
 export const OPEN_TIME = 0.9;   // segundos manteniendo Espacio
 export const OPEN_RANGE = 15;   // a qué distancia se abre
 
@@ -282,25 +282,60 @@ export function chestContents(seed, i, tier, extra = null) {
   return { w, items };
 }
 
-// Se queda con lo que entre: el arma va a un lugar libre (o cambia la que tenés en la mano si es mejor)
-// y las cosas hasta su tope. Devuelve los nombres de lo que se llevó.
-export function giveContents(p, c) {
-  const got = [];
-  if (c.w) {
-    if (canTake(p, c.w)) { if (take(p, c.w) !== null) got.push(WEAPONS[c.w].name); }
-    else {
-      // Inventario lleno: reemplaza la peor de las tres armas, solo si la nueva es mejor. El pico no se toca.
-      let worst = 1;
-      for (let i = 2; i < SLOTS; i++) if (WEAPONS[p.inv[i].w].rarity < WEAPONS[p.inv[worst].w].rarity) worst = i;
-      if (WEAPONS[c.w].rarity > WEAPONS[p.inv[worst].w].rarity) { p.inv[worst] = { w: c.w, mag: WEAPONS[c.w].mag }; if (p.sel === worst) p.reloadUntil = 0; got.push(WEAPONS[c.w].name); }
-    }
+// Lo que queda en el piso cuando se abre un cofre: el arma y una pila de cada cosa, repartidas alrededor del
+// cofre. Sale de la semilla y del número del cofre, así todas las pantallas lo ven igual; la sala solo anota
+// quién agarró cada cosa (`took`, con la clave de abajo).
+export const PICK_RANGE = 13;   // a qué distancia se agarra algo del piso
+export const MAX_PILES = 6;     // un cofre deja a lo sumo un arma y cuatro pilas
+export const MAX_TOOK = 300;    // tope de lo anotado en la sala (por el límite de 30.000 caracteres)
+const SPREAD = 10;              // a qué distancia del cofre cae cada cosa
+export function groundItems(seed, ch) {
+  const c = chestContents(seed, ch.i, ch.tier, ch.extra);
+  const list = [];
+  if (c.w) list.push({ kind: c.w, n: 1, mag: WEAPONS[c.w].mag });
+  for (const [kind, n] of Object.entries(c.items)) list.push({ kind, n });
+  const a0 = mulberry32(seed ^ (0x2545f491 + ch.i * 131))() * Math.PI * 2;
+  return list.map((it, k) => {
+    const a = a0 + (k / list.length) * Math.PI * 2;
+    return { ...it, key: `${ch.i}:${k}`, x: Math.round((ch.x + Math.cos(a) * SPREAD) * 10) / 10, y: Math.round((ch.y + Math.sin(a) * SPREAD) * 10) / 10 };
+  });
+}
+
+// El lugar del arma que se cambia al agarrar otra con el inventario lleno: la que tenés en la mano o, si
+// tenés el pico, la peor de las tres. El pico no se toca nunca.
+export function swapSlot(p) {
+  if (p.sel >= 1 && p.sel < SLOTS && p.inv[p.sel]) return p.sel;
+  let worst = null;
+  for (let i = 1; i < SLOTS; i++) if (p.inv[i] && (worst === null || WEAPONS[p.inv[i].w].rarity < WEAPONS[p.inv[worst].w].rarity)) worst = i;
+  return worst;
+}
+
+// Qué pasa si agarrás `item`: 'take' (entra), 'swap' (cambia el arma de la mano) o 'full' (no entra).
+export function pickAction(p, item) {
+  if (isWeapon(item.kind)) return canTake(p, item.kind) ? 'take' : swapSlot(p) === null ? 'full' : 'swap';
+  return p.items[item.kind] < ITEMS[item.kind].max ? 'take' : 'full';
+}
+
+// Agarra `item`. Devuelve null si no entra o { name, dropped }: `dropped` es el arma que tenías y que tiene
+// que quedar en el piso (solo al cambiar).
+export function pickUp(p, item) {
+  const how = pickAction(p, item);
+  if (how === 'full') return null;
+  if (!isWeapon(item.kind)) {
+    const before = p.items[item.kind];
+    p.items[item.kind] = Math.min(ITEMS[item.kind].max, before + item.n);
+    return { name: `${ITEMS[item.kind].name} x${p.items[item.kind] - before}`, dropped: null };
   }
-  for (const [kind, n] of Object.entries(c.items)) {
-    const before = p.items[kind];
-    p.items[kind] = Math.min(ITEMS[kind].max, before + n);
-    if (p.items[kind] > before) got.push(`${ITEMS[kind].name} x${p.items[kind] - before}`);
-  }
-  return got;
+  const mag = item.mag ?? WEAPONS[item.kind].mag;
+  const same = p.inv.findIndex((g) => g?.w === item.kind);
+  if (same >= 0) { p.inv[same].mag = Math.max(p.inv[same].mag, mag); return { name: WEAPONS[item.kind].name, dropped: null }; }
+  const free = p.inv.findIndex((g) => !g);
+  if (free >= 0) { p.inv[free] = { w: item.kind, mag }; return { name: WEAPONS[item.kind].name, dropped: null }; }
+  const slot = swapSlot(p);
+  const dropped = p.inv[slot];
+  p.inv[slot] = { w: item.kind, mag };
+  p.reloadUntil = 0;
+  return { name: WEAPONS[item.kind].name, dropped };
 }
 
 // Los cofres del cielo: cada tanto cae uno adentro de la zona de ese momento, con lo mejor.

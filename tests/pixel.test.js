@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS, T, TILE, TILE_HP, makeMap, placeAt, reachable, tileAt, zoneAt, damageTile, isWalkable } from '../src/pixel/map.js';
-import { WEAPONS, SLOTS, BUILD_CODE, BUILD_COST, MAX_WOOD, WOOD_BREAK, buildProblem, placePiece, GLIDE_AT, BUS_SPEED, bulletsForShot, stepBullet, dropInfo, spawnPoint, standable, newPlayer, hurt, take, canTake, startCast, finishCast, blastOn, MAX_DROPS, DROP_BASE, chestContents, giveContents, contentsOf, busRoute, busAt, boardBus, jump, stepAir, openGlider, landSpot } from '../src/pixel/sim.js';
+import { WEAPONS, SLOTS, BUILD_CODE, BUILD_COST, MAX_WOOD, WOOD_BREAK, buildProblem, placePiece, GLIDE_AT, BUS_SPEED, bulletsForShot, stepBullet, dropInfo, spawnPoint, standable, newPlayer, hurt, take, canTake, startCast, finishCast, blastOn, MAX_DROPS, DROP_BASE, chestContents, groundItems, pickAction, pickUp, swapSlot, MAX_TOOK, contentsOf, busRoute, busAt, boardBus, jump, stepAir, openGlider, landSpot } from '../src/pixel/sim.js';
 import { COUNTDOWN_MS, MAX_PLAYERS, applyAction, newRoom, startProblem, findPlayer } from '../src/pixel/game.js';
 
 test('pixel: la misma semilla arma el mismo mapa y cada mapa tiene su tamaño', () => {
@@ -44,25 +44,62 @@ test('pixel: la isla grande tiene los lugares con nombre, y la playa se llama co
   assert.equal(placeAt(t, at('muelle').cx * TILE, at('muelle').cy * TILE).id, 'muelle');
 });
 
-test('pixel: el contenido de un cofre sale de la semilla, entra al inventario y no cae al piso', () => {
+test('pixel: el contenido de un cofre sale de la semilla y queda en el piso, igual en todas las pantallas', () => {
   const a = chestContents(9, 4, 2), b = chestContents(9, 4, 2);
   assert.deepEqual(a, b);
   assert.ok(WEAPONS[a.w]);
+  const ch = { i: 4, tier: 2, x: 100, y: 80 };
+  const items = groundItems(9, ch);
+  assert.deepEqual(items, groundItems(9, ch));
+  assert.equal(items[0].kind, a.w, 'primero el arma');
+  assert.equal(items.length, 1 + Object.keys(a.items).length);
+  assert.equal(new Set(items.map((it) => it.key)).size, items.length, 'cada cosa tiene su clave');
+  for (const it of items) assert.ok(Math.hypot(it.x - ch.x, it.y - ch.y) < 12, 'cae pegado al cofre');
+  assert.ok(contentsOf(makeMap('grande', 9), 9, DROP_BASE + 1));
+});
+
+test('pixel: agarrar del piso entra al inventario y, con todo lleno, cambia el arma de la mano', () => {
   const p = newPlayer(0, 0);
-  const got = giveContents(p, { w: 'rifle', items: { bandage: 3, grenade: 2 } });
-  assert.equal(p.inv[1].w, 'rifle');
+  assert.equal(pickAction(p, { kind: 'rifle', n: 1 }), 'take');
+  assert.equal(pickUp(p, { kind: 'rifle', n: 1, mag: 3 }).dropped, null);
+  assert.deepEqual(p.inv[1], { w: 'rifle', mag: 3 }, 'conserva las balas del cargador');
+  const got = pickUp(p, { kind: 'bandage', n: 3 });
   assert.equal(p.items.bandage, 3);
-  assert.equal(got.length, 3);
-  // Con el inventario lleno solo cambia el arma de la mano si la nueva es mejor.
+  assert.match(got.name, /x3/);
   take(p, 'smg');
   take(p, 'shotgun');
-  giveContents(p, { w: 'pistol', items: {} });
-  assert.ok(p.inv.every((g) => g?.w !== 'pistol'), 'una peor no reemplaza');
-  giveContents(p, { w: 'sniper', items: {} });
-  assert.ok(p.inv.some((g) => g?.w === 'sniper'), 'una mejor reemplaza a la peor');
+  // Inventario lleno: cambia la que tenés en la mano (sea mejor o peor) y deja la vieja para tirar.
+  p.sel = 2;
+  assert.equal(swapSlot(p), 2);
+  assert.equal(pickAction(p, { kind: 'sniper', n: 1 }), 'swap');
+  const swap = pickUp(p, { kind: 'sniper', n: 1 });
+  assert.equal(swap.dropped.w, 'smg');
+  assert.equal(p.inv[2].w, 'sniper');
   assert.equal(p.inv[0].w, 'pickaxe', 'el pico no se toca');
-  assert.ok(p.inv.some((g) => g?.w === 'rifle'));
-  assert.ok(contentsOf(makeMap('grande', 9), 9, DROP_BASE + 1));
+  // Con el pico en la mano, cambia la peor de las tres.
+  p.sel = 0;
+  const worst = swapSlot(p);
+  assert.ok(worst >= 1);
+  assert.equal(pickUp(p, { kind: 'pistol', n: 1 }).dropped.w, [null, 'rifle', 'sniper', 'shotgun'][worst]);
+  assert.equal(p.inv[0].w, 'pickaxe');
+  // Lo que ya está al tope no entra.
+  p.items.bandage = 99;
+  assert.equal(pickAction(p, { kind: 'bandage', n: 2 }), 'full');
+  assert.equal(pickUp(p, { kind: 'bandage', n: 2 }), null);
+});
+
+test('pixel: lo del piso lo agarra uno solo, y solo de un cofre abierto', () => {
+  let r = applyAction(room(3), { type: 'start', playerId: 'h' }, { now: 0, rand: () => 0.3 });
+  const late = COUNTDOWN_MS + 1, m = r.match.n;
+  assert.equal(applyAction(r, { type: 'take', playerId: 'p1', match: m, key: '4:0' }, { now: late }), null, 'el cofre está cerrado');
+  r = applyAction(r, { type: 'loot', playerId: 'h', match: m, i: 4 }, { now: late });
+  const a = applyAction(r, { type: 'take', playerId: 'p1', match: m, key: '4:0' }, { now: late });
+  assert.equal(a.match.took['4:0'], 'p1');
+  assert.equal(applyAction(a, { type: 'take', playerId: 'p2', match: m, key: '4:0' }, { now: late }), null, 'se lo lleva uno solo');
+  assert.ok(applyAction(a, { type: 'take', playerId: 'p2', match: m, key: '4:1' }, { now: late }), 'otra cosa del mismo cofre sí');
+  assert.ok(applyAction(a, { type: 'take', playerId: 'p2', match: m, key: 'w0.1' }, { now: late }), 'un arma tirada');
+  for (const key of ['4:9', '4', 'x', '9999:0', 'w0', '4:0 ']) assert.equal(applyAction(r, { type: 'take', playerId: 'p1', match: m, key }, { now: late }), null, key);
+  assert.equal(applyAction(r, { type: 'take', playerId: 'p1', match: m + 1, key: '4:0' }, { now: late }), null, 'de otra partida no');
 });
 
 test('pixel: el bus cruza la isla, se salta, se cae, se abre el planeador y se aterriza en suelo libre', () => {
@@ -235,6 +272,8 @@ test('pixel: el peor caso de sala entra en los 30.000 caracteres', () => {
   let r = applyAction(room(10), { type: 'start', playerId: 'h' }, { now: 0, rand: () => 0.3 });
   const late = COUNTDOWN_MS + 1;
   for (let i = 0; i < 216; i++) r = applyAction(r, { type: 'loot', playerId: i % 2 ? 'h' : 'p1', match: r.match.n, i: i < 200 ? i : i }, { now: late }) || r;
+  for (let i = 0; i < MAX_TOOK + 20; i++) r = applyAction(r, { type: 'take', playerId: i % 2 ? 'h' : 'p1', match: r.match.n, key: i < 600 ? (i < 200 ? `${i}:${i % 4}` : `w${i}.${i % 10}`) : '0:0' }, { now: late }) || r;
+  assert.ok(Object.keys(r.match.took).length <= MAX_TOOK, 'lo anotado tiene tope');
   for (let i = 1; i < 9; i++) r = applyAction(r, { type: 'died', playerId: `p${i}`, match: r.match.n, by: 'h', w: 'sniper' }, { now: late }) || r;
   assert.ok(JSON.stringify(r).length < 30000, String(JSON.stringify(r).length));
 });

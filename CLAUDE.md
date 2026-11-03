@@ -808,9 +808,13 @@ De 2 a 10, solo compu. `id`: `pixel` (`?juego=pixel`, `gameType: 'pixel'`, raíz
   es sólido), `CROP` (chacra). **Un lugar nuevo**: una entrada en `PLACE_DEFS` con su `stamp` y su posición por mapa. `makeMap` **descarta los cofres a los que
   no se llega a pie** (`reachable`) y hay un test que mira todos los mapas.
 - **Solo hay cofres, nada en el piso** (pedido de Nico). Los de `t.chests` (en casas, torres, búnkeres y sueltos por el campo; `tier` 1 a 3) y los
-  cofres dorados que caen del cielo (`dropInfo`, números desde `DROP_BASE`). Se abren **manteniendo Espacio** `OPEN_TIME` cerca; la sala solo
-  anota quién lo abrió primero (`loot`) y el contenido (`chestContents`, de la semilla y el número) va **directo al inventario** (`giveContents`:
-  el arma cambia la de la mano solo si es de más rareza).
+  cofres dorados que caen del cielo (`dropInfo`, números desde `DROP_BASE`). Se abren **manteniendo Espacio** `OPEN_TIME` cerca; la sala anota
+  quién lo abrió primero (`loot`) y el contenido (`chestContents`, de la semilla y el número) **queda en el piso**, repartido alrededor del cofre
+  (`groundItems`: el arma y una pila de cada cosa, con su clave `cofre:n`). Cada cosa se agarra **apretando Espacio** cerca (`PICK_RANGE`, un
+  toque nuevo: el que sigue apretado después de abrir no agarra nada): la acción `take` anota en `match.took` quién la agarró primero
+  (tope `MAX_TOOK`, borra las más viejas). Con el inventario lleno, Espacio **cambia el arma que tenés en la mano** (`swapSlot`; con el pico en la
+  mano, la peor de las tres; el pico no se toca) y la vieja queda en el piso como arma tirada (`w{n}.{lugar}`), que viaja en la foto (`dw`)
+  como lo construido y se agarra igual. `pickAction`/`pickUp` son puros; las pilas que no entran del todo se agarran hasta el tope.
 - **Isla de espera → bus → caída**: `COUNTDOWN_MS` (15 s) es la isla de espera: se camina y se prueba la pistola (balas infinitas, sin daño). Al
   llegar a 0 la pantalla pasa al mapa de verdad y todos suben al **bus** (`busRoute`/`busAt`, sale de la semilla: nadie se avisa nada). Cada uno salta con
   Espacio (o el bus lo tira al llegar al final) y cae (`jump`, `stepAir`): caída libre rápida y, al bajar de `GLIDE_AT`, planeador (o antes con

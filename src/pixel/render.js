@@ -381,6 +381,24 @@ export function drawChests(g, chests, opened, cam, W, H, time, nearId, progress)
   }
 }
 
+// Lo que quedó en el piso al abrir un cofre (o un arma que alguien cambió). `nearKey`: lo que se agarraría con Espacio.
+export function drawGroundItems(g, items, cam, W, H, time, nearKey) {
+  for (const it of items) {
+    const x = Math.round(it.x - cam.x), y = Math.round(it.y - cam.y);
+    if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+    const icon = lootIcon(it.kind);
+    if (!icon) continue;
+    const weapon = WEAPONS[it.kind];
+    g.globalAlpha = 0.35 + 0.15 * Math.sin(time * 4 + it.x);
+    ring(g, x, y, 7, weapon ? RARITY_COLORS[weapon.rarity] : '#ffffff');
+    g.globalAlpha = 1;
+    const bob = Math.round(Math.sin(time * 3 + it.x * 0.7) * 1);
+    g.drawImage(icon, Math.round(x - icon.width / 2), Math.round(y - icon.height / 2) + bob);
+    if (it.n > 1) drawText(g, `x${it.n}`, x + 4, y + 3, '#ffffff', { scale: 0.6 });
+    if (it.key === nearKey) { g.strokeStyle = '#fff'; g.lineWidth = 1; g.strokeRect(x - 8.5, y - 8.5, 17, 17); }
+  }
+}
+
 // El cofre que cae del cielo con paracaídas (o ya aterrizó). `k` va de 0 (arriba) a 1 (en el piso).
 export function drawAirdrop(g, d, cam, time, k, opened) {
   const a = getArt();

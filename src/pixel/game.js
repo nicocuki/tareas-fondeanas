@@ -4,7 +4,7 @@
 // Acá va lo que es de a una vez: quién juega, el mapa y su semilla, quién murió (y quién lo mató),
 // qué cofres ya se abrieron y el ranking. El movimiento, los tiros y las explosiones van en tiempo
 // real por otro lado (PixelGame.jsx): cada pantalla es dueña de su jugador y avisa acá cuando muere.
-import { LOOT_LIMIT, WEAPONS } from './sim.js';
+import { LOOT_LIMIT, MAX_PILES, MAX_TOOK, WEAPONS } from './sim.js';
 import { MAPS, MAP_IDS } from './map.js';
 import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
@@ -148,6 +148,7 @@ export function applyAction(room, action, ctx = {}) {
         size: next.players.length,
         deaths: [],
         loot: {},
+        took: {},
         winner: null,
       };
       next.phase = 'playing';
@@ -164,12 +165,30 @@ export function applyAction(room, action, ctx = {}) {
       break;
     }
 
-    // Cofre: lo abre el primero que llega (la transacción deja pasar a uno). El contenido sale de la semilla.
+    // Cofre: lo abre el primero que llega (la transacción deja pasar a uno). El contenido sale de la semilla
+    // y queda en el piso (ver `take`).
     case 'loot': {
       const i = action.i;
       if (next.phase !== 'playing' || !sameMatch || !me?.alive || !Number.isInteger(i) || i < 0 || i >= LOOT_LIMIT || next.match.loot[i]) return null;
       next.match.loot[i] = me.id;
       me.loot += 1;
+      break;
+    }
+
+    // Lo que quedó en el piso al abrir un cofre (o un arma que alguien cambió): lo agarra el primero que llega.
+    // Las claves son «cofre:número» (el cofre tiene que estar abierto) o «w{n}.{lugar}» (un arma tirada).
+    case 'take': {
+      const key = action.key;
+      if (next.phase !== 'playing' || !sameMatch || !me?.alive || typeof key !== 'string') return null;
+      const took = (next.match.took ||= {});
+      const chest = /^(\d{1,3}):(\d)$/.exec(key);
+      if (chest) {
+        if (Number(chest[1]) >= LOOT_LIMIT || Number(chest[2]) >= MAX_PILES || !next.match.loot[chest[1]]) return null;
+      } else if (!/^w\d{1,5}\.\d{1,2}$/.test(key)) return null;
+      if (took[key]) return null;
+      const keys = Object.keys(took);
+      if (keys.length >= MAX_TOOK) delete took[keys[0]];
+      took[key] = me.id;
       break;
     }
 

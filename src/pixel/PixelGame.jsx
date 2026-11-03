@@ -12,13 +12,13 @@ import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { TILE, TILE_HP, circleBlocked, damageTile, makeMap, placeAt, tileAt, zoneAt } from './map.js';
 import {
-  BLASTS, BUILD_CODE, BUILD_COST, BUILD_GAP, DROP_BASE, DROP_FALL, GRENADE_GAP, HP, ITEMS, ITEM_LIST, MAX_DROPS, MAX_WOOD, OPEN_RANGE, OPEN_TIME, PLAYER_R, PREGAME, SLOTS, STEP, WEAPONS, WOOD_BREAK, WOOD_HIT,
-  blastOn, blastTiles, boardBus, buildProblem, bulletHits, bulletsForShot, busAt, busRoute, contentsOf, dropInfo, finishCast, finishReload, giveContents, grenadeFor, held, hurt,
-  jump, landSpot, newPlayer, openGlider, placePiece, selectSlot, shove, spawnPoint, startCast, startReload, stepAir, stepBullet, stepGrenade, stepPlayer,
+  BLASTS, PICK_RANGE, BUILD_CODE, BUILD_COST, BUILD_GAP, DROP_BASE, DROP_FALL, GRENADE_GAP, HP, ITEMS, ITEM_LIST, MAX_DROPS, MAX_WOOD, OPEN_RANGE, OPEN_TIME, PLAYER_R, PREGAME, SLOTS, STEP, WEAPONS, WOOD_BREAK, WOOD_HIT,
+  blastOn, blastTiles, boardBus, buildProblem, bulletHits, bulletsForShot, busAt, busRoute, chestOf, dropInfo, finishCast, finishReload, grenadeFor, groundItems, held, hurt,
+  jump, landSpot, newPlayer, openGlider, pickAction, pickUp, placePiece, selectSlot, shove, spawnPoint, startCast, startReload, stepAir, stepBullet, stepGrenade, stepPlayer, swapSlot,
 } from './sim.js';
 import {
   VIEW_W, buildMinimap, burst, drawAirPlayer, drawAirdrop, drawBigMap, drawBullet, drawBus, drawCanopies, drawChests, drawClouds, drawDead, drawExplosions,
-  drawFloaters, drawGhost, drawGrenade, drawGround, drawMinimap, drawParticles, drawPlaceLabels, drawPlayer, drawRoute, drawText, drawWind, drawZone, lootIcon,
+  drawFloaters, drawGhost, drawGrenade, drawGround, drawGroundItems, drawMinimap, drawParticles, drawPlaceLabels, drawPlayer, drawRoute, drawText, drawWind, drawZone, lootIcon,
 } from './render.js';
 import { alive as alivePlayers, findPlayer, inGame } from './game.js';
 
@@ -63,7 +63,8 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
   if (!sim.current) {
     sim.current = {
       n: 0, t: null, real: null, wait: null, stage: 'wait', route: null, mini: null, big: null, showMap: false, local: null, drops: [], remotes: new Map(), lastSeen: new Map(),
-      myBuilds: [], buildAt: 0, build: null, hold: false, spaceEdge: false, openT: 0, openFor: null, placeId: '',
+      myBuilds: [], buildAt: 0, build: null, hold: false, spaceEdge: false, holdUsed: false, openT: 0, openFor: null, placeId: '',
+      dyn: [], myDrops: [], dropSeq: 0, groundCache: new Map(), nearItem: null,
       bullets: new Map(), grenades: new Map(), seen: new Set(), myShots: [], myBooms: [], myGren: [], myHits: [],
       particles: [], floaters: [], blasts: [], shake: 0, seq: 0, cam: { x: 0, y: 0 }, angle: 0,
       input: { up: false, down: false, left: false, right: false, shoot: false }, pressed: false, mouse: { x: 0, y: 0, in: false },
@@ -86,6 +87,7 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
     s.big = buildMinimap(s.real, s.real.N <= 60 ? 120 : 150);
     s.route = busRoute(s.real, m.seed);
     s.drops = Array.from({ length: MAX_DROPS }, (_, n) => dropInfo(s.real, m.seed, n, m.zone));
+    s.dyn = []; s.myDrops = []; s.dropSeq = 0; s.groundCache.clear(); s.nearItem = null; s.holdUsed = false;
     s.openT = 0; s.openFor = null; s.hold = false; s.showMap = false; s.placeId = ''; s.build = null; s.myBuilds = [];
     const at = Math.max(0, m.order.indexOf(me.id));
     const elapsed = serverNow() - m.startsAt / 1000;
@@ -163,6 +165,15 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
     if (p && !p.dead && !p.air && !p.aboard && circleBlocked(s.t, p.x, p.y, PLAYER_R)) { const sp = landSpot(s.t, p.x, p.y); p.x = sp.x; p.y = sp.y; }
   }
 
+  // Un arma que alguien cambió y quedó tirada en el piso (la mía o la de otro). Se agarra como lo de los cofres.
+  function applyDrop(s, ev) {
+    const key = `w:${ev?.k}`;
+    if (!ev || s.seen.has(key) || typeof ev.k !== 'string' || !(WEAPONS[ev.kind] || ITEMS[ev.kind]) || !Number.isFinite(ev.x) || !Number.isFinite(ev.y)) return;
+    s.seen.add(key);
+    s.dyn.push({ key: ev.k, kind: ev.kind, n: Math.min(9, Math.max(1, ev.n | 0)), mag: Number.isFinite(ev.mag) ? ev.mag : undefined, x: ev.x, y: ev.y });
+    if (s.dyn.length > 80) s.dyn.shift();
+  }
+
   // Una explosión o un impacto (mío o de otro): rompe casillas y, si me alcanza, me lastima.
   function boom(s, ex, now) {
     const key = `x:${ex.k}`;
@@ -229,6 +240,7 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
       for (const k of snap.hi || []) s.bullets.delete(k);
       for (const ex of snap.ex || []) boom(s, ex, now);
       for (const bd of snap.bd || []) applyBuild(s, bd);
+      for (const dw of snap.dw || []) applyDrop(s, dw);
     };
     const mesh = createMesh({ signaling: chan.signaling, myId: me.id, onMessage: onSnap });
     s.mesh = mesh;
@@ -293,7 +305,57 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
       s.myGren.push(ev);
     }
 
-    // Cofres: se abren manteniendo Espacio cerca. Lo que traen va directo al inventario (nada cae al piso).
+    // Lo que hay en el piso: lo que dejaron los cofres abiertos y las armas que alguien cambió, menos lo ya agarrado.
+    function groundList(m) {
+      const took = m.took || {};
+      const out = [];
+      for (const key of Object.keys(m.loot)) {
+        const i = Number(key);
+        let items = s.groundCache.get(i);
+        if (!items) {
+          const ch = chestOf(s.real, m.seed, i, m.zone);
+          items = ch ? groundItems(m.seed, ch) : [];
+          s.groundCache.set(i, items);
+        }
+        for (const it of items) if (!took[it.key]) out.push(it);
+      }
+      for (const d of s.dyn) if (!took[d.key]) out.push(d);
+      return out;
+    }
+    // Tira algo en el piso, al lado mío (un arma que cambié), y avisa a los demás en la foto.
+    function dropAt(p, m, item, now) {
+      const seq = s.dropSeq++;
+      const a = seq * 2.4;
+      const ev = { k: `w${seq}.${Math.max(0, m.order.indexOf(me.id))}`, t: now, x: round1(p.x + Math.cos(a) * 6), y: round1(p.y + Math.sin(a) * 6), kind: item.kind, n: item.n, mag: item.mag };
+      applyDrop(s, ev);
+      s.myDrops.push(ev);
+    }
+    // Espacio cerca de algo del piso lo agarra; con el inventario lleno, cambia el arma que tenés en la mano.
+    function pickups(p, m, space) {
+      let near = null, nd = Infinity;
+      for (const it of groundList(m)) {
+        if (s.pending.has(it.key)) continue;
+        const d = Math.hypot(it.x - p.x, it.y - p.y);
+        if (d < PICK_RANGE && d < nd) { near = it; nd = d; }
+      }
+      s.nearItem = near;
+      if (!near || !space || p.cast) return;
+      s.holdUsed = true; // este Espacio es para agarrar: no tiene que empezar a abrir un cofre
+      if (pickAction(p, near) === 'full') { flash(`No te entra ${(WEAPONS[near.kind] || ITEMS[near.kind]).name.toLowerCase()}`); return; }
+      s.pending.add(near.key);
+      dispatchRef.current({ type: 'take', match: m.n, key: near.key }).then((res) => {
+        const won = res?.committed && res.room?.match?.took?.[near.key] === me.id;
+        if (!won) { s.pending.delete(near.key); return; }
+        const now = serverNow();
+        const got = pickUp(p, near);
+        if (!got) { dropAt(p, m, near, now); return; } // el inventario cambió mientras tanto: vuelve al piso
+        if (got.dropped) dropAt(p, m, { kind: got.dropped.w, n: 1, mag: got.dropped.mag }, now);
+        flash(got.dropped ? `${got.name} (cambiaste ${WEAPONS[got.dropped.w].name})` : got.name);
+        burst(s.particles, near.x, near.y, { n: 8, speed: 40, life: 0.5, colors: ['#ffd23f', '#ffffff'], gravity: 20 });
+      });
+    }
+
+    // Cofres: se abren manteniendo Espacio cerca. Lo que traen queda en el piso (ver `pickups`).
     function chestList(m, now) {
       const list = s.real.chests.filter((ch) => !m.loot[ch.i]);
       for (const d of s.drops) if (now >= m.startsAt / 1000 + PREGAME + d.at && !m.loot[d.i]) list.push(d);
@@ -307,7 +369,7 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
         if (d < OPEN_RANGE && d < nd) { near = ch; nd = d; }
       }
       s.near = near;
-      if (!near || !s.hold || p.cast) { s.openT = Math.max(0, s.openT - STEP * 3); if (!near) s.openFor = null; return; }
+      if (!near || !s.hold || s.holdUsed || p.cast) { s.openT = Math.max(0, s.openT - STEP * 3); if (!near) s.openFor = null; return; }
       if (s.openFor !== near.i) { s.openFor = near.i; s.openT = 0; }
       s.openT += STEP / OPEN_TIME;
       if (s.openT < 1) return;
@@ -316,8 +378,7 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
       dispatchRef.current({ type: 'loot', match: m.n, i: near.i }).then((res) => {
         const won = res?.committed && res.room?.match?.loot?.[near.i] === me.id;
         if (!won) { s.pending.delete(near.i); return; }
-        const got = giveContents(p, contentsOf(s.real, m.seed, near.i, m.zone));
-        flash(got.length ? got.join(' · ') : 'Cofre vacío');
+        flash('Cofre abierto: lo que trae quedó en el piso');
         burst(s.particles, near.x, near.y, { n: 16, speed: 70, life: 0.7, colors: ['#ffd23f', '#fff0a0', '#ffffff'], gravity: 30 });
       });
     }
@@ -403,6 +464,7 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
           const done = finishCast(p, now);
           if (done) { burst(s.particles, p.x, p.y, { n: 10, speed: 30, life: 0.5, colors: done === 'shield' ? ['#5ab4ff', '#ffffff'] : ['#5ed36b', '#ffffff'], gravity: -30 }); }
           act0();
+          pickups(p, m, space);
           chests(p, m, now);
           if (s.throwNow) { s.throwNow = false; throwGrenade(p, m, now); }
 
@@ -514,13 +576,13 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
       if (now - s.sentAt >= SEND_EVERY) {
         s.sentAt = now;
         const fresh = (list) => list.filter((e) => now - e.t < EVENT_KEEP);
-        s.myShots = fresh(s.myShots); s.myBooms = fresh(s.myBooms); s.myGren = fresh(s.myGren); s.myHits = fresh(s.myHits); s.myBuilds = fresh(s.myBuilds);
+        s.myShots = fresh(s.myShots); s.myBooms = fresh(s.myBooms); s.myGren = fresh(s.myGren); s.myHits = fresh(s.myHits); s.myBuilds = fresh(s.myBuilds); s.myDrops = fresh(s.myDrops);
         const gun = held(p);
         const span = Math.max(0.001, now - (s.prevT ?? now - SEND_EVERY));
         const snap = {
           n: m.n, t: now, x: round1(p.x), y: round1(p.y), vx: Math.round((p.x - (s.prevX ?? p.x)) / span), vy: Math.round((p.y - (s.prevY ?? p.y)) / span),
           a: Math.round(s.angle * 100) / 100, hp: Math.max(0, Math.round(p.hp)), sd: Math.round(p.shield), d: p.dead ? 1 : 0, am: p.aboard ? 1 : p.air ? (p.air.glide ? 3 : 2) : 0, z: p.air ? Math.round(p.air.z * 100) / 100 : 0, w: gun?.w || '',
-          cs: p.cast ? p.cast.kind : '', sh: s.myShots, ex: s.myBooms, gr: s.myGren, bd: s.myBuilds, hi: s.myHits.map((h) => h.k),
+          cs: p.cast ? p.cast.kind : '', sh: s.myShots, ex: s.myBooms, gr: s.myGren, bd: s.myBuilds, dw: s.myDrops, hi: s.myHits.map((h) => h.k),
         };
         s.prevX = p.x; s.prevY = p.y; s.prevT = now;
         s.mesh?.broadcast(snap);
@@ -549,10 +611,13 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
       const mode = elapsed < 0 ? 'wait' : p.aboard ? 'bus' : p.air ? (p.air.glide ? 'glide' : 'fall') : 'ground';
       const place = mode === 'ground' ? placeAt(s.t, p.x, p.y)?.name || '' : '';
       const openF = Math.round(Math.min(1, s.openT) * 10) / 10;
-      const key = [Math.round(p.hp), Math.round(p.shield), JSON.stringify(p.inv), p.sel, JSON.stringify(p.items), reloadF, p.dead, Math.ceil(-elapsed), zone?.state, zone?.left, zone?.phase, s.storm, near, p.cast?.kind, mode, place, openF, s.showMap, p.wood, s.build].join('|');
+      const ni = s.nearItem && !sky ? s.nearItem : null;
+      const pickHow = ni ? pickAction(p, ni) : '';
+      const pick = ni ? { how: pickHow, name: (WEAPONS[ni.kind] || ITEMS[ni.kind]).name, n: ni.n, swap: pickHow === 'swap' ? WEAPONS[p.inv[swapSlot(p)].w].name : '' } : null;
+      const key = [Math.round(p.hp), Math.round(p.shield), JSON.stringify(p.inv), p.sel, JSON.stringify(p.items), reloadF, p.dead, Math.ceil(-elapsed), zone?.state, zone?.left, zone?.phase, s.storm, near, p.cast?.kind, mode, place, openF, s.showMap, p.wood, s.build, ni?.key, pickHow].join('|');
       if (key !== s.hudKey) {
         s.hudKey = key;
-        setHud({ hp: Math.max(0, Math.round(p.hp)), shield: Math.round(p.shield), inv: p.inv.map((g) => g && { ...g }), sel: p.sel, items: { ...p.items }, reloadF, dead: p.dead, elapsed, zone, storm: s.storm, near, wood: p.wood, build: s.build, cast: p.cast?.kind || null, mode, place, openF, altitude: p.air ? Math.round(p.air.z * 100) : 0, map: s.showMap });
+        setHud({ hp: Math.max(0, Math.round(p.hp)), shield: Math.round(p.shield), inv: p.inv.map((g) => g && { ...g }), sel: p.sel, items: { ...p.items }, reloadF, dead: p.dead, elapsed, zone, storm: s.storm, near, wood: p.wood, build: s.build, cast: p.cast?.kind || null, mode, place, openF, pick, altitude: p.air ? Math.round(p.air.z * 100) : 0, map: s.showMap });
       }
       if (!hidden) draw(r, m, now, dt, elapsed);
     }
@@ -605,6 +670,7 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
       const opened = m.loot;
       if (s.stage === 'play') {
         drawChests(g, s.real.chests, opened, cam, W, H, time, s.near?.i, s.openT);
+        drawGroundItems(g, groundList(m), cam, W, H, time, s.nearItem?.key);
         for (const d of s.drops) {
           const start = m.startsAt / 1000 + PREGAME + d.at - DROP_FALL;
           if (now < start) continue;
@@ -729,8 +795,8 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
       else used = false;
       if (used) e.preventDefault();
     };
-    const up = (e) => { if (e.code === 'Space') s.hold = false; const named = Object.entries(KEYS).find(([, codes]) => codes.includes(e.code)); if (named) s.input[named[0]] = false; };
-    const blur = () => { s.hold = false; Object.assign(s.input, { up: false, down: false, left: false, right: false, shoot: false }); };
+    const up = (e) => { if (e.code === 'Space') { s.hold = false; s.holdUsed = false; } const named = Object.entries(KEYS).find(([, codes]) => codes.includes(e.code)); if (named) s.input[named[0]] = false; };
+    const blur = () => { s.hold = false; s.holdUsed = false; Object.assign(s.input, { up: false, down: false, left: false, right: false, shoot: false }); };
     const wheel = (e) => {
       if (!(e.target instanceof HTMLCanvasElement)) return;
       actRef.current((st, p) => {
@@ -791,7 +857,8 @@ export default function PixelGame({ room, me, code, offset, onDispatch }) {
         ))}
       </ul>
       {killLabel && <p className="px-killed">☠ {killLabel}</p>}
-      {hud.near !== null && !hud.dead && <p className="px-near">📦 Mantené <kbd>Espacio</kbd> para abrir el cofre{hud.openF > 0 && <i className="px-open"><b style={{ width: `${hud.openF * 100}%` }} /></i>}</p>}
+      {hud.pick && !hud.dead && <p className="px-near" data-pick-prompt>🎒 {hud.pick.how === 'swap' ? <>Apretá <kbd>Espacio</kbd> para cambiar {hud.pick.swap} por {hud.pick.name}</> : hud.pick.how === 'full' ? <>No te entra {hud.pick.name.toLowerCase()}</> : <>Apretá <kbd>Espacio</kbd> para agarrar {hud.pick.name}{hud.pick.n > 1 ? ` x${hud.pick.n}` : ''}</>}</p>}
+      {hud.near !== null && !hud.pick && !hud.dead && <p className="px-near">📦 Mantené <kbd>Espacio</kbd> para abrir el cofre{hud.openF > 0 && <i className="px-open"><b style={{ width: `${hud.openF * 100}%` }} /></i>}</p>}
       {hud.mode === 'bus' && !hud.dead && <p className="px-sky"><b>🚌 Estás en el bus de batalla</b>Mirá el mapa, elegí un lugar y apretá <kbd>Espacio</kbd> para saltar. <kbd>M</kbd> agranda o achica el mapa.</p>}
       {hud.mode === 'fall' && !hud.dead && <p className="px-sky"><b>Caída libre · altura {hud.altitude}%</b>Se abre el planeador solo, o antes con <kbd>Espacio</kbd>. Movete con <kbd>W A S D</kbd>.</p>}
       {hud.mode === 'glide' && !hud.dead && <p className="px-sky"><b>Planeando · altura {hud.altitude}%</b>Apuntá a tu lugar con <kbd>W A S D</kbd>.</p>}

@@ -668,5 +668,12 @@ OCULTA 1.23.1 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.26.1 = Buzón de sugerencias en la portada
+1.26.1 = Buzón de sugerencias en la portada
 - En pantallas anchas, el buzón también aparece chico a la derecha de la portada (con una ✕ para cerrarlo), sin mover nada. El «?» del header sigue andando.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.27.0 = Pixel Royale: el botín queda en el piso 🎒
+- Al abrir un cofre, lo que trae ya no va directo al inventario: el arma y las pilas de curitas, botiquines, escudos y granadas caen alrededor del cofre.
+- Cada cosa se agarra apretando Espacio cerca (se resalta la que vas a agarrar y un cartel te dice qué es). El primero que llega se la lleva.
+- Con el inventario lleno, Espacio cambia el arma que tenés en la mano por la del piso, y la vieja queda tirada para que otro (o vos) la agarre. El pico no se cambia nunca.
