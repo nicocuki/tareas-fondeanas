@@ -696,7 +696,12 @@ OCULTA 1.23.1 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.29.1 = Cubolandia: los árboles se atraviesan 🌳
+1.29.1 = Cubolandia: los árboles se atraviesan 🌳
 - Los troncos y las hojas de los árboles del mundo ya no frenan: pasás de largo para moverte más fácil. Se siguen rompiendo como cualquier bloque y sueltan lo mismo.
 - Los troncos y hojas que ponés vos son bloques normales y sólidos.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.29.1.5 = Nuevo orden de los juegos en el menú
+- Ahora van primero Cubolandia, Pixel Royale, Cohete Royale y A los Tiros, después Monopoly, Armá el Meme, Trazo Loco, Fútbol, T.E.G., Código Secreto y Café o Té.
 
