@@ -680,7 +680,17 @@ OCULTA 1.23.1 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.28.0 = Cohete Royale: el Volcán 🌋 y tesoros bajo la roca
+1.28.0 = Cohete Royale: el Volcán 🌋 y tesoros bajo la roca
 - Mapa nuevo, el Volcán: un cono gigante en el medio con el cráter abierto, una chimenea tapada por un tapón de roca y, abajo, la cámara de magma sellada con el mejor botín. Alrededor, columnas de basalto, arcos, bóvedas selladas y escaleras flotando. Roca negra con vetas de lava, cielo rojo con brasas y, en vez del agua, ¡sube la lava!
 - Las piezas que ya están al empezar ya no son cajas: son el ítem suelto, flotando en el aire, adentro de recintos cerrados. Para llegar hay que romper bloques a cohetazos. No caen aunque rompas la roca.
 - Esto vale para los tres mapas (tierra, hielo y volcán). Las cajas que caen en paracaídas siguen igual.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.29.0 = Cubolandia: Minecraft en 2D ⛏️
+- Juego nuevo, de 2 a 8: un mundo 2D visto de costado (como Terraria) con las mecánicas de Minecraft. Se genera entero desde una semilla: biomas (llanura, bosque, desierto, tundra y montañas), cuevas, océanos, lagos de lava, árboles y cactus.
+- Picás con el mouse (clic izquierdo mantenido), ponés bloques con el derecho y fabricás todo desde el inventario (E): tablones, mesa de crafteo, herramientas de madera, piedra, hierro, oro y diamante, espadas, hachas, baldes y armaduras de cuero, oro, hierro y diamante. Los minerales (carbón, hierro, oro y diamante) aparecen cada vez más hondo y se funden en el horno.
+- Vida, hambre, ahogarse, lava, cactus y daño por caída. Vacas y cerdos dan comida, de noche salen zombis y la manzana dorada cura mucho.
+- Modos: **UHC** (disponible) y **Supervivencia** (próximamente, deshabilitado en la sala de espera).
+- UHC: el anfitrión elige los minutos de tregua (1 a 30) en los que nadie puede hacerse daño. Cuando terminan aparece la **barra localizadora** con los jugadores cercanos (flechas si están más arriba o abajo) y empieza el PVP. Si te agachás (Shift) desaparecés de la barra de los demás. Al morir soltás todo y gana el último en pie.
+

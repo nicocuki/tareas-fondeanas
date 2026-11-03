@@ -189,6 +189,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), sprites de los efectos (`sprites/`, `sprites.js`), pelea en tiempo real (`TirosGame.jsx`) |
 | `src/nave/` | Entre Nosotros (Among Us): mapa (`map.js`), tareas (`tasks.js`), reducer (`game.js`), movimiento y vista (`sim.js`), dibujo (`render.js`), la nave en vivo (`NaveGame.jsx`), minijuegos, reunión (ver *Entre Nosotros*) |
+| `src/mine/` | Cubolandia (Minecraft 2D): bloques, ítems y recetas (`blocks.js`), mundo por semilla (`world.js`), reducer (`game.js`), física, vida, bichos y luz (`sim.js`), dibujo (`render.js`), la partida en vivo (`MineGame.jsx`) (ver *Cubolandia*) |
 | `src/pixel/` | Pixel Royale: mapa y tormenta (`map.js`), armas, botín y balas (`sim.js`), reducer (`game.js`), dibujo pixelado (`render.js`), la partida en vivo (`PixelGame.jsx`) (ver *Pixel Royale*) |
 | `src/cohetes/` | Cohete Royale (Rocket Bot Royale): mapa (`terrain.js`), tanque pegajoso, nave y armas (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`CohetesGame.jsx`) (ver *Cohete Royale*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
@@ -846,6 +847,34 @@ De 2 a 10, solo compu. `id`: `pixel` (`?juego=pixel`, `gameType: 'pixel'`, raíz
   recarga la página no ve lo construido antes.
 - **Todavía no tiene** (pedido de Nico, para ir sumando): rampas, rarezas de armas, munición por tipo, derribados y revivir, dúos y escuadras, y vehículos.
 - `window.__pixel` y `data-pixel-canvas` existen para manejar el juego desde un navegador automatizado. No los saques.
+
+## Cubolandia
+
+Minecraft en 2D, pedido de Nico: «un terraria, pero con las mecánicas de Minecraft». **Vista de costado con gravedad** (se pica hacia abajo), no desde arriba.
+De 2 a 8, solo compu. `id`: `mine` (`?juego=mine`, `gameType: 'mine'`, raíz `mine/` en `ROOTS`). Modos (`MODES` en `game.js`): **UHC** (el único disponible) y
+**Supervivencia** (`available: false`: aparece deshabilitado en la sala de espera y el reducer rechaza elegirlo; para activarlo, ponerle `available: true` y escribir sus reglas).
+
+- **Mismo esquema que Pixel Royale**: la sala (`game.js`) guarda lo de a una vez (semilla, tregua, muertos, ranking) y todo lo demás va en tiempo real, directo entre navegadores
+  (`futbol/p2p.js`) con respaldo en `mine/{sala}/p/{id}` (`mineChannel`, efímero). Cada pantalla es dueña de su jugador y avisa `died`. El anfitrión da por muerto al que no manda fotos en 15 s.
+- **El mundo es de 512 × 128 bloques** (`world.js`, y crece hacia abajo: `y = 0` es el cielo) y sale **entero de la semilla**, igual en todas las pantallas (`mulberry32` y ruido propio: nada de
+  `Math.random()`). Biomas por columna (llanura, bosque, desierto, tundra, montañas), océanos, capas, cuevas (túneles y salones por ruido), lava en el fondo, lecho de roca, menas por profundidad
+  (diamante desde y 102) y árboles/cactus. Cada jugador aparece repartido a lo ancho (`spawnPoint`). Hay tests que miran semillas distintas (nadie aparece en el mar ni adentro de un bloque).
+- **Los bloques cambiados viajan como eventos `ed` = `[x, y, bloque, hora, ¿suelta?]`** en las fotos (6 s, con la hora de cada cambio: gana el más nuevo). Como una foto perdida dejaría un mundo distinto,
+  cada pantalla además va repasando todo lo que sabe en pedazos de 32 columnas (`cs`), así el que se atrasa o recarga la página se pone al día (también lo que pasó antes de que entrara).
+  Lo que suelta un bloque **no viaja**: cada pantalla lo calcula igual a partir del evento (clave `b{x}_{y}_{hora}`); solo se avisan lo tirado a mano o por una muerte (`dr`) y lo recogido (`pk`).
+- **Los golpes entre jugadores los juzga la pantalla de la víctima** (`hi`): aplica tregua, respiro de 0,45 s y armadura (`takeHit`, cada punto frena un 4 %). **Los bichos los corre la pantalla del
+  anfitrión** (`mb`: vacas, cerdos y zombis; cada 3 fotos): los demás los interpolan. Los zombis nacen de noche y en cuevas oscuras y se queman con el sol; su golpe viaja en `mz` y lo juzga la víctima.
+- **UHC**: `match.grace` son los minutos de tregua (`GRACE_MINUTES`, los elige el anfitrión) contados desde `startsAt` (que es `PREP_MS` después de arrancar). `graceEnd`/`pvpOn` lo calculan. Con la tregua
+  nadie le pega a nadie (lo rechaza quien pega y quien recibe); cuando termina aparece la **barra localizadora** (`locatorMarks` en `sim.js`: jugadores vivos a menos de `LOCATOR_RANGE` bloques, con flecha
+  si están a más de 8 bloques de altura). **Agacharse (Shift) saca al jugador de la barra** (`sn` en la foto) y de su etiqueta con el nombre. Al morir se suelta todo el inventario.
+- **Física a paso fijo** (`STEP` 1/120 s): caja de 0,6 × 1,8 contra la grilla, escalón de un bloque que se sube solo, agacharse frena en los bordes, nadar, caída (`landed`) y daño. Hambre y regeneración en
+  `stepVitals`. La luz (`computeLight`) es el sol bajando por las columnas y por las cuevas; los sólidos reciben un poco de la de al lado. Se recalcula cada 0,25 s si hubo cambios.
+- **Crafteo con lista de recetas, no con grilla** (decisión de interfaz): E abre el inventario con todas las recetas y se fabrica con un botón; las de 3 × 3 (`table: true`) piden una mesa a 5 bloques.
+  El horno (clic derecho) funde con combustible de la mochila (`FUEL`) y es personal: cada jugador usa el suyo. Los fluidos son **estáticos** (no corren): el balde recoge y pone un bloque.
+- **Todavía no tiene**: Supervivencia (sin PVP, mundo que dura), esqueletos y arañas, arcos y flechas, encantamientos, cofres, antorchas, desgaste de armaduras, borde de mundo que se achica, ni que los
+  fluidos fluyan. La armadura de cuero se hace con el cuero de las vacas. Lo construido no se guarda: la sala se cierra a los 15 minutos de inactividad.
+- `window.__mine` (el estado de la pantalla: jugador, demás, mundo, bichos, sueltos) y `data-mine-canvas`, `data-grace`, `data-locator`, `data-hotbar`, `data-slot`, `data-inv`, `data-craft`, `data-smelt` existen
+  para manejar el juego desde un navegador automatizado. No los saques.
 
 ## Mario vs Luigi
 

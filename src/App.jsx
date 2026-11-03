@@ -17,12 +17,14 @@ import MvlApp from './mvl/MvlApp.jsx';
 import NaveApp from './nave/NaveApp.jsx';
 import CohetesApp from './cohetes/CohetesApp.jsx';
 import PixelApp from './pixel/PixelApp.jsx';
+import MineApp from './mine/MineApp.jsx';
 import MonopolyApp from './monopoly/MonopolyApp.jsx';
 import TegApp from './teg/TegApp.jsx';
 
 const SCREENS = {
   teg: TegApp,
   monopoly: MonopolyApp,
+  mine: MineApp,
   pixel: PixelApp,
   cohetes: CohetesApp,
   nave: NaveApp,
