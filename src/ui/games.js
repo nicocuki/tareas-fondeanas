@@ -77,7 +77,7 @@ export const GAMES = [
     color: 'var(--game-arena)',
     onColor: '#ffffff',
     tagline: 'Cartas, torres y elixir en tiempo real',
-    description: 'Duelos de 1 contra 1 o 2 contra 2: armá un mazo de 8 entre 20 cartas, poné tropas, hechizos y edificios con tu elixir y tirá las torres del rival antes de que se acabe el tiempo.',
+    description: 'Duelos de 1 contra 1 o 2 contra 2: armá un mazo de 8 entre 50 cartas (o elegilas de a 2 o de a 3 al empezar), poné tropas, hechizos y edificios con tu elixir y tirá las torres del rival antes de que se acabe el tiempo.',
     players: '2 a 4',
     min: 2,
     max: 4,

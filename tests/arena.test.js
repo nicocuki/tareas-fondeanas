@@ -5,9 +5,10 @@ import {
   BRIDGES, H, LEAD, RIVER_Y, W, createRunner, newMatch, placeProblem, stepSim,
 } from '../src/arena/sim.js';
 import {
-  COUNTDOWN_MS, MAX_CMDS, MAX_PLAYERS, applyAction, findPlayer, newRoom, tickAt,
+  COUNTDOWN_MS, MAX_CMDS, MAX_PLAYERS, applyAction, findPlayer, newRoom, startProblem, tickAt,
 } from '../src/arena/game.js';
 import { SPRITES } from '../src/arena/sprites.js';
+import { chosenCards, decksFromPicks, draftOffers, rivalIndex } from '../src/arena/draft.js';
 import { serializeRoom } from '../src/codigo-secreto/game.js';
 import { summarizeRoom } from '../src/ui/roomSummary.js';
 
@@ -32,16 +33,16 @@ const run = (st, ticks) => { for (let i = 0; i < ticks && !st.over; i++) stepSim
 const units = (st, card) => st.units.filter((u) => u.card === card);
 const tower = (st, team, kind, side = 0) => st.towers.find((t) => t.team === team && t.kind === kind && t.side === side);
 
-test('cartas: hay 20, con datos completos y un mazo inicial válido', () => {
-  assert.equal(CARDS.length, 20);
-  assert.equal(new Set(ALL).size, 20);
+test('cartas: hay 50, con datos completos y un mazo inicial válido', () => {
+  assert.equal(CARDS.length, 50);
+  assert.equal(new Set(ALL).size, 50);
   assert.ok(validDeck(DEFAULT_DECK));
   for (const c of CARDS) {
     assert.ok(c.name && c.desc && ['common', 'rare', 'epic'].includes(c.rarity), c.id);
     assert.equal(c.emoji, undefined, `${c.id}: las cartas no llevan emojis`);
     assert.ok(SPRITES[c.id], `${c.id}: tiene su dibujo`);
-    assert.ok(c.cost >= 1 && c.cost <= 7, `${c.id}: costo`);
-    if (c.kind === 'spell') assert.ok(c.radius > 0 && c.dmg > 0 && c.delay > 0, c.id);
+    assert.ok(c.cost >= 1 && c.cost <= 8, `${c.id}: costo`);
+    if (c.kind === 'spell') assert.ok(c.radius > 0 && (c.dmg > 0 || c.heal > 0 || c.drop) && c.delay > 0, c.id);
     else assert.ok(c.hp > 0 && c.dmg > 0 && c.hit > 0 && c.range > 0 && c.radius > 0 && ['ground', 'both', 'buildings'].includes(c.targets), c.id);
     if (c.kind === 'building') assert.ok(c.life > 0, c.id);
   }
@@ -484,4 +485,209 @@ test('sala: se lee como Arena Royale en el resumen de salas', () => {
   assert.equal(sum.game, 'arena');
   assert.equal(sum.max, MAX_PLAYERS);
   assert.equal(sum.players, 2);
+});
+
+// ─── Cartas nuevas ───────────────────────────────────────────────────────────
+test('cartas nuevas: cada una de las 50 se puede jugar sin romper nada, y el golemita no se juega solo', () => {
+  assert.ok(CARD_BY_ID.golemita.hidden);
+  assert.ok(!ALL.includes('golemita'));
+  assert.ok(SPRITES.golemita, 'el golemita tiene dibujo');
+  assert.ok(!validDeck([...DEFAULT_DECK.slice(1), 'golemita']), 'no entra en un mazo');
+  for (const id of ALL) {
+    const st = duel(deckWith(id), deckWith('caballero'));
+    play(st, 0, id, 9, 22);
+    run(st, 20 * 12);
+    for (const u of st.units) for (const k of ['x', 'y', 'hp']) assert.ok(Number.isFinite(u[k]), `${id}: ${u.card}.${k}`);
+  }
+});
+
+test('Bruja y Tumba invocan esqueletos cada tanto', () => {
+  const st = duel();
+  play(st, 0, 'tumba', 9, 22);
+  run(st, 20 * 8);
+  assert.ok(units(st, 'esqueletos').length >= 3, 'la tumba saca tres esqueletos');
+  assert.ok(units(st, 'esqueletos').every((u) => u.team === 0 && u.owner === 0));
+  const st2 = duel();
+  play(st2, 0, 'bruja', 9, 22);
+  run(st2, 20 * 9);
+  assert.ok(units(st2, 'esqueletos').length >= 3, 'la bruja invoca');
+});
+
+test('el Golem suelta dos golemitas al romperse y el Sabueso de Lava, murciélagos', () => {
+  const st = duel();
+  play(st, 0, 'golem', 9, 22);
+  run(st, 25);
+  units(st, 'golem')[0].hp = 0;
+  run(st, 2);
+  assert.equal(units(st, 'golemita').length, 2);
+  const st2 = duel();
+  play(st2, 0, 'sabueso-de-lava', 9, 22);
+  run(st2, 25);
+  units(st2, 'sabueso-de-lava')[0].hp = 0;
+  run(st2, 2);
+  assert.equal(units(st2, 'murcielagos').length, 3);
+});
+
+test('hechizos nuevos: la Curación cura, el Granizo frena, el Veneno pega varias veces y el Tronco no toca el aire', () => {
+  const st = duel();
+  play(st, 0, 'caballero', 9, 22);
+  run(st, 25);
+  const k = units(st, 'caballero')[0];
+  k.hp = 100;
+  play(st, 0, 'curacion', k.x, k.y);
+  run(st, 12);
+  assert.equal(k.hp, 320, 'cura 220');
+
+  const st2 = duel();
+  play(st2, 1, 'caballero', 9, 10);
+  run(st2, 25);
+  play(st2, 0, 'granizo', units(st2, 'caballero')[0].x, units(st2, 'caballero')[0].y);
+  run(st2, 12);
+  assert.ok(units(st2, 'caballero')[0].slow > 0);
+  assert.ok(units(st2, 'caballero')[0].hp < 690);
+
+  const st3 = duel();
+  play(st3, 1, 'caballero', 9, 10);
+  run(st3, 25);
+  const kk = units(st3, 'caballero')[0];
+  const hp0 = kk.hp;
+  play(st3, 0, 'veneno', kk.x, kk.y);
+  run(st3, 20 * 3);
+  const mid = kk.hp;
+  run(st3, 20 * 6);
+  assert.ok(mid < hp0 && kk.hp < mid, 'sigue pegando con los segundos');
+  assert.equal(st3.fx.length, 0, 'se termina');
+
+  const st4 = duel();
+  play(st4, 1, 'murcielagos', 9, 10);
+  run(st4, 25);
+  const b = units(st4, 'murcielagos')[0];
+  play(st4, 0, 'tronco', b.x, b.y);
+  run(st4, 12);
+  assert.ok(units(st4, 'murcielagos').every((u) => u.hp === CARD_BY_ID.murcielagos.hp), 'el aire no se toca');
+});
+
+test('Barril de Duendes: suelta tres duendes en tu mitad y no se tira en la del rival', () => {
+  const st = duel();
+  give(st, 0, 'barril');
+  assert.match(placeProblem(st, 0, 0, 9, 8), /mitad/);
+  play(st, 0, 'barril', 9, 22);
+  run(st, 25);
+  assert.equal(units(st, 'duendes').length, 3);
+});
+
+test('Minero: se pone en cualquier lado; Electromago y Mago de Hielo pegan con efecto', () => {
+  const st = duel();
+  give(st, 0, 'minero');
+  assert.equal(placeProblem(st, 0, 0, 9, 6), null, 'en la mitad enemiga también');
+  const st2 = duel();
+  play(st2, 0, 'electromago', 9, 22);
+  play(st2, 1, 'caballero', 9, 14);
+  let stunned = false;
+  for (let i = 0; i < 20 * 14 && !stunned; i++) { stepSim(st2); stunned = units(st2, 'caballero').some((u) => u.stun > 0); }
+  assert.ok(stunned, 'el electromago aturde');
+  const st3 = duel();
+  play(st3, 0, 'mago-de-hielo', 9, 22);
+  play(st3, 1, 'caballero', 9, 14);
+  let slowed = false;
+  for (let i = 0; i < 20 * 14 && !slowed; i++) { stepSim(st3); slowed = units(st3, 'caballero').some((u) => u.slow > 0); }
+  assert.ok(slowed, 'el mago de hielo frena');
+});
+
+// ─── Elegir cartas ───────────────────────────────────────────────────────────
+function draftRoom(mode, four = false) {
+  let room = newRoom('a', 'Ana', '🐸', NOW);
+  room = act(room, 'b', { type: 'join', name: 'Beto' });
+  if (four) { room = act(room, 'c', { type: 'join', name: 'Cata' }); room = act(room, 'd', { type: 'join', name: 'Dani' }); }
+  room = act(room, 'a', { type: 'setOptions', options: { mode } });
+  return room;
+}
+
+test('modos: solo cambia el anfitrión y la doble elección pide equipos parejos', () => {
+  const room = draftRoom('double');
+  assert.equal(room.options.mode, 'double');
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'b', options: { mode: 'triple' } }, { now: NOW }), null);
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'a', options: { mode: 'quintuple' } }, { now: NOW }), null);
+  const uneven = act(room, 'c', { type: 'join', name: 'Cata' });
+  assert.match(startProblem(uneven), /parejos/);
+  assert.equal(applyAction(uneven, { type: 'start', playerId: 'a' }, { now: NOW }), null);
+  assert.equal(startProblem(room), null);
+});
+
+test('doble elección: 2 cartas, 4 veces; lo que no elegís se lo queda el rival', () => {
+  const room = act(draftRoom('double'), 'a', { type: 'start' }, { rand: () => 0.3 });
+  assert.equal(room.phase, 'drafting');
+  assert.equal(room.match, null);
+  const { draft } = room;
+  assert.equal(draft.mode, 'double');
+  const offers = draftOffers(draft.seed, draft.seats, 'double');
+  assert.equal(offers.length, 2);
+  for (const o of offers) { assert.equal(o.length, 4); assert.ok(o.every((r) => r.length === 2)); }
+  assert.equal(new Set(offers.flat(2)).size, 16, 'las 16 ofertas de la pareja son distintas');
+  assert.equal(rivalIndex(draft.seats, 0), 1);
+
+  assert.equal(applyAction(room, { type: 'draftPick', playerId: 'a', index: 2, round: 0 }, { now: NOW }), null, 'solo 0 o 1');
+  assert.equal(applyAction(room, { type: 'draftPick', playerId: 'zz', index: 0, round: 0 }, { now: NOW }), null);
+  assert.equal(applyAction(room, { type: 'draftPick', playerId: 'a', index: 0, round: 3 }, { now: NOW }), null, 'una vieja que llega tarde');
+  let r = room;
+  for (let i = 0; i < 4; i++) {
+    assert.equal(r.phase, 'drafting');
+    r = act(r, 'a', { type: 'draftPick', index: 0, round: i });
+  }
+  assert.equal(applyAction(r, { type: 'draftPick', playerId: 'a', index: 0 }, { now: NOW }), null, 'ya eligió todo');
+  assert.equal(r.phase, 'drafting', 'espera al otro');
+  for (let i = 0; i < 4; i++) r = act(r, 'b', { type: 'draftPick', index: 1, round: i });
+  assert.equal(r.phase, 'playing');
+  assert.equal(r.draft, null);
+  const [da, db] = r.match.seats.map((s) => s.deck);
+  assert.ok(validDeck(da) && validDeck(db), 'mazos de 8 sin repetir');
+  assert.deepEqual(da, [...offers[0].map((o) => o[0]), ...offers[1].map((o) => o[0])]); // B descartó la 0
+  assert.deepEqual(db, [...offers[1].map((o) => o[1]), ...offers[0].map((o) => o[1])]); // A descartó la 1
+  assert.equal(r.match.startsAt, NOW + COUNTDOWN_MS);
+});
+
+test('triple elección: 3 cartas, 8 veces; las demás se descartan', () => {
+  let r = act(draftRoom('triple'), 'a', { type: 'start' }, { rand: () => 0.6 });
+  const { draft } = r;
+  const offers = draftOffers(draft.seed, draft.seats, 'triple');
+  for (const o of offers) { assert.equal(o.length, 8); assert.ok(o.every((x) => x.length === 3)); assert.equal(new Set(o.flat()).size, 24); }
+  for (let i = 0; i < 8; i++) r = act(r, 'a', { type: 'draftPick', index: i % 3, round: i });
+  for (let i = 0; i < 8; i++) r = act(r, 'b', { type: 'draftPick', index: 2, round: i });
+  assert.equal(r.phase, 'playing');
+  assert.deepEqual(r.match.seats[0].deck, offers[0].map((o, i) => o[i % 3]));
+  assert.ok(r.match.seats.every((s) => validDeck(s.deck)));
+});
+
+test('elegir cartas: se acaba el tiempo y eligen la primera; irse en plena elección no frena a nadie', () => {
+  const room = act(draftRoom('triple'), 'a', { type: 'start' }, { rand: () => 0.2 });
+  assert.equal(applyAction(room, { type: 'draftTimeout', playerId: 'a' }, { now: room.draft.deadline - 1 }), null, 'todavía no');
+  const out = applyAction(room, { type: 'draftTimeout', playerId: 'b' }, { now: room.draft.deadline, rand: () => 0.5 });
+  assert.equal(out.phase, 'playing');
+  const offers = draftOffers(room.draft.seed, room.draft.seats, 'triple');
+  assert.deepEqual(out.match.seats[1].deck, offers[1].map((o) => o[0]));
+
+  // en 2 contra 2 se va uno: su compañero y los rivales siguen
+  const four = act(draftRoom('double', true), 'a', { type: 'start' }, { rand: () => 0.4 });
+  let r = act(four, 'c', { type: 'leave' });
+  assert.equal(r.phase, 'drafting');
+  for (const who of ['a', 'b', 'd']) for (let i = 0; i < 4; i++) r = act(r, who, { type: 'draftPick', index: 0, round: i });
+  assert.equal(r.phase, 'playing');
+  assert.equal(r.match.seats.length, 3);
+  // si se va todo un equipo, termina
+  const lone = act(draftRoom('triple'), 'a', { type: 'start' });
+  assert.equal(act(lone, 'b', { type: 'leave' }).phase, 'ended');
+  assert.equal(act(lone, 'a', { type: 'toLobby' }).draft, null);
+});
+
+test('elegir cartas: la revancha vuelve a elegir', () => {
+  let r = act(draftRoom('triple'), 'a', { type: 'start' }, { rand: () => 0.2 });
+  r = applyAction(r, { type: 'draftTimeout', playerId: 'a' }, { now: r.draft.deadline, rand: () => 0.5 });
+  r = applyAction(r, { type: 'finish', playerId: 'a', winner: 0 }, { now: r.match.startsAt + 100 });
+  assert.equal(r.phase, 'ended');
+  const again = act(r, 'a', { type: 'start' }, { rand: () => 0.9 });
+  assert.equal(again.phase, 'drafting');
+  const picks = again.draft.seats.map(() => Array(8).fill(0));
+  const decks = decksFromPicks({ ...again.draft, picks });
+  assert.ok(decks.every((d) => d.length === 8));
+  assert.deepEqual(chosenCards(draftOffers(again.draft.seed, again.draft.seats, 'triple'), picks, 0), decks[0]);
 });

@@ -884,7 +884,7 @@ De 2 a 8, solo compu. `id`: `mine` (`?juego=mine`, `gameType: 'mine'`, raíz `mi
 ## Arena Royale
 
 Duelos de cartas y torres, pedido de Nico («un Clash Royale»; el nombre lo eligió él). 1 contra 1 o 2 contra 2, de 2 a 4, mouse o táctil. `id`: `arena`
-(`?juego=arena`, `gameType: 'arena'`). **No tiene raíz propia en `ROOTS`**: todo vive en `rooms/{código}`. Las 20 cartas, sus números y cómo se ve cada una
+(`?juego=arena`, `gameType: 'arena'`). **No tiene raíz propia en `ROOTS`**: todo vive en `rooms/{código}`. Las 50 cartas, sus números y cómo se ve cada una
 están en `docs/ARENA.md` (los valores son nuestros, inspirados en el original).
 
 - **Lockstep determinista**: la sala NO calcula la partida. Cada pantalla simula entera con `sim.js` a partir de `match.seed` y de `match.cmds`
@@ -913,6 +913,15 @@ están en `docs/ARENA.md` (los valores son nuestros, inspirados en el original).
   con el tope de jugadas (600 de ~18 caracteres) queda debajo de 16.000: hay un test.
 - `data-card`, `data-slot`, `data-hand`, `data-hud`, `data-clock`, `data-elixir`, `data-arena-canvas`, `data-pick`, `data-result` existen para manejar el juego desde un navegador automatizado. No los saques.
 - Es una imitación entre amigos (Clash Royale es de Supercell): los dibujos son nuestros; si llegara un pedido de bajarlo, se saca la entrada de `games.js`.
+- **Modos de elegir cartas** (`options.mode`, `draft.js`): `classic` (cada uno arma su mazo de 8 en el lobby), `double` (te ofrecen 2 cartas, 4 veces: la que no elegís se la queda tu rival, así tu mazo son tus 4 más las 4 que
+  descartó él) y `triple` (3 cartas, 8 veces, las demás se descartan). Con `start` en un modo de elegir la sala pasa a la fase `drafting` y guarda solo `draft = { mode, seed, seats, picks, deadline }`: **las ofertas no se guardan**, salen de
+  `draftOffers(seed, seats, mode)` (puro, igual en todas las pantallas) y `picks[asiento]` es la lista de índices tocados. Cada uno elige a su ritmo (`draftPick` lleva `round` para descartar elecciones viejas); cuando terminaron todos, o
+  cualquier pantalla manda `draftTimeout` pasado `deadline` (`PICK_SECONDS` por elección, los que faltan toman la primera opción), `finishDraft` arma los mazos (`decksFromPicks`) y la sala pasa a `playing`. En `double` cada pareja de rivales
+  reparte 16 cartas distintas (así el mazo final no repite) y **los equipos tienen que ser parejos** (`startProblem`). Si alguien se va en plena elección, sus picks se completan con la primera opción y su asiento no entra al partido.
+  Un modo nuevo: agregalo a `MODE_INFO`/`MODES` en `draft.js` y en `decksFromPicks`.
+- **Las 50 cartas** (20 de base + 30 nuevas) están en `cards.js`; `HIDDEN_CARDS` (el golemita del Golem) existen en `CARD_BY_ID` pero no en `CARDS`: no se eligen ni entran en mazos. Mecánicas que suman a `sim.js`: `spawner` (Bruja, Tumba, Cabaña:
+  invocan una carta cada tanto), `deathSpawn` (Golem, Sabueso de Lava), `hitStun` (Electromago), `slow` (Mago de Hielo y Granizo, ×0,65 de velocidad), hechizos con `heal` (Curación), `pulses`/`every` (Veneno pega varias veces),
+  `drop` (Barril de Duendes: suelta tropas, solo en tu mitad), `air: false` (Tronco) y `anywhere` (Minero se pone en cualquier lado). **Una carta nueva** necesita su dibujo en `SPRITES` y, si dispara algo a distancia, su caso en `projectile` de `render.js`.
 - **Todavía no tiene**: bots para jugar solo, reconexión a una partida ya empezada desde otra pantalla (recargar la misma pestaña sí funciona: la sim se pone al día sola), emotes, ni cartas legendarias o evoluciones.
 
 ## Mario vs Luigi

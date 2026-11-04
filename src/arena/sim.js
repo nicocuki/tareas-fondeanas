@@ -34,7 +34,7 @@ const dist = (a, b) => { const dx = a.x - b.x; const dy = a.y - b.y; return Math
 const alive = (e) => (e.tw ? !e.dead : e.hp > 0);
 const isFly = (u) => Boolean(D(u).fly);
 
-function mulberry32(seed) {
+export function mulberry32(seed) {
   let a = seed | 0;
   return () => {
     a = (a + 0x6D2B79F5) | 0;
@@ -97,8 +97,8 @@ export function placeProblem(st, seat, slot, x, y) {
   if (!card) return 'Esa carta no está en tu mano.';
   if (p.elixir < card.cost) return 'Te falta elixir.';
   if (!(x >= 0.5 && x <= W - 0.5 && y >= 0.5 && y <= H - 0.5)) return 'Eso queda afuera de la arena.';
-  if (card.kind === 'spell') return null;
-  if (!zoneOk(st, p.team, x, y)) return 'Solo en tu mitad (o donde cayó una torre).';
+  if (card.kind === 'spell' && !card.drop) return null;
+  if (!card.anywhere && !zoneOk(st, p.team, x, y)) return 'Solo en tu mitad (o donde cayó una torre).';
   if (st.towers.some((t) => !t.dead && dist(t, { x, y }) < t.r + 0.4)) return 'Eso es una torre.';
   return null;
 }
@@ -107,6 +107,7 @@ const OFFSETS = {
   1: [[0, 0]],
   2: [[-0.5, 0], [0.5, 0]],
   3: [[0, -0.5], [-0.55, 0.4], [0.55, 0.4]],
+  4: [[-0.55, -0.45], [0.55, -0.45], [-0.55, 0.45], [0.55, 0.45]],
   6: [[-0.9, -0.35], [0, -0.55], [0.9, -0.35], [-0.9, 0.5], [0, 0.55], [0.9, 0.5]],
 };
 
@@ -115,7 +116,7 @@ function spawn(st, seat, team, card, x, y) {
   for (const [ox, oy] of OFFSETS[n] || OFFSETS[1]) {
     st.units.push({
       id: st.nid++, card: card.id, team, owner: seat, x: Math.min(W - 0.3, Math.max(0.3, x + ox)), y: Math.min(H - 0.3, Math.max(0.3, y + oy)),
-      hp: card.hp, max: card.hp, r: card.radius, cd: LOAD_TICKS, tg: 0, wait: DEPLOY_TICKS, stun: 0, charge: 0, bld: card.kind === 'building', born: st.tick,
+      hp: card.hp, max: card.hp, r: card.radius, cd: LOAD_TICKS, tg: 0, wait: DEPLOY_TICKS, stun: 0, charge: 0, bld: card.kind === 'building', born: st.tick, slow: 0, sp: card.spawner ? card.spawner.every : 0,
     });
   }
 }
@@ -132,7 +133,10 @@ function playCard(st, [, seat, slot, x10, y10]) {
   p.hand[slot] = p.queue.shift();
   st.ev.push({ k: 'put', x, y, t: st.tick, team: p.team, c: card.id });
   if (card.kind === 'spell') {
-    st.fx.push({ k: 'spell', c: card.id, style: card.style, at: st.tick + card.delay, t0: st.tick, x, y, r: card.radius, dmg: card.dmg, stun: card.stun || 0, team: p.team, air: true, tm: TOWER_SPELL });
+    st.fx.push({
+      k: 'spell', c: card.id, style: card.style, at: st.tick + card.delay, t0: st.tick, x, y, r: card.radius, dmg: card.dmg, stun: card.stun || 0, team: p.team, seat, air: card.air !== false, tm: TOWER_SPELL,
+      heal: card.heal || 0, slow: card.slow || 0, drop: card.drop ? card.drop.card : '', pulses: card.pulses || 0, every: card.every || 0,
+    });
   } else {
     spawn(st, seat, p.team, card, x, y);
   }
@@ -149,17 +153,26 @@ function hurt(e, dmg, tick) {
 
 // Un hechizo (o la bomba del globo) cae: daña a las tropas del área y, con `tm`, a las torres.
 function resolveFx(st, f) {
+  if (f.drop) { // el barril: suelta las tropas donde cae
+    spawn(st, f.seat, f.team, CARD_BY_ID[f.drop], f.x, f.y);
+    st.ev.push({ k: 'boom', style: f.style, x: f.x, y: f.y, r: f.r, t: st.tick, team: f.team });
+    return;
+  }
   for (const e of st.units) {
-    if (e.team === f.team || e.hp <= 0 || (!f.air && isFly(e))) continue;
-    if (dist(e, f) <= f.r + e.r * 0.5) {
-      hurt(e, f.dmg, st.tick);
-      if (f.stun) { e.stun = Math.max(e.stun, f.stun); e.cd = Math.max(e.cd, LOAD_TICKS); e.charge = 0; }
+    if (e.hp <= 0 || (!f.air && isFly(e))) continue;
+    if (dist(e, f) > f.r + e.r * 0.5) continue;
+    if (e.team === f.team) { if (f.heal) e.hp = Math.min(e.max, e.hp + f.heal); continue; }
+    if (f.dmg) hurt(e, f.dmg, st.tick);
+    if (f.slow) e.slow = Math.max(e.slow, f.slow);
+    if (f.stun) { e.stun = Math.max(e.stun, f.stun); e.cd = Math.max(e.cd, LOAD_TICKS); e.charge = 0; }
+  }
+  if (f.dmg) {
+    for (const e of st.towers) {
+      if (e.team === f.team || e.dead) continue;
+      if (dist(e, f) <= f.r + e.r * 0.6) hurt(e, f.dmg * f.tm, st.tick);
     }
   }
-  for (const e of st.towers) {
-    if (e.team === f.team || e.dead) continue;
-    if (dist(e, f) <= f.r + e.r * 0.6) hurt(e, f.dmg * f.tm, st.tick);
-  }
+  if (f.pulses > 1) st.fx.push({ ...f, at: st.tick + f.every, t0: st.tick, pulses: f.pulses - 1 }); // el veneno vuelve a pegar
   st.ev.push({ k: 'boom', style: f.style, x: f.x, y: f.y, r: f.r, t: st.tick, team: f.team });
 }
 
@@ -228,6 +241,13 @@ function fixRiver(u) {
 }
 
 // ─── Ataques ─────────────────────────────────────────────────────────────────
+// Efectos de un golpe sobre una tropa: aturdir (Electromago) o frenar (Mago de Hielo).
+function afflict(e, d) {
+  if (e.tw) return;
+  if (d.hitStun) { e.stun = Math.max(e.stun, d.hitStun); e.charge = 0; }
+  if (d.slow) e.slow = Math.max(e.slow, d.slow);
+}
+
 function attack(st, u, d, tg) {
   let dmg = d.dmg;
   if (d.charge && u.charge >= d.charge) dmg *= 2;
@@ -236,13 +256,14 @@ function attack(st, u, d, tg) {
     const c = d.selfSplash ? u : tg;
     for (const e of st.units) {
       if (e.team === u.team || e.hp <= 0 || (d.targets !== 'both' && isFly(e))) continue;
-      if (dist(e, c) <= d.splash + e.r * 0.5) hurt(e, dmg, st.tick);
+      if (dist(e, c) <= d.splash + e.r * 0.5) { hurt(e, dmg, st.tick); afflict(e, d); }
     }
     for (const e of st.towers) {
       if (e.team !== u.team && !e.dead && dist(e, c) <= d.splash + e.r * 0.6) hurt(e, dmg, st.tick);
     }
   } else {
     hurt(tg, dmg, st.tick);
+    afflict(tg, d);
   }
   u.cd = d.hit;
   st.ev.push({ k: 'hit', c: u.card, u: u.id, x: u.x, y: u.y, x2: tg.x, y2: tg.y, t: st.tick, team: u.team });
@@ -254,6 +275,11 @@ function unitStep(st, u, byId) {
   if (u.wait > 0) { u.wait -= 1; return; }
   if (d.life) u.hp -= d.hp / d.life; // los edificios se van gastando
   if (u.hp <= 0) return;
+  if (d.spawner && u.stun <= 0 && --u.sp <= 0) { // Bruja, Tumba, Cabaña: invocan cada tanto
+    u.sp = d.spawner.every;
+    spawn(st, u.owner, u.team, CARD_BY_ID[d.spawner.card], u.x, u.y + (u.team === 0 ? -1 : 1) * (u.r + 0.7));
+  }
+  if (u.slow > 0) { u.slow -= 1; if (st.tick % 3 === 0) u.cd += 1; }
   if (u.stun > 0) { u.stun -= 1; return; }
 
   let tg = u.tg ? byId.get(u.tg) : null;
@@ -280,7 +306,7 @@ function unitStep(st, u, byId) {
 
   const goal = tg || marchTarget(st, u);
   const [px, py] = goalPoint(u, d, goal.x, goal.y);
-  let spd = d.speed / TPS;
+  let spd = (d.speed / TPS) * (u.slow > 0 ? 0.65 : 1);
   if (d.charge) {
     if (u.charge >= d.charge) spd *= 2;
     u.charge += 1;
@@ -403,6 +429,10 @@ export function stepSim(st, cmds) {
   for (const u of st.units) {
     if (u.hp > 0) continue;
     const d = D(u);
+    if (d.deathSpawn) {
+      const n = d.deathSpawn.n;
+      for (let i = 0; i < n; i++) spawn(st, u.owner, u.team, CARD_BY_ID[d.deathSpawn.card], u.x + (i - (n - 1) / 2) * 0.9, u.y);
+    }
     if (d.death) st.fx.push({ k: 'bomb', style: 'bomb', at: t + d.death.delay, t0: t, x: u.x, y: u.y, r: d.death.radius, dmg: d.death.dmg, stun: 0, team: u.team, air: false, tm: 1 });
     st.ev.push({ k: 'die', c: u.card, x: u.x, y: u.y, t, team: u.team });
   }

@@ -345,6 +345,10 @@ function arrowShape(ctx, x, y, ang, len) {
   ctx.restore();
 }
 
+const AREA_TINT = {
+  poison: 'rgba(110,200,70,0.28)', ice: 'rgba(150,215,255,0.25)', heal: 'rgba(110,255,150,0.22)', rocket: 'rgba(255,90,60,0.16)', log: 'rgba(168,112,58,0.18)', barrel: 'rgba(138,200,74,0.14)',
+};
+
 function drawPending(ctx, st, o) { // hechizos que todavía no cayeron
   const S = CELL;
   for (const f of st.fx) {
@@ -354,7 +358,13 @@ function drawPending(ctx, st, o) { // hechizos que todavía no cayeron
     ctx.strokeStyle = f.style === 'zap' ? 'rgba(160,230,255,0.95)' : 'rgba(255,255,255,0.8)';
     ctx.lineWidth = 2.5; ctx.setLineDash([7, 6]);
     ctx.beginPath(); ctx.arc(x, y, f.r * S, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.arc(x, y, f.r * S, 0, TAU); ctx.fill();
+    ctx.fillStyle = AREA_TINT[f.style] || 'rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.arc(x, y, f.r * S, 0, TAU); ctx.fill();
+    if (f.style === 'poison') for (let i = 0; i < 6; i++) { const a = o.time * 1.5 + i * 1.05; disc(ctx, x + Math.cos(a) * f.r * S * 0.55, y + Math.sin(a * 1.3) * f.r * S * 0.45, S * (0.25 + (i % 3) * 0.08), 'rgba(140,220,80,0.5)'); }
+    if (f.style === 'rocket') drawSprite(ctx, 'cohete', x + (1 - k) * S * 5, y - (1 - k) * S * 14 + S * 0.6, S * (0.55 + 0.4 * k), { t: o.time });
+    if (f.style === 'barrel') { const arc = Math.sin(k * Math.PI) * S * 5; drawSprite(ctx, 'barril', x, y - arc + S * 0.5, S * 0.6, { t: o.time }); }
+    if (f.style === 'heal') for (let i = 0; i < 5; i++) { const a = i * 1.3 + o.time * 2; seg(ctx, x + Math.cos(a) * f.r * S * 0.5 - 4, y - ((o.time * 25 + i * 20) % 40), x + Math.cos(a) * f.r * S * 0.5 + 4, y - ((o.time * 25 + i * 20) % 40), '#7dffa4', 3); }
+    if (f.style === 'ice') for (let i = 0; i < 8; i++) { const hx = x + (((i * 41) % 13) - 6) * f.r * S / 8; const hy = y + (((i * 59) % 13) - 6) * f.r * S / 8 - (1 - k) * S * 8; disc(ctx, hx, hy, S * 0.2, '#dff6ff', '#6fb8e8', 1.5); }
+    if (f.style === 'log') { const lx = x + (k - 0.5) * f.r * S * 2.4; ctx.save(); ctx.translate(lx, y); ctx.rotate(o.time * 8); rect(ctx, -S * 0.5, -S * 0.2, S, S * 0.4, 4, '#a8703a', OUT, 2); ctx.restore(); }
     if (f.style === 'fire') drawSprite(ctx, 'bola-de-fuego', x + (1 - k) * S * 6, y - (1 - k) * S * 12 + S * 0.9, S * (0.5 + 0.5 * k), { t: o.time });
     if (f.style === 'arrows') for (let i = 0; i < 12; i++) { const ax = x + (((i * 37) % 11) - 5) * f.r * S / 6; const ay = y + (((i * 53) % 11) - 5) * f.r * S / 6 - (1 - k) * S * 9; arrowShape(ctx, ax, ay, Math.PI / 2 + 0.12, S * 0.55); }
     if (f.style === 'bomb') disc(ctx, x, y - (1 - k) * S * 3, S * 0.28, '#2b2b30', OUT, 1.5);
@@ -373,6 +383,14 @@ function projectile(ctx, e, age, x, y, tx, ty, o) {
   else if (c === 'mortero') { const arc = Math.sin(k * Math.PI) * 40; disc(ctx, px, py - arc, 6, '#4a463e', OUT, 1.5); }
   else if (c === 'canon') disc(ctx, px, py, 5, '#2b2b30', OUT, 1);
   else if (c === 'esbirros') disc(ctx, px, py, 3, '#c9d0e0', OUT, 1);
+  else if (c === 'bruja') { disc(ctx, px, py, 6, '#b86ce0', OUT, 1.5); disc(ctx, px, py, 3, '#f0d4ff'); }
+  else if (c === 'mago-de-hielo') { disc(ctx, px, py, 5.5, '#bfeaff', '#4aa8d8', 1.5); disc(ctx, px, py, 2.5, '#fff'); }
+  else if (c === 'electromago' || c === 'tesla') { seg(ctx, x, y, px, py, '#bff4ff', 4); disc(ctx, px, py, 4, '#7fe8ff', OUT, 1); }
+  else if (c === 'princesa') { arrowShape(ctx, px, py - Math.sin(k * Math.PI) * 24, ang, 9); disc(ctx, px, py - Math.sin(k * Math.PI) * 24, 3, '#ff8a2e'); }
+  else if (c === 'verdugo') { ctx.save(); ctx.translate(px, py - Math.sin(k * Math.PI) * 16); ctx.rotate(age * 1.6); rect(ctx, -9, -2, 18, 4, 2, '#8a5a2b', OUT, 1); rect(ctx, 3, -7, 7, 14, 2, '#d6dce6', OUT, 1.2); ctx.restore(); }
+  else if (c === 'cazador') { for (let i = -1; i <= 1; i++) disc(ctx, px, py + i * 4 * k, 2.5, '#ffe08a', OUT, 0.8); }
+  else if (c === 'bombardero' || c === 'torre-bomba') { const arc = Math.sin(k * Math.PI) * 30; disc(ctx, px, py - arc, 5.5, '#2b2b30', OUT, 1.5); }
+  else if (c === 'lanceros') { seg(ctx, px - Math.cos(ang) * 9, py - Math.sin(ang) * 9, px + Math.cos(ang) * 9, py + Math.sin(ang) * 9, OUT, 4); seg(ctx, px - Math.cos(ang) * 9, py - Math.sin(ang) * 9, px + Math.cos(ang) * 9, py + Math.sin(ang) * 9, '#c9a24a', 2); }
   else disc(ctx, px, py, 4.5, '#2b2b30', OUT, 1);
   void o;
 }
@@ -388,6 +406,21 @@ function drawEvents(ctx, st, o) {
       if (e.style === 'zap') {
         for (let i = 0; i < 7; i++) { const a = i * 0.9 + 0.3; const l = e.r * S * (0.5 + k * 0.5); seg(ctx, x, y, x + Math.cos(a) * l, y + Math.sin(a) * l, OUT, 6); seg(ctx, x, y, x + Math.cos(a) * l, y + Math.sin(a) * l, '#bff0ff', 3); }
         disc(ctx, x, y, e.r * S * (0.3 + k * 0.7), 'rgba(160,230,255,0.3)');
+      } else if (e.style === 'poison') {
+        disc(ctx, x, y, e.r * S * (0.7 + k * 0.3), 'rgba(120,210,70,0.45)');
+        for (let i = 0; i < 6; i++) { const a = i * 1.05; disc(ctx, x + Math.cos(a) * e.r * S * 0.5, y + Math.sin(a) * e.r * S * 0.5 - k * S, S * 0.28 * (1 - k * 0.5), 'rgba(160,235,90,0.7)'); }
+      } else if (e.style === 'ice') {
+        disc(ctx, x, y, e.r * S * (0.4 + k * 0.6), 'rgba(170,225,255,0.5)', '#6fb8e8', 3);
+        for (let i = 0; i < 8; i++) { const a = i * 0.8; seg(ctx, x, y, x + Math.cos(a) * e.r * S * 0.8, y + Math.sin(a) * e.r * S * 0.8, '#eaf9ff', 3); }
+      } else if (e.style === 'heal') {
+        disc(ctx, x, y, e.r * S * (0.4 + k * 0.6), 'rgba(120,255,160,0.35)', '#3fcf72', 3);
+        rect(ctx, x - 5, y - S * (0.3 + k), 10, 28, 3, '#e8fff0', '#3fcf72', 2); rect(ctx, x - 14, y - S * (0.3 + k) + 9, 28, 10, 3, '#e8fff0', '#3fcf72', 2);
+      } else if (e.style === 'barrel') {
+        disc(ctx, x, y, e.r * S * (0.5 + k * 0.5), 'rgba(138,200,74,0.45)');
+        for (let i = 0; i < 5; i++) { const a = i * 1.3; disc(ctx, x + Math.cos(a) * e.r * S * k, y + Math.sin(a) * e.r * S * k, S * 0.15, '#b88048', OUT, 1); }
+      } else if (e.style === 'log') {
+        disc(ctx, x, y, e.r * S * (0.4 + k * 0.6), 'rgba(168,112,58,0.4)');
+        for (let i = 0; i < 6; i++) { const a = i * 1.05; disc(ctx, x + Math.cos(a) * e.r * S * k, y + Math.sin(a) * e.r * S * k, S * 0.18, '#7a4b22'); }
       } else if (e.style === 'arrows') {
         disc(ctx, x, y, e.r * S, 'rgba(232,198,90,0.18)');
         for (let i = 0; i < 12; i++) arrowShape(ctx, x + (((i * 37) % 11) - 5) * e.r * S / 6, y + (((i * 53) % 11) - 5) * e.r * S / 6, Math.PI / 2 + 0.12, S * 0.45);
@@ -431,7 +464,7 @@ function drawEvents(ctx, st, o) {
 export function draw(ctx, st, o) {
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
   drawTerrain(ctx, o);
-  if (o.card && o.card.kind !== 'spell') drawZone(ctx, st, o);
+  if (o.card && (o.card.kind !== 'spell' || o.card.drop) && !o.card.anywhere) drawZone(ctx, st, o);
   const sorted = [...st.units].sort((a, b) => (CARD_BY_ID[a.card].fly ? 1 : 0) - (CARD_BY_ID[b.card].fly ? 1 : 0) || (o.flip ? b.y - a.y : a.y - b.y) || a.id - b.id);
   const towers = [...st.towers].sort((a, b) => (o.flip ? b.y - a.y : a.y - b.y));
   for (const tw of towers) drawTower(ctx, st, tw, o);

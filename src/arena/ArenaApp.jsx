@@ -1,6 +1,6 @@
 // Arena Royale: entrada, sala de espera, partida y final.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { everyFrame } from '../ticker.js';
+import { backgroundInterval, everyFrame } from '../ticker.js';
 import { backend } from '../storage.js';
 import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
@@ -15,8 +15,11 @@ import {
   CARDS, CARD_BY_ID, DECK_SIZE, DEFAULT_DECK, TICK_MS, averageCost, seconds, validDeck,
 } from './cards.js';
 import {
-  GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, OPTION_VALUES, TEAM_SIZE, applyAction, cleanName, findPlayer, makeId, newRoom, teamName,
+  GAME_TYPE, MAX_PLAYERS, OPTION_VALUES, TEAM_SIZE, applyAction, cleanName, findPlayer, makeId, newRoom, startProblem, teamName,
 } from './game.js';
+import {
+  MODES, MODE_INFO, chosenCards, draftOffers, isDraft, modeOf, seatDone,
+} from './draft.js';
 import {
   createRunner, inOvertime, isDouble, placeProblem, secondsLeft,
 } from './sim.js';
@@ -51,7 +54,17 @@ function saveDeck(deck) {
 // Lo que dice la carta, en una línea.
 function statLine(c) {
   const sec = (n) => String(n).replace('.', ',');
-  if (c.kind === 'spell') return `Daño ${c.dmg} · radio ${sec(c.radius)}${c.stun ? ` · aturde ${sec(seconds(c.stun))} s` : ''}`;
+  if (c.kind === 'spell') {
+    const parts = [];
+    if (c.dmg) parts.push(`Daño ${c.dmg}${c.pulses ? ` × ${c.pulses}` : ''}`);
+    if (c.heal) parts.push(`Cura ${c.heal}`);
+    if (c.drop) parts.push('Suelta 3 tropas');
+    parts.push(`radio ${sec(c.radius)}`);
+    if (c.stun) parts.push(`aturde ${sec(seconds(c.stun))} s`);
+    if (c.slow) parts.push(`frena ${sec(seconds(c.slow))} s`);
+    if (c.air === false) parts.push('solo suelo');
+    return parts.join(' · ');
+  }
   const aim = c.targets === 'buildings' ? 'solo edificios y torres' : c.targets === 'ground' ? 'solo suelo' : 'suelo y aire';
   const parts = [`Vida ${c.hp}`, `Daño ${c.dmg}`, `Golpe ${sec(seconds(c.hit))} s`];
   if (c.speed) parts.push(`Velocidad ${sec(c.speed)}`);
@@ -150,7 +163,9 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me?.id;
   const set = (patch) => onDispatch({ type: 'setOptions', options: patch });
   const count = (team) => room.players.filter((p) => p.team === team).length;
-  const ready = count(0) > 0 && count(1) > 0 && room.players.length >= MIN_PLAYERS;
+  const mode = modeOf(room);
+  const problem = startProblem(room);
+  const ready = !problem;
   const saveMyDeck = (deck) => { saveDeck(deck); onDispatch({ type: 'setDeck', deck }); };
   return (
     <LobbyLayout
@@ -178,9 +193,17 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         <p className="ar-hint">1 contra 1 o 2 contra 2. Cada uno juega con su mazo y su elixir; las torres son del equipo.</p>
       </div>
 
-      <DeckBuilder deck={me?.deck || DEFAULT_DECK} onSave={saveMyDeck} />
+      {isDraft(mode) ? (
+        <div className="ar-card" data-draft-info>
+          <div className="ar-card-head"><h2>{MODE_INFO[mode].label}</h2></div>
+          <p className="ar-hint">{MODE_INFO[mode].hint} Las cartas se eligen al empezar la partida: no hace falta armar un mazo.</p>
+        </div>
+      ) : <DeckBuilder deck={me?.deck || DEFAULT_DECK} onSave={saveMyDeck} />}
 
       <LobbyOptions canEdit={host}>
+        <OptionField title="Cómo se eligen las cartas" hint={MODE_INFO[mode].hint}>
+          <Segmented name="mode" value={mode} disabled={!host} onChange={(v) => set({ mode: v })} choices={MODES.map((m) => ({ value: m, label: MODE_INFO[m].label }))} />
+        </OptionField>
         <OptionField title="Duración" hint="Si hay empate al final hay un minuto extra: gana quien tire la primera torre.">
           <Segmented name="minutes" value={room.options.minutes} disabled={!host} onChange={(v) => set({ minutes: v })} choices={OPTION_VALUES.minutes.map((n) => ({ value: n, label: `${n} min` }))} />
         </OptionField>
@@ -190,9 +213,70 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         {host ? (
           <button type="button" className="tf-btn tf-btn-primary ar-start-btn" disabled={!ready} data-act="start" onClick={() => onDispatch({ type: 'start' })}>Empezar la partida</button>
         ) : <p>Esperando que el anfitrión arranque…</p>}
-        {!ready && <p className="ar-hint">Hace falta al menos uno en cada equipo. Pasale el código a tu rival.</p>}
+        {!ready && <p className="ar-hint">{problem} Pasale el código a tu rival.</p>}
       </div>
     </LobbyLayout>
+  );
+}
+
+// ─── Elegir cartas (doble y triple elección) ─────────────────────────────────
+function Drafting({ room, me, onDispatch, onLeave, clock }) {
+  const draft = room.draft;
+  const seat = draft.seats.findIndex((s) => s.id === me.id);
+  const { size, rounds } = MODE_INFO[draft.mode];
+  const offers = useMemo(() => draftOffers(draft.seed, draft.seats, draft.mode), [draft.seed, draft.mode, draft.seats]);
+  const round = seat >= 0 ? draft.picks[seat].length : rounds;
+  const done = seat < 0 || seatDone(draft, seat);
+  const mine = seat >= 0 ? chosenCards(offers, draft.picks, seat) : [];
+  const [secs, setSecs] = useState(0);
+  const [info, setInfo] = useState(null);
+  const lastSent = useRef(0);
+
+  // El reloj es de todos a la vez: cuando se acaba, cualquiera avisa y los que faltan eligen la primera opción.
+  useEffect(() => backgroundInterval(() => {
+    const now = Date.now() + clock.current;
+    setSecs(Math.max(0, Math.ceil((draft.deadline - now) / 1000)));
+    if (now >= draft.deadline && Date.now() - lastSent.current > 2500) { lastSent.current = Date.now(); onDispatch({ type: 'draftTimeout' }); }
+  }, 250), [draft.deadline]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const waiting = draft.seats.filter((_, i) => !seatDone(draft, i)).map((s) => room.players.find((p) => p.id === s.id)?.name).filter(Boolean);
+  const shown = CARD_BY_ID[info] || null;
+  return (
+    <div className="cs-root ar-page" data-draft>
+      <div className="ar-card ar-draft">
+        <div className="ar-card-head">
+          <h2>{MODE_INFO[draft.mode].label}</h2>
+          <span data-clock>{secs} s</span>
+        </div>
+        {!done ? (
+          <>
+            <p className="ar-draft-step" data-round={round + 1}>Elección {round + 1} de {rounds}</p>
+            <p className="ar-hint">{draft.mode === 'double' ? 'Elegí una: la otra se la queda tu rival.' : 'Elegí una: las demás se descartan.'}</p>
+            <div className="ar-offers" data-offers>
+              {offers[seat][round].map((id, i) => (
+                <div key={`${round}-${id}`} className="ar-offer">
+                  <CardFrame id={id} data-offer={i} data-card={id} onClick={() => onDispatch({ type: 'draftPick', index: i, round })} onHover={() => setInfo(id)} />
+                  <strong>{CARD_BY_ID[id].name}</strong>
+                  <small>{CARD_BY_ID[id].desc}</small>
+                  <small className="ar-stats">{statLine(CARD_BY_ID[id])}</small>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="ar-hint ar-draft-wait" data-draft-wait>Ya elegiste todo. {waiting.length ? `Esperando a ${waiting.join(', ')}…` : 'Arrancando…'}</p>
+        )}
+        <div className="ar-card-head ar-picked-head"><h3>Tus cartas ({mine.length} / {rounds})</h3></div>
+        <div className="ar-picked" data-picked>
+          {mine.map((id) => <CardFrame key={id} id={id} small onHover={() => setInfo(id)} />)}
+          {Array.from({ length: Math.max(0, rounds - mine.length) }).map((_, i) => <span key={`e${i}`} className="ar-slot-empty" />)}
+        </div>
+        {draft.mode === 'double' && <p className="ar-hint">Al final suman las 4 cartas que tu rival no quiso: tu mazo es de 8.</p>}
+        {shown && <p className="ar-hint"><b>{shown.name}</b>: {shown.desc} <span className="ar-stats">{statLine(shown)}</span></p>}
+        <p className="ar-hint">Este modo ofrece {size} cartas por vez.</p>
+      </div>
+      <div className="ar-leave"><button type="button" className="tf-btn tf-btn-soft" onClick={onLeave}>Salir de la partida</button></div>
+    </div>
   );
 }
 
@@ -487,6 +571,7 @@ export default function ArenaApp({ onBackToMenu }) {
     );
   }
   if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} /><GameChat code={code} me={me} /></>;
+  if (room.phase === 'drafting' && room.draft) return <>{banner}<Drafting key={room.matchN} room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} clock={clock} /><GameChat code={code} me={me} /></>;
   if (room.phase === 'ended') return <><Ended room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} /><GameChat code={code} me={me} /></>;
   return <>{banner}<Game key={room.matchN} room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} clock={clock} /><GameChat code={code} me={me} /></>;
 }

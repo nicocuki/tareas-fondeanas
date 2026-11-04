@@ -727,8 +727,17 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.31.0 = Arena Royale: ahora se ve como el original
+1.31.0 = Arena Royale: ahora se ve como el original
 - La arena cambió por completo: pasto a cuadros, senderos de tierra, río con puentes de madera, árboles y vallas alrededor, torres de piedra con cañón y torre del rey con su coronita (dormida hasta que la lastiman).
 - Cada carta tiene su propio dibujo, igual en la arena, en tu mano, en el mazo y en la sala de espera: se acabaron los emojis. Los marcos tienen el color de la rareza (común, rara o épica) y la gota de elixir con el costo.
 - Abajo hay una bandeja con tus cartas, la que sigue y la barra de elixir con su gota; las coronas están a la derecha de la arena.
 - El Gigante, el Montapuercos y el Globo ahora van siempre a la estructura o torre que tengan más cerca: si ponés un cañón o un mortero más cerca que una torre, van al cañón o al mortero.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.32.0 = Arena Royale: 30 cartas nuevas y dos modos para elegir las cartas
+- Hay 30 cartas más (50 en total): Bárbaros, Bruja, Golem, Gigante Esqueleto, Minero, Princesa, Electromago, Torre Tesla, Tumba, Veneno, Cohete, Curación, Barril de Duendes y muchas otras, cada una con su dibujo.
+- Mecánicas nuevas: unas invocan tropas cada tanto (Bruja, Tumba, Cabaña de Duendes), otras sueltan más tropas al romperse (Golem, Sabueso de Lava), hay hechizos que curan, frenan o dañan de a poco, el Electromago aturde y el Minero aparece en cualquier lado.
+- Doble elección: te muestran 2 cartas, 4 veces; la que no elegís se la queda tu rival, así que tu mazo son tus 4 más las 4 que descartó el otro (pide equipos parejos).
+- Triple elección: te muestran 3 cartas, 8 veces; las que no elegís se descartan.
+- El modo lo elige el anfitrión en la sala de espera (Clásico, Doble o Triple). Hay 12 segundos por elección: si se acaba el tiempo, se toma la primera opción.
