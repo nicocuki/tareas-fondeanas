@@ -20,8 +20,10 @@ import PixelApp from './pixel/PixelApp.jsx';
 import MineApp from './mine/MineApp.jsx';
 import MonopolyApp from './monopoly/MonopolyApp.jsx';
 import TegApp from './teg/TegApp.jsx';
+import ArenaApp from './arena/ArenaApp.jsx';
 
 const SCREENS = {
+  arena: ArenaApp,
   teg: TegApp,
   monopoly: MonopolyApp,
   mine: MineApp,

@@ -1,0 +1,77 @@
+/* Arena Royale. Colores de src/ui/tokens.css; el del juego es --game-arena. La arena y los equipos (azul y rojo) son iguales en los dos temas. */
+.ar-page { --ar: var(--game-arena); padding: 20px 16px 40px; max-width: 760px; margin: 0 auto; }
+.ar-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+.ar-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.ar-card-head h2 { margin: 0; font-size: 1.1rem; }
+.ar-card-head span { color: var(--text-2); font-size: 0.9rem; }
+.ar-hint { color: var(--text-2); font-size: 0.88rem; margin: 8px 0 0; }
+.ar-warn { color: var(--accent, #f5b82e); }
+.ar-stats { display: block; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.ar-error { color: #e5484d; font-weight: 600; }
+.ar-banner { text-align: center; padding: 8px; }
+.ar-msg { text-align: center; padding: 32px 16px; }
+.ar-or { display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: 0.85rem; margin: 14px 0; }
+.ar-or::before, .ar-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.ar-entry { display: grid; gap: 12px; }
+
+/* sala de espera */
+.ar-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ar-team { border: 2px solid var(--tc); border-radius: 14px; padding: 10px; display: grid; gap: 8px; align-content: start; }
+.ar-team h3 { margin: 0; color: var(--tc); font-size: 0.95rem; }
+.ar-team ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ar-team li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; background: var(--surface-2, rgba(127, 127, 127, 0.12)); }
+.ar-team li.is-me { outline: 2px solid var(--tc); }
+.ar-team li.is-empty { color: var(--text-2); font-style: italic; justify-content: center; opacity: 0.6; }
+.ar-team li strong { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
+.ar-mini { position: relative; display: grid; justify-items: center; gap: 2px; padding: 14px 4px 6px; border-radius: 12px; border: 2px solid var(--border); background: var(--surface-2, rgba(127, 127, 127, 0.1)); color: inherit; cursor: pointer; }
+.ar-mini.is-on { border-color: var(--ar); background: color-mix(in srgb, var(--ar) 20%, transparent); }
+.ar-mini small { font-size: 0.72rem; text-align: center; line-height: 1.15; }
+.ar-emoji { font-size: 1.7rem; line-height: 1; }
+.ar-cost { position: absolute; top: 4px; left: 4px; min-width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #b04ae0; color: #fff; font-style: normal; font-weight: 800; font-size: 0.8rem; border: 2px solid #f0d0ff; }
+.ar-start { text-align: center; margin-top: 8px; }
+.ar-start-btn { min-width: 240px; }
+
+/* partida */
+.ar-playing { max-width: 560px; padding-top: 10px; }
+.ar-hud { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ar-score { display: flex; align-items: center; gap: 6px; color: var(--tc); font-weight: 700; }
+.ar-score:last-child { justify-content: flex-end; }
+.ar-score b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.ar-clock { text-align: center; font-weight: 800; font-size: 1.4rem; font-variant-numeric: tabular-nums; display: grid; }
+.ar-clock small { font-size: 0.7rem; color: #b04ae0; font-weight: 700; }
+.ar-ot { color: #e5484d; font-size: 1rem; }
+.ar-stage { position: relative; display: flex; justify-content: center; }
+.ar-canvas { width: min(100%, calc((100vh - 290px) * 18 / 32)); min-width: 260px; aspect-ratio: 18 / 32; border-radius: 14px; touch-action: none; cursor: crosshair; background: #6fae4f; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
+.ar-count { position: absolute; inset: 0; display: grid; place-items: center; font-size: 6rem; font-weight: 900; color: #fff; text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6); pointer-events: none; }
+.ar-toast { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.78); color: #fff; padding: 8px 14px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; pointer-events: none; white-space: nowrap; }
+.ar-toast-big { top: 40%; bottom: auto; font-size: 2rem; padding: 14px 26px; }
+.ar-bottom { margin-top: 10px; display: grid; gap: 8px; }
+.ar-elixir { position: relative; height: 22px; border-radius: 11px; background: rgba(127, 127, 127, 0.25); overflow: hidden; border: 2px solid #5a2a7a; }
+.ar-elixir-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #c04ae8, #e070ff); transition: width 0.12s linear; }
+.ar-elixir span { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; font-size: 0.8rem; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.ar-hand { display: grid; grid-template-columns: 46px repeat(4, 1fr); gap: 8px; align-items: stretch; }
+.ar-next { display: grid; justify-items: center; align-content: center; gap: 2px; opacity: 0.75; font-size: 1.2rem; }
+.ar-next small { font-size: 0.6rem; color: var(--text-2); }
+.ar-card-btn { position: relative; display: grid; justify-items: center; gap: 2px; padding: 16px 4px 6px; border-radius: 12px; border: 3px solid var(--border); background: var(--surface); color: inherit; cursor: pointer; transition: transform 0.08s; }
+.ar-card-btn:hover:not(:disabled) { transform: translateY(-3px); }
+.ar-card-btn.is-sel { border-color: #ffd23f; transform: translateY(-8px); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35); }
+.ar-card-btn.is-poor { opacity: 0.55; }
+.ar-card-btn:disabled { opacity: 0.4; cursor: default; }
+.ar-card-btn small { font-size: 0.68rem; text-align: center; line-height: 1.1; min-height: 2.2em; }
+.ar-card-btn kbd { position: absolute; bottom: 2px; right: 4px; font-size: 0.6rem; opacity: 0.5; }
+.ar-tip { text-align: center; }
+.ar-leave { text-align: center; margin-top: 10px; }
+
+/* final */
+.ar-ended { text-align: center; }
+.ar-ended h1 { margin: 4px 0 12px; }
+.ar-ranking { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 6px; }
+.ar-ranking li { display: flex; justify-content: space-between; padding: 8px 12px; border-left: 5px solid var(--tc); background: var(--surface-2, rgba(127, 127, 127, 0.12)); border-radius: 8px; }
+.ar-ended-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+
+@media (max-width: 480px) {
+  .ar-teams { grid-template-columns: 1fr; }
+  .ar-canvas { width: 100%; }
+  .ar-card-btn small { font-size: 0.6rem; }
+}

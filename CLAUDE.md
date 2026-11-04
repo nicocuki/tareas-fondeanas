@@ -189,6 +189,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), sprites de los efectos (`sprites/`, `sprites.js`), pelea en tiempo real (`TirosGame.jsx`) |
 | `src/nave/` | Entre Nosotros (Among Us): mapa (`map.js`), tareas (`tasks.js`), reducer (`game.js`), movimiento y vista (`sim.js`), dibujo (`render.js`), la nave en vivo (`NaveGame.jsx`), minijuegos, reunión (ver *Entre Nosotros*) |
+| `src/arena/` | Arena Royale: cartas (`cards.js`), simulación determinista con rollback (`sim.js`), reducer de la sala (`game.js`), dibujo (`render.js`), pantallas (ver *Arena Royale*) |
 | `src/mine/` | Cubolandia (Minecraft 2D): bloques, ítems y recetas (`blocks.js`), mundo por semilla (`world.js`), reducer (`game.js`), física, vida, bichos y luz (`sim.js`), dibujo (`render.js`), la partida en vivo (`MineGame.jsx`) (ver *Cubolandia*) |
 | `src/pixel/` | Pixel Royale: mapa y tormenta (`map.js`), armas, botín y balas (`sim.js`), reducer (`game.js`), dibujo pixelado (`render.js`), la partida en vivo (`PixelGame.jsx`) (ver *Pixel Royale*) |
 | `src/cohetes/` | Cohete Royale (Rocket Bot Royale): mapa (`terrain.js`), tanque pegajoso, nave y armas (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`CohetesGame.jsx`) (ver *Cohete Royale*) |
@@ -879,6 +880,33 @@ De 2 a 8, solo compu. `id`: `mine` (`?juego=mine`, `gameType: 'mine'`, raíz `mi
   fluidos fluyan. La armadura de cuero se hace con el cuero de las vacas. Lo construido no se guarda: la sala se cierra a los 15 minutos de inactividad.
 - `window.__mine` (el estado de la pantalla: jugador, demás, mundo, bichos, sueltos) y `data-mine-canvas`, `data-grace`, `data-locator`, `data-hotbar`, `data-slot`, `data-inv`, `data-craft`, `data-smelt` existen
   para manejar el juego desde un navegador automatizado. No los saques.
+
+## Arena Royale
+
+Duelos de cartas y torres, pedido de Nico («un Clash Royale»; el nombre lo eligió él). 1 contra 1 o 2 contra 2, de 2 a 4, mouse o táctil. `id`: `arena`
+(`?juego=arena`, `gameType: 'arena'`). **No tiene raíz propia en `ROOTS`**: todo vive en `rooms/{código}`. Las 20 cartas, sus números y cómo se ve cada una
+están en `docs/ARENA.md` (los valores son nuestros, inspirados en el original).
+
+- **Lockstep determinista**: la sala NO calcula la partida. Cada pantalla simula entera con `sim.js` a partir de `match.seed` y de `match.cmds`
+  (jugadas `[tick, asiento, lugar de la mano, x×10, y×10]`, en el orden en que la sala las anotó). **En `sim.js` no hay `Math.random`, `Date.now` ni trigonometría**
+  (`Math.sin`/`cos` pueden dar distinto entre navegadores): solo sumas, productos, divisiones y raíces, que IEEE deja exactas. Si agregás algo ahí, que siga igual.
+  El dibujo (`render.js`) sí usa trigonometría: no toca el estado.
+- **Pasos de 50 ms** (`TICK_MS`, 20 por segundo). El reducer estampa cada jugada con `tickAt(match, now) + LEAD` (6 pasos, 0,3 s) según la hora del servidor
+  (la pantalla manda `Date.now() + offset` con `backend.subscribeServerOffset`). Cada pantalla avanza hasta el paso de su hora y dibuja.
+- **Rollback**: el `Runner` (`createRunner`) guarda un punto cada 20 pasos. Si llega una jugada con un tick que ya simuló, vuelve al punto anterior y repite: da lo mismo que si
+  hubiera llegado a tiempo (hay un test que lo compara byte a byte). La sala solo valida lo mínimo (asiento, mano 0 a 3, tope `MAX_CMDS`); **la sim decide si valía** (elixir, zona,
+  torres) con `placeProblem`, la misma que usa la interfaz para avisar.
+- **El final lo avisa la primera pantalla que lo ve** (`finish` con `winner` 0, 1 o -1); entre amigos alcanza (como `died` en los otros juegos). Salirse en plena partida regala la victoria al otro equipo.
+- **Arena de 18 × 32 casillas**: río en `y = 16` con dos puentes (`BRIDGES`); el suelo cruza solo por ahí y el Montapuercos (`jump`) lo salta. El equipo 0 juega abajo y el 1 arriba (torres espejadas);
+  **el equipo 1 ve la arena dada vuelta** (`toView`/`fromView`), así cada uno tiene su lado abajo. Las tropas se ponen en tu mitad, y en el carril donde ya cayó la princesa enemiga se puede más adelante (bolsillo).
+- **Elixir y mano**: 5 al empezar, tope 10, 1 cada 2,8 s (el doble en el último minuto). Mazo de 8 (se guarda en `localStorage`, `tf:arena:mazo`), mano de 4 y la que sigue; la usada va al fondo. Cada uno tiene su elixir, las torres son del equipo.
+- **Torres**: princesas (1400 de vida) y rey (2400, dormido hasta que lo lastiman o cae una princesa). Princesa = 1 corona, rey = 3 y termina. Los hechizos pegan el 35 % a las torres (`TOWER_SPELL`).
+  Empate al final → un minuto extra donde gana la primera corona; si sigue empatado, gana quien tenga más vida en las torres.
+- **Datos de las cartas** en `cards.js` (tiempos en pasos con `T(segundos)`). Una carta nueva: una entrada ahí con su `look` (solo dibujo) y, si hace algo nuevo, su caso en `sim.js`. El tamaño de la sala
+  con el tope de jugadas (600 de ~18 caracteres) queda debajo de 16.000: hay un test.
+- `data-card`, `data-slot`, `data-hand`, `data-hud`, `data-clock`, `data-elixir`, `data-arena-canvas`, `data-pick`, `data-result` existen para manejar el juego desde un navegador automatizado. No los saques.
+- Es una imitación entre amigos (Clash Royale es de Supercell): los dibujos son nuestros; si llegara un pedido de bajarlo, se saca la entrada de `games.js`.
+- **Todavía no tiene**: bots para jugar solo, reconexión a una partida ya empezada desde otra pantalla (recargar la misma pestaña sí funciona: la sim se pone al día sola), emotes, ni cartas legendarias o evoluciones.
 
 ## Mario vs Luigi
 
