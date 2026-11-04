@@ -23,7 +23,7 @@ test('admin: el servidor pide la clave, y sin clave configurada no deja entrar a
 
 test('admin: la lista tiene todas las salas con gente, públicas o no', () => {
   const tree = { rooms: { ABCD: room() }, publica: { ABCD: true } };
-  assert.deepEqual(adminListing(tree, 'ABCD', 2), { code: 'ABCD', game: 'teg', host: 'Nico', players: 2, max: 6, phase: 'lobby', conns: 2, pub: true });
+  assert.deepEqual(adminListing(tree, 'ABCD', 2), { code: 'ABCD', game: 'teg', host: 'Nico', players: 2, max: 6, phase: 'lobby', who: [{ n: 'Nico', a: '', h: 1 }, { n: 'Juli', a: '' }], conns: 2, pub: true });
   assert.equal(adminListing({ rooms: { ABCD: room() } }, 'ABCD', 1).pub, undefined);
   assert.equal(adminListing(tree, 'ABCD', 0), null, 'sin nadie conectado no se lista');
   assert.equal(adminListing({}, 'ABCD', 3), null, 'una sala vacía (recién cerrada) tampoco');

@@ -341,6 +341,7 @@ por código, y las sugerencias para leerlas, copiarlas o borrarlas. En la portad
   saques ni la reemplaces por el nombre**: con eso cualquiera podría borrar todas las salas.
 - **La lista de salas** la arma el Directorio (`registrar`/`todas`, claves `a:`), con lo que avisa cada sala en `Sala.publish()`
   (`adminListing`: con alguien conectado y con datos). Mismo vencimiento que las públicas.
+- **Quiénes están en cada sala**: `adminListing` suma `who` (`adminPlayers`: nombre, avatar, `h` anfitrión, `b` bot, `x` ya no juega; hasta 30), y el panel los muestra debajo de cada sala. Solo viaja por las rutas de admin: la lista pública de la portada no lleva nombres.
 - **Cerrar** es la RPC `Sala.cerrar()`, que hace lo mismo que el cierre por inactividad (`shutdown`): saca la sala de la portada y
   de la lista, cierra los WebSocket con 4000 y borra todo. Las pantallas que estaban adentro muestran «Esa sala ya no existe».
 - Para probar en local: `npx wrangler dev --var ADMIN_CLAVE:prueba`.

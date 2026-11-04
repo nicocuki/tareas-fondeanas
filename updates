@@ -708,6 +708,11 @@ OCULTA 1.23.1 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.29.2.5 = Monopoly: llevá tu partida a otra compu 💾
+1.29.2.5 = Monopoly: llevá tu partida a otra compu 💾
 - En «Partidas guardadas» hay un botón «Descargar» que baja la partida como archivo, y «Cargar desde archivo» para abrirla en otra compu o navegador. Después se continúa como siempre.
 - El archivo lleva una firma: si lo editás a mano para cambiar la plata o las propiedades, el juego avisa que fue modificado y no lo abre. También rechaza archivos rotos o incoherentes.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST OCULTA 1.29.3.5 = Ajuste interno
+- Cambio interno de mantenimiento. No se muestra en Novedades.

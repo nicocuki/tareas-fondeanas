@@ -20,13 +20,33 @@ export function isAdminKey(env, given) {
   return diff === 0;
 }
 
+// Quiénes están en la sala: { n: nombre, a: avatar, h: anfitrión, b: bot, x: ya no juega }. Solo para el admin.
+export function adminPlayers(tree, code) {
+  const gartic = getAt(tree, ['garticRooms', code]);
+  let list;
+  let hostId;
+  if (gartic && typeof gartic === 'object') {
+    hostId = gartic.hostId;
+    list = Object.entries(gartic.players || {}).map(([id, p]) => ({ ...p, id }));
+  } else {
+    let room;
+    try { room = JSON.parse(getAt(tree, ['rooms', code])); } catch { return []; }
+    hostId = room?.hostId;
+    list = Array.isArray(room?.players) ? room.players : [];
+  }
+  return list.slice(0, 30).filter((p) => p && typeof p === 'object').map((p) => ({
+    n: String(p.name || '').slice(0, 24), a: typeof p.avatar === 'string' ? p.avatar.slice(0, 8) : '',
+    ...(p.id === hostId ? { h: 1 } : {}), ...(p.bot ? { b: 1 } : {}), ...(p.out || p.left ? { x: 1 } : {}),
+  }));
+}
+
 // Lo que el admin ve de una sala con gente conectada (o null si no hay sala o nadie conectado).
 export function adminListing(tree, code, connections) {
   if (!code || connections < 1) return null;
   const sum = summarizeRoom(code, getAt(tree, ['garticRooms', code]), getAt(tree, ['rooms', code]));
   if (!sum || sum.local) return null;
   return {
-    code, game: sum.game, host: sum.host, players: sum.players, max: sum.max, phase: sum.phase,
+    code, game: sum.game, host: sum.host, players: sum.players, max: sum.max, phase: sum.phase, who: adminPlayers(tree, code),
     conns: connections, ...(getAt(tree, ['publica', code]) === true ? { pub: true } : {}),
   };
 }

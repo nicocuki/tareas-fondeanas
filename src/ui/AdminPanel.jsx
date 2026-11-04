@@ -72,6 +72,15 @@ function Rooms({ rooms, onReload, onNavigate }) {
                     {r.host ? `De ${r.host}` : 'Sin anfitrión'} · 👥 {r.players}{r.max ? `/${r.max}` : ''} · {PHASES[r.phase] || 'Jugando'}
                     {' · '}{r.conns} {r.conns === 1 ? 'pantalla' : 'pantallas'}{r.pub ? ' · pública' : ''}
                   </small>
+                  {r.who?.length > 0 && (
+                    <small className="tf-admin-who" data-admin-who>
+                      {r.who.map((p, i) => (
+                        <span key={i} style={p.x ? { opacity: 0.5 } : undefined}>
+                          {p.a} {p.n || 'Sin nombre'}{p.h ? ' 👑' : ''}{p.b ? ' 🤖' : ''}{p.x ? ' (se fue)' : ''}{i < r.who.length - 1 ? ' · ' : ''}
+                        </span>
+                      ))}
+                    </small>
+                  )}
                 </span>
                 <button type="button" className="tf-btn tf-btn-soft" onClick={() => onNavigate(r.game, r.code)}>Entrar</button>
                 <button type="button" className="tf-btn tf-btn-danger-soft" onClick={() => closeOne(r.code)}>Cerrar</button>
