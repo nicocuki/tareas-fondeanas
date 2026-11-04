@@ -183,7 +183,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/codigo-secreto/Options.jsx` `Chat.jsx` `Rules.jsx` `Players.jsx` | Paneles de la interfaz de Código Secreto |
 | `src/theme.js` | Colores y estilos para los estilos en línea de los juegos (apuntan a las variables de `src/ui/tokens.css`) |
 | `src/gartic/` | Trazo Loco: lógica (`game.js`), trazos y balde (`drawing.js`), red (`storage.js`), pantallas (ver `docs/GARTIC.md`) |
-| `src/teg/` | T.E.G.: mapa, cartas y objetivos (`board.js`), reducer (`game.js`), bitácora (`log.js`), el mapa en SVG (`Map.jsx`), ventanas de combate (`Dialogs.jsx`), paneles y pantallas (ver *T.E.G.*) |
+| `src/teg/` | T.E.G.: países, cartas y objetivos (`board.js`), geografía del mapa (`geo.js`), reducer (`game.js`), bitácora (`log.js`), el mapa en SVG (`Map.jsx`), apertura con misiones y reparto (`Opening.jsx`), reserva de fichas (`Reserve.jsx`), bandeja de dados (`Dice.jsx`), ventanas de combate (`Dialogs.jsx`), paneles y pantallas (ver *T.E.G.*) |
 | `src/monopoly/` | Monopoly: tablero y mazos (`board.js`), reducer (`game.js`), bitácora en texto y avisos (`log.js`), escena de los dados y avisos (`Stage.jsx`), guardado local (`saves.js`), sonidos (`sfx.js`), pantallas (ver *Monopoly*) |
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
@@ -434,12 +434,8 @@ Los 50 países, los 6 continentes y sus bonus son los del juego de mesa; **los v
   **un solo contador para toda la partida**) y +2 en cada país de las cartas que sea tuyo. Con `FORCED_TRADE` (5) cartas no se puede poner ni
   pasar a atacar sin canjear: con 5 siempre hay un canje posible. Quien elimina a alguien se queda con sus cartas.
 - **El reparto inicial es con las cartas de países, como en la mesa** (pedido de Feli): `start` mezcla las 50 y las da de a una, en ronda (`k % n`), con un
-  ejército en cada país; `room.dealt` guarda el orden en que salieron. `Deal.jsx` (`useDeal` + `DealScene`) lo muestra una vez por partida y por pestaña
-  (`sessionStorage` `tg:reparto:{startedAt}`): las cartas salen cada 110 ms y el mapa recibe una sala tapada (los que faltan con `own: -1`, que `Map.jsx`
-  pinta en gris y sin número). Mientras dura, tocar el mapa no hace nada; se puede saltar.
-- **Los dados ruedan** (`BattleReport`, `ROLL_MS`): con una tirada nueva (`rollKey` = `room.rollN`) ruedan un momento y después se acomodan. `sinceKey` es la
-  tirada que ya se había visto al aparecer el cuadro: sin eso, el primer ataque desde la ventana no rodaba. `OccupyDialog` muestra primero esos dados y recién
-  después el «¡Conquistaste!» (si no, la ventana de conquista tapaba la tirada). El objetivo secreto arranca tapado (`ObjectivePanel`).
+  ejército en cada país; `room.dealt` guarda el orden en que salieron; `Opening.jsx` lo muestra (ver *El mapa* arriba): el mapa recibe una sala tapada (los países que faltan con `own: -1`, que `Map.jsx` pinta del color del continente y sin ficha). Mientras dura, tocar el mapa no hace nada; se puede saltar.
+- `BattleReport` es el resumen quieto de la última tirada (en la ventana de ataque y en la bitácora); el objetivo secreto arranca tapado y se espía manteniendo apretada su carta.
 - **Reagrupe**: queda un ejército en cada país y los que llegan (`room.locked`) no se vuelven a mover en el turno (`movable`).
 - **Objetivos** (`OBJECTIVES` en `board.js`): 8 de continentes y países, «24 países», «18 países con 2 ejércitos» y uno de destruir a cada color.
   Al repartirlos nadie recibe destruirse a sí mismo ni a un color que no juega. Si otro jugador elimina al que tenías que destruir, tu objetivo
@@ -448,10 +444,24 @@ Los 50 países, los 6 continentes y sus bonus son los del juego de mesa; **los v
   (igual que el chat de equipo de Código Secreto), alcanza para jugar entre amigos.
 - **Salirse o que te saquen** (`leave`, `kick` también en `playing`): sus países se quedan donde están, sin jugar, y se salta su turno (no se
   reparten al azar). Si queda uno solo en pie, gana. En los ejércitos iniciales, el que se va no frena a los demás.
-- **El mapa** (`Map.jsx`) es un SVG de 1000 × 600: una mancha por continente (envolvente convexa con borde redondeado), líneas de frontera
-  (punteadas las que cruzan el mar; Alaska–Kamchatka da la vuelta por los bordes) y una ficha por país. Cada país se toca directamente: en
-  refuerzos pone ejércitos (por toque 1, 5, 10 o todos), en ataque se elige el origen y después un vecino enemigo (se marcan en rojo), en
-  reagrupe origen y vecino propio. El zoom es solo de pantalla (en celular arranca en 2,2 y el mapa se desplaza).
+- **El mapa** (`geo.js` + `Map.jsx`) es un SVG de 1000 × 715 con forma de tablero de mesa. `geo.js`: cada continente es una silueta dibujada a mano y cada país es el
+  pedazo de su continente más cercano a su semilla (Voronoi recortado a la silueta, `SEEDS`), con el borde ondulado por un ruido que depende solo de la posición
+  (así los vecinos comparten la misma línea). **Hay un test que exige que se toquen en el dibujo exactamente los países limítrofes por tierra** (y nada más): si movés
+  una semilla o una silueta, corrélo; las semillas actuales salieron de un optimizador que lo cumple. Europa/Asia comparten la frontera de los Urales, Norteamérica/Sudamérica
+  el istmo y África/Asia el Sinaí (lados compartidos entre dos siluetas). Las rutas por mar (`sea` en `LINKS`) se dibujan punteadas con un barquito; Alaska–Kamchatka da la vuelta
+  por los bordes. Cada país tiene dos zonas tocables (territorio y ficha); el territorio toma el color del dueño mezclado con el del continente. Zoom con rueda/botones y
+  arrastre para mover (`MAX_ZOOM`). Los atributos `data-i`/`data-land-i` los usa la reserva para saber sobre qué país se soltó la ficha.
+- **La pantalla es el mapa** (`.tg-board`, alto de la página) y todo flota encima: qué hacer (arriba), jugadores (`PlayersHud`), reserva, y un dock con cajón (Misión, Cartas,
+  Jugadores, Continentes, Bitácora, Reglas). **No uses la clase `tg-stage`**: es la etiqueta de etapa de la barra de acción.
+- **Apertura** (`Opening.jsx`, solo dibujo y una vez por partida y pestaña, `tg:apertura:{startedAt}`): 1) misiones: se mezcla el mazo, sale una carta a cada asiento y la tuya
+  queda boca abajo (`SecretCard` en `Panels.jsx`: **se espía manteniéndola apretada** —mouse, dedo, Espacio o Enter— y se tapa sola al soltar); 2) reparto de países: el mazo se mezcla y
+  cada carta vuela (`DealFly`, dentro del SVG) a su país; al impactar (`LAG` pasos después) el país se pinta y la ficha cae con rebote. La sala tapada para el mapa sale de `useOpening`.
+- **Reserva** (`Reserve.jsx`): las fichas que faltan poner (`me.pend` en los iniciales, `room.reinf` en los refuerzos), vibrando. Se arrastran con pointer events (se mira con
+  `elementsFromPoint` qué país hay abajo; solo valen los tuyos) o se toca el país: cada toque resta una. En los iniciales siempre de a una.
+- **Dados** (`Dice.jsx`, `DiceTray`): cuando sube `room.rollN` **todos** ven una bandeja de paño con cubos 3D (CSS) que ruedan con física simple (rebotes, choques entre dados, cada
+  uno se frena en su momento), se acomodan de mayor a menor y marcan quién gana cada pareja. Es solo dibujo: los dados ya están en `room.last` (que ahora lleva `dv`, el defensor, porque
+  al conquistar el país cambia de dueño). `useBattle` devuelve la tirada que se está mostrando: mientras dura no se abren el ataque ni «¡Conquistaste!» y el mapa no se toca. La física
+  va con `everyFrame` y escribe directo en el DOM.
 - **Las animaciones de los anillos no pueden mover la caja del elemento** (`stroke-dashoffset` y `opacity`, no `rotate`): con un `rotate`
   el navegador automatizado nunca daba el país por «estable» y no se podía tocar.
 - **`.tg-card` es de las tarjetas de la sala; las cartas de la mano son `.tg-hcard`**: usaron el mismo nombre y la sala de espera quedaba rota.

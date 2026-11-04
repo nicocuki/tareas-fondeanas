@@ -1,5 +1,5 @@
 // T.E.G.: entrada, sala de espera, partida y final.
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { backend } from '../storage.js';
 import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
@@ -12,11 +12,13 @@ import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
 import { ARMY_COLORS, COUNTRIES, NEIGHBORS, areNeighbors, objectiveById } from './board.js';
 import {
-  FORCED_TRADE, GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, attackProblem, cleanName, countOf, findPlayer, indexOfPlayer, inGame,
+  FORCED_TRADE, GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, armiesOf, attackProblem, cleanName, countOf, findPlayer, indexOfPlayer, inGame,
   makeId, movable, newRoom, objectiveProgress,
 } from './game.js';
 import WorldMap from './Map.jsx';
-import { DealScene, useDeal } from './Deal.jsx';
+import { DealBar, DealFly, MissionScene, useOpening } from './Opening.jsx';
+import Reserve from './Reserve.jsx';
+import DiceTray, { useBattle } from './Dice.jsx';
 import {
   Chip, ContinentsPanel, HandPanel, LogPanel, ObjectivePanel, PlayersPanel, RulesPanel,
 } from './Panels.jsx';
@@ -160,9 +162,8 @@ function ActionBar({ room, me, mi, dispatch, amount, setAmount, setFrom, from })
     text = me?.out ? '💀 Te eliminaron. Podés seguir mirando la partida.' : 'Estás mirando la partida.';
   } else if (setup) {
     text = me.pend > 0
-      ? <><b>Poné tus ejércitos iniciales</b> ({room.stage === 'setup1' ? 'primera' : 'segunda'} tanda): te quedan <b data-pend>{me.pend}</b>. Tocá uno de tus países para sumarle. Todos ponen a la vez.</>
+      ? <><b>Poné tus ejércitos iniciales</b> ({room.stage === 'setup1' ? 'primera' : 'segunda'} tanda): te quedan <b data-pend>{me.pend}</b>. Arrastrá las fichas de tu reserva a tus países (o tocá un país: cada toque pone una). Todos ponen a la vez y no se sigue hasta que la reserva de todos quede en 0.</>
       : <><b>Listo.</b> Esperando a los demás…</>;
-    if (me.pend > 0) controls = amounts;
   } else if (!myTurn) {
     const stage = { reinforce: 'repartiendo refuerzos', attack: 'atacando', regroup: 'reagrupando' }[room.stage];
     text = <>Turno de <b>{cur.name}</b>: está {stage}.</>;
@@ -209,6 +210,35 @@ function ActionBar({ room, me, mi, dispatch, amount, setAmount, setFrom, from })
 }
 
 // ─── Partida ─────────────────────────────────────────────────────────────────
+// Pantalla completa: el mapa lo ocupa todo y lo demás flota encima (qué hacer, jugadores, reserva, y un cajón con los paneles).
+const TABS = [
+  ['mision', '🎯', 'Misión'], ['cartas', '🃏', 'Cartas'], ['jugadores', '👥', 'Jugadores'],
+  ['continentes', '🌍', 'Continentes'], ['log', '📜', 'Bitácora'], ['reglas', '❓', 'Reglas'],
+];
+
+function PlayersHud({ room, me }) {
+  const setup = room.stage === 'setup1' || room.stage === 'setup2';
+  return (
+    <ul className="tg-hud" aria-label="Jugadores">
+      {room.players.map((p, i) => {
+        const turn = room.phase === 'playing' && !setup && room.current === i && inGame(p);
+        return (
+          <li key={p.id} className={`${turn ? 'is-turn' : ''}${!inGame(p) ? ' is-out' : ''}`} style={{ '--who': ARMY_COLORS[p.color].color }}>
+            <span className="tg-hud-av">{p.avatar}</span>
+            <span className="tg-hud-name">{p.id === me.id ? 'Vos' : p.name}</span>
+            <span className="tg-hud-stats" title="Países · ejércitos · cartas">
+              🗺️{countOf(room, i)} 🪖{armiesOf(room, i)} 🃏{p.cards.length}
+            </span>
+            {turn && <b className="tg-hud-turn">▶</b>}
+            {setup && inGame(p) && <b className={p.pend ? 'tg-hud-pend' : 'tg-hud-ok'}>{p.pend ? p.pend : '✓'}</b>}
+            {p.out && <span className="tg-hud-tag">💀</span>}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function Game({ room, me, onDispatch, onLeave }) {
   const mi = indexOfPlayer(room, me.id);
   const setup = room.stage === 'setup1' || room.stage === 'setup2';
@@ -217,11 +247,12 @@ function Game({ room, me, onDispatch, onLeave }) {
   const [from, setFrom] = useState(null);
   const [attackTo, setAttackTo] = useState(null);
   const [moveTo, setMoveTo] = useState(null);
-  const [zoom, setZoom] = useState(() => (window.innerWidth < 700 ? 2.2 : 1));
+  const [tab, setTab] = useState(null);
+  const [dropHover, setDropHover] = useState(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const host = room.hostId === me.id;
-  const deal = useDeal(room);
-  const seenRoll = useRef(room.rollN); // al entrar no rueda una batalla vieja
+  const op = useOpening(room, me);
+  const battle = useBattle(room);
 
   // Al cambiar de turno o de etapa se suelta lo que estaba elegido.
   useEffect(() => { setFrom(null); setAttackTo(null); setMoveTo(null); }, [room.turnNo, room.stage]);
@@ -234,12 +265,12 @@ function Game({ room, me, onDispatch, onLeave }) {
   }, [myTurn]);
 
   const forced = myTurn && room.stage === 'reinforce' && me.cards.length >= FORCED_TRADE;
+  const reserve = !inGame(me) ? 0 : setup ? me.pend : myTurn && room.stage === 'reinforce' && !forced ? room.reinf : 0;
   const { targets, placeable } = useMemo(() => {
     const t = new Set();
     const p = new Set();
     if (!inGame(me)) return { targets: t, placeable: p };
-    if (setup && me.pend > 0) room.own.forEach((o, c) => { if (o === mi) p.add(c); });
-    if (myTurn && room.stage === 'reinforce' && room.reinf > 0 && !forced) room.own.forEach((o, c) => { if (o === mi) p.add(c); });
+    if (reserve > 0) room.own.forEach((o, c) => { if (o === mi) p.add(c); });
     if (myTurn && room.stage === 'attack' && !room.pending) {
       room.own.forEach((o, c) => { if (o === mi && room.arm[c] >= 2 && from === null) p.add(c); });
       if (from !== null) for (const n of NEIGHBORS[from]) if (room.own[n] !== mi) t.add(n);
@@ -247,19 +278,19 @@ function Game({ room, me, onDispatch, onLeave }) {
     if (myTurn && room.stage === 'regroup' && from !== null) for (const n of NEIGHBORS[from]) if (room.own[n] === mi) t.add(n);
     if (myTurn && room.stage === 'regroup' && from === null) room.own.forEach((o, c) => { if (o === mi && movable(room, c) > 0) p.add(c); });
     return { targets: t, placeable: p };
-  }, [room, me, mi, myTurn, setup, from, forced]);
+  }, [room, me, mi, myTurn, from, reserve]);
+
+  // Poner ejércitos: en los iniciales, de a uno por toque o por ficha arrastrada; en los refuerzos, de a `amount`.
+  function place(c) {
+    if (reserve < 1 || room.own[c] !== mi) return;
+    const n = setup || amount === 1 ? 1 : amount === 'todos' ? reserve : Math.min(amount, reserve);
+    onDispatch({ type: 'place', c, n });
+  }
 
   function pick(c) {
-    if (!inGame(me) || deal.dealt !== null) return; // mientras se reparte, el mapa solo se mira
+    if (!inGame(me) || op.phase || battle.showing) return; // mientras se reparte o ruedan los dados, el mapa solo se mira
     const mine = room.own[c] === mi;
-    if (setup || (myTurn && room.stage === 'reinforce')) {
-      if (!mine) return;
-      const left = setup ? me.pend : room.reinf;
-      if (left < 1 || forced) return;
-      const n = amount === 'todos' ? left : Math.min(amount, left);
-      onDispatch({ type: 'place', c, n });
-      return;
-    }
+    if (setup || (myTurn && room.stage === 'reinforce')) { if (mine) place(c); return; }
     if (!myTurn || room.pending) return;
     if (room.stage === 'attack') {
       if (mine) { setFrom(room.arm[c] >= 2 ? c : null); return; }
@@ -273,50 +304,77 @@ function Game({ room, me, onDispatch, onLeave }) {
     }
   }
 
-  const showAttack = attackTo && !room.pending && myTurn && room.stage === 'attack';
+  const showAttack = attackTo && !room.pending && myTurn && room.stage === 'attack' && !battle.showing;
+  const names = battle.showing ? { att: room.players[room.current]?.name || '', def: room.players[battle.showing.dv ?? room.own[battle.showing.t]]?.name || '' } : null;
+  const color = ARMY_COLORS[me.color];
+  const open = (t) => setTab((cur) => (cur === t ? null : t));
   const hasLast = room.last && room.last.f !== undefined;
+  const reserveTitle = setup ? `Ejércitos iniciales · tanda ${room.stage === 'setup1' ? 1 : 2}` : 'Refuerzos';
+  const showReserve = inGame(me) && !op.phase && (setup || reserve > 0);
+
   return (
     <div className="cs-root tg-page tg-playing">
-      <div className="tg-layout">
-        <div className="tg-main">
-          <ActionBar room={room} me={me} mi={mi} dispatch={onDispatch} amount={amount} setAmount={setAmount} from={from} setFrom={setFrom} />
-          {deal.dealt !== null && <DealScene room={room} dealt={deal.dealt} me={me} onSkip={deal.skip} />}
-          <div className="tg-mapbox">
-            <div className="tg-zoom" role="group" aria-label="Zoom del mapa">
-              <button type="button" onClick={() => setZoom((z) => Math.max(1, +(z - 0.4).toFixed(1)))} aria-label="Alejar" disabled={zoom <= 1}>−</button>
-              <button type="button" onClick={() => setZoom((z) => Math.min(3, +(z + 0.4).toFixed(1)))} aria-label="Acercar" disabled={zoom >= 3}>+</button>
-            </div>
-            <WorldMap room={deal.shown} me={me} onPick={pick} from={from} targets={targets} placeable={placeable} zoom={zoom} />
-          </div>
-          {hasLast && !showAttack && (
-            <div className="tg-last" data-last>
-              <strong>Última batalla: {COUNTRIES[room.last.f].name} ➜ {COUNTRIES[room.last.t].name}</strong>
-              <BattleReport last={room.last} rollKey={room.rollN} sinceKey={seenRoll.current} />
-            </div>
-          )}
+      <div className="tg-board">
+        <WorldMap
+          room={op.shown} me={me} onPick={pick} from={from} targets={targets} placeable={placeable} hover={dropHover}
+          overlay={op.phase === 'deal' ? <DealFly room={room} k={op.k} landed={op.landed} /> : null}
+        />
+        <div className="tg-top">
+          {op.phase === 'deal'
+            ? <DealBar room={room} k={op.k} landed={op.landed} me={me} onSkip={op.skip} />
+            : !op.phase && <ActionBar room={room} me={me} mi={mi} dispatch={onDispatch} amount={amount} setAmount={setAmount} from={from} setFrom={setFrom} />}
         </div>
-
-        <div className="tg-side">
-          <PlayersPanel room={room} me={me} onKick={(id) => onDispatch({ type: 'kick', target: id })} />
-          <ObjectivePanel room={room} me={me} mi={mi} />
-          <HandPanel room={room} me={me} mi={mi} dispatch={onDispatch} />
-          <ContinentsPanel room={room} me={me} mi={mi} />
-          <LogPanel room={room} />
-          <RulesPanel />
-          <div className="tg-leave">
-            {host && !confirmEnd && <button type="button" className="tf-btn tf-btn-soft" onClick={() => setConfirmEnd(true)}>Terminar la partida</button>}
-            {host && confirmEnd && (
+        <PlayersHud room={op.shown} me={me} />
+        {showReserve && (
+          <Reserve
+            count={reserve} color={color.color} ink={color.ink} title={reserveTitle}
+            hint={setup ? 'Arrastrá una ficha a un país tuyo, o tocá el país.' : 'Arrastrá fichas a tus países o tocalos.'}
+            isValid={(i) => placeable.has(i)} onHover={setDropHover} onDrop={place}
+          />
+        )}
+        <nav className="tg-dock" aria-label="Paneles">
+          {TABS.map(([key, icon, label]) => (
+            <button key={key} type="button" className={`${tab === key ? 'is-on' : ''}${key === 'cartas' && forced ? ' is-alert' : ''}`} aria-pressed={tab === key} data-tab={key} onClick={() => open(key)}>
+              <span aria-hidden="true">{icon}</span><b>{label}</b>{key === 'cartas' && me.cards.length > 0 && <i>{me.cards.length}</i>}
+            </button>
+          ))}
+        </nav>
+        {tab && (
+          <aside className="tg-drawer" data-drawer={tab}>
+            <button type="button" className="tg-x" aria-label="Cerrar" onClick={() => setTab(null)}>✕</button>
+            {tab === 'mision' && <ObjectivePanel room={room} me={me} mi={mi} />}
+            {tab === 'cartas' && <HandPanel room={room} me={me} mi={mi} dispatch={onDispatch} />}
+            {tab === 'jugadores' && <PlayersPanel room={room} me={me} onKick={(id) => onDispatch({ type: 'kick', target: id })} />}
+            {tab === 'continentes' && <ContinentsPanel room={room} me={me} mi={mi} />}
+            {tab === 'log' && (
               <>
-                <button type="button" className="tf-btn tf-btn-danger" data-act="toLobby" onClick={() => onDispatch({ type: 'toLobby' })}>Sí, volver a la sala de espera</button>
-                <button type="button" className="tf-btn tf-btn-soft" onClick={() => setConfirmEnd(false)}>No</button>
+                {hasLast && (
+                  <section className="tg-panel" data-last>
+                    <h2>Última batalla <small>{COUNTRIES[room.last.f].name} ➜ {COUNTRIES[room.last.t].name}</small></h2>
+                    <BattleReport last={room.last} />
+                  </section>
+                )}
+                <LogPanel room={room} />
               </>
             )}
-            <button type="button" className="tf-btn tf-btn-soft" onClick={onLeave}>Salir de la partida</button>
-          </div>
-        </div>
+            {tab === 'reglas' && <RulesPanel />}
+            <div className="tg-leave">
+              {host && !confirmEnd && <button type="button" className="tf-btn tf-btn-soft" onClick={() => setConfirmEnd(true)}>Terminar la partida</button>}
+              {host && confirmEnd && (
+                <>
+                  <button type="button" className="tf-btn tf-btn-danger" data-act="toLobby" onClick={() => onDispatch({ type: 'toLobby' })}>Sí, volver a la sala de espera</button>
+                  <button type="button" className="tf-btn tf-btn-soft" onClick={() => setConfirmEnd(false)}>No</button>
+                </>
+              )}
+              <button type="button" className="tf-btn tf-btn-soft" onClick={onLeave}>Salir de la partida</button>
+            </div>
+          </aside>
+        )}
       </div>
 
-      {myTurn && room.pending && <OccupyDialog room={room} onOccupy={(n) => { onDispatch({ type: 'occupy', n }); setAttackTo(null); }} />}
+      {op.phase === 'mission' && <MissionScene room={room} me={me} mi={mi} onNext={op.toDeal} onSkip={op.skip} />}
+      {battle.showing && <DiceTray key={battle.showing.n} last={battle.showing} names={names} onDone={battle.finish} />}
+      {myTurn && room.pending && !battle.showing && <OccupyDialog room={room} onOccupy={(n) => { onDispatch({ type: 'occupy', n }); setAttackTo(null); }} />}
       {showAttack && (
         <AttackDialog
           room={room} from={attackTo.from} to={attackTo.to} onClose={() => setAttackTo(null)}

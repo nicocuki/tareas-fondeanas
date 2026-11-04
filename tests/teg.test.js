@@ -93,7 +93,20 @@ test('mapa: los países no se pisan en el dibujo', () => {
       assert.ok(d >= 40, `${COUNTRIES[i].id} y ${COUNTRIES[j].id} están a ${Math.round(d)}`);
     }
   }
-  for (const c of COUNTRIES) assert.ok(c.x >= 30 && c.x <= 970 && c.y >= 30 && c.y <= 570, c.id);
+  for (const c of COUNTRIES) assert.ok(c.x >= 20 && c.x <= 990 && c.y >= 20 && c.y <= 695, c.id);
+});
+
+test('mapa: el dibujo respeta los vecinos (se tocan los que son limítrofes por tierra y solo esos), y cada ficha cae dentro de su país', async () => {
+  const geo = await import('../src/teg/geo.js');
+  const key = (a, b) => [a, b].sort().join('|');
+  const touch = new Set(geo.touchingPairs().map(([a, b]) => key(a, b)));
+  const land = new Set(LINKS.filter((l) => !l.sea).map((l) => key(COUNTRIES[l.a].id, COUNTRIES[l.b].id)));
+  assert.deepEqual([...touch].filter((k) => !land.has(k) && !LINKS.some((l) => l.sea && key(COUNTRIES[l.a].id, COUNTRIES[l.b].id) === k)), []);
+  assert.deepEqual([...land].filter((k) => !touch.has(k)), []);
+  for (const c of COUNTRIES) {
+    assert.ok(geo.inside(geo.RAW_SHAPES[c.id], [c.x, c.y]), `la ficha de ${c.id} cae afuera de su país`);
+    assert.ok(Math.abs(geo.area(geo.RAW_SHAPES[c.id])) >= 1500, `${c.id} es demasiado chico`);
+  }
 });
 
 test('cartas: 50 países repartidos en tres símbolos y dos comodines; el canje sube 4, 7, 10, 15, 20…', () => {

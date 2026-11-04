@@ -764,8 +764,18 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.34.0 = Juego nuevo: La Timba 🎰
+1.34.0 = Juego nuevo: La Timba 🎰
 - Casino cooperativo al estilo Gamble With Your Friends, en 2D: todos juegan con la misma plata ($1K y 15 tickets dorados) y cada día tienen que llegar a una cuota (la primera, $1,2K). De 1 a 8 jugadores.
 - Arrancan en una casita, con la camioneta (la tienda, todavía vacía) y la limusina, que sale al casino cuando están todos adentro. Se llega a la puerta del casino, se entra al ascensor y el panel elige el piso: el ascensor solo viaja con todos a bordo.
 - En el piso 1 hay una mesa de blackjack con apuestas de $36 a $360: botones rápidos (mínimo, 1/4, 1/2 y todo) y un teclado en pantalla para escribir la apuesta. Las manos las juegan todos a la vez, con pedir, plantarse y doblar.
 - El día dura 5 minutos. Al terminar todos vuelven al ascensor, que se cierra y solo baja al lobby. Si juntaron la cuota sigue otro día con una cuota más alta; si no, se termina.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.35.0 = T.E.G.: mapa de verdad a pantalla completa, dados en bandeja y apertura de película 🌍🎲
+- El mapa se rehízo: los 50 países tienen forma y frontera de verdad (como el tablero de mesa), los continentes tienen su color, las rutas por mar van punteadas con su barquito y hay mar, sol, rosa de los vientos y marco. Ocupa toda la pantalla y se puede acercar (rueda o botones) y arrastrar.
+- Cada país se pinta del color de su dueño y las fichas son cilindros: caen con rebote al aparecer y hacen «pop» cuando suman un ejército.
+- Los dados ahora ruedan en una bandeja de paño: son cubos en 3D que rebotan en los bordes y entre ellos, siguen girando un rato (no se frenan todos juntos) y al quedar quietos se acomodan de mayor a menor, con la pareja ganadora marcada. Todos los jugadores ven la tirada, y recién después aparece «¡Conquistaste!».
+- Apertura: primero se mezclan las misiones y cada uno recibe la suya boca abajo (se espía manteniendo apretada la carta y se tapa sola al soltar). Después el mazo de 50 países se mezcla y las cartas salen disparadas a su país: se ilumina con el color de su dueño y cae la ficha con el «1».
+- Ejércitos iniciales (5 y 3): una reserva con las fichas vibrando al costado; se arrastran al mapa o se toca el país (cada toque resta una). No se sigue hasta que la reserva de todos queda en 0. Los refuerzos de cada turno usan la misma reserva.
+- La pantalla es el mapa y todo flota encima: qué hacer, los jugadores y un menú de abajo (Misión, Cartas, Jugadores, Continentes, Bitácora, Reglas).

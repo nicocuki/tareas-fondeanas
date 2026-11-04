@@ -1,5 +1,5 @@
 // Paneles al costado del mapa: jugadores, mi objetivo, mis cartas, continentes, bitácora y reglas.
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ARMY_COLORS, CONTINENTS, COUNTRIES, COUNTRY_COUNT, SYMBOL_ICONS, SYMBOL_NAMES, cardSymbol, countriesOf, objectiveById,
 } from './board.js';
@@ -58,33 +58,70 @@ export function PlayersPanel({ room, me, onKick }) {
 }
 
 // ─── Mi objetivo ─────────────────────────────────────────────────────────────
+// La carta de misión secreta llega boca abajo y solo se ve mientras la mantenés apretada (mouse, dedo, Espacio o Enter): al soltar
+// se vuelve a tapar sola, como cuando levantás la punta de la tarjeta sobre la mesa para que nadie la vea.
+export function SecretCard({ text, note, big, onPeek }) {
+  const [up, setUp] = useState(false);
+  const peek = (v) => { setUp(v); if (v) onPeek?.(); };
+  useEffect(() => {
+    const off = () => setUp(false);
+    window.addEventListener('pointerup', off);
+    window.addEventListener('pointercancel', off);
+    window.addEventListener('blur', off);
+    return () => { window.removeEventListener('pointerup', off); window.removeEventListener('pointercancel', off); window.removeEventListener('blur', off); };
+  }, []);
+  return (
+    <div
+      className={`tg-flip${big ? ' is-big' : ''}`} role="button" tabIndex={0} aria-pressed={up} data-secret data-up={up}
+      aria-label="Misión secreta: mantenela apretada para verla"
+      onPointerDown={(e) => { e.preventDefault(); peek(true); }}
+      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) peek(true); } }}
+      onKeyUp={(e) => { if (e.key === ' ' || e.key === 'Enter') setUp(false); }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <div className={`tg-flip-in${up ? ' is-up' : ''}`}>
+        <div className="tg-flip-back">
+          <span className="tg-flip-seal">🎯</span>
+          <b>MISIÓN SECRETA</b>
+          <small>Mantené apretada la carta para espiarla</small>
+        </div>
+        <div className="tg-flip-front">
+          <small>Tu misión</small>
+          <p>{text}</p>
+          {note && <em>{note}</em>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ObjectivePanel({ room, me, mi }) {
-  const [shown, setShown] = useState(false); // arranca tapado: así nadie lo ve de reojo en tu pantalla
+  const [peeking, setPeeking] = useState(false);
+  useEffect(() => {
+    if (!peeking) return undefined;
+    const off = () => setPeeking(false);
+    window.addEventListener('pointerup', off);
+    window.addEventListener('keyup', off);
+    return () => { window.removeEventListener('pointerup', off); window.removeEventListener('keyup', off); };
+  }, [peeking]);
   if (mi < 0) return null;
   const o = objectiveById(me.obj);
   const prog = objectiveProgress(room, mi);
   return (
     <section className="tg-panel tg-objective" data-objective aria-label="Mi objetivo">
-      <div className="tg-panel-head">
-        <h2>Tu objetivo secreto</h2>
-        <button type="button" className="tg-link" onClick={() => setShown((v) => !v)}>{shown ? '🙈 Ocultar' : '👁 Ver'}</button>
-      </div>
-      {shown ? (
-        <>
-          <p className="tg-obj-text">{o.text}</p>
-          {o.destroy !== undefined && <p className="tg-hint">Si otro jugador lo destruye antes que vos, pasás a tener que ocupar 30 países.</p>}
-          <ul className="tg-progress">
-            {prog.lines.map((l) => (
-              <li key={l.label}>
-                <span>{l.label}</span>
-                <b>{l.have} / {l.need}</b>
-                <i style={{ '--p': `${Math.min(100, Math.round((l.have / l.need) * 100))}%` }} />
-              </li>
-            ))}
-          </ul>
-          <p className="tg-hint">Además, <b>cualquiera gana con 30 países</b>. Tu objetivo es secreto: no lo muestres.</p>
-        </>
-      ) : <p className="tg-hint">Oculto. Tocá «Ver» cuando nadie mire tu pantalla.</p>}
+      <div className="tg-panel-head"><h2>Tu misión secreta</h2></div>
+      <SecretCard text={o.text} note={o.destroy !== undefined ? 'Si otro jugador lo destruye antes que vos, pasás a tener que ocupar 30 países.' : ''} onPeek={() => setPeeking(true)} />
+      {peeking ? (
+        <ul className="tg-progress">
+          {prog.lines.map((l) => (
+            <li key={l.label}>
+              <span>{l.label}</span>
+              <b>{l.have} / {l.need}</b>
+              <i style={{ '--p': `${Math.min(100, Math.round((l.have / l.need) * 100))}%` }} />
+            </li>
+          ))}
+        </ul>
+      ) : <p className="tg-hint">Se tapa sola al soltar. Además, <b>cualquiera gana con 30 países</b>.</p>}
     </section>
   );
 }

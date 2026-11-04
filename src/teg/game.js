@@ -246,9 +246,10 @@ function conquer(room, from, to, dice) {
 }
 
 function attackOnce(room, from, to, dice, ctx) {
+  const defender = room.own[to]; // después de conquistar el país ya no es suyo: la bandeja de dados necesita saber quién defendía
   const result = battle(room, from, to, dice, ctx);
   room.rollN += 1;
-  room.last = { n: room.rollN, f: from, t: to, ...result, rounds: 1, tl: result.al, td: result.dl, won: false };
+  room.last = { n: room.rollN, f: from, t: to, dv: defender, ...result, rounds: 1, tl: result.al, td: result.dl, won: false };
   if (room.arm[to] <= 0) { conquer(room, from, to, dice); room.last.won = true; }
   return result;
 }
