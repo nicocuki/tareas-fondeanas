@@ -207,12 +207,11 @@ export default function WorldMap({ room, me, onPick, from, targets, placeable, h
         </g>
         <g className="tg-lands">
           {COUNTRIES.map((c, i) => {
-            const col = ownerColor(i);
             const cont = CONTINENTS[c.continent];
             return (
               <path
-                key={c.id} d={SHAPES[c.id].d} className={`tg-land${room.own[i] >= 0 ? ' is-owned' : ''}`} data-land={c.id} data-land-i={i}
-                style={{ '--cont': cont.color, '--own': room.own[i] >= 0 ? col.color : cont.color }} onClick={() => pick(i)}
+                key={c.id} d={SHAPES[c.id].d} className="tg-land" data-land={c.id} data-land-i={i}
+                style={{ '--cont': cont.color }} onClick={() => pick(i)}
               />
             );
           })}

@@ -449,7 +449,7 @@ Los 50 países, los 6 continentes y sus bonus son los del juego de mesa; **los v
   (así los vecinos comparten la misma línea). **Hay un test que exige que se toquen en el dibujo exactamente los países limítrofes por tierra** (y nada más): si movés
   una semilla o una silueta, corrélo; las semillas actuales salieron de un optimizador que lo cumple. Europa/Asia comparten la frontera de los Urales, Norteamérica/Sudamérica
   el istmo y África/Asia el Sinaí (lados compartidos entre dos siluetas). Las rutas por mar (`sea` en `LINKS`) se dibujan punteadas con un barquito; Alaska–Kamchatka da la vuelta
-  por los bordes. Cada país tiene dos zonas tocables (territorio y ficha); el territorio toma el color del dueño mezclado con el del continente. Zoom con rueda/botones y
+  por los bordes. Cada país tiene dos zonas tocables (territorio y ficha); el territorio es siempre del color de su continente (así se distinguen) y el dueño se ve por el color de la ficha. Zoom con rueda/botones y
   arrastre para mover (`MAX_ZOOM`). Los atributos `data-i`/`data-land-i` los usa la reserva para saber sobre qué país se soltó la ficha.
 - **La pantalla es el mapa** (`.tg-board`, alto de la página) y todo flota encima: qué hacer (arriba), jugadores (`PlayersHud`), reserva, y un dock con cajón (Misión, Cartas,
   Jugadores, Continentes, Bitácora, Reglas). **No uses la clase `tg-stage`**: es la etiqueta de etapa de la barra de acción.
