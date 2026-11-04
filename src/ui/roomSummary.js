@@ -12,11 +12,12 @@ import { MAX_PLAYERS as MAX_MINE } from '../mine/game.js';
 import { MAX_PLAYERS as MAX_MONOPOLY } from '../monopoly/game.js';
 import { MAX_PLAYERS as MAX_TEG } from '../teg/game.js';
 import { MAX_PLAYERS as MAX_ARENA } from '../arena/game.js';
+import { MAX_PLAYERS as MAX_TIMBA } from '../timba/game.js';
 import { roomSettings } from '../gartic/game.js';
 
 // Topes de cada juego. Fútbol no tiene tope.
-const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA };
-const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena'];
+const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA };
+const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena', 'timba'];
 
 // `gartic`: lo que hay en garticRooms/{código} (objeto); `raw`: lo que hay en rooms/{código} (texto JSON).
 // Devuelve { code, game, host, hostAvatar, players, max, phase, local } o null si no existe.

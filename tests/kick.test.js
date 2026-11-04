@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { MAX_KICKED } from '../src/lobby/kick.js';
 import * as cohetes from '../src/cohetes/game.js';
 import * as pixel from '../src/pixel/game.js';
+import * as timba from '../src/timba/game.js';
 import * as mine from '../src/mine/game.js';
 import * as mecha from '../src/mecha/game.js';
 import * as meme from '../src/meme/game.js';
@@ -25,7 +26,7 @@ const ids = (room) => room.players.map((p) => p.id);
 // cafeote y futbol devuelven la sala igual cuando la acción no vale; los demás, null.
 const rejected = (before, after) => after === null || after === before;
 
-const GAMES = { cohetes, pixel, mine, mecha, meme, nave, tiros, codigo, cafe, futbol, monopoly, teg, arena };
+const GAMES = { cohetes, pixel, timba, mine, mecha, meme, nave, tiros, codigo, cafe, futbol, monopoly, teg, arena };
 for (const [name, g] of Object.entries(GAMES)) {
   test(`expulsar (${name}): solo el anfitrión, en la sala de espera, y el expulsado no vuelve a entrar con esa pantalla`, () => {
     const room = lobby(g);

@@ -151,6 +151,8 @@ const cohetesChannel = (code) => peerChannel('cohetes', code);
 const pixelChannel = (code) => peerChannel('pixel', code);
 // Cubolandia, igual: jugadores directo entre navegadores y respaldo en mine/{sala}/p/{id}.
 const mineChannel = (code) => peerChannel('mine', code);
+// La Timba, igual: jugadores directo entre navegadores y respaldo en timba/{sala}/p/{id}.
+const timbaChannel = (code) => peerChannel('timba', code);
 
 // Diferencia entre este reloj y el del servidor: con eso todas las pantallas comparten la misma hora.
 function subscribeServerOffset(onOffset) {
@@ -158,5 +160,5 @@ function subscribeServerOffset(onOffset) {
 }
 
 export const backend = {
-  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, subscribeServerOffset,
+  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, subscribeServerOffset,
 };

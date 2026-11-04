@@ -757,7 +757,15 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.33.1 = T.E.G.: reparto con cartas, dados que ruedan y objetivo tapado 🃏
+1.33.1 = T.E.G.: reparto con cartas, dados que ruedan y objetivo tapado 🃏
 - Al empezar, los países se reparten como en la mesa: las cartas salen de a una, en ronda, y el mapa se va pintando del color de quien recibe cada país (con lo que lleva cada uno). Se puede saltar.
 - Los dados rojos del atacante y blancos del defensor ruedan en la bandeja antes de acomodarse de mayor a menor. Si la tirada conquista, primero se ven los dados y recién después el «¡Conquistaste!».
 - Tu objetivo secreto arranca tapado: tocá «Ver» cuando nadie mire tu pantalla.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.34.0 = Juego nuevo: La Timba 🎰
+- Casino cooperativo al estilo Gamble With Your Friends, en 2D: todos juegan con la misma plata ($1K y 15 tickets dorados) y cada día tienen que llegar a una cuota (la primera, $1,2K). De 1 a 8 jugadores.
+- Arrancan en una casita, con la camioneta (la tienda, todavía vacía) y la limusina, que sale al casino cuando están todos adentro. Se llega a la puerta del casino, se entra al ascensor y el panel elige el piso: el ascensor solo viaja con todos a bordo.
+- En el piso 1 hay una mesa de blackjack con apuestas de $36 a $360: botones rápidos (mínimo, 1/4, 1/2 y todo) y un teclado en pantalla para escribir la apuesta. Las manos las juegan todos a la vez, con pedir, plantarse y doblar.
+- El día dura 5 minutos. Al terminar todos vuelven al ascensor, que se cierra y solo baja al lobby. Si juntaron la cuota sigue otro día con una cuota más alta; si no, se termina.
