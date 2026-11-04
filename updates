@@ -782,11 +782,16 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.35.1 = La Timba: mesa de blackjack individual y más chica
+1.35.1 = La Timba: mesa de blackjack individual y más chica
 - La mesa de blackjack es de uno solo: si alguien se sienta a jugar, la mesa queda ocupada para los demás (avisa quién la está usando) hasta que se levante.
 - La mesa es mucho más chica y tiene una sola silla.
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.35.0.5 = T.E.G.: los territorios mantienen el color de su continente
+1.35.0.5 = T.E.G.: los territorios mantienen el color de su continente
 - Los países ya no se pintan del color de su dueño: cada continente conserva su color para distinguirlos, y el dueño se ve por el color de la ficha.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.35.1.5 = Fix: La Timba, entrada y sala de espera rotas
+- La entrada y la sala de espera de La Timba se veían deformadas (todo apretado a la izquierda) porque las cartas del blackjack usaban el mismo nombre de estilo que las tarjetas de la sala. Ya se ven bien.

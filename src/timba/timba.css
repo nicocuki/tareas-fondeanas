@@ -100,12 +100,12 @@
 .tb-cards { display: flex; gap: 4px; justify-content: center; min-height: 54px; }
 .tb-hand { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .tb-total { font: 800 13px Inter, sans-serif; color: #fff; background: rgba(0, 0, 0, 0.35); border-radius: 999px; padding: 0 10px; }
-.tb-card { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 38px; height: 54px; border-radius: 6px; background: #fff; color: #14101c; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5); font-family: Inter, sans-serif; animation: tb-deal 0.25s ease-out; }
-.tb-card b { font-size: 17px; line-height: 1; }
-.tb-card i { font-style: normal; font-size: 17px; line-height: 1; }
-.tb-card.is-red { color: #d8303a; }
-.tb-card.is-back { background: repeating-linear-gradient(45deg, #8a1d2a, #8a1d2a 5px, #a8242e 5px, #a8242e 10px); border: 2px solid #f4e6b0; }
-.tb-card.is-empty { background: rgba(255, 255, 255, 0.08); border: 2px dashed rgba(255, 240, 200, 0.3); box-shadow: none; animation: none; }
+.tb-pcard { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 38px; height: 54px; border-radius: 6px; background: #fff; color: #14101c; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5); font-family: Inter, sans-serif; animation: tb-deal 0.25s ease-out; }
+.tb-pcard b { font-size: 17px; line-height: 1; }
+.tb-pcard i { font-style: normal; font-size: 17px; line-height: 1; }
+.tb-pcard.is-red { color: #d8303a; }
+.tb-pcard.is-back { background: repeating-linear-gradient(45deg, #8a1d2a, #8a1d2a 5px, #a8242e 5px, #a8242e 10px); border: 2px solid #f4e6b0; }
+.tb-pcard.is-empty { background: rgba(255, 255, 255, 0.08); border: 2px dashed rgba(255, 240, 200, 0.3); box-shadow: none; animation: none; }
 @keyframes tb-deal { from { transform: translateY(-14px) scale(0.85); opacity: 0; } }
 .tb-seats { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: flex-start; }
 .tb-seat { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 96px; padding: 8px 10px 10px; border: 2px solid rgba(255, 240, 200, 0.2); border-top: 4px solid var(--c); border-radius: 12px; background: rgba(0, 0, 0, 0.22); }

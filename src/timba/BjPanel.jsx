@@ -5,9 +5,9 @@ import { BJ_MAX, BJ_MIN, betLimits, handValue, isRed, quickBet, rankOf, suitOf }
 import { RESULT_MS, fmtMoney } from './game.js';
 
 function Card({ c, hidden }) {
-  if (hidden) return <span className="tb-card is-back" />;
+  if (hidden) return <span className="tb-pcard is-back" />;
   return (
-    <span className={`tb-card${isRed(c) ? ' is-red' : ''}`}>
+    <span className={`tb-pcard${isRed(c) ? ' is-red' : ''}`}>
       <b>{rankOf(c)}</b>
       <i>{suitOf(c)}</i>
     </span>
@@ -79,7 +79,7 @@ export default function BjPanel({ room, me, now, onAct, onClose, toast }) {
           <div className="tb-felt">
             <div className="tb-dealer">
               <span className="tb-label">CROUPIER</span>
-              {bj.dealer.length ? <Hand hand={bj.dealer} hideSecond={bj.phase === 'play'} /> : <div className="tb-cards"><span className="tb-card is-empty" /><span className="tb-card is-empty" /></div>}
+              {bj.dealer.length ? <Hand hand={bj.dealer} hideSecond={bj.phase === 'play'} /> : <div className="tb-cards"><span className="tb-pcard is-empty" /><span className="tb-pcard is-empty" /></div>}
             </div>
             <div className="tb-seats">
               {bj.seats.map((s) => (
