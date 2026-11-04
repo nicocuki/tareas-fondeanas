@@ -189,7 +189,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), sprites de los efectos (`sprites/`, `sprites.js`), pelea en tiempo real (`TirosGame.jsx`) |
 | `src/nave/` | Entre Nosotros (Among Us): mapa (`map.js`), tareas (`tasks.js`), reducer (`game.js`), movimiento y vista (`sim.js`), dibujo (`render.js`), la nave en vivo (`NaveGame.jsx`), minijuegos, reunión (ver *Entre Nosotros*) |
-| `src/arena/` | Arena Royale: cartas (`cards.js`), simulación determinista con rollback (`sim.js`), reducer de la sala (`game.js`), dibujo (`render.js`), pantallas (ver *Arena Royale*) |
+| `src/arena/` | Arena Royale: cartas (`cards.js`), simulación determinista con rollback (`sim.js`), reducer de la sala (`game.js`), dibujo de cada carta (`sprites.js`), la arena y las torres (`render.js`), piezas de interfaz (`Art.jsx`), pantallas (ver *Arena Royale*) |
 | `src/mine/` | Cubolandia (Minecraft 2D): bloques, ítems y recetas (`blocks.js`), mundo por semilla (`world.js`), reducer (`game.js`), física, vida, bichos y luz (`sim.js`), dibujo (`render.js`), la partida en vivo (`MineGame.jsx`) (ver *Cubolandia*) |
 | `src/pixel/` | Pixel Royale: mapa y tormenta (`map.js`), armas, botín y balas (`sim.js`), reducer (`game.js`), dibujo pixelado (`render.js`), la partida en vivo (`PixelGame.jsx`) (ver *Pixel Royale*) |
 | `src/cohetes/` | Cohete Royale (Rocket Bot Royale): mapa (`terrain.js`), tanque pegajoso, nave y armas (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`CohetesGame.jsx`) (ver *Cohete Royale*) |
@@ -902,6 +902,13 @@ están en `docs/ARENA.md` (los valores son nuestros, inspirados en el original).
 - **Elixir y mano**: 5 al empezar, tope 10, 1 cada 2,8 s (el doble en el último minuto). Mazo de 8 (se guarda en `localStorage`, `tf:arena:mazo`), mano de 4 y la que sigue; la usada va al fondo. Cada uno tiene su elixir, las torres son del equipo.
 - **Torres**: princesas (1400 de vida) y rey (2400, dormido hasta que lo lastiman o cae una princesa). Princesa = 1 corona, rey = 3 y termina. Los hechizos pegan el 35 % a las torres (`TOWER_SPELL`).
   Empate al final → un minuto extra donde gana la primera corona; si sigue empatado, gana quien tenga más vida en las torres.
+- **Aspecto (pedido de Nico: «mucho más similar» al original, y las cartas «sin emojis» en cualquier parte)**: cada carta tiene UN dibujo en `sprites.js` (formas de canvas con contorno oscuro, en coordenadas de unidad:
+  pies en el origen, radio 1) y se usa en la arena (`drawSprite`), en la mano, el mazo y la sala (`drawCardArt` dentro de `CardArt`/`CardFrame` de `Art.jsx`). **Una carta nueva necesita su dibujo en `SPRITES`** (hay un test). El marco
+  de la carta lleva el color de su `rarity` (common, rare, epic) y la gota de elixir con el costo (`Drop`); `Crown` es la corona. **No pongas emojis en las cartas ni en el juego**: todo se dibuja. `render.js` arma la arena (pasto a cuadros,
+  senderos, río, puentes, árboles, vallas) una sola vez en un canvas aparte (`terrainCache`, es igual para los dos equipos porque está en coordenadas de pantalla) y cada cuadro dibuja torres (princesa con cañón que apunta, rey con su corona,
+  barra de vida con corona), tropas y efectos. El canvas tiene `MARGIN` casillas de decorado alrededor de la arena: usá `canvasToWorld` para pasar de un clic al mundo.
+- **Las cartas que van solo a edificios** (`targets: 'buildings'`: Gigante, Montapuercos, Globo) **eligen siempre la estructura o torre más cercana** (distancia al centro) mientras no estén pegando, y cambian si aparece un cañón o un
+  mortero más cerca que su torre (con un margen de 0,5 casillas para que no duden). Hay tests.
 - **Datos de las cartas** en `cards.js` (tiempos en pasos con `T(segundos)`). Una carta nueva: una entrada ahí con su `look` (solo dibujo) y, si hace algo nuevo, su caso en `sim.js`. El tamaño de la sala
   con el tope de jugadas (600 de ~18 caracteres) queda debajo de 16.000: hay un test.
 - `data-card`, `data-slot`, `data-hand`, `data-hud`, `data-clock`, `data-elixir`, `data-arena-canvas`, `data-pick`, `data-result` existen para manejar el juego desde un navegador automatizado. No los saques.

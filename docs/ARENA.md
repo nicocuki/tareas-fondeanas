@@ -50,8 +50,7 @@ activarse (aparecen «despertando»). Se juega 3 minutos; si hay empate, un minu
 
 ## Cómo se ve cada una (para el dibujo)
 
-Todas se dibujan con formas simples y un aro del color del equipo en los pies (azul o rojo): cuerpo redondo, cabeza más
-chica y el detalle que las distingue.
+Cada carta tiene su dibujo propio en `src/arena/sprites.js`, hecho con formas de canvas y contorno oscuro (estilo animado), y es el mismo en la arena, en la mano, en el mazo y en las salas. En la arena llevan un aro del color del equipo en los pies (azul o rojo). El marco de la carta tiene el color de su rareza (común azul grisáceo, rara naranja, épica violeta) y una gota de elixir con el costo arriba a la izquierda.
 
 1. **Esqueletos**: cráneo blanco hueso, cuerpo flaco del mismo color, ojos negros. Muy chicos.
 2. **Duendes**: piel verde, orejas largas y puntiagudas, taparrabos marrón, daga amarilla en la mano.
@@ -73,6 +72,16 @@ chica y el detalle que las distingue.
 18. **Mago**: bigote y barba rubios, sombrero y túnica amarillo anaranjado, varita con una llama.
 19. **Mortero**: tubo grueso marrón grisáceo inclinado sobre una base de madera, con piedras al lado.
 20. **P.E.K.K.A**: armadura grande negro azulada, casco con cuernos, ojo rosa brillante, espada gigante.
+
+## La arena y la interfaz
+
+- **Arena** (18 × 32 casillas, vista desde arriba): pasto a cuadros verde claro y oscuro, senderos de tierra que unen cada torre princesa con su puente y con la torre del rey, un río celeste con olitas y dos puentes de madera
+  con barandas, vallas detrás de las torres, y alrededor árboles, arbustos y piedras.
+- **Torres**: la princesa es una torre de piedra con una franja y almenas del color del equipo, un cañón negro arriba que apunta al enemigo y un banderín. El rey es un castillo más grande con cuatro torrecitas de techo del equipo, la puerta,
+  un escudo con corona dorada abajo y el rey arriba (con corona y capa del equipo); dormido tiene los ojos cerrados y una «Z». Las torres enemigas llevan esquinas rojas; todas tienen barra de vida con su número y una coronita.
+- **Pantalla**: el nombre de cada equipo arriba, el reloj al medio (con «Elixir ×2» y «¡Tiempo extra!»), las coronas a la derecha de la arena (rival arriba, vos abajo), y abajo una bandeja de madera oscura con la carta que sigue a la
+  izquierda, tus cuatro cartas y la barra de elixir violeta con su gota y «Máx. 10».
+- **Quién ataca a quién**: el Gigante, el Montapuercos y el Globo Bomba van siempre a la estructura o torre más cercana (si ponés un cañón o un mortero más cerca que una torre, van ahí).
 
 ## Cómo funciona por dentro
 

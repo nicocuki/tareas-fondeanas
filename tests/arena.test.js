@@ -7,6 +7,7 @@ import {
 import {
   COUNTDOWN_MS, MAX_CMDS, MAX_PLAYERS, applyAction, findPlayer, newRoom, tickAt,
 } from '../src/arena/game.js';
+import { SPRITES } from '../src/arena/sprites.js';
 import { serializeRoom } from '../src/codigo-secreto/game.js';
 import { summarizeRoom } from '../src/ui/roomSummary.js';
 
@@ -36,10 +37,12 @@ test('cartas: hay 20, con datos completos y un mazo inicial válido', () => {
   assert.equal(new Set(ALL).size, 20);
   assert.ok(validDeck(DEFAULT_DECK));
   for (const c of CARDS) {
-    assert.ok(c.name && c.emoji && c.desc, c.id);
+    assert.ok(c.name && c.desc && ['common', 'rare', 'epic'].includes(c.rarity), c.id);
+    assert.equal(c.emoji, undefined, `${c.id}: las cartas no llevan emojis`);
+    assert.ok(SPRITES[c.id], `${c.id}: tiene su dibujo`);
     assert.ok(c.cost >= 1 && c.cost <= 7, `${c.id}: costo`);
     if (c.kind === 'spell') assert.ok(c.radius > 0 && c.dmg > 0 && c.delay > 0, c.id);
-    else assert.ok(c.hp > 0 && c.dmg > 0 && c.hit > 0 && c.range > 0 && c.radius > 0 && c.look && ['ground', 'both', 'buildings'].includes(c.targets), c.id);
+    else assert.ok(c.hp > 0 && c.dmg > 0 && c.hit > 0 && c.range > 0 && c.radius > 0 && ['ground', 'both', 'buildings'].includes(c.targets), c.id);
     if (c.kind === 'building') assert.ok(c.life > 0, c.id);
   }
   assert.ok(!validDeck(['caballero']));
@@ -136,6 +139,31 @@ test('el Gigante ignora a las tropas y va a las torres; el Caballero se frena a 
   }
   assert.ok(giant.hp > 0, 'el gigante sigue vivo');
   assert.ok(giant.y < RIVER_Y, 'cruzó el río por un puente rumbo a las torres');
+});
+
+test('los que van solo a edificios eligen la estructura más cercana, aunque haya una torre', () => {
+  const st = duel(deckWith('gigante'), deckWith('canon', 'esqueletos'));
+  play(st, 0, 'gigante', 9, 19);
+  const giant = units(st, 'gigante')[0];
+  run(st, 25);
+  assert.ok(giant.tg > 0 && giant.tg < 10, 'sin estructuras cerca va a una torre');
+  play(st, 1, 'canon', 9, 12);
+  run(st, 25);
+  const cannon = units(st, 'canon')[0];
+  assert.equal(giant.tg, cannon.id, 'el cañón está más cerca que cualquier torre: va al cañón');
+  cannon.hp = 0; // lo derriban: vuelve a las torres
+  run(st, 4);
+  assert.ok(giant.tg > 0 && giant.tg < 10, 'sin el cañón, otra vez a una torre');
+});
+
+test('el Montapuercos también se desvía a un cañón que quedó más cerca que su torre', () => {
+  const st = duel(deckWith('montapuercos'), deckWith('canon', 'esqueletos'));
+  play(st, 1, 'canon', 14.5, 13);
+  play(st, 0, 'montapuercos', 14.5, 19);
+  const hog = units(st, 'montapuercos')[0];
+  const cannon = units(st, 'canon')[0];
+  run(st, 25);
+  assert.equal(hog.tg, cannon.id);
 });
 
 test('los hechizos dañan por área, aturden y a las torres les pegan el 35 %', () => {

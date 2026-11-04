@@ -18,9 +18,12 @@ import {
   GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, OPTION_VALUES, TEAM_SIZE, applyAction, cleanName, findPlayer, makeId, newRoom, teamName,
 } from './game.js';
 import {
-  H, W, createRunner, inOvertime, isDouble, placeProblem, secondsLeft,
+  createRunner, inOvertime, isDouble, placeProblem, secondsLeft,
 } from './sim.js';
-import { CELL, TEAM_COLORS, draw, fromView } from './render.js';
+import {
+  CANVAS_H, CANVAS_W, TEAM_COLORS, canvasToWorld, draw,
+} from './render.js';
+import { CardFrame, Crown, Drop } from './Art.jsx';
 import './arena.css';
 
 const GAME = 'arena';
@@ -47,11 +50,12 @@ function saveDeck(deck) {
 
 // Lo que dice la carta, en una línea.
 function statLine(c) {
-  if (c.kind === 'spell') return `💥 ${c.dmg} de daño · radio ${c.radius}${c.stun ? ` · aturde ${seconds(c.stun)} s` : ''}`;
-  const aim = c.targets === 'buildings' ? 'solo edificios' : c.targets === 'ground' ? 'solo suelo' : 'suelo y aire';
-  const parts = [`❤️ ${c.hp}`, `💥 ${c.dmg}`, `⏱ ${seconds(c.hit)} s`];
-  if (c.speed) parts.push(`👟 ${c.speed}`);
-  parts.push(`🎯 ${c.range}`, aim);
+  const sec = (n) => String(n).replace('.', ',');
+  if (c.kind === 'spell') return `Daño ${c.dmg} · radio ${sec(c.radius)}${c.stun ? ` · aturde ${sec(seconds(c.stun))} s` : ''}`;
+  const aim = c.targets === 'buildings' ? 'solo edificios y torres' : c.targets === 'ground' ? 'solo suelo' : 'suelo y aire';
+  const parts = [`Vida ${c.hp}`, `Daño ${c.dmg}`, `Golpe ${sec(seconds(c.hit))} s`];
+  if (c.speed) parts.push(`Velocidad ${sec(c.speed)}`);
+  parts.push(`Alcance ${sec(c.range)}`, aim);
   if (c.count) parts.push(`×${c.count}`);
   return parts.join(' · ');
 }
@@ -127,14 +131,10 @@ function DeckBuilder({ deck, onSave }) {
       </div>
       <div className="ar-deck">
         {CARDS.map((c) => (
-          <button
-            key={c.id} type="button" data-pick={c.id} aria-pressed={draft.includes(c.id)} className={`ar-mini ${draft.includes(c.id) ? 'is-on' : ''}`}
-            onClick={() => toggle(c.id)} onMouseEnter={() => setInfo(c.id)} onFocus={() => setInfo(c.id)}
-          >
-            <i className="ar-cost">{c.cost}</i>
-            <span className="ar-emoji">{c.emoji}</span>
-            <small>{c.name}</small>
-          </button>
+          <CardFrame
+            key={c.id} id={c.id} small selected={draft.includes(c.id)} pressed={draft.includes(c.id)} data-pick={c.id}
+            onClick={() => toggle(c.id)} onHover={() => setInfo(c.id)}
+          />
         ))}
       </div>
       <p className="ar-hint">
@@ -167,7 +167,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
               <h3>Equipo {teamName(team)}</h3>
               <ul>
                 {room.players.filter((p) => p.team === team).map((p) => (
-                  <li key={p.id} className={p.id === me?.id ? 'is-me' : ''}><span>{p.avatar}</span><strong>{p.name}</strong><small>{p.id === room.hostId ? '👑' : ''}{p.wins ? ` 🏆${p.wins}` : ''}</small></li>
+                  <li key={p.id} className={p.id === me?.id ? 'is-me' : ''}><span>{p.avatar}</span><strong>{p.name}</strong><small className="ar-wins">{p.id === room.hostId && <Crown size={16} />}{p.wins ? <>{p.wins}<Crown size={14} color="#ffd86b" /></> : null}</small></li>
                 ))}
                 {Array.from({ length: Math.max(0, TEAM_SIZE - count(team)) }).map((_, i) => <li key={`e${i}`} className="is-empty">libre</li>)}
               </ul>
@@ -188,7 +188,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
 
       <div className="ar-start">
         {host ? (
-          <button type="button" className="tf-btn tf-btn-primary ar-start-btn" disabled={!ready} data-act="start" onClick={() => onDispatch({ type: 'start' })}>⚔️ Empezar la partida</button>
+          <button type="button" className="tf-btn tf-btn-primary ar-start-btn" disabled={!ready} data-act="start" onClick={() => onDispatch({ type: 'start' })}>Empezar la partida</button>
         ) : <p>Esperando que el anfitrión arranque…</p>}
         {!ready && <p className="ar-hint">Hace falta al menos uno en cada equipo. Pasale el código a tu rival.</p>}
       </div>
@@ -210,6 +210,7 @@ function Game({ room, me, onDispatch, onLeave, clock }) {
   const live = useRef({ slot: null, hover: null, pending: [], sent: false });
   live.current.slot = slot;
 
+  useEffect(() => { window.scrollTo({ top: 0 }); }, []);
   useEffect(() => { runner.addCmds(match.cmds); }, [runner, match.cmds]);
 
   // El bucle: avanza la simulación hasta el paso que corresponde a la hora del servidor y dibuja.
@@ -261,7 +262,7 @@ function Game({ room, me, onDispatch, onLeave, clock }) {
 
   function worldAt(e) {
     const rect = canvasRef.current.getBoundingClientRect();
-    const [x, y] = fromView(flip, ((e.clientX - rect.left) / rect.width) * W, ((e.clientY - rect.top) / rect.height) * H);
+    const [x, y] = canvasToWorld(flip, ((e.clientX - rect.left) / rect.width) * CANVAS_W, ((e.clientY - rect.top) / rect.height) * CANVAS_H);
     return { x, y };
   }
 
@@ -282,56 +283,60 @@ function Game({ room, me, onDispatch, onLeave, clock }) {
   const crowns = hud?.crowns || [0, 0];
   const mm = String(Math.floor((hud?.secs || 0) / 60));
   const ss = String((hud?.secs || 0) % 60).padStart(2, '0');
-  const handCards = hud ? hud.hand.map((id) => CARD_BY_ID[id]) : [];
-  const nextCard = hud ? CARD_BY_ID[hud.next] : null;
   const pending = live.current.pending;
+  const names = (t) => room.players.filter((p) => p.team === t && match.seats.some((s) => s.id === p.id)).map((p) => p.name).join(' y ');
+  const elixir = hud ? Math.floor(hud.elixir) : 5;
   return (
     <div className="cs-root ar-page ar-playing">
       <div className="ar-hud" data-hud>
-        <div className="ar-score" style={{ '--tc': TEAM_COLORS[1 - team] }}><b>{crowns[1 - team]}</b> 👑 <small>{teamName(1 - team)}</small></div>
+        <div className="ar-name" style={{ '--tc': TEAM_COLORS[1 - team] }}>{names(1 - team) || teamName(1 - team)}</div>
         <div className="ar-clock" data-clock>
           {hud?.started ? (hud.ot ? <span className="ar-ot">¡Tiempo extra!</span> : <span>{mm}:{ss}</span>) : <span>¡Preparate!</span>}
-          {hud?.started && hud.dbl && <small>elixir ×2</small>}
+          {hud?.started && hud.dbl && <small>Elixir ×2</small>}
         </div>
-        <div className="ar-score" style={{ '--tc': TEAM_COLORS[team] }}><small>{teamName(team)} (vos)</small> 👑 <b>{crowns[team]}</b></div>
+        <div className="ar-name ar-name-me" style={{ '--tc': TEAM_COLORS[team] }}>{names(team) || teamName(team)}</div>
       </div>
 
       <div className="ar-stage">
+        <div className="ar-board" style={{ '--ratio': CANVAS_W / CANVAS_H }}>
         <canvas
-          ref={canvasRef} className="ar-canvas" data-arena-canvas width={W * CELL} height={H * CELL}
+          ref={canvasRef} className="ar-canvas" data-arena-canvas width={CANVAS_W} height={CANVAS_H}
           onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => { live.current.hover = null; }} onClick={onPlace}
         />
+        <div className="ar-crowns" aria-label="Coronas" data-crowns={`${crowns[1 - team]}-${crowns[team]}`}>
+          <div className="ar-crown-box" style={{ '--tc': TEAM_COLORS[1 - team] }}><Crown color="#ff8a8a" size={30} /><b>{crowns[1 - team]}</b></div>
+          <div className="ar-crown-box" style={{ '--tc': TEAM_COLORS[team] }}><Crown color="#7fb8ff" size={30} /><b>{crowns[team]}</b></div>
+        </div>
         {hud && !hud.started && <div className="ar-count" aria-live="polite">{hud.count || 1}</div>}
         {msg && <div className="ar-toast" role="status">{msg}</div>}
         {hud?.over && <div className="ar-toast ar-toast-big">{hud.over.winner === -1 ? 'Empate' : hud.over.winner === team ? '¡Ganaste!' : 'Perdiste'}</div>}
+        </div>
       </div>
 
-      <div className="ar-bottom">
-        <div className="ar-elixir" data-elixir={hud ? Math.floor(hud.elixir) : 0} aria-label={`Elixir ${hud ? Math.floor(hud.elixir) : 0}`}>
-          <div className="ar-elixir-fill" style={{ width: `${hud ? (hud.elixir / 10) * 100 : 50}%` }} />
-          <span>💧 {hud ? Math.floor(hud.elixir) : 5}</span>
-        </div>
+      <div className="ar-tray">
         <div className="ar-hand" data-hand>
           <div className="ar-next" title="La que sigue">
-            <small>sigue</small>
-            <span>{nextCard?.emoji}</span>
+            <small>Sigue:</small>
+            {hud && <CardFrame id={hud.next} small />}
           </div>
-          {handCards.map((c, i) => {
-            const poor = (hud?.elixir || 0) < c.cost;
+          {(hud ? hud.hand : []).map((id, i) => {
+            const poor = (hud?.elixir || 0) < CARD_BY_ID[id].cost;
             const busy = pending.some((q) => q.slot === i);
             return (
-              <button
-                key={`${i}-${c.id}`} type="button" data-card={c.id} data-slot={i} aria-pressed={slot === i}
-                className={`ar-card-btn ${slot === i ? 'is-sel' : ''} ${poor ? 'is-poor' : ''}`} disabled={Boolean(busy) || Boolean(hud?.over)}
-                title={`${c.name}: ${c.desc}`} onClick={() => setSlot(slot === i ? null : i)}
-              >
-                <i className="ar-cost">{c.cost}</i>
-                <span className="ar-emoji">{c.emoji}</span>
-                <small>{c.name}</small>
-                <kbd>{i + 1}</kbd>
-              </button>
+              <CardFrame
+                key={`${i}-${id}`} id={id} selected={slot === i} pressed={slot === i} poor={poor} disabled={Boolean(busy) || Boolean(hud?.over)}
+                data-card={id} data-slot={i} kbd={i + 1} onClick={() => setSlot(slot === i ? null : i)}
+              />
             );
           })}
+        </div>
+        <div className="ar-elixir" data-elixir={elixir} aria-label={`Elixir ${elixir}`}>
+          <div className="ar-elixir-bar">
+            <div className="ar-elixir-fill" style={{ width: `${hud ? (hud.elixir / 10) * 100 : 50}%` }} />
+            {Array.from({ length: 9 }).map((_, i) => <i key={i} style={{ left: `${(i + 1) * 10}%` }} />)}
+          </div>
+          <Drop n={elixir} size={34} className="ar-elixir-drop" />
+          <small>Máx. 10</small>
         </div>
       </div>
       <p className="ar-hint ar-tip">Elegí una carta (o 1 a 4) y tocá la arena para ponerla. Las tropas van en tu mitad; los hechizos, donde quieras.</p>
@@ -353,13 +358,13 @@ function Ended({ room, me, onDispatch, onLeave }) {
         <h1 data-result>{title}</h1>
         <ul className="ar-ranking">
           {[...room.players].sort((a, b) => b.wins - a.wins).map((p) => (
-            <li key={p.id} style={{ '--tc': TEAM_COLORS[p.team] }}><span>{p.avatar} {p.name}</span><strong>🏆 {p.wins}</strong></li>
+            <li key={p.id} style={{ '--tc': TEAM_COLORS[p.team] }}><span>{p.avatar} {p.name}</span><strong className="ar-wins">{p.wins}<Crown size={16} /></strong></li>
           ))}
         </ul>
         <div className="ar-ended-actions">
           {host ? (
             <>
-              <button type="button" className="tf-btn tf-btn-primary" data-act="start" onClick={() => onDispatch({ type: 'start' })}>⚔️ Revancha</button>
+              <button type="button" className="tf-btn tf-btn-primary" data-act="start" onClick={() => onDispatch({ type: 'start' })}>Revancha</button>
               <button type="button" className="tf-btn tf-btn-soft" onClick={() => onDispatch({ type: 'toLobby' })}>Cambiar mazo o equipos</button>
             </>
           ) : <p className="ar-hint">El anfitrión puede arrancar otra.</p>}

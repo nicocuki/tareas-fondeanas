@@ -719,8 +719,16 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.30.0 = Arena Royale: duelos de cartas y torres 👑
+1.30.0 = Arena Royale: duelos de cartas y torres 👑
 - Juego nuevo: duelos de 1 contra 1 o 2 contra 2 donde ponés tropas, hechizos y edificios con tu elixir para tirar las torres del rival.
 - Hay 20 cartas (de los Esqueletos de 1 de elixir al P.E.K.K.A de 7): armás tu mazo de 8 en la sala de espera y se guarda en tu dispositivo.
 - Las tropas cruzan el río por los puentes, unas pegan al aire y otras no, el Gigante y el Montapuercos van solo a edificios y torres, y el Príncipe carga si corre.
 - Cada equipo tiene dos torres princesa y la torre del rey, que se despierta cuando la lastiman. Dura 3 minutos (se elige), con elixir al doble el último minuto y tiempo extra si hay empate.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.31.0 = Arena Royale: ahora se ve como el original
+- La arena cambió por completo: pasto a cuadros, senderos de tierra, río con puentes de madera, árboles y vallas alrededor, torres de piedra con cañón y torre del rey con su coronita (dormida hasta que la lastiman).
+- Cada carta tiene su propio dibujo, igual en la arena, en tu mano, en el mazo y en la sala de espera: se acabaron los emojis. Los marcos tienen el color de la rareza (común, rara o épica) y la gota de elixir con el costo.
+- Abajo hay una bandeja con tus cartas, la que sigue y la barra de elixir con su gota; las coronas están a la derecha de la arena.
+- El Gigante, el Montapuercos y el Globo ahora van siempre a la estructura o torre que tengan más cerca: si ponés un cañón o un mortero más cerca que una torre, van al cañón o al mortero.

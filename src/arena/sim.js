@@ -175,7 +175,8 @@ function pickTarget(st, u, d) {
   let bd = Infinity;
   const consider = (e, limit) => {
     if (!alive(e) || e.team === u.team || !canHit(d, e)) return;
-    const gap = dist(u, e) - e.r;
+    // Las que van solo a edificios miden la distancia al centro: una estructura (cañón, mortero) más cerca que una torre es la elegida.
+    const gap = d.targets === 'buildings' ? dist(u, e) : dist(u, e) - e.r;
     if (gap > limit || (d.minRange && gap < d.minRange)) return;
     if (gap < bd) { bd = gap; best = e; }
   };
@@ -259,6 +260,14 @@ function unitStep(st, u, byId) {
   if (tg && !(alive(tg) && canHit(d, tg))) tg = null;
   if (tg && !u.bld && d.targets !== 'buildings' && dist(u, tg) - tg.r > (d.sight || SIGHT) + 1.5) tg = null;
   if (tg && u.bld && dist(u, tg) - tg.r > d.range) tg = null;
+  if (d.targets === 'buildings') {
+    // Mientras no esté pegando, siempre va a la estructura o torre más cercana (si apareció un cañón más cerca, cambia). Un margen evita que dude.
+    const near = tg && dist(u, tg) - tg.r <= d.range;
+    if (!near) {
+      const best = pickTarget(st, u, d);
+      if (best && (!tg || dist(u, best) < dist(u, tg) - 0.5)) tg = best;
+    }
+  }
   if (!tg) tg = pickTarget(st, u, d);
   u.tg = tg ? tg.id : 0;
 
