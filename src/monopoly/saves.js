@@ -28,6 +28,12 @@ export function saveGame(room, seat, now = Date.now()) {
   write([entry, ...rest].sort((a, b) => b.savedAt - a.savedAt).slice(0, MAX_SAVES));
 }
 
+// Agrega una partida que vino de un archivo (ver saveFile.js), conservando su fecha. Pisa la que tenga el mismo id.
+export function addSave(save) {
+  const rest = read().filter((s) => s.id !== save.id);
+  write([save, ...rest].sort((a, b) => b.savedAt - a.savedAt).slice(0, MAX_SAVES));
+}
+
 export function deleteSave(id) {
   write(read().filter((s) => s.id !== id));
 }

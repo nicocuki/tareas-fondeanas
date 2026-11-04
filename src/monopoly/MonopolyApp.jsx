@@ -23,7 +23,8 @@ import {
 import { describe } from './log.js';
 import { BOT_NAMES, botMove } from './bots.js';
 import { Announcer, DiceRoll, useStagedRoom } from './Stage.jsx';
-import { deleteSave, describeSave, listSaves, saveGame } from './saves.js';
+import { addSave, deleteSave, describeSave, listSaves, saveGame } from './saves.js';
+import { exportSave, parseSaveFile, saveFileName } from './saveFile.js';
 import { setSound, soundOn } from './sfx.js';
 import './monopoly.css';
 
@@ -102,12 +103,44 @@ function Entry({ onCreate, onJoin, onResume, busy, error, onBack }) {
 function SavedGames({ onResume, busy }) {
   const [saves, setSaves] = useState(listSaves);
   const [asking, setAsking] = useState(null);
-  if (!saves.length) return null;
+  const [fileMsg, setFileMsg] = useState(null);
   const when = (d) => d.toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  // Baja la partida como archivo, para abrirla en otra compu.
+  function download(save) {
+    const blob = new Blob([exportSave(save)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = saveFileName(save);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function upload(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    const result = parseSaveFile(await file.text().catch(() => ''));
+    if (result.error) { setFileMsg({ bad: true, text: result.error }); return; }
+    addSave(result.save);
+    setSaves(listSaves());
+    setFileMsg({ bad: false, text: 'Partida cargada. Ya podés continuarla.' });
+  }
+
   return (
     <div className="mp-card mp-saves" data-saves>
       <div className="mp-card-head"><h2>💾 Partidas guardadas</h2></div>
-      <p className="mp-hint">La partida se guarda sola en este dispositivo mientras jugás. Para seguirla se abre una sala nueva y los demás entran con el código.</p>
+      <p className="mp-hint">La partida se guarda sola en este dispositivo mientras jugás. Para seguirla se abre una sala nueva y los demás entran con el código. Para llevarla a otra compu, bajala como archivo y cargala allá.</p>
+      <div className="mp-btn-row">
+        <label className="tf-btn tf-btn-soft" style={{ cursor: 'pointer' }}>
+          📂 Cargar desde archivo
+          <input type="file" accept=".json,application/json" data-act="loadFile" style={{ display: 'none' }} onChange={upload} />
+        </label>
+      </div>
+      {fileMsg && <p className="mp-hint" role="status" data-file-msg style={fileMsg.bad ? { color: 'var(--danger, #e5484d)' } : undefined}>{fileMsg.text}</p>}
       <ul>
         {saves.map((save) => {
           const info = describeSave(save);
@@ -119,6 +152,7 @@ function SavedGames({ onResume, busy }) {
               </div>
               <div className="mp-btn-row">
                 <button type="button" className="tf-btn tf-btn-primary" disabled={busy} data-act="resume" onClick={() => onResume(save)}>Continuar</button>
+                <button type="button" className="tf-btn tf-btn-soft" data-act="downloadSave" onClick={() => download(save)}>⬇ Descargar</button>
                 {asking !== save.id && <button type="button" className="tf-btn tf-btn-soft" onClick={() => setAsking(save.id)}>Borrar</button>}
                 {asking === save.id && (
                   <>

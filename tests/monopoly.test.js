@@ -5,6 +5,7 @@ import {
   MAX_LOG, MAX_PLAYERS, applyAction, auctionChance, buildProblem, debtTotal, findPlayer, liquidation, makeId, netWorth, newRoom, ownedBy, rentFor, roomFromSave,
 } from '../src/monopoly/game.js';
 import { botMove } from '../src/monopoly/bots.js';
+import { exportSave, parseSaveFile, roomProblem, signature } from '../src/monopoly/saveFile.js';
 import { serializeRoom } from '../src/codigo-secreto/game.js';
 import { summarizeRoom } from '../src/ui/roomSummary.js';
 import { writeError } from '../worker/rules.js';
@@ -1074,4 +1075,52 @@ test('bots: una partida entera entre bots avanza sin que el reducer rechace ning
   assert.ok(steps > 100, 'la partida avanzó');
   for (const type of ['roll', 'buy', 'endTurn']) assert.ok(seen.has(type), `nunca jugaron ${type}`);
   assert.equal(room.phase, 'ended', `no terminó en ${steps} jugadas`); // con esta semilla termina; un empate sin ningún color completo no es un bug de reglas
+});
+
+// ─── Archivo de partida ──────────────────────────────────────────────────────
+const saveOf = (room) => ({ id: room.saveId, savedAt: 5000, seat: 'a', room });
+
+test('archivo: una partida exportada se vuelve a leer igual', () => {
+  const save = saveOf(midGame());
+  const { save: back, error } = parseSaveFile(exportSave(save));
+  assert.equal(error, undefined);
+  assert.deepEqual(back, save);
+});
+
+test('archivo: si alguien lo edita a mano sin la firma, se rechaza', () => {
+  const file = JSON.parse(exportSave(saveOf(midGame())));
+  file.data.room.players[0].cash = 999999;
+  assert.match(parseSaveFile(JSON.stringify(file)).error, /modificado/);
+});
+
+test('archivo: aunque recalcule la firma, una partida incoherente se rechaza', () => {
+  const room = midGame();
+  room.props[1] = { o: 'nadie', h: 0 };
+  const file = JSON.parse(exportSave(saveOf(room)));
+  file.sig = signature(JSON.stringify(file.data));
+  assert.match(parseSaveFile(JSON.stringify(file)).error, /no es válido/);
+});
+
+test('archivo: rechaza lo que no es una partida', () => {
+  for (const text of ['', 'hola', '{}', '[]', JSON.stringify({ kind: 'otra-cosa', v: 1, data: {} })]) {
+    assert.ok(parseSaveFile(text).error, `debería rechazar ${JSON.stringify(text)}`);
+  }
+});
+
+test('archivo: roomProblem detecta plata, posiciones y edificios imposibles', () => {
+  const base = midGame();
+  assert.equal(roomProblem(base), null);
+  const bad = (fn) => { const r = structuredClone(base); fn(r); return roomProblem(r); };
+  assert.ok(bad((r) => { r.players[0].cash = 1.5; }));
+  assert.ok(bad((r) => { r.players[0].pos = 40; }));
+  assert.ok(bad((r) => { r.props[5] = { o: 'a', h: 2 }; })); // una estación no lleva casas
+  assert.ok(bad((r) => { r.props[0] = { o: 'a' }; })); // la salida no se compra
+  assert.ok(bad((r) => { r.players[1].id = 'a'; })); // ids repetidos
+});
+
+test('archivo: la partida leída se puede retomar', () => {
+  const { save } = parseSaveFile(exportSave(saveOf(midGame())));
+  const { room, seatId } = roomFromSave(save.room, save.seat, NOW);
+  assert.equal(room.phase, 'resume');
+  assert.equal(seatId, 'a');
 });
