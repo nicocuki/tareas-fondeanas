@@ -566,3 +566,16 @@ test('acciones inválidas o de otro juego se rechazan', () => {
   for (const c of [-1, 50, 1.5, 'x', undefined]) rejects(room, 'a', { type: 'place', c, n: 1 });
   assert.ok(findPlayer(room, 'a'));
 });
+
+test('reparto: las cartas de países salen de a una y en ronda, como en la mesa, y quedan anotadas en orden', () => {
+  for (const n of [2, 3, 4, 6]) {
+    let room = lobby(n);
+    room = applyAction(room, { type: 'start', playerId: 'a' }, { now: NOW, rand: Math.random });
+    assert.equal(room.dealt.length, COUNTRY_COUNT);
+    assert.deepEqual([...room.dealt].sort((x, y) => x - y), COUNTRIES.map((_, i) => i), 'cada país sale una sola vez');
+    room.dealt.forEach((c, k) => assert.equal(room.own[c], k % n, `la carta ${k} va al jugador ${k % n}`));
+    const counts = room.players.map((_, i) => room.own.filter((o) => o === i).length);
+    assert.ok(Math.max(...counts) - Math.min(...counts) <= 1, `reparto parejo: ${counts}`);
+    assert.ok(room.arm.every((a) => a === 1), 'un ejército en cada país');
+  }
+});

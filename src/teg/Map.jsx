@@ -5,6 +5,7 @@ import { ARMY_COLORS, CONTINENTS, COUNTRIES, LINKS, indexOf } from './board.js';
 export const MAP_W = 1000;
 export const MAP_H = 600;
 const R = 19;
+const NEUTRAL = { color: '#d8d2bf', ink: '#8a836e' }; // país que todavía no salió en el reparto
 
 // Envolvente convexa de unos puntos (cadena monótona), para dibujar la mancha de cada continente.
 function hull(points) {
@@ -31,7 +32,7 @@ const BLOBS = Object.entries(CONTINENTS).map(([key, c]) => ({
 
 // `info`: { from, targets: Set, placeable: Set } lo que se ilumina según lo que se esté haciendo.
 export default function WorldMap({ room, me, onPick, from, targets, placeable, zoom }) {
-  const ownerColor = (c) => ARMY_COLORS[room.players[room.own[c]]?.color ?? 0];
+  const ownerColor = (c) => (room.players[room.own[c]] ? ARMY_COLORS[room.players[room.own[c]].color] : NEUTRAL);
   const links = useMemo(() => LINKS.filter((l) => !(l.a === WRAP[0] && l.b === WRAP[1]) && !(l.a === WRAP[1] && l.b === WRAP[0])), []);
   const a = COUNTRIES[WRAP[0]];
   const k = COUNTRIES[WRAP[1]];
@@ -67,7 +68,7 @@ export default function WorldMap({ room, me, onPick, from, targets, placeable, z
               <title>{`${c.name} · ${CONTINENTS[c.continent].name} · ${room.arm[i]} ejército${room.arm[i] === 1 ? '' : 's'} de ${owner?.name || 'nadie'}`}</title>
               <circle r={R + 7} className="tg-ring" />
               <circle r={R} fill={col.color} className="tg-disc" />
-              <text className="tg-armies" fill={col.ink} textAnchor="middle" dy="0.35em">{room.arm[i]}</text>
+              <text className="tg-armies" fill={col.ink} textAnchor="middle" dy="0.35em">{room.arm[i] || ''}</text>
               <text className="tg-name" textAnchor="middle" y={R + 12}>{c.name}</text>
             </g>
           );

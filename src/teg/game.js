@@ -56,7 +56,7 @@ export function newRoom(hostId, hostName, avatar, now = Date.now()) {
 function freshGame() {
   return {
     stage: null, current: 0, turnNo: 0, own: [], arm: [], deck: [], discard: [], tradeN: 0,
-    reinf: 0, conq: false, pending: null, locked: {}, last: null, rollN: 0,
+    reinf: 0, conq: false, pending: null, locked: {}, last: null, rollN: 0, dealt: [],
     log: [], eliminated: [], winner: null,
   };
 }
@@ -329,10 +329,13 @@ export function applyAction(room, action, ctx = {}) {
       next.players = shuffle(next.players, rand);
       const n = next.players.length;
       for (const p of next.players) Object.assign(p, { cards: [], obj: COMMON_OBJECTIVE.id, pend: SETUP_ARMIES[0], out: false, by: -1 });
-      // Los países se reparten al azar entre todos; cada uno arranca con un ejército.
+      // Como en la mesa: se mezclan las cartas de países y se reparten de a una, en ronda, empezando por el primero.
+      // Cada uno pone un ejército en cada país que le tocó y las cartas vuelven al mazo. `dealt` guarda el orden en que
+      // salieron, para que las pantallas muestren el reparto (`DealScene`).
       next.own = new Array(COUNTRY_COUNT);
       next.arm = new Array(COUNTRY_COUNT).fill(1);
-      shuffle(COUNTRIES.map((_, i) => i), rand).forEach((country_, k) => { next.own[country_] = k % n; });
+      next.dealt = shuffle(COUNTRIES.map((_, i) => i), rand);
+      next.dealt.forEach((country_, k) => { next.own[country_] = k % n; });
       // Un objetivo secreto distinto para cada uno; para destruir a un color tiene que haber alguien de ese color.
       if (next.options.goal === 'secret') {
         const colors = next.players.map((p) => p.color);

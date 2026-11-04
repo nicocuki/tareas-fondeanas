@@ -1,5 +1,6 @@
 // Ventanas del juego: atacar (con los dados a la vista), pasar ejércitos al conquistar y reagrupar.
 import React, { useEffect, useRef, useState } from 'react';
+import { backgroundTimeout } from '../ticker.js';
 import { COUNTRIES } from './board.js';
 import { MAX_DICE, movable } from './game.js';
 
@@ -35,8 +36,34 @@ function Die({ value, kind, win }) {
   );
 }
 
-// Los dados de la última batalla, enfrentados de mayor a menor: la pareja ganadora queda marcada.
-export function BattleReport({ last }) {
+// Los dados de la última batalla. Cuando llega una tirada nueva (`rollKey`), primero ruedan en la bandeja un momento y
+// después se acomodan enfrentados de mayor a menor, con la pareja ganadora marcada. Es solo dibujo. `sinceKey`: la tirada
+// que ya se había visto cuando apareció el cuadro (si la de ahora es más nueva, rueda aunque el cuadro recién aparezca).
+export const ROLL_MS = 1100;
+const randomFace = () => 1 + Math.floor(Math.random() * 6);
+
+export function BattleReport({ last, rollKey, sinceKey = rollKey }) {
+  const first = useRef(sinceKey);
+  const [rolling, setRolling] = useState(false);
+  const [faces, setFaces] = useState(null);
+  useEffect(() => {
+    if (rollKey === first.current) return undefined;
+    first.current = rollKey;
+    setRolling(true);
+    setFaces({ a: last.a.map(randomFace), d: last.d.map(randomFace) });
+    const spin = setInterval(() => setFaces({ a: last.a.map(randomFace), d: last.d.map(randomFace) }), 80);
+    const stop = backgroundTimeout(() => { clearInterval(spin); setRolling(false); }, ROLL_MS);
+    return () => { clearInterval(spin); stop(); };
+  }, [rollKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (rolling && faces) {
+    return (
+      <div className="tg-report is-rolling" data-report="rolling">
+        <div className="tg-report-side"><b>Ataque</b>{faces.a.map((v, k) => <Die key={k} value={v} kind="atk" />)}</div>
+        <div className="tg-report-side"><b>Defensa</b>{faces.d.map((v, k) => <Die key={k} value={v} kind="def" />)}</div>
+        <p className="tg-report-sum">Ruedan los dados…</p>
+      </div>
+    );
+  }
   const rows = Math.max(last.a.length, last.d.length);
   const pairs = Array.from({ length: rows }, (_, k) => ({ a: last.a[k], d: last.d[k], attackerWins: last.a[k] !== undefined && last.d[k] !== undefined ? last.a[k] > last.d[k] : undefined }));
   return (
@@ -62,6 +89,7 @@ export function AttackDialog({ room, from, to, onAttack, onBlitz, onClose }) {
   const maxDice = Math.min(MAX_DICE, mine - 1);
   const last = room.last && room.last.f === from && room.last.t === to ? room.last : null;
   const canAttack = room.own[to] !== room.current && maxDice >= 1;
+  const opened = useRef(room.rollN);
   return (
     <Modal title="⚔️ Atacar" onClose={onClose} label={`Atacar ${nameOf(to)} desde ${nameOf(from)}`}>
       <div className="tg-duel">
@@ -69,7 +97,7 @@ export function AttackDialog({ room, from, to, onAttack, onBlitz, onClose }) {
         <span className="tg-vs" aria-hidden="true">➜</span>
         <div><small>Defiende {defender?.name}</small><strong>{nameOf(to)}</strong><span className="tg-big">{theirs}</span><small>ejércitos</small></div>
       </div>
-      {last && <BattleReport last={last} />}
+      {last && <BattleReport last={last} rollKey={room.rollN} sinceKey={opened.current} />}
       {canAttack ? (
         <>
           <p className="tg-note">Elegí con cuántos dados atacás (como máximo, uno menos que tus ejércitos). El defensor tira hasta 3. Se comparan de mayor a menor y <b>los empates los gana el defensor</b>.</p>
@@ -102,11 +130,23 @@ function Stepper({ min, max, value, onChange }) {
   );
 }
 
+// Aparece justo con la tirada que conquistó: primero se ven rodar esos dados y recién después el «¡Conquistaste!».
 export function OccupyDialog({ room, onOccupy }) {
   const { from, to, min, max } = room.pending;
   const [n, setN] = useState(max);
+  const before = useRef(room.rollN - 1);
+  const [revealed, setRevealed] = useState(false);
+  useEffect(() => backgroundTimeout(() => setRevealed(true), ROLL_MS), []);
+  if (!revealed) {
+    return (
+      <Modal title="⚔️ Atacar" label="Ruedan los dados">
+        {room.last && <BattleReport last={room.last} rollKey={room.rollN} sinceKey={before.current} />}
+      </Modal>
+    );
+  }
   return (
     <Modal title="🚩 ¡Conquistaste!" label="Pasar ejércitos">
+      {room.last && <BattleReport last={room.last} rollKey={room.rollN} />}
       <p className="tg-note">
         Ganaste <b>{nameOf(to)}</b>. Pasale ejércitos desde <b>{nameOf(from)}</b> (te quedan {room.arm[from] - n} allá).
         {min > 1 ? ` Tenés que pasar al menos ${min}: tantos como dados tiraste.` : ' Tenés que pasar al menos uno.'}

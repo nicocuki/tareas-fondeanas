@@ -59,7 +59,7 @@ export function PlayersPanel({ room, me, onKick }) {
 
 // ─── Mi objetivo ─────────────────────────────────────────────────────────────
 export function ObjectivePanel({ room, me, mi }) {
-  const [shown, setShown] = useState(true);
+  const [shown, setShown] = useState(false); // arranca tapado: así nadie lo ve de reojo en tu pantalla
   if (mi < 0) return null;
   const o = objectiveById(me.obj);
   const prog = objectiveProgress(room, mi);

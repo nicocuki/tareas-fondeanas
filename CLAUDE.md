@@ -432,6 +432,13 @@ Los 50 países, los 6 continentes y sus bonus son los del juego de mesa; **los v
   se roba una si hubo conquista (`room.conq`). Canje (`trade`): 3 iguales, 3 distintas o con comodín; da 4, 7, 10 y de ahí +5 (`room.tradeN`,
   **un solo contador para toda la partida**) y +2 en cada país de las cartas que sea tuyo. Con `FORCED_TRADE` (5) cartas no se puede poner ni
   pasar a atacar sin canjear: con 5 siempre hay un canje posible. Quien elimina a alguien se queda con sus cartas.
+- **El reparto inicial es con las cartas de países, como en la mesa** (pedido de Feli): `start` mezcla las 50 y las da de a una, en ronda (`k % n`), con un
+  ejército en cada país; `room.dealt` guarda el orden en que salieron. `Deal.jsx` (`useDeal` + `DealScene`) lo muestra una vez por partida y por pestaña
+  (`sessionStorage` `tg:reparto:{startedAt}`): las cartas salen cada 110 ms y el mapa recibe una sala tapada (los que faltan con `own: -1`, que `Map.jsx`
+  pinta en gris y sin número). Mientras dura, tocar el mapa no hace nada; se puede saltar.
+- **Los dados ruedan** (`BattleReport`, `ROLL_MS`): con una tirada nueva (`rollKey` = `room.rollN`) ruedan un momento y después se acomodan. `sinceKey` es la
+  tirada que ya se había visto al aparecer el cuadro: sin eso, el primer ataque desde la ventana no rodaba. `OccupyDialog` muestra primero esos dados y recién
+  después el «¡Conquistaste!» (si no, la ventana de conquista tapaba la tirada). El objetivo secreto arranca tapado (`ObjectivePanel`).
 - **Reagrupe**: queda un ejército en cada país y los que llegan (`room.locked`) no se vuelven a mover en el turno (`movable`).
 - **Objetivos** (`OBJECTIVES` en `board.js`): 8 de continentes y países, «24 países», «18 países con 2 ejércitos» y uno de destruir a cada color.
   Al repartirlos nadie recibe destruirse a sí mismo ni a un color que no juega. Si otro jugador elimina al que tenías que destruir, tu objetivo

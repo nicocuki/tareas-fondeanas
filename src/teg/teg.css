@@ -173,3 +173,32 @@
   .tg-report { grid-template-columns: 1fr; }
   .tg-page { padding: 12px 10px 40px; }
 }
+
+/* ─── Reparto inicial con las cartas de países ─── */
+.tg-deal { margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); box-shadow: var(--shadow-lg); }
+.tg-deal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
+.tg-deal-body { display: flex; gap: 12px; align-items: center; }
+.tg-deal-card { flex: none; width: 84px; height: 112px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; padding: 8px 6px; border-radius: 9px; background: #fbf6e6; color: #2b2414; border: 3px solid var(--cont, #b9a77a); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); animation: tg-deal-in 0.28s ease-out; }
+.tg-deal-card small { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #6b5d3a; line-height: 1.15; }
+.tg-deal-card strong { font-family: var(--font-display); font-size: 15px; line-height: 1.1; overflow-wrap: anywhere; }
+.tg-deal-card span { font-size: 22px; line-height: 1; }
+.tg-deal-card.is-back { justify-content: center; background: repeating-linear-gradient(45deg, #7a2a2a 0 8px, #8c3434 8px 16px); color: #f3dcae; font-family: var(--font-display); font-weight: 900; border-color: #f3dcae; }
+.tg-deal-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.tg-deal-to { margin: 0; font-size: 13.5px; line-height: 1.35; }
+.tg-deal-hands { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 2px 8px; font-size: 12.5px; }
+.tg-deal-hands li { display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 1px 4px; border-radius: 6px; }
+.tg-deal-hands li.is-now { background: var(--accent-soft); font-weight: 700; }
+.tg-deal-bar { height: 4px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+.tg-deal-bar i { display: block; height: 100%; background: var(--accent); transition: width 0.1s linear; }
+@keyframes tg-deal-in { from { opacity: 0; transform: translate(-30px, 20px) rotate(-14deg) scale(0.85); } to { opacity: 1; transform: none; } }
+
+/* ─── Bandeja de dados: ruedan antes de acomodarse ─── */
+.tg-report.is-rolling .tg-die { animation: tg-tumble 0.36s linear infinite; }
+.tg-report.is-rolling .tg-die:nth-child(odd) { animation-direction: reverse; animation-duration: 0.44s; }
+.tg-report:not(.is-rolling) .tg-die { animation: tg-settle 0.4s ease-out; }
+@keyframes tg-tumble { 0% { transform: rotate(0) translateY(0); } 25% { transform: rotate(95deg) translateY(-6px); } 50% { transform: rotate(185deg) translateY(0); } 75% { transform: rotate(275deg) translateY(-4px); } 100% { transform: rotate(360deg) translateY(0); } }
+@keyframes tg-settle { 0% { transform: scale(1.25) rotate(-10deg); } 60% { transform: scale(0.95) rotate(3deg); } 100% { transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tg-deal-card, .tg-report .tg-die { animation: none !important; }
+}

@@ -744,7 +744,7 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.33.0 = Cohete Royale: 7 mapas nuevos y mejoras de combate, paracaídas y poderes 🚀
+1.33.0 = Cohete Royale: 7 mapas nuevos y mejoras de combate, paracaídas y poderes 🚀
 - 7 mapas nuevos: desierto (mesetas, dunas y arcos de arenisca, arena movediza), selva (islas con raíces, troncos huecos y pantano), océano (coral, perlas y burbujas), espacio (asteroides, cristales y plasma), cementerio (criptas, lápidas y niebla verde bajo la luna), ruinas (edificios rotos y ladrillos) y dulces (donas, tortas y chocolate). Ahora son 10 en total, y cada uno trae su cielo, sus adornos y lo que flota en el aire.
 - Las balas tienen más gravedad: caen más en arco y no van tan directas.
 - Cuando le pegás a alguien aparece «Le pegaste a X −daño» arriba a la derecha, con los eventos, y sobre tu tanque salta un ícono 🎯 animado medio segundo (💀 cuando eliminás a alguien).
@@ -754,3 +754,10 @@ LATEST 1.33.0 = Cohete Royale: 7 mapas nuevos y mejoras de combate, paracaídas 
 - Jetpack: dura más del doble, empuja mucho más fuerte (hasta una velocidad máxima) y tiene una barra que muestra cuánto queda.
 - Láser: hace 100 de daño, mata de un tiro.
 - Remolino: tornado nuevo, con embudo, vientos en espiral y restos que vuelan.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.33.1 = T.E.G.: reparto con cartas, dados que ruedan y objetivo tapado 🃏
+- Al empezar, los países se reparten como en la mesa: las cartas salen de a una, en ronda, y el mapa se va pintando del color de quien recibe cada país (con lo que lleva cada uno). Se puede saltar.
+- Los dados rojos del atacante y blancos del defensor ruedan en la bandeja antes de acomodarse de mayor a menor. Si la tirada conquista, primero se ven los dados y recién después el «¡Conquistaste!».
+- Tu objetivo secreto arranca tapado: tocá «Ver» cuando nadie mire tu pantalla.

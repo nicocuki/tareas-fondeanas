@@ -1,5 +1,5 @@
 // T.E.G.: entrada, sala de espera, partida y final.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { backend } from '../storage.js';
 import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
@@ -16,6 +16,7 @@ import {
   makeId, movable, newRoom, objectiveProgress,
 } from './game.js';
 import WorldMap from './Map.jsx';
+import { DealScene, useDeal } from './Deal.jsx';
 import {
   Chip, ContinentsPanel, HandPanel, LogPanel, ObjectivePanel, PlayersPanel, RulesPanel,
 } from './Panels.jsx';
@@ -219,6 +220,8 @@ function Game({ room, me, onDispatch, onLeave }) {
   const [zoom, setZoom] = useState(() => (window.innerWidth < 700 ? 2.2 : 1));
   const [confirmEnd, setConfirmEnd] = useState(false);
   const host = room.hostId === me.id;
+  const deal = useDeal(room);
+  const seenRoll = useRef(room.rollN); // al entrar no rueda una batalla vieja
 
   // Al cambiar de turno o de etapa se suelta lo que estaba elegido.
   useEffect(() => { setFrom(null); setAttackTo(null); setMoveTo(null); }, [room.turnNo, room.stage]);
@@ -247,7 +250,7 @@ function Game({ room, me, onDispatch, onLeave }) {
   }, [room, me, mi, myTurn, setup, from, forced]);
 
   function pick(c) {
-    if (!inGame(me)) return;
+    if (!inGame(me) || deal.dealt !== null) return; // mientras se reparte, el mapa solo se mira
     const mine = room.own[c] === mi;
     if (setup || (myTurn && room.stage === 'reinforce')) {
       if (!mine) return;
@@ -277,17 +280,18 @@ function Game({ room, me, onDispatch, onLeave }) {
       <div className="tg-layout">
         <div className="tg-main">
           <ActionBar room={room} me={me} mi={mi} dispatch={onDispatch} amount={amount} setAmount={setAmount} from={from} setFrom={setFrom} />
+          {deal.dealt !== null && <DealScene room={room} dealt={deal.dealt} me={me} onSkip={deal.skip} />}
           <div className="tg-mapbox">
             <div className="tg-zoom" role="group" aria-label="Zoom del mapa">
               <button type="button" onClick={() => setZoom((z) => Math.max(1, +(z - 0.4).toFixed(1)))} aria-label="Alejar" disabled={zoom <= 1}>−</button>
               <button type="button" onClick={() => setZoom((z) => Math.min(3, +(z + 0.4).toFixed(1)))} aria-label="Acercar" disabled={zoom >= 3}>+</button>
             </div>
-            <WorldMap room={room} me={me} onPick={pick} from={from} targets={targets} placeable={placeable} zoom={zoom} />
+            <WorldMap room={deal.shown} me={me} onPick={pick} from={from} targets={targets} placeable={placeable} zoom={zoom} />
           </div>
           {hasLast && !showAttack && (
             <div className="tg-last" data-last>
               <strong>Última batalla: {COUNTRIES[room.last.f].name} ➜ {COUNTRIES[room.last.t].name}</strong>
-              <BattleReport last={room.last} />
+              <BattleReport last={room.last} rollKey={room.rollN} sinceKey={seenRoll.current} />
             </div>
           )}
         </div>
