@@ -5,7 +5,7 @@
 //   con ella. D siempre lo lleva para el mismo lado *del tanque* (el de su derecha): arriba de un bloque
 //   va para la derecha y, cabeza abajo en la parte de abajo, para la izquierda. Solo se despega cuando
 //   lo empuja algo (el retroceso de un tiro, una explosión, el jetpack, un remolino).
-// - Los cohetes van **derecho** (sin gravedad). Hay 3 y se recargan de a uno.
+// - Los cohetes caen en arco (bastante gravedad, menos el láser). Hay 3 y se recargan de a uno.
 // - Al empezar hay dos helicópteros: uno sale de la izquierda y otro de la derecha, suben hasta el medio
 //   y bajan hasta el otro lado. Cada uno salta cuando quiere y baja en paracaídas.
 // - Inventario de 4 casillas (teclas 1 a 4): la 1 es el cohete, infinito; las otras se llenan con lo
@@ -14,11 +14,13 @@ import { seeded, solid } from './terrain.js';
 
 export const STEP = 1 / 120;
 export const TANK_R = 6.5;       // radio de choque del tanque (su centro es el medio del cuerpo)
-export const GRAVITY = 210;
+export const GRAVITY = 180;
 export const DRIVE = 52;         // velocidad manejando
-export const MAX_FALL = 320;
-export const CHUTE_FALL = 38;    // caída con paracaídas
-export const CHUTE_SIDE = 50;
+export const MAX_FALL = 270;
+export const CHUTE_FALL = 17;    // caída con paracaídas (lenta, para disfrutar el viaje)
+export const CHUTE_SIDE = 46;
+export const CHUTE_BOOST = 100; // el «disparo» en paracaídas: un impulso sin daño que saca humo
+export const CHUTE_GAP = 0.3;   // entre un impulso y el siguiente
 export const RECOIL = 115;       // empujón para atrás al disparar: así se mueve por el aire
 export const KNOCK = 0.75;       // cuánto empujan las explosiones (sobre lo de cada arma)
 export const UNSTICK = 45;       // un empujón más fuerte que esto lo despega de la superficie
@@ -35,8 +37,12 @@ export const SLOTS = 4;          // casillas del inventario (la primera es el co
 export const LASER_CHARGE = 2;   // el láser carga 2 s antes de salir
 export const SHIELD_TIME = 5;
 export const SHIELD_R = 15;
-export const JET_TIME = 1.5;
-export const JET_ACCEL = 420;
+export const JET_TIME = 3.6;
+export const JET_ACCEL = 760;
+export const JET_MAX = 190;      // velocidad máxima volando con el jetpack
+export const DRILL_STEP = 5;     // cada cuántos píxeles el taladro cava un tramo
+export const DRILL_R = 8;        // radio del túnel (el tanque entra)
+export const DRILL_EXIT = 18;    // aire seguido que lo hace explotar al salir de la pared
 export const HEAL = 30;          // la curita: +30 % de la vida
 
 // Armas y objetos (los de la wiki de Rocket Bot Royale, más la curita). `kind`:
@@ -45,19 +51,19 @@ export const HEAL = 30;          // la curita: +30 % de la vida
 // En los proyectiles: `crater` radio del pozo, `radius` alcance del daño y del empujón, `damage` en el
 // centro, `knock` empujón en el centro.
 export const ITEMS = {
-  rocket: { name: 'Cohete', icon: '🚀', kind: 'shot', speed: 290, gravity: 110, crater: 15, radius: 30, damage: 34, knock: 240, life: 2.4 },
-  nuke: { name: 'Bomba nuclear', icon: '☢️', kind: 'shot', speed: 210, gravity: 60, crater: 44, radius: 88, damage: 96, knock: 420, life: 3.5, big: true },
+  rocket: { name: 'Cohete', icon: '🚀', kind: 'shot', speed: 290, gravity: 190, crater: 15, radius: 30, damage: 34, knock: 240, life: 2.4 },
+  nuke: { name: 'Bomba nuclear', icon: '☢️', kind: 'shot', speed: 210, gravity: 120, crater: 44, radius: 88, damage: 96, knock: 420, life: 3.5, big: true },
   mine: { name: 'Mina', icon: '💣', kind: 'shot', speed: 160, gravity: 260, crater: 24, radius: 40, damage: 55, knock: 300, mine: true, trigger: 20, life: 45 },
-  rapid: { name: 'Ráfaga', icon: '⏩', kind: 'shot', speed: 320, gravity: 110, crater: 8, radius: 18, damage: 15, knock: 120, life: 2, burst: 5, small: true },
+  rapid: { name: 'Ráfaga', icon: '⏩', kind: 'shot', speed: 320, gravity: 190, crater: 8, radius: 18, damage: 15, knock: 120, life: 2, burst: 5, small: true },
   shield: { name: 'Escudo', icon: '🛡️', kind: 'self' },
-  flak: { name: 'Metralla', icon: '💥', kind: 'shot', speed: 470, gravity: 160, crater: 6, radius: 16, damage: 17, knock: 150, life: 0.32, count: 7, spread: 0.09, small: true },
+  flak: { name: 'Metralla', icon: '💥', kind: 'shot', speed: 470, gravity: 250, crater: 6, radius: 16, damage: 17, knock: 150, life: 0.32, count: 7, spread: 0.09, small: true },
   grenade: { name: 'Granadas', icon: '🧨', kind: 'shot', speed: 230, gravity: 300, crater: 14, radius: 28, damage: 26, knock: 210, life: 6, count: 3, spread: 0.2, fuse: 0.35, ball: true },
-  drill: { name: 'Taladro', icon: '🔩', kind: 'shot', speed: 210, gravity: 150, crater: 14, radius: 26, damage: 30, knock: 200, life: 4, drill: 130 },
-  homing: { name: 'Teledirigido', icon: '🎯', kind: 'shot', speed: 190, gravity: 60, crater: 15, radius: 30, damage: 34, knock: 240, homing: true, life: 5 },
+  drill: { name: 'Taladro', icon: '🔩', kind: 'shot', speed: 230, gravity: 70, crater: 14, radius: 26, damage: 30, knock: 200, life: 4, drill: 170 },
+  homing: { name: 'Teledirigido', icon: '🎯', kind: 'shot', speed: 190, gravity: 100, crater: 15, radius: 30, damage: 34, knock: 240, homing: true, life: 5 },
   whirl: { name: 'Remolino', icon: '🌪️', kind: 'zone', length: 95, width: 42, time: 4, push: 520 },
   jetpack: { name: 'Jetpack', icon: '🎒', kind: 'self' },
   poison: { name: 'Veneno', icon: '🧪', kind: 'shot', speed: 240, gravity: 300, crater: 0, radius: 0, damage: 0, knock: 0, life: 6, zone: 'poison', ball: true },
-  laser: { name: 'Láser', icon: '⚡', kind: 'charge', speed: 3200, gravity: 0, crater: 6, radius: 15, damage: 34, knock: 200, life: 0.22 },
+  laser: { name: 'Láser', icon: '⚡', kind: 'charge', speed: 3200, gravity: 0, crater: 6, radius: 18, damage: 100, flat: true, knock: 200, life: 0.22 },
   smoke: { name: 'Humo', icon: '💨', kind: 'shot', speed: 250, gravity: 300, crater: 0, radius: 0, damage: 0, knock: 0, life: 6, zone: 'smoke', ball: true },
   heal: { name: 'Curita', icon: '✚', kind: 'self' },
 };
@@ -148,19 +154,29 @@ export function push(p, vx, vy) {
 }
 
 // Una aceleración sostenida (jetpack, remolino): lo despega y lo empuja.
-export function thrust(p, ax, ay, dt) {
+export function thrust(p, ax, ay, dt, max = Infinity) {
   if (p.mode !== 'tank') return;
   if (p.stuck) { p.stuck = false; p.vx = 0; p.vy = 0; }
   p.vx += ax * dt;
   p.vy += ay * dt;
+  const sp = Math.hypot(p.vx, p.vy);
+  if (sp > max) { p.vx *= max / sp; p.vy *= max / sp; }
+}
+
+// El «disparo» en paracaídas: un impulso para el lado contrario al que apunta, sin proyectil ni daño.
+export function chuteBoost(p, angle) {
+  if (p.mode !== 'chute') return;
+  p.vx += -Math.cos(angle) * CHUTE_BOOST;
+  p.vy += -Math.sin(angle) * CHUTE_BOOST;
 }
 
 // Un paso del tanque propio. `dir`: −1, 0 o 1 (A/D).
 export function stepTank(p, dir, dt, t) {
   if (p.mode === 'ship') return;
   if (p.mode === 'chute') {
-    p.vx += (dir * CHUTE_SIDE - p.vx) * Math.min(1, dt * 3);
-    p.vy = Math.min(CHUTE_FALL, p.vy + GRAVITY * dt);
+    // Suave: el impulso de un «disparo» se va apagando solo, sin cortarse de golpe.
+    p.vx += (dir * CHUTE_SIDE - p.vx) * Math.min(1, dt * (dir ? 1.6 : 0.7));
+    p.vy += (CHUTE_FALL - p.vy) * Math.min(1, dt * 1.5);
     if (moveFree(t, p, dt)) { p.mode = 'tank'; stick(t, p); }
     return;
   }
@@ -242,7 +258,7 @@ export function reload(p, now) {
 // Jetpack: empuja para el lado contrario al que apunta; apuntando vertical, a un cuarto de la fuerza.
 export function jetForce(angle) {
   const a = angle + Math.PI;
-  const k = 1 - 0.75 * Math.abs(Math.sin(angle));
+  const k = 1 - 0.3 * Math.abs(Math.sin(angle)); // apuntando para abajo sube casi a toda fuerza
   return { x: Math.cos(a) * JET_ACCEL * k, y: Math.sin(a) * JET_ACCEL * k };
 }
 
@@ -250,15 +266,23 @@ export function jetForce(angle) {
 // El 0 sale de la izquierda y el 1 de la derecha, al ras del agua. Arrancan con la cuenta regresiva (5 s antes
 // de la partida) y van derecho hasta que la cuenta llega a 2; ahí suben hasta el medio del mapa (de ancho y de
 // alto, no hasta arriba) y bajan del otro lado igual, hasta el agua.
+// Altura del helicóptero: curva suave (sin quiebres al empezar a subir) más un vaivén leve.
+function shipY(s, H, k) {
+  const f = clamp((s + 5) / (SHIP_TIME + 5), 0, 1);
+  const low = H - 75; // justo arriba del agua del principio
+  const flat = SHIP_FLAT / (SHIP_TIME + 5);
+  const u = clamp((f - flat) / (1 - 2 * flat), 0, 1);
+  const bump = (1 - Math.cos(Math.PI * 2 * u)) / 2;
+  return low - bump * (low - H / 2) + Math.sin(s * 1.1 + k) * 2.2;
+}
 export function shipAt(s, W, H, k = 0) {
   const f = clamp((s + 5) / (SHIP_TIME + 5), 0, 1);
   const span = W + 120;
   const x = k === 0 ? -60 + f * span : W + 60 - f * span;
-  const low = H - 75; // justo arriba del agua del principio
-  const flat = SHIP_FLAT / (SHIP_TIME + 5);
-  const bump = Math.sin(Math.PI * clamp((f - flat) / (1 - 2 * flat), 0, 1));
-  const y = low - bump * (low - H / 2) + Math.sin(s * 1.5 + k) * 3;
-  return { x, y, dir: k === 0 ? 1 : -1, f, gone: f >= 1 };
+  const y = shipY(s, H, k);
+  // Cuánto se inclina el morro: sigue la subida y la bajada (derivada numérica).
+  const pitch = clamp(Math.atan2(shipY(s + 0.12, H, k) - y, (span / (SHIP_TIME + 5)) * 0.12) * 1.3, -0.5, 0.5);
+  return { x, y, dir: k === 0 ? 1 : -1, f, gone: f >= 1, pitch };
 }
 // En cuál va cada uno: se reparten de a uno.
 export const shipFor = (order, id) => Math.max(0, order.indexOf(id)) % 2;
@@ -347,9 +371,10 @@ export function stepProjectile(b, dt, t, targets = []) {
     }
     if (solid(t, nx, ny)) {
       if (w.drill && b.dug < w.drill) {
-        // El taladro atraviesa la tierra y deja un túnel.
+        // El taladro atraviesa la tierra y deja un túnel (cada tramo se cava como un drillseg).
         b.dug += Math.hypot(nx - b.x, ny - b.y);
-        if (b.dug - b.lastDig >= 7) { b.lastDig = b.dug; b.tunnels.push({ x: nx, y: ny }); }
+        b.air = 0;
+        if (b.dug - b.lastDig >= DRILL_STEP || !b.lastDig) { b.lastDig = b.dug || 0.01; b.tunnels.push({ x: nx, y: ny }); }
         b.x = nx; b.y = ny;
         continue;
       }
@@ -358,7 +383,11 @@ export function stepProjectile(b, dt, t, targets = []) {
       b.x = nx; b.y = ny;
       return boom(b);
     }
-    if (w.drill && b.dug > 0) return boom(b); // salió del otro lado: explota
+    if (w.drill && b.dug > 0) {
+      // Los tramos recién cavados también son aire: explota recién cuando salió del todo, al otro lado.
+      b.air = (b.air || 0) + Math.hypot(nx - b.x, ny - b.y);
+      if (b.air > DRILL_EXIT) { b.x = nx; b.y = ny; return boom(b); }
+    }
     b.x = nx; b.y = ny;
   }
   if (b.y > t.H + 60 || b.y < -400 || b.x < -200 || b.x > t.W + 200) { b.done = true; return null; }
@@ -381,7 +410,7 @@ export function blastOn(p, ex) {
   const f = 1 - d / w.radius;
   const nx = d > 0.01 ? (p.x - ex.x) / d : 0;
   const ny = d > 0.01 ? (p.y - ex.y) / d : -1;
-  return { damage: w.damage * (0.4 + 0.6 * f), vx: nx * w.knock * f * KNOCK, vy: (ny * w.knock * f - 40 * f) * KNOCK };
+  return { damage: w.flat ? w.damage : w.damage * (0.4 + 0.6 * f), vx: nx * w.knock * f * KNOCK, vy: (ny * w.knock * f - 40 * f) * KNOCK };
 }
 
 // ─── Monedas y cajas ─────────────────────────────────────────────────────────

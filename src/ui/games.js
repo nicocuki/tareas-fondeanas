@@ -62,7 +62,7 @@ export const GAMES = [
     input: 'Teclado y mouse',
     badge: 'Nuevo',
     howTo: [
-      'Arrancan en dos helicópteros, uno de cada lado del mapa: disparás para saltar y bajás en paracaídas.',
+      'Arrancan en dos helicópteros, uno de cada lado del mapa: disparás para saltar y bajás en paracaídas, donde cada disparo es un impulso con humo que no hace daño.',
       'Manejás con A y D (o las flechas) y el tanque se pega a las paredes y los techos (cada tecla lo lleva siempre para el mismo lado). Apuntás con el mouse y disparás con el clic o Espacio: tenés 3 cohetes que se recargan.',
       'Cada tiro te empuja para atrás: disparando para el lado contrario te despegás y salís volando.',
       'Los cohetes rompen el terreno y empujan a los demás. Si te quedás sin vida o te hundís, quedás afuera.',

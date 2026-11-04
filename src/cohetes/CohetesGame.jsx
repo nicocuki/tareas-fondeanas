@@ -15,13 +15,13 @@ import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { carve, decorations, makeTerrain, solid, waterY } from './terrain.js';
 import {
-  DEPLOY_AFTER, HEAL, HP, ITEMS, JET_TIME, KILL_CREDIT, LASER_CHARGE, MAX_AMMO, MAX_DROPS, RECOIL, RELOAD, SHIELD_TIME, SHOT_GAP, SLOTS, STEP,
-  ZONES, addItem, blastOn, coinSpots, crateInfo, inWhirl, jetForce, mapItems, muzzle, newTank, projectilesFor, push, reload, shipAt, shipFor,
-  stepProjectile, stepTank, thrust, turret, useItem, zoneFromShot,
+  CHUTE_GAP, DEPLOY_AFTER, DRILL_R, HEAL, HP, ITEMS, JET_MAX, JET_TIME, KILL_CREDIT, LASER_CHARGE, MAX_AMMO, MAX_DROPS, RECOIL, RELOAD, SHIELD_TIME,
+  SHOT_GAP, SLOTS, STEP, ZONES, addItem, blastOn, chuteBoost, coinSpots, crateInfo, inWhirl, jetForce, mapItems, muzzle, newTank, projectilesFor, push,
+  reload, shipAt, shipFor, stepProjectile, stepTank, thrust, turret, useItem, zoneFromShot,
 } from './sim.js';
 import {
-  burst, drawArrow, drawCoin, drawCrate, drawDecorations, drawEffects, drawLabel, drawLaserAim, drawProjectile, drawShip, drawSky, drawTank,
-  drawTerrain, drawWater, drawZones, makeTerrainView, repaint, setWorld,
+  burst, drawArrow, drawBadges, drawCoin, drawCrate, drawDecorations, drawEffects, drawLabel, drawLaserAim, drawProjectile, drawShip, drawSky,
+  drawTank, drawTerrain, drawWater, drawZones, makeTerrainView, puff, repaint, setWorld,
 } from './render.js';
 import { alive as alivePlayers, findPlayer, inGame } from './game.js';
 
@@ -50,7 +50,8 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
   roomRef.current = room;
   const dispatchRef = useRef(onDispatch);
   dispatchRef.current = onDispatch;
-  const [hud, setHud] = useState({ hp: HP, inv: [null, null, null], sel: 0, shots: MAX_AMMO, reloadF: 0, charge: 0, dead: false, mode: 'ship', elapsed: -5 });
+  const [hud, setHud] = useState({ hp: HP, inv: [null, null, null], sel: 0, shots: MAX_AMMO, reloadF: 0, charge: 0, jet: 0, dead: false, mode: 'ship', elapsed: -5 });
+  const [hits, setHits] = useState([]);
   const [notice, setNotice] = useState('');
   const [killLabel, setKillLabel] = useState('');
 
@@ -60,7 +61,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       n: 0, t: null, view: null, deco: [], coinSpots: [], crates: new Map(), zones: new Map(), local: null, remotes: new Map(), lastSeen: new Map(),
       projectiles: new Map(), seen: new Set(), myShots: [], myBooms: [], effects: [], particles: [], shake: 0, seq: 0,
       input: { left: false, right: false, shoot: false }, pressed: false, mouse: { x: 0, y: 0, in: false }, angle: -Math.PI / 2, shootHeld: false,
-      sentAt: 0, serverAt: 0, deathSent: false, pendingCoins: new Set(), pendingCrates: new Set(), goneSent: new Set(), hudKey: '', mountedAt: 0,
+      badges: [], hitEvents: [], hitDirty: false, sentAt: 0, serverAt: 0, deathSent: false, pendingCoins: new Set(), pendingCrates: new Set(), goneSent: new Set(), hudKey: '', mountedAt: 0,
     };
   }
   const serverNow = () => (Date.now() + offsetRef.current) / 1000;
@@ -82,7 +83,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     s.local = newTank(0, 0, 'ship');
     s.ship = shipFor(m.order, me.id);
     s.remotes.clear(); s.lastSeen.clear(); s.projectiles.clear(); s.seen.clear();
-    s.myShots = []; s.myBooms = []; s.effects = []; s.particles = [];
+    s.myShots = []; s.myBooms = []; s.effects = []; s.particles = []; s.badges = []; s.hitEvents = []; s.hitDirty = true;
     s.deathSent = false; s.pendingCoins.clear(); s.pendingCrates.clear(); s.goneSent.clear();
     s.mountedAt = performance.now() / 1000;
   }, [matchN]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -96,6 +97,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         const text = `Eliminaste a ${findPlayer(room, d.id)?.name || '¿?'}`;
         setKillLabel(text);
         setTimeout(() => setKillLabel((l) => (l === text ? '' : l)), 2400);
+        sim.current.badges.push({ kind: 'kill', at: performance.now() / 1000 });
       }
     }
     seenDeaths.current = deaths.length;
@@ -117,6 +119,24 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     }
   }
 
+  // Si la explosión es de un tiro mío y alcanza a otro tanque: aviso en los eventos y el ícono sobre mi tanque.
+  // El daño de verdad lo calcula la pantalla de quien lo recibe; acá es una estimación con su última posición.
+  function registerHits(s, ex, w) {
+    if (ex.o !== me.id || !w.radius) return;
+    const t = performance.now() / 1000;
+    for (const pl of alivePlayers(roomRef.current)) {
+      if (pl.id === me.id) continue;
+      const v = s.remotes.get(pl.id);
+      if (!v || v.snap.d || v.snap.m !== 'tank') continue;
+      const hit = blastOn({ x: v.x, y: v.y }, ex);
+      if (!hit) continue;
+      const same = s.hitEvents.find((h) => h.id === pl.id && t - h.at < 1.2);
+      if (same) { same.dmg += hit.damage; same.at = t; } else s.hitEvents.push({ k: ex.k, id: pl.id, name: pl.name, w: ex.w, dmg: hit.damage, at: t });
+      s.badges.push({ kind: 'hit', at: t });
+      s.hitDirty = true;
+    }
+  }
+
   // Una explosión (mía o de otro): cráter, zona, efecto y, si me alcanza, daño y empujón.
   function explode(s, ex, now) {
     const key = `x:${ex.k}`;
@@ -125,9 +145,9 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     s.projectiles.delete(ex.k);
     if (ex.w === 'drillseg') {
       // Un tramo del túnel del taladro: solo cava.
-      const box = carve(s.t, ex.x, ex.y, 7);
+      const box = carve(s.t, ex.x, ex.y, DRILL_R);
       if (box) repaint(s.view, s.t, box);
-      burst(s.particles, ex.x, ex.y, { n: 3, speed: 30, life: 0.4, colors: ['#c9c9c9', '#9a5a2c'] });
+      burst(s.particles, ex.x, ex.y, { n: 5, speed: 45, life: 0.5, colors: ['#e0e0e6', '#b8b8c2', '#9a5a2c', '#ffd27a'] });
       return;
     }
     const w = ITEMS[ex.w] || ITEMS.rocket;
@@ -143,6 +163,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     } else {
       burst(s.particles, ex.x, ex.y, { n: 14, speed: 50, colors: ex.w === 'poison' ? ['#7cf05a', '#c8ff9a'] : ['#d9dde3', '#aab2bd'] });
     }
+    registerHits(s, ex, w);
     const p = s.local;
     if (!p || p.dead || p.mode !== 'tank') return;
     const hit = blastOn(p, ex);
@@ -171,6 +192,10 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       if (snap.n !== s.n || !s.t) return;
       const prev = s.remotes.get(id);
       const t = performance.now() / 1000;
+      if (prev && snap.bo && snap.bo !== prev.snap.bo) {
+        const mz = muzzle(snap, snap.a || 0);
+        puff(s.particles, mz.x, mz.y, snap.a || 0);
+      }
       s.lastSeen.set(id, t);
       if (!prev || snap.t > prev.snap.t) {
         if (prev && !prev.snap.d && snap.d) burst(s.particles, snap.x, snap.y, { n: 40, colors: ['#ffe066', '#ff5a4f', '#555', '#fff'], speed: 140, life: 1 });
@@ -276,8 +301,8 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
           // Jetpack y remolinos: empujan mientras duran.
           if (p.mode === 'tank' && now < p.jetUntil) {
             const f = jetForce(p.jetA);
-            thrust(p, f.x, f.y, STEP);
-            if (Math.random() < 0.5) burst(s.particles, p.x - Math.cos(p.jetA + Math.PI) * 6, p.y - Math.sin(p.jetA + Math.PI) * 6, { n: 1, colors: ['#ffb347', '#ff6a2a'], speed: 30, life: 0.35 });
+            thrust(p, f.x, f.y, STEP, JET_MAX);
+            if (Math.random() < 0.7) burst(s.particles, p.x + Math.cos(p.jetA) * 6, p.y + Math.sin(p.jetA) * 6, { n: 1, colors: ['#ffe27a', '#ffb347', '#ff6a2a'], speed: 38, life: 0.4 });
           }
           for (const z of s.zones.values()) {
             if (now > z.until) continue;
@@ -292,6 +317,14 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
           reload(p, now);
           if (!shoot) s.shootHeld = false;
           if (p.mode === 'tank' && shoot && !s.shootHeld && now >= p.readyAt && !p.chargeUntil && !p.burst) use(p, m, now);
+          // En paracaídas, el «disparo» es un impulso sin daño que saca humo (se puede mantener apretado).
+          if (p.mode === 'chute' && shoot && !s.shootHeld && now >= p.readyAt) {
+            chuteBoost(p, s.angle);
+            p.readyAt = now + CHUTE_GAP;
+            p.boostAt = round1(now);
+            const mz = muzzle(p, s.angle);
+            puff(s.particles, mz.x, mz.y, s.angle);
+          }
           // Ráfaga: cinco cohetitos seguidos, apenas abiertos.
           if (p.burst > 0 && now >= p.burstAt) {
             emit(p, m, now, 'rapid', [0, -0.05, 0.05, -0.1, 0.1][5 - p.burst] || 0);
@@ -419,7 +452,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         const snap = {
           n: m.n, t: now, x: round1(p.x), y: round1(p.y), vx: Math.round(p.vx), vy: Math.round(p.vy), nx: Math.round(p.nx * 100) / 100,
           ny: Math.round(p.ny * 100) / 100, m: p.mode, a: Math.round(s.angle * 100) / 100, hp: Math.max(0, Math.round(p.hp)), d: p.dead ? 1 : 0,
-          sd: p.shieldUntil > now ? round1(p.shieldUntil) : 0, jt: now < p.jetUntil ? 1 : 0, ch: p.chargeUntil ? 1 : 0, sh: s.myShots, ex: s.myBooms,
+          sd: p.shieldUntil > now ? round1(p.shieldUntil) : 0, bo: p.boostAt || 0, jt: now < p.jetUntil ? 1 : 0, ch: p.chargeUntil ? 1 : 0, sh: s.myShots, ex: s.myBooms,
         };
         s.mesh?.broadcast(snap);
         const players = inGame(r).filter((pl) => pl.id !== me.id);
@@ -441,11 +474,17 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       const elapsed = now - m.startsAt / 1000;
       const reloadF = p.shots < MAX_AMMO ? Math.round(Math.max(0, Math.min(1, 1 - (p.reloadAt - now) / RELOAD)) * 10) / 10 : 0;
       const charge = p.chargeUntil ? Math.round(Math.min(1, 1 - (p.chargeUntil - now) / LASER_CHARGE) * 10) / 10 : 0;
-      const key = [Math.round(p.hp), JSON.stringify(p.inv), p.sel, p.shots, reloadF, charge, p.dead, p.mode, Math.ceil(-elapsed), elapsed > 25 && elapsed < 32].join('|');
+      const jet = now < p.jetUntil ? Math.round(((p.jetUntil - now) / JET_TIME) * 40) / 40 : 0;
+      const key = [Math.round(p.hp), JSON.stringify(p.inv), p.sel, p.shots, reloadF, charge, jet, p.dead, p.mode, Math.ceil(-elapsed), elapsed > 25 && elapsed < 32].join('|');
       if (key !== s.hudKey) {
         s.hudKey = key;
-        setHud({ hp: Math.max(0, Math.round(p.hp)), inv: p.inv, sel: p.sel, shots: p.shots, reloadF, charge, dead: p.dead, mode: p.mode, elapsed });
+        setHud({ hp: Math.max(0, Math.round(p.hp)), inv: p.inv, sel: p.sel, shots: p.shots, reloadF, charge, jet, dead: p.dead, mode: p.mode, elapsed });
       }
+      // Eventos de golpe (arriba a la derecha): duran unos segundos.
+      const nowS = performance.now() / 1000;
+      const kept = s.hitEvents.filter((h) => nowS - h.at < 4);
+      if (kept.length !== s.hitEvents.length) { s.hitEvents = kept; s.hitDirty = true; }
+      if (s.hitDirty) { s.hitDirty = false; setHits(s.hitEvents.slice(-4).reverse().map((h) => ({ ...h }))); }
       if (!hidden) draw(r, m, now, dt);
     }
 
@@ -483,11 +522,11 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       drawSky(ctx, shaken, now, theme);
       drawTerrain(ctx, shaken, s.view);
       setWorld(ctx, shaken);
-      drawDecorations(ctx, shaken, s.deco, s.t);
+      drawDecorations(ctx, shaken, s.deco, s.t, now);
       drawZones(ctx, s.zones.values(), now, false);
       s.coinSpots.forEach((c, i) => { if (!m.coins[i] && !s.pendingCoins.has(i)) drawCoin(ctx, c, now); });
       for (const c of s.crates.values()) drawCrate(ctx, c, now);
-      for (let kk = 0; kk < 2; kk++) { const ship = shipAt(elapsed, s.t.W, s.t.H, kk); if (!ship.gone) drawShip(ctx, ship, now); }
+      for (let kk = 0; kk < 2; kk++) { const ship = shipAt(elapsed, s.t.W, s.t.H, kk); if (!ship.gone) drawShip(ctx, ship, now, (back) => shipAt(elapsed - back, s.t.W, s.t.H, kk)); }
       for (const pl of alivePlayers(r)) {
         if (pl.id === me.id) continue;
         const v = s.remotes.get(pl.id);
@@ -502,6 +541,8 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         drawTank(ctx, p, mine.color, s.angle, { hurt: (p.hurtUntil || 0) > performance.now() / 1000, chute: p.mode === 'chute', shield: p.shieldUntil > now, now });
         if (p.chargeUntil) drawLaserAim(ctx, muzzle(p, s.angle), s.angle, 1 - (p.chargeUntil - now) / LASER_CHARGE);
         drawLabel(ctx, p, mine.name, p.hp, true);
+        s.badges = s.badges.filter((b) => performance.now() / 1000 - b.at < 0.6);
+        drawBadges(ctx, p, s.badges, performance.now() / 1000);
         // Flecha roja hacia el enemigo más cercano.
         let near = null, nd = Infinity;
         for (const pl of alivePlayers(r)) {
@@ -593,6 +634,9 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       </div>
       <div className="ck-remaining" data-left><small>Tanques<br />quedan</small><strong>{left}</strong></div>
       <ul className="ck-feed">
+        {hits.map((h) => (
+          <li key={h.k} className="is-hit" data-hit>🎯 Le pegaste a <b>{h.name}</b> <ItemIcon w={h.w} /> −{Math.round(h.dmg)}</li>
+        ))}
         {feed.map((f) => (
           <li key={f.k}>{f.by ? <>{f.by} <ItemIcon w={f.w || 'rocket'} /> {f.victim}</> : <>{f.victim} 🌊</>}</li>
         ))}
@@ -606,6 +650,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
             ))}
           </div>
           {hud.charge > 0 && <div className="ck-charge"><i style={{ width: `${hud.charge * 100}%` }} /></div>}
+          {hud.jet > 0 && <div className="ck-jet" data-jet><span>🎒</span><div><i style={{ width: `${hud.jet * 100}%` }} /></div></div>}
           <div className="ck-slots">
             {Array.from({ length: SLOTS }, (_, i) => {
               const item = i === 0 ? { w: 'rocket' } : hud.inv[i - 1];

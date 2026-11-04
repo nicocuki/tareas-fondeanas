@@ -1,9 +1,16 @@
 // El mapa de Cohete Royale, como el de Rocket Bot Royale: formas flotando en el espacio acomodadas en
-// una grilla, y abajo unas islas sobre el agua. Hay dos temas, como en el original:
+// una grilla, y abajo unas islas sobre el agua. Hay diez temas (los tres primeros, como en el original):
 //   tierra  anillos y «U» huecas con esquinas redondeadas (tierra a cuadros, borde verde, fondo violeta)
 //   hielo   triángulos, marcos triangulares y barras en diagonal (blanco con bordes celestes, fondo azul)
 //   volcán  un volcán enorme en el medio, con el cráter abierto y cámaras selladas adentro, rodeado de
 //           columnas de basalto, arcos y bóvedas (roca negra con vetas de lava, fondo rojo, la lava sube)
+//   desierto  mesetas, dunas, arcos de arenisca, obeliscos y tumbas selladas
+//   selva     islas con raíces colgando, troncos huecos, árboles enormes y cámaras de raíces
+//   océano    ramas de coral, perlas (anillos con boca), arrecifes y almejas cerradas
+//   espacio   asteroides, cristales, anillos de estación, cruces de satélite y asteroides con cráter hueco
+//   cementerio  lápidas, criptas selladas, árboles muertos, vallas y túmulos
+//   ruinas    edificios rotos, pisos apilados, vigas caídas, puentes cortados y búnkeres
+//   dulces    donas, bastones de caramelo, tortas por pisos, chupetines y galletas
 // Se guarda como grilla de «píxeles» (una casilla = una unidad; y crece hacia abajo) y los cohetes cavan
 // círculos. Todo sale de una semilla: todas las pantallas arman el mismo mapa, y como cavar es borrar
 // (el orden no importa), con los mismos cráteres quedan iguales. Puro: sin React ni red.
@@ -12,7 +19,7 @@ export const CELL = 230;      // cada forma ocupa una celda de la grilla
 export const TOP = 190;       // lugar arriba para los helicópteros que traen a los jugadores
 const MARGIN = 120;
 const ROWS = 4;
-export const THEMES = ['tierra', 'hielo', 'volcan'];
+export const THEMES = ['tierra', 'hielo', 'volcan', 'desierto', 'selva', 'oceano', 'espacio', 'cementerio', 'ruinas', 'dulces'];
 
 // Columnas según cuántos juegan: con 25 hace falta lugar.
 export const colsFor = (players) => Math.max(5, Math.min(14, 4 + Math.ceil(players / 2.2)));
@@ -185,6 +192,262 @@ function basaltCell(t, rand, x0, y0) {
   }
 }
 
+// Un círculo (rectángulo redondeado con r = radio).
+const disc = (cx, cy, r) => ({ x: cx - r, y: cy - r, w: r * 2, h: r * 2, r });
+// Cámara sellada adentro de una forma: hay que romper la roca para entrar (ahí quedan piezas sueltas).
+function chamber(t, box, thick, r) {
+  const inner = { x: box.x + thick, y: box.y + thick, w: box.w - thick * 2, h: box.h - thick * 2, r };
+  if (inner.w < 36 || inner.h < 36) return false;
+  paint(t, inner, 0);
+  t.holes.push(inner);
+  return true;
+}
+// Un bloque sellado, igual en todos los temas pero con otra redondez (r) y grosor.
+function vaultCell(t, rand, x0, y0, r = 34) {
+  const pad = 16, w = (CELL - pad * 2) * (0.8 + rand() * 0.2), h = (CELL - pad * 2) * (0.7 + rand() * 0.25);
+  const box = { x: x0 + (CELL - w) / 2, y: y0 + (CELL - h) / 2, w, h, r };
+  paint(t, box, 1);
+  chamber(t, box, 40 + rand() * 12, Math.max(8, r * 0.6));
+}
+
+// Desierto: meseta de cima plana, duna, arco de arenisca, obelisco o tumba sellada.
+function desertCell(t, rand, x0, y0) {
+  const kind = rand();
+  if (kind < 0.1) return;
+  const pad = 14;
+  if (kind < 0.3) {
+    const w = CELL - pad * 2 - rand() * 30, h = 90 + rand() * 60, x = x0 + (CELL - w) / 2, by = y0 + CELL - pad;
+    paintPoly(t, [[x, by], [x + w, by], [x + w - 26, by - h], [x + 26, by - h]], 1);
+    paint(t, { x: x + 14, y: by - h - 12, w: w - 28, h: 22, r: 8 }, 1);
+    return;
+  }
+  if (kind < 0.5) {
+    const x = x0 + pad, w = CELL - pad * 2, base = y0 + CELL - pad, h = 70 + rand() * 60, pts = [[x, base]];
+    for (let i = 0; i <= 10; i++) pts.push([x + (w * i) / 10, base - h * Math.sin((Math.PI * i) / 10) ** 1.4]);
+    pts.push([x + w, base]);
+    paintPoly(t, pts, 1);
+    return;
+  }
+  if (kind < 0.68) {
+    const w = CELL - pad * 2, h = 150 + rand() * 30, x = x0 + pad, y = y0 + CELL - h - 8, thick = 42;
+    paint(t, { x, y, w, h, r: 60 }, 1);
+    paint(t, { x: x + thick, y: y + thick, w: w - thick * 2, h: h - thick + 10, r: 34 }, 0);
+    return;
+  }
+  if (kind < 0.8) {
+    const w = 44 + rand() * 20, h = 160 + rand() * 30, x = x0 + (CELL - w) / 2, by = y0 + CELL - 8;
+    paintPoly(t, [[x, by], [x + w, by], [x + w * 0.72, by - h], [x + w / 2, by - h - 22], [x + w * 0.28, by - h]], 1);
+    return;
+  }
+  vaultCell(t, rand, x0, y0, 12);
+}
+
+// Selva: isla con raíces colgando, tronco hueco abierto de lado a lado, árbol gigante o cámara de raíces.
+function jungleCell(t, rand, x0, y0) {
+  const kind = rand();
+  if (kind < 0.1) return;
+  const pad = 14;
+  if (kind < 0.35) {
+    const w = CELL - pad * 2 - rand() * 40, h = 46 + rand() * 20, x = x0 + (CELL - w) / 2, y = y0 + 40 + rand() * 40;
+    paint(t, { x, y, w, h, r: 22 }, 1);
+    const n = 3 + Math.floor(rand() * 3);
+    for (let i = 0; i < n; i++) paint(t, { x: x + 14 + rand() * (w - 40), y: y + h - 6, w: 7 + rand() * 4, h: 34 + rand() * 50, r: 3.5 }, 1);
+    return;
+  }
+  if (kind < 0.55) {
+    const w = CELL - pad * 2, h = 100 + rand() * 24, x = x0 + pad, y = y0 + (CELL - h) / 2, thick = 32;
+    paint(t, { x, y, w, h, r: h / 2 }, 1);
+    paint(t, { x: x - 4, y: y + thick, w: w + 8, h: h - thick * 2, r: 0 }, 0);
+    t.holes.push({ x: x + 30, y: y + thick, w: w - 60, h: h - thick * 2 });
+    return;
+  }
+  if (kind < 0.72) {
+    const tw = 40 + rand() * 20, th = 130 + rand() * 40, tx = x0 + (CELL - tw) / 2, by = y0 + CELL - 6;
+    paint(t, { x: tx, y: by - th, w: tw, h: th, r: 12 }, 1);
+    const cx = tx + tw / 2, cy = by - th;
+    paint(t, disc(cx, cy, 52 + rand() * 12), 1);
+    paint(t, disc(cx - 46, cy + 12, 34), 1);
+    paint(t, disc(cx + 46, cy + 16, 32), 1);
+    return;
+  }
+  vaultCell(t, rand, x0, y0, 56);
+}
+
+// Océano: rama de coral con tres puntas, perla (anillo con boca), arrecife con arco, abanico o almeja sellada.
+function coralCell(t, rand, x0, y0) {
+  const kind = rand();
+  if (kind < 0.1) return;
+  const pad = 14, cx = x0 + CELL / 2, by = y0 + CELL - 8;
+  if (kind < 0.32) {
+    const th = 30 + rand() * 8, h = 130 + rand() * 40;
+    paintPoly(t, bar(cx, by, cx, by - h, th), 1);
+    paintPoly(t, bar(cx, by - h * 0.45, cx - 70, by - h * 0.9, th * 0.8), 1);
+    paintPoly(t, bar(cx, by - h * 0.55, cx + 66, by - h * 0.95, th * 0.8), 1);
+    return;
+  }
+  if (kind < 0.55) {
+    const r = 74 + rand() * 12, cy = y0 + CELL / 2 + (rand() - 0.5) * 20, thick = 34;
+    paint(t, disc(cx, cy, r), 1);
+    const inner = disc(cx, cy, r - thick);
+    paint(t, inner, 0);
+    t.holes.push(inner);
+    const side = rand() < 0.5 ? -1 : 1;
+    paint(t, { x: side < 0 ? cx - r - 2 : cx + r - thick - 2, y: cy - 24, w: thick + 4, h: 48, r: 0 }, 0);
+    return;
+  }
+  if (kind < 0.72) {
+    const w = CELL - pad * 2, h = 110 + rand() * 30, x = x0 + pad;
+    paint(t, { x, y: by - h, w, h: h + 6, r: 40 }, 1);
+    paint(t, { x: cx - 30, y: by - h * 0.55, w: 60, h: h * 0.55 + 8, r: 28 }, 0);
+    return;
+  }
+  if (kind < 0.84) {
+    for (let i = -2; i <= 2; i++) paintPoly(t, bar(cx, by, cx + i * 38, by - 110 + Math.abs(i) * 16, 22), 1);
+    return;
+  }
+  vaultCell(t, rand, x0, y0, 64);
+}
+
+// Espacio: asteroide, asteroide con cráter hueco, cristal, anillo de estación o cruz de satélite.
+function spaceCell(t, rand, x0, y0) {
+  const kind = rand();
+  if (kind < 0.1) return;
+  const cx = x0 + CELL / 2 + (rand() - 0.5) * 20, cy = y0 + CELL / 2 + (rand() - 0.5) * 20;
+  if (kind < 0.4) {
+    const n = 7 + Math.floor(rand() * 3), pts = [], R = CELL * (0.3 + rand() * 0.12);
+    for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + rand() * 0.3, r = R * (0.72 + rand() * 0.4); pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.86]); }
+    paintPoly(t, pts, 1);
+    return;
+  }
+  if (kind < 0.58) {
+    const r = 80 + rand() * 12;
+    paint(t, disc(cx, cy, r), 1);
+    const inner = disc(cx + (rand() - 0.5) * 14, cy + (rand() - 0.5) * 14, r - 38 - rand() * 6);
+    paint(t, inner, 0);
+    t.holes.push(inner);
+    return;
+  }
+  if (kind < 0.72) {
+    const w = 52 + rand() * 18, h = 150 + rand() * 30;
+    paintPoly(t, [[cx, cy - h / 2 - 20], [cx + w / 2, cy - h * 0.15], [cx + w * 0.38, cy + h / 2], [cx - w * 0.38, cy + h / 2], [cx - w / 2, cy - h * 0.15]], 1);
+    return;
+  }
+  if (kind < 0.86) {
+    const r = 76, thick = 28;
+    paint(t, disc(cx, cy, r), 1);
+    paint(t, disc(cx, cy, r - thick), 0);
+    t.holes.push(disc(cx, cy, r - thick));
+    paint(t, { x: cx - 22, y: cy - r - 2, w: 44, h: thick + 4, r: 0 }, 0);
+    paint(t, { x: cx - 22, y: cy + r - thick - 2, w: 44, h: thick + 4, r: 0 }, 0);
+    return;
+  }
+  paintPoly(t, bar(cx - 80, cy, cx + 80, cy, 28), 1);
+  paintPoly(t, bar(cx, cy - 80, cx, cy + 80, 28), 1);
+  paint(t, disc(cx, cy, 30), 1);
+}
+
+// Cementerio: lápida, cripta sellada con techo a dos aguas, árbol muerto, valla de hierro o túmulo.
+function graveCell(t, rand, x0, y0) {
+  const kind = rand();
+  if (kind < 0.1) return;
+  const pad = 14, cx = x0 + CELL / 2, by = y0 + CELL - 8;
+  if (kind < 0.3) {
+    const w = 70 + rand() * 24, h = 130 + rand() * 40;
+    paint(t, { x: cx - w / 2, y: by - h, w, h: h + 6, r: w / 2 }, 1);
+    paint(t, { x: cx - w / 2 - 14, y: by - 18, w: w + 28, h: 24, r: 6 }, 1);
+    return;
+  }
+  if (kind < 0.55) {
+    const w = CELL - pad * 2, h = 120 + rand() * 20, x = x0 + pad, y = by - h;
+    paint(t, { x, y, w, h: h + 6, r: 6 }, 1);
+    paintPoly(t, [[x - 10, y + 6], [x + w + 10, y + 6], [cx, y - 56]], 1);
+    chamber(t, { x, y, w, h: h + 6 }, 36, 8);
+    return;
+  }
+  if (kind < 0.72) {
+    const th = 22 + rand() * 8, h = 150 + rand() * 30;
+    paintPoly(t, bar(cx, by, cx + 4, by - h, th), 1);
+    paintPoly(t, bar(cx + 2, by - h * 0.55, cx - 64, by - h * 0.95, th * 0.55), 1);
+    paintPoly(t, bar(cx + 3, by - h * 0.7, cx + 60, by - h * 1.05, th * 0.5), 1);
+    return;
+  }
+  if (kind < 0.84) {
+    for (let i = -3; i <= 3; i++) {
+      const x = cx + i * 28;
+      paintPoly(t, [[x - 6, by], [x + 6, by], [x + 6, by - 100], [x, by - 124], [x - 6, by - 100]], 1);
+    }
+    paint(t, { x: cx - 100, y: by - 66, w: 200, h: 12, r: 3 }, 1);
+    return;
+  }
+  vaultCell(t, rand, x0, y0, 22);
+}
+
+// Ruinas: edificio con un mordisco, pisos apilados, viga caída, puente cortado o búnker sellado.
+function ruinsCell(t, rand, x0, y0) {
+  const kind = rand();
+  if (kind < 0.1) return;
+  const pad = 14, cx = x0 + CELL / 2, by = y0 + CELL - 6;
+  if (kind < 0.32) {
+    const w = 110 + rand() * 40, h = 170 + rand() * 24, x = cx - w / 2;
+    paint(t, { x, y: by - h, w, h, r: 4 }, 1);
+    paint(t, { x: x + w * 0.45, y: by - h - 4, w: w * 0.7, h: 60 + rand() * 30, r: 0 }, 0);
+    for (let i = 0; i < 2; i++) paint(t, { x: x + 22 + i * (w / 2 - 6), y: by - h + 46, w: 26, h: 34, r: 0 }, 0);
+    return;
+  }
+  if (kind < 0.52) {
+    for (let i = 0; i < 3; i++) paint(t, { x: x0 + pad + (i % 2) * 14, y: by - 40 - i * 62, w: CELL - pad * 2 - (i % 2) * 28, h: 18, r: 3 }, 1);
+    for (const dx of [-1, 1]) paint(t, { x: cx + dx * 70 - 8, y: by - 190, w: 16, h: 190, r: 3 }, 1);
+    return;
+  }
+  if (kind < 0.66) {
+    paintPoly(t, bar(x0 + pad, by - 20, x0 + CELL - pad, by - 120, 24), 1);
+    paint(t, { x: x0 + pad, y: by - 14, w: 70, h: 18, r: 3 }, 1);
+    return;
+  }
+  if (kind < 0.8) {
+    const y = y0 + CELL / 2;
+    paint(t, { x: x0 + pad, y, w: 78, h: 26, r: 4 }, 1);
+    paint(t, { x: x0 + CELL - pad - 70, y: y - 6, w: 70, h: 26, r: 4 }, 1);
+    paint(t, { x: x0 + pad + 8, y: y + 26, w: 18, h: 70, r: 3 }, 1);
+    return;
+  }
+  vaultCell(t, rand, x0, y0, 6);
+}
+
+// Dulces: dona, bastón de caramelo, torta de tres pisos, chupetín o galleta.
+function candyCell(t, rand, x0, y0) {
+  const kind = rand();
+  if (kind < 0.1) return;
+  const pad = 14, cx = x0 + CELL / 2, by = y0 + CELL - 6;
+  if (kind < 0.34) {
+    const r = 78 + rand() * 10, cy = y0 + CELL / 2, hole = 30 + rand() * 8;
+    paint(t, disc(cx, cy, r), 1);
+    paint(t, disc(cx, cy, hole), 0);
+    t.holes.push(disc(cx, cy, hole));
+    if (rand() < 0.5) paint(t, { x: cx - 18, y: cy - r - 2, w: 36, h: r - hole + 4, r: 0 }, 0); // un mordisco: se abre
+    return;
+  }
+  if (kind < 0.5) {
+    paintPoly(t, bar(cx - 20, by, cx - 20, by - 150, 30), 1);
+    paint(t, { x: cx - 20, y: by - 196, w: 96, h: 96, r: 48 }, 1);
+    paint(t, { x: cx + 4, y: by - 172, w: 48, h: 48, r: 24 }, 0);
+    return;
+  }
+  if (kind < 0.68) {
+    for (let i = 0; i < 3; i++) paint(t, { x: cx - (96 - i * 24), y: by - 44 - i * 48, w: (96 - i * 24) * 2, h: 46, r: 12 }, 1);
+    return;
+  }
+  if (kind < 0.82) {
+    paint(t, { x: cx - 7, y: by - 120, w: 14, h: 126, r: 5 }, 1);
+    paint(t, disc(cx, by - 150, 52 + rand() * 8), 1);
+    return;
+  }
+  const r = 62 + rand() * 14;
+  paint(t, disc(cx, y0 + CELL / 2, r), 1);
+  paint(t, disc(cx - r * 0.85, y0 + CELL / 2 - r * 0.6, 24), 1);
+  if (rand() < 0.5) vaultCell(t, rand, x0, y0, 70);
+}
+
 // El volcán del medio: cono con el cráter abierto arriba, una chimenea tapada por un tapón de roca y,
 // debajo, la cámara de magma sellada (el tesoro grande). Cuatro bóvedas más chicas en los flancos,
 // cornisas para trepar y dos cuernos en el borde del cráter.
@@ -229,17 +492,23 @@ function volcano(t, rand) {
   }
 }
 
+const CELLS = { desierto: desertCell, selva: jungleCell, oceano: coralCell, espacio: spaceCell, cementerio: graveCell, ruinas: ruinsCell, dulces: candyCell };
+
+// El tema que le toca a una semilla (es lo primero que sale de su sucesión al azar).
+export const themeFor = (seed) => THEMES[Math.floor(seeded(seed)() * THEMES.length)];
+
 // Arma el mapa. Devuelve { W, H, grid, holes, theme }.
 export function makeTerrain(seed, players) {
   const { W, H } = sizeFor(players);
   const cols = colsFor(players);
   const rand = seeded(seed);
-  const theme = THEMES[Math.floor(rand() * THEMES.length)];
+  const theme = THEMES[Math.floor(rand() * THEMES.length)]; // = themeFor(seed)
   const t = { W, H, grid: new Uint8Array(W * H), holes: [], theme };
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < cols; col++) {
       const x0 = MARGIN + col * CELL, y0 = TOP + row * CELL;
       if (theme === 'hielo') iceCell(t, rand, x0, y0);
+      else if (theme in CELLS) CELLS[theme](t, rand, x0, y0);
       else if (theme === 'volcan') { if (Math.abs(x0 + CELL / 2 - W / 2) >= Math.min(430, (W - MARGIN * 2) * 0.3) + CELL * 0.35) basaltCell(t, rand, x0, y0); }
       else earthCell(t, rand, x0, y0);
     }
@@ -284,6 +553,17 @@ export function surfaceY(t, x, from = 0) {
   return t.H;
 }
 
+// Qué adorno sale en cada tema nuevo: [tipo, hasta qué valor al azar].
+const DECO = {
+  desierto: [['cactus', 0.55], ['dry', 1]],
+  selva: [['palm', 0.3], ['fern', 0.7], ['mushroom', 1]],
+  oceano: [['coral', 0.5], ['kelp', 1]],
+  espacio: [['gem', 0.6], ['flag', 1]],
+  cementerio: [['tomb', 0.4], ['cross', 0.7], ['bare', 1]],
+  ruinas: [['rebar', 0.35], ['cone', 0.55], ['rubble', 1]],
+  dulces: [['lolli', 0.35], ['gumdrop', 0.7], ['cane', 1]],
+};
+
 // Adornos sobre las superficies de arriba: plantas en tierra, picos de hielo en hielo (solo dibujo).
 export function decorations(t, seed) {
   const rand = seeded(seed ^ 0xdec0);
@@ -296,7 +576,7 @@ export function decorations(t, seed) {
       for (let k = 2; k < 22 && free; k++) if (y - k < 0 || t.grid[(y - k) * t.W + x]) free = false;
       if (free && t.grid[y * t.W + x - 3] && t.grid[y * t.W + x + 3] && rand() < 0.55) {
         const r = rand();
-        const kind = t.theme === 'volcan' ? (r < 0.6 ? 'shard' : 'vent') : t.theme === 'hielo' ? (r < 0.6 ? 'spike' : 'crystal') : r < 0.35 ? 'pine' : r < 0.5 ? 'birch' : r < 0.75 ? 'flower' : 'grass';
+        const kind = DECO[t.theme] ? DECO[t.theme].find(([, lim]) => r < lim)[0] : t.theme === 'volcan' ? (r < 0.6 ? 'shard' : 'vent') : t.theme === 'hielo' ? (r < 0.6 ? 'spike' : 'crystal') : r < 0.35 ? 'pine' : r < 0.5 ? 'birch' : r < 0.75 ? 'flower' : 'grass';
         list.push({ x, y, kind, s: 0.7 + rand() * 0.6, c: Math.floor(rand() * 3) });
       }
     }

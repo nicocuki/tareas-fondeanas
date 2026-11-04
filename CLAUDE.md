@@ -740,14 +740,22 @@ rompe a cohetazos mientras sube el agua. De 2 a 25, solo compu. `id`: `cohetes` 
 `gameType: 'cohetes'`, raíz `cohetes/` en `ROOTS`). **La primera versión estaba mal entendida** (colinas,
 cohetes en arco); Nico mandó un video del original y se rehízo con esto, que es como funciona de verdad:
 
-- **El mapa** (`terrain.js`): bloques flotando en el espacio, acomodados en una grilla (`CELL`). Tres temas
-  (`THEMES`, sale de la semilla): **volcán** (un cono enorme en el medio, `volcano()`: cráter abierto, chimenea con un tapón de roca de 30 px, cámara de magma sellada
+- **El mapa** (`terrain.js`): bloques flotando en el espacio, acomodados en una grilla (`CELL`). Diez temas
+  (`THEMES`, sale de la semilla con `themeFor(seed)`; los 7 nuevos están abajo): **volcán** (un cono enorme en el medio, `volcano()`: cráter abierto, chimenea con un tapón de roca de 30 px, cámara de magma sellada
   de 250 × 210 y cuatro bóvedas en los flancos; afuera, `basaltCell`: columnas, arcos, bóvedas, piedras y escaleras; roca oscura con vetas de lava, cielo rojo con
   brasas que suben y **lava en lugar de agua**), **tierra** (anillos y «U» huecas, tierra a cuadros con **borde verde en todos
   los lados, también en los cráteres**, fondo violeta) y **hielo** (triángulos llenos y huecos, barras en
   diagonal y «V», blanco con borde celeste en capas, fondo azul, picos de hielo). El borde se calcula con la
   distancia al aire (`render.js`). Es una grilla de «píxeles» armada desde la semilla: todas las pantallas
   tienen el mismo mapa, y como cavar es borrar, con los mismos cráteres (en cualquier orden) queda igual.
+- **Los siete temas nuevos** (pedido de Nico): **desierto** (mesetas, dunas, arcos de arenisca, obeliscos; arena movediza), **selva** (islas con raíces colgando, troncos huecos
+  abiertos de lado a lado, árboles gigantes; pantano), **océano** (coral de tres puntas, perlas, arrecifes con arco; burbujas y rayos de luz), **espacio** (asteroides, cristales, anillos de
+  estación, cruces; planeta y plasma), **cementerio** (lápidas, criptas con techo, árboles muertos, vallas; luna y niebla verde), **ruinas** (edificios mordidos, pisos apilados, vigas,
+  puentes cortados; ladrillos con juntas y agua sucia) y **dulces** (donas, bastones, tortas por pisos, chupetines, galletas; granas y chocolate). Cada uno tiene su generador de
+  celdas en `terrain.js` (`CELLS`; los bloques sellados salen de `vaultCell`, así siempre hay recintos con piezas), su paleta en `color()`, su cielo (`SKIES`), lo que flota (`PARTS`), su
+  líquido (`WATERS`), sus adornos (`DECO` en `terrain.js` y en `render.js`) y, si hace falta, un fondo (`skyExtra`). **Un tema nuevo** necesita todo eso y entrar en `THEMES`: hay un test que
+  recorre los diez y otro que exige piezas sueltas (≥ 4) en todos. **Agregarlos al final de `THEMES` no alcanza para no mover mapas**: la semilla elige por posición, así que sumar o sacar un tema cambia el
+  tema de todas las semillas (da igual, las salas son de una sola partida).
 - **El tanque se pega a cualquier superficie** (`stepTank` en `sim.js`): maneja por el piso, las paredes y los
   techos y gira con ella (`nx`, `ny` = la normal). **Cada tecla lleva siempre para el mismo lado del tanque**
   (por la tangente `(-ny, nx)`, con signo fijo): cabeza abajo en el techo de un cuadrado, D va para la
@@ -760,14 +768,16 @@ cohetes en arco); Nico mandó un video del original y se rehízo con esto, que e
   (`{ w, n }`). Con las tres llenas no se agarra una caja de otra cosa: queda ahí.
 - **Los objetos** (`ITEMS`, de la wiki del original) tienen `kind`: `shot` (proyectiles: nuclear, mina, ráfaga de
   5, metralla, granadas, taladro, teledirigido, veneno y humo, que dejan una zona `ZONES`), `self` (escudo,
-  jetpack; la curita +30 se usa al agarrarla, no entra al inventario), `charge` (láser: 2 s cargando, después un rayo instantáneo) y `zone` (remolino, que se
+  jetpack; la curita +30 se usa al agarrarla, no entra al inventario), `charge` (láser: 2 s cargando, después un rayo instantáneo de **100 de daño parejo**: `flat`, mata de un tiro) y `zone` (remolino, que se
   arma en todas las pantallas desde el disparo con `zoneFromShot`). El escudo devuelve los tiros: lo decide la
   pantalla del que tiró, que lo ve en la foto del otro (`sd`), y desde ahí el tiro es del dueño del escudo. El
-  taladro manda cada tramo del túnel como explosión `drillseg` (solo cava).
+  taladro manda cada tramo del túnel como explosión `drillseg` (solo cava, radio `DRILL_R`, donde entra el tanque). **El taladro cruza paredes**: sigue adentro de la roca hasta `drill` píxeles y solo explota cuando salió al aire
+  más de `DRILL_EXIT` seguido (los tramos que acaba de cavar también son aire: antes explotaba al primer tramo y no servía de nada) o toca a un tanque.
 - **Al empezar**, dos helicópteros (`shipAt(s, W, H, k)`): el 0 sale de la izquierda y el 1 de la derecha, al ras
   del agua; van derecho hasta que la cuenta llega a 2 (`SHIP_FLAT`), suben hasta el medio del mapa (de ancho y de
   alto, no hasta arriba: pedido de Nico) y bajan hasta el agua de la otra punta. `shipFor` reparte a los jugadores de a uno.
-  5 s de «¡Preparate!» y después «Disparo para saltar»; se baja en paracaídas (`mode: chute`). Si no saltás,
+  5 s de «¡Preparate!» y después «Disparo para saltar»; se baja en paracaídas (`mode: chute`), **despacio** (`CHUTE_FALL`). **En paracaídas el «disparo» es un impulso** (`chuteBoost`, `CHUTE_BOOST`): empuja para el lado contrario
+  al que apuntás, sin proyectil ni daño, con humo (`puff`) y cada `CHUTE_GAP`; mantenido, repite. Viaja en la foto como `bo` para que los demás vean el humo. El helicóptero va por una curva suave (`shipY`, sin quiebres) y se inclina siguiendo la subida (`pitch`); la llama del motor son tres capas de lenguas (`flame`) y el humo sigue su recorrido real (`past`). Si no saltás,
   te tira solo pasados los tres cuartos del recorrido, antes de que baje hasta el agua. Un clic cortito cuenta igual (`pressed`).
 - **La sala** (`game.js`) guarda lo de a una vez: la semilla (`match.seed`), cuántos eran al empezar
   (`match.size`, define el ancho), quién murió, quién lo mató y con qué (`died`, con `by` y `w`), las monedas y
@@ -782,7 +792,11 @@ cohetes en arco); Nico mandó un video del original y se rehízo con esto, que e
 - **El agua** sube con el tiempo de partida (`waterY`: 30 s quieta mientras bajan todos, después sube según la
   opción de velocidad). Hundirse o quedarse sin vida es quedar afuera; si alguien te pegó en los últimos 6 s,
   la baja es suya (y con su arma).
-- **Todos los tiros tienen gravedad** (pedido de Nico: «no pueden ser lineales»), menos el láser.
+- **Todos los tiros tienen gravedad** (pedido de Nico: «no pueden ser lineales»; después, «un poco más»: cohete 190), menos el láser. La gravedad del tanque bajó a 180.
+- **Jetpack**: dura `JET_TIME` (3,6 s), empuja `JET_ACCEL` con un tope de velocidad (`JET_MAX`, `thrust(..., max)`; sin tope se iba al espacio) y apuntando para abajo sube casi a toda fuerza. Una barra
+  (`.ck-jet`, `data-jet`) muestra cuánto queda.
+- **Eventos de golpe** (arriba a la derecha, con las bajas): cuando una explosión de un tiro mío alcanza a otro tanque (`registerHits`, con la última posición que conozco de él) sale «🎯 Le pegaste a X −N» durante 4 s
+  (los golpes seguidos al mismo se suman) y sobre mi tanque aparece medio segundo un 🎯 animado (`drawBadges`); al eliminar a alguien, un 💀. Es solo de pantalla: el daño de verdad lo calcula quien lo recibe.
 - **Monedas** en fila (de la semilla) y **cajas de metal** que caen en paracaídas, una cada 10 s (`crateInfo`). Las `MAP_ITEMS` (8) del principio **no son cajas**:
   son el ítem suelto, **flotando en el aire de recintos cerrados** (`enclosedPockets`: aire que no se conecta con el de afuera, hallado con una inundación sobre una grilla
   de 6 px; hay que romper bloques para llegar). `mapItems` reparte una por recinto (índices desde `MAX_DROPS`, marcadas `float`: no caen aunque rompan la roca ni se

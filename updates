@@ -735,9 +735,22 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.32.0 = Arena Royale: 30 cartas nuevas y dos modos para elegir las cartas
+1.32.0 = Arena Royale: 30 cartas nuevas y dos modos para elegir las cartas
 - Hay 30 cartas más (50 en total): Bárbaros, Bruja, Golem, Gigante Esqueleto, Minero, Princesa, Electromago, Torre Tesla, Tumba, Veneno, Cohete, Curación, Barril de Duendes y muchas otras, cada una con su dibujo.
 - Mecánicas nuevas: unas invocan tropas cada tanto (Bruja, Tumba, Cabaña de Duendes), otras sueltan más tropas al romperse (Golem, Sabueso de Lava), hay hechizos que curan, frenan o dañan de a poco, el Electromago aturde y el Minero aparece en cualquier lado.
 - Doble elección: te muestran 2 cartas, 4 veces; la que no elegís se la queda tu rival, así que tu mazo son tus 4 más las 4 que descartó el otro (pide equipos parejos).
 - Triple elección: te muestran 3 cartas, 8 veces; las que no elegís se descartan.
 - El modo lo elige el anfitrión en la sala de espera (Clásico, Doble o Triple). Hay 12 segundos por elección: si se acaba el tiempo, se toma la primera opción.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.33.0 = Cohete Royale: 7 mapas nuevos y mejoras de combate, paracaídas y poderes 🚀
+- 7 mapas nuevos: desierto (mesetas, dunas y arcos de arenisca, arena movediza), selva (islas con raíces, troncos huecos y pantano), océano (coral, perlas y burbujas), espacio (asteroides, cristales y plasma), cementerio (criptas, lápidas y niebla verde bajo la luna), ruinas (edificios rotos y ladrillos) y dulces (donas, tortas y chocolate). Ahora son 10 en total, y cada uno trae su cielo, sus adornos y lo que flota en el aire.
+- Las balas tienen más gravedad: caen más en arco y no van tan directas.
+- Cuando le pegás a alguien aparece «Le pegaste a X −daño» arriba a la derecha, con los eventos, y sobre tu tanque salta un ícono 🎯 animado medio segundo (💀 cuando eliminás a alguien).
+- Se baja en paracaídas mucho más despacio y la gravedad es un poco menor. Mientras bajás, disparar es un impulso sin daño que saca humo.
+- El helicóptero se mueve más fluido (sube y baja inclinándose) y el fuego del motor es una llama animada de verdad.
+- Taladro: ahora atraviesa las paredes y las rompe a su paso, dejando un túnel por donde pasa un tanque.
+- Jetpack: dura más del doble, empuja mucho más fuerte (hasta una velocidad máxima) y tiene una barra que muestra cuánto queda.
+- Láser: hace 100 de daño, mata de un tiro.
+- Remolino: tornado nuevo, con embudo, vientos en espiral y restos que vuelan.

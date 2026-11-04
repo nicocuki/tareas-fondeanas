@@ -98,7 +98,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
       <div className="ck-card ck-controls">
         <h2>Cómo se juega</h2>
         <ul>
-          <li>Arrancan en <b>dos helicópteros</b>, uno de cada lado: <b>disparás para saltar</b> y bajás en paracaídas donde quieras.</li>
+          <li>Arrancan en <b>dos helicópteros</b>, uno de cada lado: <b>disparás para saltar</b> y bajás en paracaídas donde quieras (en el aire, cada disparo es un impulso con humo que no hace daño).</li>
           <li><kbd>A</kbd> <kbd>D</kbd> (o las flechas) para manejar: el tanque <b>se pega a las paredes y los techos</b>, y cada tecla lo lleva siempre para el mismo lado del tanque. Apuntás con el mouse y disparás con el <b>clic</b> (o <kbd>Espacio</kbd>). Tenés 3 cohetes que se recargan solos.</li>
           <li>Cada tiro te empuja para atrás: <b>disparando para el lado contrario te despegás y salís volando</b>.</li>
           <li>Los cohetes rompen el terreno. El agua sube: el que se hunde, queda afuera. Gana el último que queda.</li>

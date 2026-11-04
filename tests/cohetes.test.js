@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { COUNTDOWN_MS, MAX_PLAYERS, applyAction, findPlayer, newRoom, ranking } from '../src/cohetes/game.js';
-import { carve, decorations, makeTerrain, solid, surfaceY, waterY } from '../src/cohetes/terrain.js';
+import { THEMES, themeFor, carve, decorations, makeTerrain, solid, surfaceY, waterY } from '../src/cohetes/terrain.js';
 import {
-  ITEMS, MAX_COINS, MAX_CRATES, MAX_DROPS, SHIP_TIME, STEP, addItem, blastOn, coinSpots, crateInfo, enclosedPockets, mapItems, newTank, overlaps, projectilesFor, push, shipAt, shipFor,
-  stepProjectile, stepTank, useItem,
+  CHUTE_FALL, DRILL_R, ITEMS, JET_MAX, JET_TIME, MAX_COINS, MAX_CRATES, MAX_DROPS, SHIP_TIME, STEP, addItem, blastOn, chuteBoost, coinSpots, crateInfo, enclosedPockets, jetForce,
+  mapItems, newTank, overlaps, projectilesFor, push, shipAt, shipFor, stepProjectile, stepTank, thrust, useItem,
 } from '../src/cohetes/sim.js';
 
 const run = (t, p, seconds, dir = 0) => { for (let i = 0; i < seconds / STEP; i++) stepTank(p, dir, STEP, t); };
@@ -29,14 +29,18 @@ test('cohetes: la misma semilla arma el mismo mapa, y con los mismos cráteres q
   assert.ok(decorations(a, 1234).length > 10, 'hay plantitas arriba de los bloques');
 });
 
-test('cohetes: hay mapas de tierra, de hielo y el volcán, y los tres se arman bien', () => {
+test('cohetes: hay diez temas de mapa y todos se arman bien', () => {
   const themes = new Set();
-  for (let seed = 1; seed < 40; seed++) {
+  for (let seed = 1; seed < 400; seed++) {
+    const theme = themeFor(seed);
+    if (themes.has(theme)) continue;
+    themes.add(theme);
     const t = makeTerrain(seed, 6);
-    themes.add(t.theme);
+    assert.equal(t.theme, theme);
     assert.ok(t.grid.some((v) => v), `mapa vacío con la semilla ${seed}`);
   }
-  assert.deepEqual([...themes].sort(), ['hielo', 'tierra', 'volcan']);
+  assert.deepEqual([...themes].sort(), [...THEMES].sort());
+  assert.equal(THEMES.length, 10);
 });
 
 test('cohetes: el agua espera a que bajen todos y después sube, más rápido con la opción rápida', () => {
@@ -196,7 +200,7 @@ test('cohetes: las piezas del mapa flotan sueltas adentro de recintos cerrados, 
 
 test('cohetes: el volcán tiene el cráter abierto y una cámara sellada con varias piezas', () => {
   let seed = 1;
-  while (makeTerrain(seed, 8).theme !== 'volcan') seed++;
+  while (themeFor(seed) !== 'volcan') seed++;
   const t = makeTerrain(seed, 8);
   const cx = Math.round(t.W / 2);
   // Cráter: aire arriba del todo; más abajo, roca (el tapón) antes de la cámara.
@@ -206,6 +210,118 @@ test('cohetes: el volcán tiene el cráter abierto y una cámara sellada con var
   assert.ok(pockets.some((pk) => pk.cells.some((c) => Math.abs(c.x - cx) < 30 && Math.abs(c.y - (285 + 480)) < 30)), 'la cámara de magma es un recinto cerrado');
   const middle = mapItems(t, seed).filter((c) => Math.abs(c.x - cx) < 130 && c.y > 285 + 380 && c.y < 285 + 600);
   assert.ok(middle.length >= 2, 'la cámara grande guarda más de una pieza');
+});
+
+// ─── Temas nuevos ────────────────────────────────────────────────────────────
+test('cohetes: cada tema nuevo tiene tierra de sobra, huecos y adornos propios', () => {
+  for (const theme of THEMES.slice(3)) {
+    let seed = 1;
+    while (themeFor(seed) !== theme) seed++;
+    const t = makeTerrain(seed, 8);
+    const fill = t.grid.reduce((s, v) => s + v, 0) / t.grid.length;
+    assert.ok(fill > 0.1 && fill < 0.45, `${theme}: ${(fill * 100).toFixed(0)}% de tierra`);
+    assert.ok(t.holes.length >= 1, `${theme}: hay huecos`);
+    const kinds = new Set(decorations(t, seed).map((d) => d.kind));
+    assert.ok(kinds.size >= 2, `${theme}: adornos ${[...kinds]}`);
+    for (const k of kinds) assert.ok(!['pine', 'birch', 'flower', 'grass', 'spike', 'crystal', 'shard', 'vent'].includes(k), `${theme} usa un adorno de otro tema (${k})`);
+  }
+});
+
+// ─── Balas, paracaídas y poderes ─────────────────────────────────────────────
+const emptyWorld = (W = 400, H = 600) => ({ W, H, grid: new Uint8Array(W * H), holes: [], theme: 'tierra' });
+
+test('cohetes: las balas caen en arco (con bastante gravedad) pero el láser va derecho', () => {
+  const t = emptyWorld();
+  const [r] = projectilesFor({ k: 'r', x: 10, y: 100, a: 0, w: 'rocket' }, 'yo');
+  const [l] = projectilesFor({ k: 'l', x: 10, y: 100, a: 0, w: 'laser' }, 'yo');
+  for (let i = 0; i < 0.5 / STEP; i++) { stepProjectile(r, STEP, t, []); stepProjectile(l, STEP, t, []); }
+  assert.ok(r.y - 100 > 20, `el cohete cayó ${(r.y - 100).toFixed(1)} px en medio segundo`);
+  assert.equal(l.y, 100, 'el láser no cae');
+});
+
+test('cohetes: el láser hace 100 de daño parejo (mata de un tiro) y los demás bajan con la distancia', () => {
+  assert.equal(ITEMS.laser.damage, 100);
+  assert.equal(blastOn({ x: 0, y: 0 }, { x: 0, y: 2, w: 'laser' }).damage, 100);
+  assert.equal(blastOn({ x: 0, y: 0 }, { x: 0, y: 16, w: 'laser' }).damage, 100, 'también en el borde del alcance');
+  assert.ok(blastOn({ x: 0, y: 0 }, { x: 0, y: 25, w: 'rocket' }).damage < ITEMS.rocket.damage);
+});
+
+test('cohetes: el taladro atraviesa la pared, deja un túnel por donde pasa y explota recién al salir del otro lado', () => {
+  const t = emptyWorld(500, 300);
+  for (let y = 0; y < t.H; y++) for (let x = 200; x < 240; x++) t.grid[y * t.W + x] = 1;
+  const [b] = projectilesFor({ k: 'd', x: 100, y: 150, a: 0, w: 'drill' }, 'yo');
+  let hit = null, tunnels = 0;
+  for (let i = 0; i < 3000 && !hit && !b.done; i++) {
+    hit = stepProjectile(b, STEP, t, []);
+    for (const tn of b.tunnels) { carve(t, tn.x, tn.y, DRILL_R); tunnels++; }
+    b.tunnels.length = 0;
+  }
+  assert.ok(hit, 'terminó explotando');
+  assert.ok(hit.x > 240, `explotó pasando la pared (x = ${hit.x.toFixed(0)})`);
+  assert.ok(tunnels >= 3, `cavó ${tunnels} tramos`);
+  for (let x = 200; x < 240; x++) {
+    let open = false;
+    for (let y = 120; y < 190; y++) if (!solid(t, x, y)) open = true;
+    assert.ok(open, `la columna ${x} quedó cerrada: el túnel no es continuo`);
+  }
+});
+
+test('cohetes: el taladro se corta si la pared es más gruesa que su alcance', () => {
+  const t = emptyWorld(900, 300);
+  for (let y = 0; y < t.H; y++) for (let x = 200; x < 700; x++) t.grid[y * t.W + x] = 1;
+  const [b] = projectilesFor({ k: 'd', x: 100, y: 150, a: 0, w: 'drill' }, 'yo');
+  let hit = null;
+  for (let i = 0; i < 3000 && !hit && !b.done; i++) { hit = stepProjectile(b, STEP, t, []); for (const tn of b.tunnels) carve(t, tn.x, tn.y, DRILL_R); b.tunnels.length = 0; }
+  assert.ok(hit && hit.x < 700 && hit.x > 300, `explotó adentro de la roca (x = ${hit?.x.toFixed(0)})`);
+});
+
+test('cohetes: el jetpack dura más, empuja fuerte hasta un tope de velocidad y apuntando para abajo sube', () => {
+  assert.ok(JET_TIME >= 3, 'dura bastante');
+  const f = jetForce(Math.PI / 2);
+  assert.ok(f.y < 0 && Math.abs(f.y) > 400, `apuntando para abajo empuja ${f.y.toFixed(0)} hacia arriba`);
+  const t = emptyWorld(400, 900);
+  const p = newTank(200, 800, 'tank');
+  p.stuck = false;
+  let top = 0;
+  for (let i = 0; i < JET_TIME / STEP; i++) {
+    thrust(p, f.x, f.y, STEP, JET_MAX);
+    stepTank(p, 0, STEP, t);
+    top = Math.max(top, Math.hypot(p.vx, p.vy));
+  }
+  assert.ok(800 - p.y > 250, `subió ${(800 - p.y).toFixed(0)} px`);
+  assert.ok(top <= JET_MAX + 25, `la velocidad se queda cerca del tope (${top.toFixed(0)})`);
+});
+
+test('cohetes: en paracaídas, el «disparo» es un impulso suave que se apaga solo y sin daño', () => {
+  const t = emptyWorld(400, 3000);
+  const p = newTank(200, 200, 'chute');
+  run(t, p, 1);
+  assert.ok(Math.abs(p.vy - CHUTE_FALL) < 4, 'cae despacio');
+  const y0 = p.y;
+  chuteBoost(p, Math.PI / 2); // apunta para abajo: el impulso va para arriba
+  assert.ok(p.vy < 0, 'sube con el impulso');
+  run(t, p, 0.4);
+  assert.ok(p.y < y0, 'quedó más arriba de donde estaba');
+  run(t, p, 6);
+  assert.ok(Math.abs(p.vy - CHUTE_FALL) < 3, 'vuelve a la caída lenta');
+  const tank = newTank(200, 200, 'tank');
+  chuteBoost(tank, 0);
+  assert.equal(tank.vx, 0, 'solo vale en paracaídas');
+  assert.equal(p.hp, 100, 'no lastima');
+});
+
+test('cohetes: el helicóptero se mueve sin quiebres (altura e inclinación suaves)', () => {
+  const W = 1200, H = 1100;
+  let prev = shipAt(-5, W, H, 0), prevDy = null, worst = 0;
+  for (let s = -5 + 1 / 60; s < SHIP_TIME; s += 1 / 60) {
+    const a = shipAt(s, W, H, 0);
+    const dy = a.y - prev.y;
+    if (prevDy !== null) worst = Math.max(worst, Math.abs(dy - prevDy));
+    assert.ok(Math.abs(a.pitch) <= 0.5 + 1e-9, 'inclinación acotada');
+    prev = a; prevDy = dy;
+  }
+  assert.ok(worst < 0.06, `cambio brusco de velocidad vertical: ${worst.toFixed(3)}`);
+  assert.ok(shipAt(2, W, H, 0).pitch < 0 && shipAt(11, W, H, 0).pitch > 0, 'sube con el morro arriba y baja con el morro abajo');
 });
 
 test('cohetes: el inventario suma lo repetido, usa la primera casilla libre y se vacía al gastarse', () => {
