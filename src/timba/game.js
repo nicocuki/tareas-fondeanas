@@ -282,7 +282,7 @@ export function applyAction(room, action, ctx = {}) {
       const bj = next.bj;
       if (!playing || !me || me.loc !== 'f1' || next.day.over || bj.phase === 'play') return null;
       if (seatOf(next, me.id)) break;
-      if (bj.seats.length >= MAX_PLAYERS) return null;
+      if (bj.seats.length) return null; // la mesa es de uno solo: si hay alguien jugando, está ocupada
       bj.seats.push({ id: me.id, bet: 0, ready: false, hand: [], st: 'idle', dbl: false, pay: 0, res: '', gone: false });
       break;
     }

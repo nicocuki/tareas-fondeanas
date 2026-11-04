@@ -772,10 +772,16 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.35.0 = T.E.G.: mapa de verdad a pantalla completa, dados en bandeja y apertura de película 🌍🎲
+1.35.0 = T.E.G.: mapa de verdad a pantalla completa, dados en bandeja y apertura de película 🌍🎲
 - El mapa se rehízo: los 50 países tienen forma y frontera de verdad (como el tablero de mesa), los continentes tienen su color, las rutas por mar van punteadas con su barquito y hay mar, sol, rosa de los vientos y marco. Ocupa toda la pantalla y se puede acercar (rueda o botones) y arrastrar.
 - Cada país se pinta del color de su dueño y las fichas son cilindros: caen con rebote al aparecer y hacen «pop» cuando suman un ejército.
 - Los dados ahora ruedan en una bandeja de paño: son cubos en 3D que rebotan en los bordes y entre ellos, siguen girando un rato (no se frenan todos juntos) y al quedar quietos se acomodan de mayor a menor, con la pareja ganadora marcada. Todos los jugadores ven la tirada, y recién después aparece «¡Conquistaste!».
 - Apertura: primero se mezclan las misiones y cada uno recibe la suya boca abajo (se espía manteniendo apretada la carta y se tapa sola al soltar). Después el mazo de 50 países se mezcla y las cartas salen disparadas a su país: se ilumina con el color de su dueño y cae la ficha con el «1».
 - Ejércitos iniciales (5 y 3): una reserva con las fichas vibrando al costado; se arrastran al mapa o se toca el país (cada toque resta una). No se sigue hasta que la reserva de todos queda en 0. Los refuerzos de cada turno usan la misma reserva.
 - La pantalla es el mapa y todo flota encima: qué hacer, los jugadores y un menú de abajo (Misión, Cartas, Jugadores, Continentes, Bitácora, Reglas).
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.35.1 = La Timba: mesa de blackjack individual y más chica
+- La mesa de blackjack es de uno solo: si alguien se sienta a jugar, la mesa queda ocupada para los demás (avisa quién la está usando) hasta que se levante.
+- La mesa es mucho más chica y tiene una sola silla.

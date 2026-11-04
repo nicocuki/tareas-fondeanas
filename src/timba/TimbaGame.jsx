@@ -146,8 +146,10 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
     else if (n.key === 'panel') { if (r.trip) flash('El ascensor se está moviendo.'); else setModal('elev'); }
     else if (n.key === 'bj') {
       if (r.day.over) return;
+      const taken = r.bj.seats.find((x) => x.id !== me.id);
+      if (taken) { flash(`La mesa está ocupada por ${r.players.find((p) => p.id === taken.id)?.name || 'otro jugador'}.`); return; }
       const ok = await act({ type: 'bjSit' });
-      if (ok) setModal('bj'); else flash('Hay una mano en juego: esperá a que termine.');
+      if (ok) setModal('bj'); else flash('La mesa está ocupada.');
     }
   };
   const interactRef = useRef(interact);
@@ -193,7 +195,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       // Cada uno tiene su silla fija en la mesa (según su lugar en la sala), así no saltan cuando alguien se levanta.
       const seated = r.bj.seats.some((x) => x.id === me.id);
       if (loc === 'f1' && seated && modalRef.current === 'bj') {
-        const sp = seatPos(index);
+        const sp = seatPos();
         s.p.x = sp.x; s.p.y = sp.y; s.p.moving = false; s.p.face = Math.atan2(SCENES.f1.table.y - sp.y, SCENES.f1.table.x - sp.x);
       } else if (frozen) s.p.moving = false;
       else if (sc.kind === 'side') stepSide(s.p, dx, dt, key);
@@ -237,7 +239,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
         const seated = key === 'f1' && r.bj.seats.some((x) => x.id === pl.id);
         let x; let y; let face; let moving = false;
         if (seated) {
-          const sp = seatPos(r.players.indexOf(pl));
+          const sp = seatPos();
           x = sp.x; y = sp.y; face = Math.atan2(SCENES.f1.table.y - sp.y, SCENES.f1.table.x - sp.x);
         } else if (v && v.snap.sc === key) {
           const k = Math.min(1, dt * 14);

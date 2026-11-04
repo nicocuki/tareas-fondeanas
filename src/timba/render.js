@@ -352,21 +352,18 @@ function drawTable(ctx, sc, st) {
   const fg = ctx.createRadialGradient(t.x, t.y, 20, t.x, t.y, t.rx);
   fg.addColorStop(0, '#2a8a5a'); fg.addColorStop(1, '#16603e');
   ctx.beginPath(); ctx.ellipse(t.x, t.y, t.rx, t.ry, 0, 0, TAU); ctx.fillStyle = fg; ctx.fill();
-  ctx.beginPath(); ctx.ellipse(t.x, t.y, t.rx - 22, t.ry - 20, 0, 0, Math.PI); ctx.strokeStyle = 'rgba(255,240,200,0.55)'; ctx.lineWidth = 1.6; ctx.stroke();
-  outlinedText(ctx, 'BLACKJACK', t.x, t.y - 28, 15, '#f4e6b0', '#0c3a26');
-  outlinedText(ctx, 'PAGA 3 A 2', t.x, t.y - 8, 8, '#d8e8c8', '#0c3a26');
-  // lugares, apuestas y cartas
+  ctx.beginPath(); ctx.ellipse(t.x, t.y, t.rx - 16, t.ry - 14, 0, 0, Math.PI); ctx.strokeStyle = 'rgba(255,240,200,0.55)'; ctx.lineWidth = 1.6; ctx.stroke();
+  outlinedText(ctx, 'BLACKJACK', t.x, t.y - 12, 12, '#f4e6b0', '#0c3a26');
+  outlinedText(ctx, 'PAGA 3 A 2', t.x, t.y + 2, 7, '#d8e8c8', '#0c3a26');
+  // el lugar, la apuesta y las cartas del que juega (la mesa es de uno solo)
   const bj = st.bj;
-  for (let i = 0; i < 8; i++) {
-    const a = Math.PI * (0.14 + 0.72 * (i / 7));
-    const px = t.x + (t.rx - 38) * Math.cos(a);
-    const py = t.y + (t.ry - 30) * Math.sin(a);
-    const seat = bj.seats.find((s) => st.slots[s.id] === i);
-    ctx.beginPath(); ctx.arc(px, py + 14, 9, 0, TAU); ctx.strokeStyle = seat ? 'rgba(255,230,150,0.9)' : 'rgba(255,240,200,0.28)'; ctx.lineWidth = 1.4; ctx.stroke();
-    if (seat?.bet) { ctx.beginPath(); ctx.arc(px, py + 14, 6.5, 0, TAU); ctx.fillStyle = '#d8403a'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]); }
-    if (seat) seat.hand.forEach((c, k) => drawCard(ctx, px - 7 + (k - (seat.hand.length - 1) / 2) * 10, py - 22, c, false));
-  }
-  bj.dealer.forEach((c, k) => drawCard(ctx, t.x - 7 + (k - (bj.dealer.length - 1) / 2) * 18, t.y - 78, c, k === 1 && bj.phase === 'play'));
+  const seat = bj.seats[0];
+  const px = t.x;
+  const py = t.y + t.ry - 24;
+  ctx.beginPath(); ctx.arc(px, py + 14, 9, 0, TAU); ctx.strokeStyle = seat ? 'rgba(255,230,150,0.9)' : 'rgba(255,240,200,0.28)'; ctx.lineWidth = 1.4; ctx.stroke();
+  if (seat?.bet) { ctx.beginPath(); ctx.arc(px, py + 14, 6.5, 0, TAU); ctx.fillStyle = '#d8403a'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]); }
+  if (seat) seat.hand.forEach((c, k) => drawCard(ctx, px - 7 + (k - (seat.hand.length - 1) / 2) * 10, py - 22, c, false));
+  bj.dealer.forEach((c, k) => drawCard(ctx, t.x - 7 + (k - (bj.dealer.length - 1) / 2) * 18, t.y - 54, c, k === 1 && bj.phase === 'play'));
 }
 
 function drawFloor(ctx, view, key, st) {

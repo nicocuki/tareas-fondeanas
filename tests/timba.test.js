@@ -204,63 +204,54 @@ test('timba: la apuesta respeta el mínimo, el máximo y la plata que hay', () =
   assert.ok(act(room, 'a', { type: 'bjBet', amount: 80 }));
 });
 
-test('timba: con varios jugadores la mano arranca cuando todos los sentados apostaron', () => {
+test('timba: la mesa es de uno solo: si alguien juega, está ocupada para los demás', () => {
   let room = atFloor1(2);
   room = act(room, 'a', { type: 'bjSit' });
-  room = act(room, 'b', { type: 'bjSit' });
+  assert.equal(act(room, 'b', { type: 'bjSit' }), null, 'la mesa está ocupada');
+  assert.equal(act(room, 'b', { type: 'bjBet', amount: 50 }), null, 'sin silla no se apuesta');
+  stack(room, 9, 8, 9, 9);
   room = act(room, 'a', { type: 'bjBet', amount: 100 });
-  assert.equal(room.bj.phase, 'bet', 'falta que apueste b');
-  assert.equal(act(room, 'a', { type: 'bjBet', amount: 100 }), null, 'no se apuesta dos veces');
-  stack(room, 9, 8, 9, 9, 9, 7);
-  room = act(room, 'b', { type: 'bjBet', amount: 50 });
   assert.equal(room.bj.phase, 'play');
-  assert.equal(act(room, 'b', { type: 'bjLeave' }), null, 'en medio de una mano no se puede levantar');
+  assert.equal(act(room, 'a', { type: 'bjLeave' }), null, 'en medio de una mano no se puede levantar');
   room = act(room, 'a', { type: 'bjStand' });
-  assert.equal(room.bj.phase, 'play', 'falta b');
-  room = act(room, 'b', { type: 'bjStand' });
   assert.equal(room.bj.phase, 'result');
-  assert.deepEqual([room.net.a, room.net.b], [100, -50]);
-  assert.equal(room.money, 1000 + 100 - 50);
+  assert.equal(room.money, 1100);
   // los resultados se ven un rato antes de poder apostar de nuevo
   assert.equal(act(room, 'a', { type: 'bjBet', amount: 40 }, room.bj.resultAt + RESULT_MS - 1), null);
   const again = act(room, 'a', { type: 'bjBet', amount: 40 }, room.bj.resultAt + RESULT_MS);
-  assert.equal(again.bj.phase, 'bet');
-  assert.deepEqual(again.bj.seats.map((s) => s.ready), [true, false]);
+  assert.equal(again.bj.phase, 'play', 'con uno solo la mano arranca apenas apuesta');
+  assert.equal(act(again, 'b', { type: 'bjSit' }), null, 'sigue ocupada mientras Ana no se levante');
+  // al levantarse, la mesa queda libre para el otro
+  room = act(room, 'a', { type: 'bjLeave' });
+  assert.equal(room.bj.seats.length, 0);
+  assert.ok(act(room, 'b', { type: 'bjSit' }));
 });
 
-test('timba: levantarse de la mesa antes de repartir devuelve la apuesta', () => {
+test('timba: levantarse sin apostar deja la mesa libre', () => {
   let room = atFloor1(2);
   room = act(room, 'a', { type: 'bjSit' });
-  room = act(room, 'b', { type: 'bjSit' });
-  room = act(room, 'a', { type: 'bjBet', amount: 100 });
-  assert.equal(room.money, 900);
   room = act(room, 'a', { type: 'bjLeave' });
   assert.equal(room.money, 1000);
-  assert.equal(room.bj.seats.length, 1);
+  assert.equal(room.bj.seats.length, 0);
   assert.equal(act(started(1), 'a', { type: 'bjSit' }), null, 'solo en el piso 1');
 });
 
-test('timba: el que se va en medio de una mano se planta y la mano sigue', () => {
+test('timba: el que se va en medio de una mano se planta y la mano se paga igual', () => {
   let room = atFloor1(2);
   room = act(room, 'a', { type: 'bjSit' });
-  room = act(room, 'b', { type: 'bjSit' });
+  stack(room, 9, 8, 9, 9);
   room = act(room, 'a', { type: 'bjBet', amount: 100 });
-  stack(room, 9, 8, 9, 9, 9, 6);
-  room = act(room, 'b', { type: 'bjBet', amount: 100 });
   room = act(room, 'a', { type: 'leave' });
-  assert.equal(room.bj.phase, 'play');
-  room = act(room, 'b', { type: 'bjStand' });
   assert.equal(room.bj.phase, 'result');
   assert.ok(room.bj.seats.every((s) => s.id !== 'a'), 'el que se fue ya no tiene silla');
-  assert.equal(room.money, 1000, 'la mano de Ana se pagó igual: ganó 100 y Beto perdió 100');
-  assert.deepEqual([room.net.a, room.net.b], [100, -100]);
+  assert.equal(room.money, 1100, 'la mano de Ana se pagó igual');
+  assert.equal(room.net.a, 100);
 });
 
 // ─── El día ──────────────────────────────────────────────────────────────────
 test('timba: se acaba el día: todos al ascensor, se cierra la mesa y solo se baja al lobby', () => {
   let room = atFloor1(2);
   room = act(room, 'a', { type: 'bjSit' });
-  room = act(room, 'b', { type: 'bjSit' });
   room = act(room, 'a', { type: 'bjBet', amount: 100 });
   const endsAt = room.day.endsAt;
   assert.equal(act(room, 'a', { type: 'tick' }, endsAt - 1), null);
@@ -311,7 +302,7 @@ test('timba: si no la juntaron se termina la partida y el anfitrión puede empez
 test('timba: nadie entra con la partida empezada, y la plata nunca queda negativa ni con decimales', () => {
   let room = atFloor1(3);
   assert.equal(act(room, 'zz', { type: 'join', name: 'Tarde' }), null);
-  for (const id of ids(room)) room = act(room, id, { type: 'bjSit' });
+  for (const id of ids(room)) room = act(room, id, { type: 'bjSit' }) || room; // solo se sienta uno
   let seed = 7;
   const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   for (let i = 0; i < 400; i++) {
@@ -360,9 +351,10 @@ test('timba: todo lo que se toca está donde corresponde y las sillas de la mesa
   assert.equal(nearby('limo', { x: 0, y: 0 })?.key, 'unboard');
   assert.equal(nearby('elevator', { x: SCENES.elevator.panel.x - 10, y: SCENES.elevator.panel.y + 20 })?.key, 'panel');
   assert.equal(nearby('elevator', { x: 70, y: 85 })?.key, 'npc');
-  assert.equal(nearby('f1', { x: 800, y: 640 })?.key, 'bj');
+  assert.equal(nearby('f1', { x: 800, y: 600 })?.key, 'bj');
   assert.equal(nearby('f1', { x: 200, y: 800 }), null);
-  const seats = Array.from({ length: 8 }, (_, i) => seatPos(i));
-  assert.equal(new Set(seats.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`)).size, 8, 'cada silla en su lugar');
-  assert.ok(seats.every((p) => p.x > 60 && p.x < 1540 && p.y > 400 && p.y < 940));
+  const seat = seatPos();
+  assert.ok(canStand('f1', seat.x, seat.y), 'la silla está en el piso, libre');
+  const t = SCENES.f1.table;
+  assert.ok(t.rx <= 120 && t.ry <= 70, 'la mesa es chica');
 });

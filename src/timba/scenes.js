@@ -39,15 +39,15 @@ export const SCENES = {
     kind: 'top', w: 1600, h: 1000,
     areas: [{ x: 60, y: 70, w: 1480, h: 870 }, { x: 20, y: 440, w: 44, h: 120 }],
     blocks: [
-      { x: 618, y: 398, w: 364, h: 194 },   // la mesa de blackjack
+      { x: 676, y: 425, w: 248, h: 140 },   // la mesa de blackjack (de a uno)
       { x: 190, y: 70, w: 1230, h: 52 },    // los tragamonedas contra la pared de arriba
       { x: 296, y: 296, w: 44, h: 44 }, { x: 1260, y: 296, w: 44, h: 44 },
       { x: 296, y: 700, w: 44, h: 44 }, { x: 1260, y: 700, w: 44, h: 44 },  // columnas
       { x: 70, y: 80, w: 40, h: 40 }, { x: 1490, y: 80, w: 40, h: 40 }, { x: 70, y: 890, w: 40, h: 40 }, { x: 1490, y: 890, w: 40, h: 40 }, // plantas
     ],
     door: { x: 20, y: 440, w: 120 },     // el ascensor, en la pared de la izquierda
-    table: { x: 800, y: 495, rx: 182, ry: 97 },
-    dealer: { x: 800, y: 392 },
+    table: { x: 800, y: 495, rx: 110, ry: 62 },
+    dealer: { x: 800, y: 440 },
     spawn: { x: 120, y: 500 },
   },
 };
@@ -114,7 +114,7 @@ export function nearby(loc, p) {
   if (loc === 'f1') {
     const t = sc.table;
     // Cerca de la mesa, en cualquier lado (la distancia se mide con la misma forma ovalada).
-    if (((p.x - t.x) / (t.rx + 90)) ** 2 + ((p.y - t.y) / (t.ry + 90)) ** 2 < 1) return { key: 'bj', label: 'Jugar al blackjack' };
+    if (((p.x - t.x) / (t.rx + 70)) ** 2 + ((p.y - t.y) / (t.ry + 70)) ** 2 < 1) return { key: 'bj', label: 'Jugar al blackjack' };
   }
   return null;
 }
@@ -128,9 +128,8 @@ export function doorFor(loc, p, floor) {
   return null;
 }
 
-// Dónde se sienta cada uno en la mesa (según su lugar en `bj.seats`).
-export function seatPos(i) {
+// La mesa es de uno solo: la silla está abajo, mirando al croupier.
+export function seatPos() {
   const t = SCENES.f1.table;
-  const a = Math.PI * (0.14 + 0.72 * (Math.min(i, 7) / 7));
-  return { x: t.x + (t.rx + 24) * Math.cos(a), y: t.y + (t.ry + 24) * Math.sin(a) };
+  return { x: t.x, y: t.y + t.ry + 26 };
 }
