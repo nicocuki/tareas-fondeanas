@@ -793,5 +793,14 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.35.1.5 = Fix: La Timba, entrada y sala de espera rotas
+1.35.1.5 = Fix: La Timba, entrada y sala de espera rotas
 - La entrada y la sala de espera de La Timba se veían deformadas (todo apretado a la izquierda) porque las cartas del blackjack usaban el mismo nombre de estilo que las tarjetas de la sala. Ya se ven bien.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.36.0 = La Timba: pixel art, animaciones y un HUD más claro 🎰
+- Todo el juego se redibujó en pixel art: la casita, la tienda, la limusina, la puerta del casino de noche, el ascensor, el piso del casino con sus tragamonedas, la mesa y los personajes. El HUD y las ventanas usan una fuente de pixeles y bordes gruesos.
+- Animaciones: palmeras que se mecen, ventanas y neón que parpadean, humo y ruedas que giran, tragamonedas con rodillos, puertas del ascensor y una E que se balancea arriba de lo que podés tocar.
+- En el blackjack las cartas salen volando del zapato de a una (jugador, croupier, jugador, croupier), la tapada del croupier se da vuelta, las fichas caen sobre la mesa y el resultado aparece como un sello, con monedas y estrellitas cuando ganás.
+- HUD más claro: la caja muestra una barra de cuánto falta para la cuota, la plata sube y baja contando y suelta un «+$100» que flota, el día tiene reloj y barra, hay una línea amarilla que dice qué hacer ahora y un cartelito con las teclas.
+- La limusina ya no queda lejísimos: la sala de espera y la puerta del casino son mucho más cortas y se camina más rápido.

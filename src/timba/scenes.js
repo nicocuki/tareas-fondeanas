@@ -4,8 +4,8 @@
 // Hay dos clases de escena:
 // - `side` (la sala de espera y la puerta del casino): vista de costado, solo se camina de izquierda a derecha.
 // - `top` (el ascensor y los pisos): vista desde arriba, se camina para todos lados.
-export const SPEED_SIDE = 150;
-export const SPEED_TOP = 112;
+export const SPEED_SIDE = 190;
+export const SPEED_TOP = 128;
 export const PLAYER_R = 8;
 
 export const SIDE_H = 360;      // alto que se ve en las escenas de costado
@@ -13,17 +13,17 @@ export const GROUND = 300;      // la línea del piso
 
 export const SCENES = {
   wait: {
-    kind: 'side', w: 2600, min: 40, max: 2560,
-    house: { x: 40, w: 470 },
-    van: { x: 1000, w: 310 },
-    limo: { x: 1760, w: 640 },       // el frente apunta a la derecha; la parte de atrás (la puerta) es la izquierda
-    spawn: 290,
+    kind: 'side', w: 1500, min: 40, max: 1460,
+    house: { x: 40, w: 400 },
+    van: { x: 560, w: 260 },
+    limo: { x: 960, w: 520 },        // el frente apunta a la derecha; la parte de atrás (la puerta) es la izquierda
+    spawn: 250,
   },
   outside: {
-    kind: 'side', w: 3300, min: 40, max: 3180,
-    limo: { x: 30, w: 640 },
-    entrance: { x: 2820, w: 440 },
-    doorX: 3090,                     // al pasar esta línea se entra al casino
+    kind: 'side', w: 1400, min: 40, max: 1360,
+    limo: { x: 30, w: 520 },
+    entrance: { x: 880, w: 440 },
+    doorX: 1100,                     // al pasar esta línea se entra al casino
     spawn: 70,                       // salen por la parte de atrás de la limusina, a la izquierda
   },
   elevator: {
@@ -104,7 +104,7 @@ export function nearby(loc, p) {
   const sc = SCENES[loc];
   if (!sc) return null;
   if (loc === 'wait') {
-    if (Math.abs(p.x - (sc.van.x + sc.van.w / 2)) < 190) return { key: 'van', label: 'Mirar la camioneta' };
+    if (Math.abs(p.x - (sc.van.x + sc.van.w / 2)) < 170) return { key: 'van', label: 'Mirar la camioneta' };
     if (p.x > sc.limo.x - 90 && p.x < sc.limo.x + 150) return { key: 'board', label: 'Subir a la limusina' };
   }
   if (loc === 'elevator') {

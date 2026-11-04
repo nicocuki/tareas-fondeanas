@@ -1,27 +1,52 @@
-// La ventana del blackjack: la mesa (croupier y manos), los cuatro botones de la mano (doblar, plantarse, pedir
+// La ventana del blackjack: la mesa (croupier y mano), los cuatro botones de la mano (doblar, plantarse, pedir
 // y jugar) y el panel de apuesta (teclado numérico, la cantidad a la vista y los botones rápidos).
-import React, { useEffect, useRef, useState } from 'react';
+// Las cartas llegan volando desde el zapato, la tapada del croupier se da vuelta y el resultado cae como un sello.
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BJ_MAX, BJ_MIN, betLimits, handValue, isRed, quickBet, rankOf, suitOf } from './bj.js';
 import { RESULT_MS, fmtMoney } from './game.js';
 
-function Card({ c, hidden }) {
-  if (hidden) return <span className="tb-pcard is-back" />;
+// Una carta con dos caras: la de atrás (roja) y la de adelante. `up` la da vuelta con una transición.
+function Card({ c, up, delay = 0, from = 'dealer' }) {
   return (
-    <span className={`tb-pcard${isRed(c) ? ' is-red' : ''}`}>
-      <b>{rankOf(c)}</b>
-      <i>{suitOf(c)}</i>
+    <span className={`tbg-card is-from-${from}${isRed(c) ? ' is-red' : ''}`} style={{ '--ry': up ? '180deg' : '0deg', '--delay': `${delay}s` }}>
+      <span className="tbg-face tbg-back" />
+      <span className="tbg-face tbg-front"><b>{rankOf(c)}</b><i>{suitOf(c)}</i><em>{suitOf(c)}</em></span>
     </span>
   );
 }
 
-const RESULT_TEXT = { win: '¡GANÓ!', bj: '¡BLACKJACK!', push: 'EMPATE', lose: 'PERDIÓ', bust: 'SE PASÓ' };
+const RESULT_TEXT = { win: '¡GANASTE!', bj: '¡BLACKJACK!', push: 'EMPATE', lose: 'PERDISTE', bust: 'TE PASASTE' };
 
-function Hand({ hand, hideSecond }) {
+// Al repartir: primero uno para el jugador, después uno para el croupier, y así (como en una mesa de verdad).
+const DEAL_DELAY = { player: [0, 0.5], dealer: [0.25, 0.75] };
+
+function Hand({ hand, who, hideSecond }) {
   const v = handValue(hand);
+  const shown = hideSecond ? handValue([hand[0]]).total : v.total;
   return (
-    <div className="tb-hand">
-      <div className="tb-cards">{hand.map((c, i) => <Card key={`${i}-${c}`} c={c} hidden={hideSecond && i === 1} />)}</div>
-      {hand.length > 0 && <small className="tb-total">{hideSecond ? handValue([hand[0]]).total : v.total}{!hideSecond && v.soft && v.total <= 21 ? ' (blando)' : ''}</small>}
+    <div className="tbg-hand">
+      <div className="tbg-cards">
+        {hand.map((c, i) => {
+          const delay = i < 2 ? DEAL_DELAY[who][i] : who === 'dealer' ? 0.55 + (i - 2) * 0.5 : 0;
+          return <Card key={`${i}-${c}`} c={c} up={!(hideSecond && i === 1)} delay={delay} from={who} />;
+        })}
+        {hand.length === 0 && <><span className="tbg-slot" /><span className="tbg-slot" /></>}
+      </div>
+      {hand.length > 0 && <small key={shown} className="tbg-total">{shown}{!hideSecond && v.soft && v.total <= 21 ? ' blando' : ''}</small>}
+    </div>
+  );
+}
+
+// Monedas y estrellitas que saltan cuando se gana.
+function Burst() {
+  const parts = useMemo(() => Array.from({ length: 22 }, (_, i) => {
+    const a = (i / 22) * Math.PI * 2 + Math.random() * 0.4;
+    const d = 70 + Math.random() * 110;
+    return { dx: Math.cos(a) * d, dy: Math.sin(a) * d - 40, c: ['#f0c33c', '#4ee06a', '#ff6a6a', '#6ab4ff'][i % 4], s: 6 + (i % 3) * 3, delay: (i % 4) * 0.04 };
+  }), []);
+  return (
+    <div className="tbg-burst" aria-hidden="true">
+      {parts.map((p, i) => <span key={i} style={{ '--dx': `${p.dx}px`, '--dy': `${p.dy}px`, background: p.c, width: p.s, height: p.s, animationDelay: `${p.delay}s` }} />)}
     </div>
   );
 }
@@ -66,64 +91,72 @@ export default function BjPanel({ room, me, now, onAct, onClose, toast }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const waiting = bj.phase === 'bet' && seat?.ready ? bj.seats.filter((s) => !s.ready).map((s) => room.players.find((p) => p.id === s.id)?.name || '¿?') : [];
   const nameOf = (id) => room.players.find((p) => p.id === id)?.name || '¿?';
   const colorOf = (id) => room.players.find((p) => p.id === id)?.color || '#888';
+  const won = bj.phase === 'result' && seat && (seat.res === 'win' || seat.res === 'bj');
+
+  let status = 'Elegí cuánto apostar y tocá JUGAR.';
+  if (!seat) status = 'Sentándote…';
+  else if (myTurn) status = 'Te toca: pedí, plantate o doblá.';
+  else if (bj.phase === 'play') status = 'Juega el croupier…';
+  else if (bj.phase === 'result') status = canBet ? 'Apostá para la próxima mano.' : 'Mirá cómo salió…';
+  else if (seat.ready) status = 'Repartiendo…';
 
   return (
-    <div className="tb-modal tb-bj" role="dialog" aria-label="Blackjack" data-bj>
-      <button type="button" className="tb-close" onClick={onClose} aria-label="Levantarse de la mesa">✕</button>
-      <h2 className="tb-title">BLACKJACK</h2>
-      <div className="tb-bj-body">
-        <div className="tb-bj-left">
-          <div className="tb-felt">
-            <div className="tb-dealer">
-              <span className="tb-label">CROUPIER</span>
-              {bj.dealer.length ? <Hand hand={bj.dealer} hideSecond={bj.phase === 'play'} /> : <div className="tb-cards"><span className="tb-pcard is-empty" /><span className="tb-pcard is-empty" /></div>}
+    <div className="tbg-modal tbg-bj" role="dialog" aria-label="Blackjack" data-bj>
+      <button type="button" className="tbg-close" onClick={onClose} aria-label="Levantarse de la mesa">✕</button>
+      <h2 className="tbg-title">BLACKJACK</h2>
+      <div className="tbg-bj-body">
+        <div className="tbg-bj-left">
+          <div className="tbg-felt">
+            <span className="tbg-shoe" aria-hidden="true"><i /><i /><i /></span>
+            <div className="tbg-dealer">
+              <span className="tbg-label">CROUPIER</span>
+              <Hand key={`d${bj.n}`} hand={bj.dealer} who="dealer" hideSecond={bj.phase === 'play'} />
             </div>
-            <div className="tb-seats">
+            <div className="tbg-seats">
               {bj.seats.map((s) => (
-                <div key={s.id} className={`tb-seat${s.id === me.id ? ' is-me' : ''}${s.st === 'play' ? ' is-playing' : ''}`} style={{ '--c': colorOf(s.id) }}>
-                  <span className="tb-label">{nameOf(s.id)}{s.id === me.id ? ' (vos)' : ''}</span>
-                  <Hand hand={s.hand} />
-                  <span className="tb-chip">{s.ready ? fmtMoney(s.bet) : '—'}</span>
-                  {bj.phase === 'result' && s.res && <span className={`tb-res is-${s.res}`}>{RESULT_TEXT[s.res]}{s.pay > s.bet ? ` +${fmtMoney(s.pay - s.bet)}` : s.res === 'lose' || s.res === 'bust' ? ` −${fmtMoney(s.bet)}` : ''}</span>}
-                  {bj.phase === 'play' && s.st === 'stand' && <span className="tb-res is-wait">SE PLANTÓ</span>}
-                  {bj.phase === 'play' && s.st === 'bust' && <span className="tb-res is-bust">SE PASÓ</span>}
+                <div key={s.id} className={`tbg-seat${s.id === me.id ? ' is-me' : ''}${s.st === 'play' ? ' is-playing' : ''}`} style={{ '--c': colorOf(s.id) }}>
+                  <span className="tbg-label">{nameOf(s.id)}{s.id === me.id ? ' (vos)' : ''}</span>
+                  <Hand key={`p${bj.n}`} hand={s.hand} who="player" />
+                  <span key={`${bj.n}-${s.bet}`} className={`tbg-chip${s.ready ? ' is-on' : ''}`}>{s.ready ? fmtMoney(s.bet) : '—'}</span>
                 </div>
               ))}
             </div>
-            <p className="tb-status">
-              {!seat ? 'Sentándote…'
-                : myTurn ? 'Te toca: pedí, plantate o doblá.'
-                  : bj.phase === 'play' ? 'Juegan los demás…'
-                    : bj.phase === 'result' ? (canBet ? 'Apostá para la próxima mano.' : 'Mirá cómo salió…')
-                      : seat.ready ? `Esperando a ${waiting.join(', ') || 'repartir'}…` : 'Elegí cuánto apostar y tocá JUGAR.'}
-            </p>
+            {!(bj.phase === 'result' && seat?.res) && <p className="tbg-status">{status}</p>}
+            {bj.phase === 'result' && seat?.res && (
+              <div key={`r${bj.n}`} className={`tbg-stamp is-${seat.res}`}>
+                <strong>{RESULT_TEXT[seat.res]}</strong>
+                <span>{seat.pay > seat.bet ? `+${fmtMoney(seat.pay - seat.bet)}` : seat.res === 'push' ? 'apuesta devuelta' : `−${fmtMoney(seat.bet)}`}</span>
+              </div>
+            )}
+            {won && <Burst key={`b${bj.n}`} />}
           </div>
-          <div className="tb-actions">
-            <button type="button" className="tb-act is-double" disabled={!canDouble} onClick={() => onAct({ type: 'bjDouble' })} data-act="double">DOBLAR</button>
-            <button type="button" className="tb-act is-stand" disabled={!myTurn} onClick={() => onAct({ type: 'bjStand' })} data-act="stand">PLANTARSE</button>
-            <button type="button" className="tb-act is-hit" disabled={!myTurn} onClick={() => onAct({ type: 'bjHit' })} data-act="hit">PEDIR</button>
-            <button type="button" className="tb-act is-play" disabled={!canBet} onClick={play} data-act="play">JUGAR</button>
+          <div className="tbg-actions">
+            <button type="button" className="tbg-act is-double" disabled={!canDouble} onClick={() => onAct({ type: 'bjDouble' })} data-act="double">DOBLAR</button>
+            <button type="button" className="tbg-act is-stand" disabled={!myTurn} onClick={() => onAct({ type: 'bjStand' })} data-act="stand">PLANTARME</button>
+            <button type="button" className="tbg-act is-hit" disabled={!myTurn} onClick={() => onAct({ type: 'bjHit' })} data-act="hit">PEDIR</button>
+            <button type="button" className="tbg-act is-play" disabled={!canBet} onClick={play} data-act="play">JUGAR</button>
           </div>
         </div>
 
-        <div className={`tb-betpanel${canBet ? '' : ' is-off'}`} data-bet-panel>
-          <div className="tb-pad">
-            {KEYS.map((k) => <button key={k} type="button" className={`tb-key${k === 'C' ? ' is-clear' : ''}`} disabled={!canBet} onClick={() => press(k)} data-key={k}>{k}</button>)}
+        <div className={`tbg-betpanel${canBet ? '' : ' is-off'}`} data-bet-panel>
+          <div className="tbg-display">
+            <p className="tbg-limits">MÍN {fmtMoney(BJ_MIN)} · MÁX {fmtMoney(BJ_MAX)}</p>
+            <strong className={`tbg-amount${overMax && canBet ? ' is-over' : ''}`} data-amount>{seat?.ready && !canBet ? fmtMoney(seat.bet) : fmtMoney(amount)}</strong>
+            <p className={`tbg-maxbet${overMax && canBet ? ' is-over' : ''}`}>APUESTA MÁXIMA: {fmtMoney(lim ? lim.max : 0)}</p>
+            <small className="tbg-bank">En la caja: {fmtMoney(room.money)}</small>
           </div>
-          <div className="tb-display">
-            <p className="tb-limits">MÍN: {fmtMoney(BJ_MIN)}<br />MÁX: {fmtMoney(BJ_MAX)}</p>
-            <strong className={`tb-amount${overMax && canBet ? ' is-over' : ''}`} data-amount>{seat?.ready && !canBet ? fmtMoney(seat.bet) : fmtMoney(amount)}</strong>
-            <p className={`tb-maxbet${overMax && canBet ? ' is-over' : ''}`}>APUESTA MÁX: {fmtMoney(lim ? lim.max : 0)}</p>
-            <small className="tb-bank">En la caja: {fmtMoney(room.money)}</small>
-          </div>
-          <div className="tb-quick">
-            <button type="button" disabled={!canBet} onClick={() => quick('min')} data-quick="min">MÍN</button>
-            <button type="button" disabled={!canBet} onClick={() => quick('q')} data-quick="q">1/4</button>
-            <button type="button" disabled={!canBet} onClick={() => quick('h')} data-quick="h">1/2</button>
-            <button type="button" disabled={!canBet} onClick={() => quick('all')} data-quick="all">TODO</button>
+          <div className="tbg-padwrap">
+            <div className="tbg-pad">
+              {KEYS.map((k) => <button key={k} type="button" className={`tbg-key${k === 'C' ? ' is-clear' : ''}`} disabled={!canBet} onClick={() => press(k)} data-key={k} aria-label={k === 'C' ? 'Borrar' : k}>{k === 'C' ? '⌫' : k}</button>)}
+            </div>
+            <div className="tbg-quick">
+              <button type="button" disabled={!canBet} onClick={() => quick('min')} data-quick="min">MÍN</button>
+              <button type="button" disabled={!canBet} onClick={() => quick('q')} data-quick="q">1/4</button>
+              <button type="button" disabled={!canBet} onClick={() => quick('h')} data-quick="h">1/2</button>
+              <button type="button" disabled={!canBet} onClick={() => quick('all')} data-quick="all">TODO</button>
+            </div>
           </div>
         </div>
       </div>

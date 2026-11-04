@@ -8,10 +8,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
 import { backgroundInterval, everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
-import { SCENES, SIDE_H, doorFor, nearby, sceneKey, seatPos, spawnPoint, stepSide, stepTop } from './scenes.js';
-import { drawScene } from './render.js';
+import { SCENES, doorFor, nearby, sceneKey, seatPos, spawnPoint, stepSide, stepTop } from './scenes.js';
+import { Q, drawScene } from './render.js';
 import BjPanel from './BjPanel.jsx';
-import { allAt, dayLeftMs, findPlayer, fmtClock, fmtMoney, locOfFloor } from './game.js';
+import './tbgame.css';
+import { DAY_MS, allAt, dayLeftMs, findPlayer, fmtClock, fmtMoney, locOfFloor } from './game.js';
 
 const SEND_EVERY = 1 / 15;
 const SERVER_EVERY = 1 / 8;
@@ -21,7 +22,7 @@ const round1 = (v) => Math.round(v * 10) / 10;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 function TicketIcon() {
-  return <svg className="tb-ticket" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 3h14v5a2.2 2.2 0 0 0 0 4.4V21H5v-8.6a2.2 2.2 0 0 0 0-4.4z" fill="#f0c33c" stroke="#8a5a10" strokeWidth="1.6" strokeLinejoin="round" /><path d="M9 8h6M9 12h6" stroke="#8a5a10" strokeWidth="1.6" strokeLinecap="round" /></svg>;
+  return <svg className="tbg-ticket" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 3h14v5a2.2 2.2 0 0 0 0 4.4V21H5v-8.6a2.2 2.2 0 0 0 0-4.4z" fill="#f0c33c" stroke="#8a5a10" strokeWidth="1.6" strokeLinejoin="round" /><path d="M9 8h6M9 12h6" stroke="#8a5a10" strokeWidth="1.6" strokeLinecap="round" /></svg>;
 }
 
 // Dónde aparece cada uno al cambiar de lugar.
@@ -232,7 +233,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       const players = [];
       const trip = r.trip;
       const heads = r.players.filter((pl) => pl.loc === 'limo').length;
-      if (loc !== 'limo') players.push({ x: s.p.x, y: s.p.y, face: s.p.face, phase: s.p.phase, moving: s.p.moving, color: meP.color, name: me.id === meP.id ? '' : meP.name });
+      if (loc !== 'limo') players.push({ me: true, x: s.p.x, y: s.p.y, face: s.p.face, phase: s.p.phase, moving: s.p.moving, color: meP.color, name: '' });
       for (const pl of r.players) {
         if (pl.id === me.id || sceneKey(pl.loc) !== key || pl.loc === 'limo') continue;
         const v = s.remotes.get(pl.id);
@@ -251,27 +252,27 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
         players.push({ x, y, face, phase: v?.phase || 0, moving, color: pl.color, name: pl.name });
       }
 
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const cw = Math.round(wrap.clientWidth * dpr);
-      const ch = Math.round(wrap.clientHeight * dpr);
-      if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+      // El canvas es chico (un pixel del juego = `ps` pixeles de pantalla) y el CSS lo agranda sin suavizar.
+      const ps = clamp(Math.round(wrap.clientHeight / (key === 'elevator' ? 170 : 260)), 2, 8);
+      const cw = Math.ceil(wrap.clientWidth / ps);
+      const ch = Math.ceil(wrap.clientHeight / ps);
+      if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; canvas.style.width = `${cw * ps}px`; canvas.style.height = `${ch * ps}px`; }
       const ctx = canvas.getContext('2d');
       const view = { w: cw, h: ch };
+      const vw = cw * Q;
+      const vh = ch * Q;
+      let tx; let ty = 0;
       if (sc.kind === 'side') {
-        view.scale = ch / SIDE_H;
-        const viewW = cw / view.scale;
-        const focus = loc === 'limo' ? SCENES.wait.limo.x + 120 : s.p.x;
-        view.camX = clamp(focus - viewW / 2, 0, Math.max(0, sc.w - viewW));
+        tx = clamp((loc === 'limo' ? SCENES.wait.limo.x + 120 : s.p.x) - vw / 2, 0, Math.max(0, sc.w - vw));
       } else if (key === 'elevator') {
-        view.scale = Math.min(cw / 520, ch / 400);
-        view.cx = 150; view.cy = 150;
+        tx = 150; ty = 130;
       } else {
-        view.scale = ch / 440;
-        const vw = cw / view.scale;
-        const vh = ch / view.scale;
-        view.cx = vw >= sc.w ? sc.w / 2 : clamp(s.p.x, vw / 2, sc.w - vw / 2);
-        view.cy = vh >= sc.h ? sc.h / 2 : clamp(s.p.y, vh / 2, sc.h - vh / 2);
+        tx = vw >= sc.w ? sc.w / 2 : clamp(s.p.x, vw / 2, sc.w - vw / 2);
+        ty = vh >= sc.h ? sc.h / 2 : clamp(s.p.y, vh / 2, sc.h - vh / 2);
       }
+      // La cámara persigue al jugador con un poco de suavidad (y salta de una al cambiar de lugar).
+      if (!s.cam || s.camKey !== key) { s.cam = { x: tx, y: ty }; s.camKey = key; } else { const k = Math.min(1, dt * 9); s.cam.x += (tx - s.cam.x) * k; s.cam.y += (ty - s.cam.y) * k; }
+      if (sc.kind === 'side') view.camX = s.cam.x; else { view.cx = s.cam.x; view.cy = s.cam.y; }
 
       // El viaje en limusina (se cierra la puerta y arranca) y el del ascensor (tiembla, cambia el número).
       const p = trip ? clamp((now - trip.at) / trip.ms, 0, 1) : 0;
@@ -286,8 +287,8 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
 
       const slots = Object.fromEntries(r.players.map((pl, i) => [pl.id, i]));
       drawScene(ctx, view, key, {
-        time: s.time, players, bj: r.bj, slots, heads, limoGo, limoDoor, floorLabel, doorOpen,
-        shake: moving ? (Math.sin(s.time * 60) * 0.8) : 0,
+        time: s.time, players, bj: r.bj, slots, heads, limoGo, limoDoor, floorLabel, doorOpen, near: Boolean(s.near),
+        shake: moving ? (Math.sin(s.time * 60) > 0 ? 1 : -1) : 0,
       });
     }
 
@@ -322,79 +323,142 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
   const inElev = room.players.filter((p) => p.loc === 'elevator').length;
   const showDay = room.day.endsAt && loc !== 'wait' && loc !== 'limo';
   const dayPassed = room.day.last && !room.day.last.lost && room.day.n > seenDay && loc === 'wait' && !trip;
-  const tripText = trip?.kind === 'limo' ? 'Rumbo al casino…' : trip?.kind === 'home' ? 'Volviendo a casa…' : trip ? (trip.to === 0 ? 'Bajando al lobby…' : `Subiendo al piso ${trip.to}…`) : '';
+  const tripText = trip?.kind === 'limo' ? 'Rumbo al casino' : trip?.kind === 'home' ? 'Volviendo a casa' : trip ? (trip.to === 0 ? 'Bajando al lobby' : `Subiendo al piso ${trip.to}`) : '';
+  const quota = room.day.quota;
+  const done = room.money >= quota;
+  const pct = Math.max(0, Math.min(100, (room.money / quota) * 100));
+  const cash = useMoneyFx(room.money);
+  const goal = trip || modal ? '' : goalText(room, loc, aboard, inElev, done);
+  const topScene = SCENES[sceneKey(loc)]?.kind === 'top';
 
   return (
-    <div className="tb-stage" ref={wrapRef}>
-      <canvas ref={canvasRef} className="tb-canvas" data-timba-canvas />
+    <div className="tbg-stage" ref={wrapRef} style={{ overflow: 'hidden' }}>
+      <canvas ref={canvasRef} className="tbg-canvas" data-timba-canvas />
 
-      <div className="tb-tickets" title="Tickets dorados (de todos)"><b>{room.tickets}</b><TicketIcon /></div>
-      <div className="tb-money" data-money>
-        <small>DÍA {room.day.n}</small>
-        <strong>{fmtMoney(room.money)}</strong>
-        <em>/ {fmtMoney(room.day.quota)}</em>
+      <div className="tbg-cash tbg-panel" data-money>
+        <span className="tbg-label">Caja de todos</span>
+        <div className="tbg-cash-row">
+          <strong key={cash.k} className={`tbg-cash-amount${cash.dir ? ` is-${cash.dir}` : ''}`}>{fmtMoney(cash.shown)}</strong>
+        </div>
+        <div className={`tbg-quota${done ? ' is-done' : ''}`} title="La cuota del día">
+          <div className="tbg-quota-fill" style={{ width: `${pct}%` }} />
+          <span>{done ? '¡CUOTA LISTA!' : `CUOTA ${fmtMoney(quota)}`}</span>
+        </div>
+        {cash.deltas.map((d) => <span key={d.id} className={`tbg-delta is-${d.v > 0 ? 'plus' : 'minus'}`}>{d.v > 0 ? '+' : '−'}{fmtMoney(Math.abs(d.v))}</span>)}
       </div>
-      <ul className="tb-net">
-        {room.players.map((p) => {
-          const net = room.net[p.id] || 0;
-          return <li key={p.id} style={{ '--c': p.color }}><b className={net < 0 ? 'is-neg' : ''}>{net < 0 ? '−' : '+'}{fmtMoney(Math.abs(net))}</b><span>{p.name.toUpperCase()}</span></li>;
-        })}
-      </ul>
+
       {showDay && (
-        <div className={`tb-clock${room.day.over ? ' is-over' : left < 30000 ? ' is-low' : ''}`}>
-          <small>{room.day.over ? 'EL DÍA TERMINÓ' : 'EL DÍA TERMINA EN'}</small>
-          {!room.day.over && <strong>{fmtClock(left)}</strong>}
+        <div className={`tbg-day tbg-panel${room.day.over ? ' is-over' : left < 30000 ? ' is-low' : ''}`}>
+          <span className="tbg-day-n">DÍA {room.day.n}</span>
+          <strong className="tbg-day-time">{room.day.over ? 'TERMINÓ' : fmtClock(left)}</strong>
+          {!room.day.over && <div className="tbg-day-bar"><i style={{ width: `${Math.max(0, Math.min(100, (left / DAY_MS) * 100))}%` }} /></div>}
         </div>
       )}
 
-      {loc === 'wait' && !trip && <p className="tb-hint">← → o A D para caminar · E para tocar. Cuando estén todos en la limusina, salen al casino.</p>}
-      {loc === 'limo' && !trip && <p className="tb-hint is-big">En la limusina · esperando a los demás ({aboard}/{room.players.length}) · <kbd>E</kbd> para bajar</p>}
-      {loc === 'elevator' && !trip && <p className="tb-hint">{room.day.over ? 'El ascensor se cerró: solo se puede ir al lobby.' : `En el ascensor: ${inElev}/${room.players.length}. Usá el panel con E.`}</p>}
-      {near && !modal && <p className="tb-near" data-near><kbd>E</kbd> {near.label}</p>}
-      {toast && <p className="tb-toast" role="status">{toast}</p>}
-      {tripText && <p className="tb-trip">{tripText}</p>}
+      <div className="tbg-side">
+        <div className="tbg-tickets tbg-panel" title="Tickets dorados (de todos)"><small>TICKETS</small><b>{room.tickets} <TicketIcon /></b></div>
+        <ul className="tbg-net tbg-panel">
+          {room.players.map((p) => {
+            const net = room.net[p.id] || 0;
+            return <li key={p.id} style={{ '--c': p.color }}><span>{p.name}</span><b className={net < 0 ? 'is-neg' : ''}>{net < 0 ? '−' : '+'}{fmtMoney(Math.abs(net))}</b></li>;
+          })}
+        </ul>
+      </div>
+
+      {goal && <p className="tbg-goal" data-goal>{goal}</p>}
+      {loc === 'limo' && !trip && (
+        <div className="tbg-wait tbg-panel">
+          EN LA LIMUSINA
+          <small>Esperando a los demás ({aboard}/{room.players.length}) · E para bajar</small>
+          <span className="tbg-dots">{room.players.map((p) => <i key={p.id} className={p.loc === 'limo' ? 'is-in' : ''} />)}</span>
+        </div>
+      )}
+      {near && !modal && <p className="tbg-prompt tbg-panel" data-near><kbd>E</kbd> {near.label}</p>}
+      {!modal && loc !== 'limo' && !trip && (
+        <div className="tbg-keys tbg-panel">
+          <div>{topScene ? <><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></> : <><kbd>A</kbd><kbd>D</kbd></>}<span>moverse</span></div>
+          <div><kbd>E</kbd><span>tocar / usar</span></div>
+        </div>
+      )}
+      {toast && <p className="tbg-toast" role="status">{toast}</p>}
+      {tripText && <p className="tbg-trip tbg-panel">{tripText}</p>}
 
       {modal === 'bj' && <BjPanel room={room} me={me} now={now} toast={flash} onClose={closeModal} onAct={act} />}
       {modal === 'elev' && <ElevatorPanel room={room} inElev={inElev} onPick={async (to) => { if (await act({ type: 'floor', to })) setModal(null); else flash('Tienen que estar todos en el ascensor.'); }} onClose={() => setModal(null)} />}
       {modal === 'van' && (
-        <div className="tb-modal tb-small" role="dialog" aria-label="Camioneta">
-          <button type="button" className="tb-close" onClick={() => setModal(null)} aria-label="Cerrar">✕</button>
-          <h2 className="tb-title">LA CAMIONETA</h2>
-          <p className="tb-text">Acá se van a comprar items con los tickets dorados <TicketIcon />. Por ahora la camioneta está vacía: todavía no hay nada a la venta.</p>
-          <p className="tb-text is-dim">Tienen {room.tickets} tickets para cuando llegue la mercadería.</p>
+        <div className="tbg-modal tbg-small" role="dialog" aria-label="Camioneta">
+          <button type="button" className="tbg-close" onClick={() => setModal(null)} aria-label="Cerrar">✕</button>
+          <h2 className="tbg-title">LA CAMIONETA</h2>
+          <p className="tbg-text">Acá se van a comprar items con los tickets dorados <TicketIcon />. Por ahora la camioneta está vacía: todavía no hay nada a la venta.</p>
+          <p className="tbg-text is-dim">Tienen {room.tickets} tickets para cuando llegue la mercadería.</p>
         </div>
       )}
       {dayPassed && (
-        <div className="tb-modal tb-small" role="dialog" aria-label="Día superado">
-          <h2 className="tb-title">¡DÍA {room.day.last.n} SUPERADO!</h2>
-          <p className="tb-text">Juntaron {fmtMoney(room.day.last.money)} de {fmtMoney(room.day.last.quota)}. La cuota de hoy sube a <b>{fmtMoney(room.day.quota)}</b>.</p>
-          <button type="button" className="tb-btn" onClick={() => setSeenDay(room.day.n)}>¡A seguir!</button>
+        <div className="tbg-modal tbg-small" role="dialog" aria-label="Día superado">
+          <h2 className="tbg-title">¡DÍA {room.day.last.n} SUPERADO!</h2>
+          <p className="tbg-text">Juntaron {fmtMoney(room.day.last.money)} de {fmtMoney(room.day.last.quota)}. La cuota de hoy sube a <b>{fmtMoney(room.day.quota)}</b>.</p>
+          <button type="button" className="tbg-btn" onClick={() => setSeenDay(room.day.n)}>¡A SEGUIR!</button>
         </div>
       )}
-      <div className="tb-fade" ref={fadeRef} />
+      <div className="tbg-fade" ref={fadeRef} />
     </div>
   );
+}
+
+// Qué conviene hacer ahora, según dónde estás (la línea amarilla de arriba).
+function goalText(room, loc, aboard, inElev, done) {
+  if (loc === 'wait') return aboard ? `Subí a la limusina con los demás (${aboard}/${room.players.length} a bordo)` : 'Caminá a la derecha hasta la limusina y tocá E para subir';
+  if (loc === 'outside') return 'Entrá al casino por la puerta de la derecha';
+  if (loc === 'elevator') {
+    if (room.day.over) return 'Se acabó el día: usá el panel y bajá al lobby';
+    if (inElev < room.players.length) return `Esperá a que suban todos al ascensor (${inElev}/${room.players.length})`;
+    return room.elev.floor === 0 ? 'Usá el panel (E) y subí al piso 1' : 'Salí del ascensor por la puerta de abajo';
+  }
+  if (loc === 'f1') return done ? '¡Ya tienen la cuota! Sigan sumando hasta que termine el día' : 'Jugá al blackjack: acercate a la mesa y tocá E';
+  return '';
+}
+
+// La plata que se ve: sube o baja contando, parpadea y suelta un «+$100» que flota.
+function useMoneyFx(value) {
+  const [fx, setFx] = useState({ shown: value, dir: '', k: 0, deltas: [] });
+  const last = useRef(value);
+  useEffect(() => {
+    const from = last.current;
+    if (from === value) return undefined;
+    last.current = value;
+    const id = Math.random();
+    const t0 = performance.now();
+    setFx((f) => ({ ...f, dir: value > from ? 'up' : 'down', k: f.k + 1, deltas: [...f.deltas, { id, v: value - from }] }));
+    const step = setInterval(() => {
+      const u = Math.min(1, (performance.now() - t0) / 600);
+      setFx((f) => ({ ...f, shown: Math.round(from + (value - from) * u) }));
+      if (u >= 1) clearInterval(step);
+    }, 40);
+    const drop = setTimeout(() => setFx((f) => ({ ...f, deltas: f.deltas.filter((d) => d.id !== id) })), 1500);
+    return () => { clearInterval(step); clearTimeout(drop); setFx((f) => ({ ...f, shown: value })); };
+  }, [value]);
+  return fx;
 }
 
 function ElevatorPanel({ room, inElev, onPick, onClose }) {
   const all = allAt(room, 'elevator');
   const floors = [0, ...Array.from({ length: room.floors }, (_, i) => i + 1)];
   return (
-    <div className="tb-modal tb-small tb-elev" role="dialog" aria-label="Ascensor" data-elevator>
-      <button type="button" className="tb-close" onClick={onClose} aria-label="Cerrar">✕</button>
-      <h2 className="tb-title">ASCENSOR</h2>
-      <p className={`tb-text${all ? '' : ' is-warn'}`}>{all ? 'Están todos a bordo.' : `Faltan subir: ${room.players.length - inElev}. El ascensor solo viaja con todos adentro.`}</p>
-      <div className="tb-floors">
+    <div className="tbg-modal tbg-small tbg-elev" role="dialog" aria-label="Ascensor" data-elevator>
+      <button type="button" className="tbg-close" onClick={onClose} aria-label="Cerrar">✕</button>
+      <h2 className="tbg-title">ASCENSOR</h2>
+      <p className={`tbg-text${all ? '' : ' is-warn'}`}>{all ? 'Están todos a bordo.' : `Faltan subir: ${room.players.length - inElev}. El ascensor solo viaja con todos adentro.`}</p>
+      <div className="tbg-floors">
         {floors.slice().reverse().map((f) => {
           const disabled = !all || (room.day.over ? f !== 0 : f === room.elev.floor);
           return (
-            <button key={f} type="button" className={`tb-floor${f === room.elev.floor ? ' is-here' : ''}`} disabled={disabled} onClick={() => onPick(f)} data-floor={f}>
+            <button key={f} type="button" className={`tbg-floor${f === room.elev.floor ? ' is-here' : ''}`} disabled={disabled} onClick={() => onPick(f)} data-floor={f}>
               <b>{f === 0 ? 'L' : f}</b><span>{f === 0 ? 'Lobby' : `Piso ${f}`}</span>
             </button>
           );
         })}
       </div>
-      {room.day.over && <p className="tb-text is-warn">Se terminó el día: el único camino es el lobby.</p>}
+      {room.day.over && <p className="tbg-text is-warn">Se terminó el día: el único camino es el lobby.</p>}
     </div>
   );
 }
