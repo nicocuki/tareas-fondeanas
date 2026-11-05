@@ -823,9 +823,44 @@ function drawBaccarat(ctx, blk, tb, st) {
   led(ctx, x + w - 14, y + h - 14, tb);
 }
 
+// Buscaminas: la grilla de 5 × 5 con casilleros que se prenden (gemas) y una mina que parpadea en rojo.
+function drawMines(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  const t = st.time;
+  const on = Boolean(tb && tb.bet > 0 && !tb.res);
+  ctx.globalAlpha = 0.3; R(ctx, x + 4, y + 8, w, h, '#000'); ctx.globalAlpha = 1;
+  box(ctx, x, y, w, h, '#16262e', '#6ab4a8');
+  txt(ctx, 'MINAS', x + w / 2, y + 10, 1, '#cfeee8');
+  const bomb = Math.floor(t * (on ? 3 : 1)) % 25;
+  for (let k = 0; k < 25; k++) {
+    const cx = x + 16 + (k % 5) * 24; const cy = y + 20 + Math.floor(k / 5) * 17;
+    const gem = (k * 7 + Math.floor(t * 1.5)) % 6 === 0;
+    R(ctx, cx, cy, 20, 13, k === bomb && on ? ((Math.floor(t * 6) % 2) ? '#ff4a4a' : '#8a1a1a') : gem ? '#4fd8e8' : '#2c4650');
+    if (k === bomb && on) R(ctx, cx + 8, cy + 4, 4, 4, '#14101c');
+  }
+  led(ctx, x + w - 12, y + 6, tb);
+}
+
+// Mayor o menor: paño verde con una carta boca arriba, otra boca abajo y las flechas.
+function drawHilo(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  const t = st.time;
+  ctx.globalAlpha = 0.3; R(ctx, x + 4, y + 8, w, h, '#000'); ctx.globalAlpha = 1;
+  box(ctx, x - 4, y - 4, w + 8, h + 8, '#5a3420', INK);
+  box(ctx, x, y, w, h, '#1a7048');
+  txt(ctx, 'MAYOR O MENOR', x + w / 2, y + 12, 1, '#f4e6b0', '#0c3a26');
+  const rank = tb && tb.card ? ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'][tb.card] : 'K';
+  box(ctx, x + 30, y + 28, 36, 52, '#fff'); txt(ctx, rank, x + 48, y + 54, 2, tb && tb.card && (tb.card >= 10 || tb.card === 1) ? '#d8303a' : INK);
+  box(ctx, x + w - 66, y + 28, 36, 52, '#a8242e'); R(ctx, x + w - 62, y + 32, 28, 44, '#c8323c');
+  tri(ctx, x + w / 2, y + 32, 8, 12, (Math.floor(t * 2) % 2) ? '#5aff7a' : '#2f8a3f');
+  tri(ctx, x + w / 2, y + 62, 8, 12, '#e0525a');
+  led(ctx, x + w - 12, y + h - 8, tb);
+}
+
 const TABLE_DRAWERS = {
   bj: drawBjTable, slots: drawSlots, wheel: drawWheelWall, roulette: drawRoulette, craps: drawCraps, duck: drawDuckRace,
   crash: drawCrash, penguin: drawPenguin, keno: drawKeno, plinko: drawPlinko, mwheel: drawMoneyWheel, baccarat: drawBaccarat,
+  hilo: drawHilo, mines: drawMines,
 };
 
 // ─── Decoración de cada casino ──────────────────────────────────────────────

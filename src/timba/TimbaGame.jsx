@@ -15,7 +15,9 @@ import BjPanel from './BjPanel.jsx';
 import CrapsPanel from './CrapsPanel.jsx';
 import CrashPanel from './CrashPanel.jsx';
 import DuckPanel from './DuckPanel.jsx';
+import HiLoPanel from './HiLoPanel.jsx';
 import KenoPanel from './KenoPanel.jsx';
+import MinesPanel from './MinesPanel.jsx';
 import MoneyWheelPanel from './MoneyWheelPanel.jsx';
 import PenguinPanel from './PenguinPanel.jsx';
 import PlinkoPanel from './PlinkoPanel.jsx';
@@ -28,7 +30,7 @@ import { TOTAL_DAYS } from './quota.js';
 import { DAY_MS, allAt, dayLeftMs, findPlayer, fmtClock, fmtMoney, tableOfPlayer } from './game.js';
 
 const PANELS = { bj: BjPanel, slots: SlotsPanel, wheel: WheelPanel, roulette: RoulettePanel, duck: DuckPanel, craps: CrapsPanel, crash: CrashPanel, penguin: PenguinPanel,
-  keno: KenoPanel, plinko: PlinkoPanel, mwheel: MoneyWheelPanel, baccarat: BaccaratPanel,
+  keno: KenoPanel, plinko: PlinkoPanel, mwheel: MoneyWheelPanel, baccarat: BaccaratPanel, hilo: HiLoPanel, mines: MinesPanel,
 };
 const ABOARD = ['limo', 'back']; // arriba de la limusina (de ida o de vuelta)
 

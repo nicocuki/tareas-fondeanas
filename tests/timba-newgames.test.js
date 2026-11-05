@@ -7,7 +7,7 @@ import { LIMITS, NAMES, betLimits, limitsFor } from '../src/timba/games.js';
 import {
   BACCARAT_SIDES, KENO_MAX_PICK, MINES_OPTIONS, MWHEEL, MWHEEL_COUNTS, MWHEEL_PAYS, NEW_KINDS, NEW_LIMITS, PENGUIN_CUBES, PLINKO_MULTS, PLINKO_ROWS, RTP,
   baccaratMult, crashMsAt, crashMultAt, crashPay, crashPoint, dealBaccarat, handTotal, hiloOdds, hiloStepMult, kenoOdds, kenoRtp, minesMult, newSpin,
-  penguinMult, penguinPay, pickDistinct,
+  minesPay, penguinMult, penguinPay, pickDistinct,
 } from '../src/timba/newgames.js';
 import { QUOTA_MULTIPLIERS, TOTAL_DAYS, betScale } from '../src/timba/quota.js';
 import { floorTables } from '../src/timba/scenes.js';
@@ -371,8 +371,96 @@ test('mesas nuevas: levantarse con una tirada sin cobrar la cobra al toque', () 
 
 test('los juegos nuevos están en los casinos 2 a 4 y no en el casino 1', () => {
   const kindsOf = (n) => new Set(floorTables(n).map((t) => t.kind));
-  for (let n = 1; n <= 3; n++) for (const kind of ['crash', 'penguin', 'keno', 'plinko', 'mwheel', 'baccarat']) assert.ok(!kindsOf(n).has(kind), `el piso ${n} no tiene ${kind}`);
+  for (let n = 1; n <= 3; n++) for (const kind of ['crash', 'penguin', 'keno', 'plinko', 'mwheel', 'baccarat', 'hilo', 'mines']) assert.ok(!kindsOf(n).has(kind), `el piso ${n} no tiene ${kind}`);
   for (let n = 4; n <= 12; n++) {
-    for (const kind of ['bj', 'slots', 'wheel', 'roulette', 'duck', 'craps', 'crash', 'penguin', 'keno', 'plinko', 'mwheel', 'baccarat']) assert.ok(kindsOf(n).has(kind), `el piso ${n} tiene ${kind}`);
+    for (const kind of ['bj', 'slots', 'wheel', 'roulette', 'duck', 'craps', 'crash', 'penguin', 'keno', 'plinko', 'mwheel', 'baccarat', 'hilo', 'mines']) assert.ok(kindsOf(n).has(kind), `el piso ${n} tiene ${kind}`);
+  }
+});
+
+// ─── La sala: Buscaminas y Mayor o menor ─────────────────────────────────────
+test('mines: se destapan casilleros seguros, se retira, o una mina se lo lleva todo', () => {
+  let room = sitAt(inCasino2(), 'mines');
+  const money0 = room.money;
+  const bet = betLimits('mines', room.money, 4).min;
+  assert.equal(act(room, 'a', { type: 'minesBet', amount: bet, mines: 4 }), null, 'solo 1, 3, 5 o 10 minas');
+  assert.equal(act(room, 'a', { type: 'minesPick', i: 5 }), null, 'sin apuesta no se destapa');
+  room = act(room, 'a', { type: 'minesBet', amount: bet, mines: 3 }, clock, () => 0); // con azar 0 las minas quedan en 0, 1 y 2
+  assert.equal(room.money, money0 - bet);
+  const tb = () => Object.values(room.tb)[0];
+  assert.deepEqual(tb().mines, [0, 1, 2]);
+  assert.equal(act(room, 'a', { type: 'minesCash' }), null, 'sin destapar nada no hay qué retirar');
+  assert.equal(act(room, 'a', { type: 'minesPick', i: 25 }), null);
+  const safe = act(room, 'a', { type: 'minesPick', i: 10 });
+  assert.deepEqual(Object.values(safe.tb)[0].open, [10]);
+  assert.equal(act(safe, 'a', { type: 'minesPick', i: 10 }), null, 'no se destapa dos veces');
+  const two = act(safe, 'a', { type: 'minesPick', i: 11 });
+  const cashed = act(two, 'a', { type: 'minesCash' });
+  assert.equal(cashed.money, money0 - bet + minesPay(bet, 3, 2));
+  assert.equal(Object.values(cashed.tb)[0].res, 'cash');
+  // mina
+  const boom = act(safe, 'a', { type: 'minesPick', i: 1 });
+  assert.equal(Object.values(boom.tb)[0].res, 'lose');
+  assert.equal(boom.money, money0 - bet);
+  assert.equal(boom.net.a, -bet);
+  assert.equal(act(boom, 'a', { type: 'minesPick', i: 12 }), null, 'perdida la ronda no se sigue');
+  // destapar todo lo seguro cobra solo
+  let all = room;
+  for (let i = 3; i < 25; i++) all = act(all, 'a', { type: 'minesPick', i });
+  assert.equal(Object.values(all.tb)[0].res, 'win');
+  assert.equal(all.money, money0 - bet + minesPay(bet, 3, 22));
+  // levantarse con casilleros destapados cobra; sin destapar devuelve
+  assert.equal(act(safe, 'a', { type: 'stand' }).money, money0 - bet + minesPay(bet, 3, 1));
+  assert.equal(act(room, 'a', { type: 'stand' }).money, money0);
+});
+
+test('hilo: se adivina mayor o menor, cada acierto multiplica y se puede retirar', () => {
+  let room = sitAt(inCasino2(), 'hilo');
+  const money0 = room.money;
+  const bet = betLimits('hilo', room.money, 4).min;
+  assert.equal(act(room, 'a', { type: 'hiloGuess', dir: 'hi' }), null, 'sin apuesta no se adivina');
+  room = act(room, 'a', { type: 'hiloBet', amount: bet }, clock, cards(7)); // sale un 7
+  const tb = () => Object.values(room.tb)[0];
+  assert.equal(tb().card, 7);
+  assert.equal(room.money, money0 - bet);
+  assert.equal(act(room, 'a', { type: 'hiloCash' }), null, 'sin acertar no se retira');
+  assert.equal(act(room, 'a', { type: 'hiloGuess', dir: 'nada' }), null);
+  const won = act(room, 'a', { type: 'hiloGuess', dir: 'hi' }, clock, cards(10)); // sale un 10: mayor
+  assert.equal(Object.values(won.tb)[0].card, 10);
+  assert.equal(Object.values(won.tb)[0].n, 1);
+  assert.ok(Math.abs(Object.values(won.tb)[0].m - hiloStepMult(7, 'hi')) < 1e-6);
+  const cashed = act(won, 'a', { type: 'hiloCash' });
+  assert.equal(cashed.money, money0 - bet + Math.floor(bet * Object.values(won.tb)[0].m + 1e-9));
+  // perder: sale una más baja, o igual
+  for (const [dir, next] of [['hi', 3], ['lo', 9], ['hi', 7], ['lo', 7]]) {
+    const lost = act(room, 'a', { type: 'hiloGuess', dir }, clock, cards(next));
+    assert.equal(Object.values(lost.tb)[0].res, 'lose', `${dir} contra ${next}: se pierde`);
+    assert.equal(lost.money, money0 - bet);
+    assert.equal(lost.net.a, -bet);
+  }
+  // con As no se puede ir más abajo, con K más arriba
+  const ace = act(sitAt(inCasino2(), 'hilo'), 'a', { type: 'hiloBet', amount: bet }, clock, cards(1));
+  assert.equal(act(ace, 'a', { type: 'hiloGuess', dir: 'lo' }), null);
+  assert.ok(act(ace, 'a', { type: 'hiloGuess', dir: 'hi' }, clock, cards(5)));
+  const king = act(sitAt(inCasino2(), 'hilo'), 'a', { type: 'hiloBet', amount: bet }, clock, cards(13));
+  assert.equal(act(king, 'a', { type: 'hiloGuess', dir: 'hi' }), null);
+});
+
+test('mesas por pasos: la plata nunca queda negativa ni con decimales con las cuatro a la vez', () => {
+  let room = sitAt(inCasino2(5000), 'mines');
+  let seed = 4242;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const kinds = ['crash', 'penguin', 'mines', 'hilo'];
+  const types = ['crashLaunch', 'crashCash', 'crashEnd', 'penguinBet', 'penguinStep', 'penguinCash', 'minesBet', 'minesPick', 'minesCash', 'hiloBet', 'hiloGuess', 'hiloCash', 'stand', 'sit'];
+  for (let i = 0; i < 3000; i++) {
+    const type = types[Math.floor(rnd() * types.length)];
+    clock += 200 + Math.floor(rnd() * 900);
+    const action = {
+      type, amount: 5 + Math.floor(rnd() * 200), mult: 100 + Math.floor(rnd() * 400), mines: MINES_OPTIONS[Math.floor(rnd() * 4)], i: Math.floor(rnd() * 25),
+      dir: rnd() < 0.5 ? 'hi' : 'lo', table: tableOf(kinds[Math.floor(rnd() * 4)]).id,
+    };
+    const next = applyAction(room, { ...action, playerId: 'a' }, { now: clock, rand: rnd });
+    if (next) room = next;
+    assert.ok(room.money >= 0 && Number.isInteger(room.money), `plata ${room.money} en el paso ${i} (${type})`);
+    for (const t of Object.values(room.tb)) assert.ok(Number.isInteger(t.bet) && t.bet >= 0);
   }
 });

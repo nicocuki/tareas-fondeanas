@@ -57,9 +57,9 @@ const MIXES = [
   { slots: 5, bj: 4, wheel: 2, roulette: 2, craps: 3, duck: 3 },
 ];
 const NEW_MIXES = [
-  { crash: 1, penguin: 1, keno: 1, plinko: 1, mwheel: 1, baccarat: 1 },
-  { crash: 2, penguin: 1, keno: 1, plinko: 2, mwheel: 1, baccarat: 2 },
-  { crash: 1, penguin: 2, keno: 2, plinko: 1, mwheel: 2, baccarat: 1 },
+  { crash: 1, penguin: 1, keno: 1, plinko: 1, mwheel: 1, baccarat: 1, hilo: 1, mines: 1 },
+  { crash: 2, penguin: 1, keno: 1, plinko: 2, mwheel: 1, baccarat: 2, hilo: 2, mines: 1 },
+  { crash: 1, penguin: 2, keno: 2, plinko: 1, mwheel: 2, baccarat: 1, hilo: 1, mines: 2 },
 ];
 const mixFor = (n) => ({ ...MIXES[(n - 1) % 3], ...(casinoOfFloor(n) > 1 ? NEW_MIXES[(n - 1) % 3] : {}) });
 
