@@ -4,7 +4,8 @@
 //
 // Un «pixel» del juego son `Q` unidades del mundo y el canvas se dibuja con escala 1/Q: todo pasa por `R` (rectángulo
 // pegado a la grilla), `disc`, `ell`, `tri`, `line` y el texto de 3 × 5 (`txt`), así nunca queda un borde suavizado.
-import { GROUND, SCENES, TABLES } from './scenes.js';
+import { casinoById } from './casinos.js';
+import { GROUND, SCENES } from './scenes.js';
 import { isRed, rankOf } from './bj.js';
 
 export const Q = 2;
@@ -423,9 +424,9 @@ function drawEntrance(ctx, sc, st) {
 }
 
 // ─── Escenas desde arriba ───────────────────────────────────────────────────
-let carpetPattern; let wallPattern; let metalPattern;
+let carpets; let walls; let metalPattern;
 function patterns(ctx) {
-  if (carpetPattern) return;
+  if (carpets) return;
   // Cada pixel del juego son Q × Q pixeles de la imagen, así en el canvas chico queda de a uno.
   const mk = (n, draw) => {
     const c = document.createElement('canvas'); c.width = n * Q; c.height = n * Q;
@@ -433,18 +434,58 @@ function patterns(ctx) {
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const col = draw(x, y); if (col) { g.fillStyle = col; g.fillRect(x * Q, y * Q, Q, Q); } }
     return ctx.createPattern(c, 'repeat');
   };
-  carpetPattern = mk(24, (x, y) => {
-    const dc = Math.abs(x - 12) + Math.abs(y - 12);
-    const dk = Math.min(x + y, 24 - x + y, x + 24 - y, 48 - x - y);
-    if (dc === 0 || dk === 0) return '#c8a050';
-    if (dc === 7) return '#6a3470';
-    if (dk === 5) return '#8a4a2a';
-    if (dc === 3 || dk === 2) return '#1f2a58';
-    return '#141a3a';
-  });
-  wallPattern = mk(24, (x, y) => ((y % 12 < 1 || (y < 12 ? x % 24 === 0 : x % 24 === 12)) ? '#2a2014' : (x + y) % 7 === 0 ? '#7a6638' : '#6a5630'));
+  // Rombos concéntricos (el dibujo de las alfombras): `dc` = distancia al centro, `dk` = distancia al borde del rombo grande.
+  const lattice = (x, y) => ({ dc: Math.abs(x - 12) + Math.abs(y - 12), dk: Math.min(x + y, 24 - x + y, x + 24 - y, 48 - x - y) });
+  carpets = {
+    classic: mk(24, (x, y) => {
+      const { dc, dk } = lattice(x, y);
+      if (dc === 0 || dk === 0) return '#c8a050';
+      if (dc === 7) return '#6a3470';
+      if (dk === 5) return '#8a4a2a';
+      if (dc === 3 || dk === 2) return '#1f2a58';
+      return '#141a3a';
+    }),
+    // terciopelo bordó con rombos dorados
+    velvet: mk(24, (x, y) => {
+      const { dc, dk } = lattice(x, y);
+      if (dc === 0 || dk === 0) return '#e8c25e';
+      if (dc === 6) return '#d04a68';
+      if (dk === 4) return '#2a0812';
+      if (dc === 3 || dk === 2) return '#8a2442';
+      return '#58142a';
+    }),
+    // baldosas de mármol blanco y gris con vetas
+    marble: mk(24, (x, y) => {
+      if (x % 12 === 0 || y % 12 === 0) return '#8e94a4';
+      if ((x * 3 + y * 5) % 19 === 0) return '#a4abbc';
+      return ((x / 12 | 0) + (y / 12 | 0)) % 2 ? '#d6d9e2' : '#eeeae0';
+    }),
+    // mármol negro con vetas y guardas de oro
+    gold: mk(24, (x, y) => {
+      const { dc } = lattice(x, y);
+      if (x === 0 || y === 0) return '#e0b040';
+      if (dc === 9) return '#a8802a';
+      if (dc <= 1) return '#f6d460';
+      if ((x * 7 + y * 3) % 31 === 0) return '#3e3548';
+      return (x + y) % 2 ? '#1c1722' : '#16121c';
+    }),
+  };
+  walls = {
+    classic: mk(24, (x, y) => ((y % 12 < 1 || (y < 12 ? x % 24 === 0 : x % 24 === 12)) ? '#2a2014' : (x + y) % 7 === 0 ? '#7a6638' : '#6a5630')),
+    velvet: mk(24, (x, y) => ((y % 12 < 1 || x % 8 === 0) ? '#2a120a' : (x + y) % 9 === 0 ? '#7a3a22' : '#5a2a18')),
+    marble: mk(24, (x, y) => ((x % 24 === 0 || y % 12 === 0) ? '#8a90a2' : (x * 2 + y) % 13 === 0 ? '#e8ecf4' : '#c4c9d6')),
+    gold: mk(24, (x, y) => (y % 12 === 0 ? '#c9982e' : (x % 24 === 12 && y % 12 < 3) ? '#e8c050' : '#1c1620')),
+  };
   metalPattern = mk(20, (x, y) => ((x < 10) === (y < 10) ? '#a4acba' : '#8a92a2'));
 }
+
+// Lo que cambia de un casino a otro: el filete del borde, el color de las luces del piso y el material de las cosas.
+const THEMES = {
+  classic: { trim: GOLD, lights: [[500, 300, '140,100,255'], [1400, 300, '255,140,70'], [500, 760, '255,140,70'], [1400, 760, '140,100,255'], [950, 520, '90,210,255']], stone: '#d8d0c0', stone2: '#eee8d8' },
+  velvet: { trim: '#f0c860', lights: [[500, 300, '255,90,120'], [1400, 300, '255,200,90'], [500, 760, '255,200,90'], [1400, 760, '255,90,120'], [950, 520, '255,150,90']], stone: '#e4d8c4', stone2: '#f4ecdc' },
+  marble: { trim: '#f4dc8a', lights: [[500, 300, '190,215,255'], [1400, 300, '255,240,200'], [500, 760, '255,240,200'], [1400, 760, '190,215,255'], [950, 520, '200,230,255']], stone: '#eceff6', stone2: '#ffffff' },
+  gold: { trim: '#ffd75a', lights: [[500, 300, '255,215,100'], [1400, 300, '255,180,70'], [500, 760, '255,180,70'], [1400, 760, '255,215,100'], [950, 520, '255,225,140']], stone: '#f0c33c', stone2: '#ffe27a' },
+};
 
 // Cartas de 9 × 12 pixeles.
 const SUITS = {
@@ -664,32 +705,129 @@ function drawDuckRace(ctx, blk, tb, st) {
 
 const TABLE_DRAWERS = { bj: drawBjTable, slots: drawSlots, wheel: drawWheelWall, roulette: drawRoulette, craps: drawCraps, duck: drawDuckRace };
 
+// ─── Decoración de cada casino ──────────────────────────────────────────────
+function drawPlant(ctx, b, t) {
+  const c = { x: b.x + 20, y: b.y + 20 };
+  disc(ctx, c.x, c.y, 19, INK); disc(ctx, c.x, c.y, 17, '#8a4a2a'); disc(ctx, c.x, c.y, 11, '#5a3a22');
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + Math.sin(t * 1.2 + k) * 0.08;
+    line(ctx, c.x, c.y, c.x + Math.cos(a) * 17, c.y + Math.sin(a) * 17, 6, k % 2 ? '#2f8a3f' : '#3da34c');
+  }
+  disc(ctx, c.x, c.y, 4, '#6ac05a');
+}
+
+// Columna vista desde arriba: el fuste con sus estrías y el capitel dorado.
+function drawColumn(ctx, b, th) {
+  const cx = b.x + 20; const cy = b.y + 20;
+  disc(ctx, cx, cy, 19, INK); disc(ctx, cx, cy, 17, th.stone); disc(ctx, cx, cy, 12, th.stone2);
+  for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; line(ctx, cx + Math.cos(a) * 6, cy + Math.sin(a) * 6, cx + Math.cos(a) * 12, cy + Math.sin(a) * 12, 2, shade(th.stone, -0.25)); }
+  disc(ctx, cx, cy, 5, th.trim); disc(ctx, cx, cy, 2, '#fff6c8');
+}
+
+// Jarrón de porcelana con flores.
+function drawVase(ctx, b, t) {
+  const cx = b.x + 20; const cy = b.y + 20;
+  disc(ctx, cx, cy, 17, INK); disc(ctx, cx, cy, 15, '#3a6ab0'); disc(ctx, cx, cy, 11, '#5a8ad0');
+  for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; disc(ctx, cx + Math.cos(a) * 11, cy + Math.sin(a) * 11, 2, '#f4f0e0'); }
+  const flowers = ['#e0525a', '#f0c33c', '#f07ab8', '#f4f0e0'];
+  for (let k = 0; k < 7; k++) {
+    const a = (k / 7) * Math.PI * 2 + Math.sin(t + k) * 0.05;
+    disc(ctx, cx + Math.cos(a) * 6, cy + Math.sin(a) * 6, 3, flowers[k % 4]);
+  }
+  disc(ctx, cx, cy, 3, '#2f8a3f');
+}
+
+// Estatua sobre un pedestal: de mármol, o de oro en el último casino.
+function drawStatue(ctx, b, th) {
+  box(ctx, b.x + 2, b.y + 2, 36, 36, shade(th.stone, -0.18));
+  R(ctx, b.x + 6, b.y + 6, 28, 28, th.stone);
+  const cx = b.x + 20; const cy = b.y + 20;
+  ell(ctx, cx, cy + 3, 11, 8, shade(th.stone2, -0.12));
+  disc(ctx, cx, cy - 1, 6, th.stone2);
+  disc(ctx, cx - 2, cy - 3, 2, '#fff');
+  R(ctx, cx - 14, cy - 2, 6, 3, th.stone2); R(ctx, cx + 8, cy - 2, 6, 3, th.stone2);
+}
+
+// Fuente de piedra con agua que se mueve: ondas que se abren y gotas que salen del caño.
+function drawFountain(ctx, b, th, t) {
+  const cx = b.x + b.w / 2; const cy = b.y + b.h / 2;
+  const rx = b.w / 2; const ry = b.h / 2;
+  const k = ry / rx;
+  ell(ctx, cx, cy, rx + 2, ry + 2, INK);
+  ell(ctx, cx, cy, rx, ry, th.stone2);
+  ell(ctx, cx, cy, rx - 5, ry - 5, th.stone);
+  ell(ctx, cx, cy, rx - 9, ry - 9, '#3f86d4');
+  const rings = [0, 1, 2].map((i) => (t * 0.5 + i / 3) % 1).sort((a, c) => c - a);
+  for (const u of rings) {
+    const rr = (rx - 12) * u;
+    if (rr < 4) continue;
+    ctx.globalAlpha = 0.9 - u * 0.7;
+    ell(ctx, cx, cy, rr, rr * k, '#a8d8f8');
+    ell(ctx, cx, cy, rr - 3, Math.max(1, rr * k - 3), '#3f86d4');
+    ctx.globalAlpha = 1;
+  }
+  disc(ctx, cx, cy, 7, th.stone2); disc(ctx, cx, cy, 4, th.stone); disc(ctx, cx, cy, 2, '#fff');
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + t * 0.4;
+    const r = 9 + 14 * ((t * 1.3 + i * 0.37) % 1);
+    disc(ctx, cx + Math.cos(a) * r, cy + Math.sin(a) * r * k, 2, '#d8f0ff');
+  }
+}
+
+const DECOR_DRAWERS = {
+  plant: (ctx, b, th, t) => drawPlant(ctx, b, t), column: (ctx, b, th) => drawColumn(ctx, b, th), vase: (ctx, b, th, t) => drawVase(ctx, b, t),
+  statue: (ctx, b, th) => drawStatue(ctx, b, th), fountain: drawFountain,
+};
+
+// La pared de arriba, según el casino: cortinas de terciopelo, pilastras de mármol, o el palco VIP con su escalera.
+function drawWallDeco(ctx, sc, theme, th, t) {
+  if (theme === 'velvet') {
+    for (let x = 90; x < sc.w - 120; x += 150) {
+      for (let i = 0; i < 6; i++) R(ctx, x + i * 6, 8, 6, 50 + Math.round(Math.sin(i * 1.2) * 3), i % 2 ? '#8a1830' : '#b02444');
+      R(ctx, x - 2, 6, 40, 4, th.trim); R(ctx, x + 14, 52, 8, 8, th.trim);
+    }
+  } else if (theme === 'marble') {
+    for (let x = 100; x < sc.w - 100; x += 220) {
+      R(ctx, x - 2, 6, 24, 58, INK); R(ctx, x, 6, 20, 56, '#eceff6'); R(ctx, x + 4, 10, 4, 48, '#ffffff'); R(ctx, x + 14, 10, 4, 48, '#c4c9d6');
+      R(ctx, x - 4, 4, 28, 6, th.trim); R(ctx, x - 4, 58, 28, 6, th.trim);
+    }
+  } else if (theme === 'gold') {
+    // el palco VIP: piso oscuro, barandas con balaustres dorados y lámparas que parpadean
+    R(ctx, 60, 6, sc.w - 120, 56, '#2a2230');
+    R(ctx, 60, 6, sc.w - 120, 4, th.trim);
+    for (let x = 64; x < sc.w - 64; x += 16) R(ctx, x, 40, 4, 22, x % 48 === 0 ? '#fff0b0' : th.trim);
+    R(ctx, 60, 36, sc.w - 120, 5, th.trim); R(ctx, 60, 60, sc.w - 120, 3, '#a8802a');
+    for (let x = 220; x < sc.w - 200; x += 330) {
+      R(ctx, x, 12, 4, 26, th.trim);
+      disc(ctx, x + 2, 12, 5, (Math.floor(t * 2 + x) % 5) ? '#fff0b0' : '#f0c33c');
+    }
+    txt(ctx, 'SALON VIP', sc.w / 2, 24, 2, th.trim, INK);
+    // la escalera al palco: cada escalón más angosto que el de abajo
+    for (let i = 0; i < 6; i++) { const w = 120 - i * 10; R(ctx, 1640 + (120 - w) / 2, 16 + i * 8, w, 8, i % 2 ? '#c8a050' : '#e8c878'); R(ctx, 1640 + (120 - w) / 2, 22 + i * 8, w, 2, '#6a4a14'); }
+  }
+}
+
 function drawFloor(ctx, view, key, st) {
   const sc = SCENES[key];
   const t = st.time;
+  const theme = casinoById(sc.casino).theme;
+  const th = THEMES[theme];
   R(ctx, -40, -40, sc.w + 80, sc.h + 80, '#1c1410');
-  ctx.fillStyle = wallPattern; ctx.fillRect(0, 0, sc.w, sc.h);
+  ctx.fillStyle = walls[theme]; ctx.fillRect(0, 0, sc.w, sc.h);
   for (const a of sc.areas) {
     R(ctx, a.x - 6, a.y - 6, a.w + 12, a.h + 12, INK);
-    R(ctx, a.x - 4, a.y - 4, a.w + 8, a.h + 8, GOLD);
-    ctx.fillStyle = carpetPattern; ctx.fillRect(q(a.x), q(a.y), q(a.w), q(a.h));
+    R(ctx, a.x - 4, a.y - 4, a.w + 8, a.h + 8, th.trim);
+    ctx.fillStyle = carpets[theme]; ctx.fillRect(q(a.x), q(a.y), q(a.w), q(a.h));
   }
+  drawWallDeco(ctx, sc, theme, th, t);
   // luces de colores que se mueven por el piso (puntitos con transparencia)
-  for (const [lx, ly, c] of [[500, 300, '140,100,255'], [1400, 300, '255,140,70'], [500, 760, '255,140,70'], [1400, 760, '140,100,255'], [950, 520, '90,210,255']]) {
+  for (const [lx, ly, c] of th.lights) {
     const pulse = 0.5 + 0.5 * Math.sin(t * 1.5 + lx);
     for (let k = 4; k >= 1; k--) { ctx.globalAlpha = 0.045 + pulse * 0.02; disc(ctx, lx, ly, k * 50, `rgb(${c})`); }
     ctx.globalAlpha = 1;
   }
-  // plantas que se mecen
-  for (const b of sc.blocks.slice(TABLES.length)) {
-    const c = { x: b.x + 20, y: b.y + 20 };
-    disc(ctx, c.x, c.y, 19, INK); disc(ctx, c.x, c.y, 17, '#8a4a2a'); disc(ctx, c.x, c.y, 11, '#5a3a22');
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + Math.sin(t * 1.2 + k) * 0.08;
-      line(ctx, c.x, c.y, c.x + Math.cos(a) * 17, c.y + Math.sin(a) * 17, 6, k % 2 ? '#2f8a3f' : '#3da34c');
-    }
-    disc(ctx, c.x, c.y, 4, '#6ac05a');
-  }
+  // la decoración del casino (plantas, columnas, estatuas, fuentes)
+  for (const b of sc.decor) DECOR_DRAWERS[b.kind](ctx, b, th, t);
   // el ascensor, en la pared de la izquierda
   const d = sc.door;
   box(ctx, 20, d.y, 44, d.w, '#c8a05a');
@@ -698,7 +836,7 @@ function drawFloor(ctx, view, key, st) {
   txt(ctx, 'ASCENSOR', 42, d.y - 15, 1, '#f4e6b0');
   R(ctx, 40, d.y - 8, 4, 4, (Math.floor(t * 2) % 2) ? '#5aff7a' : '#2a7a3a');
   // las mesas y máquinas
-  TABLES.forEach((blk, i) => TABLE_DRAWERS[blk.kind](ctx, blk, st.tables[blk.id], st, i));
+  sc.tables.forEach((blk, i) => TABLE_DRAWERS[blk.kind](ctx, blk, st.tables[blk.id], st, i));
 }
 
 function drawElevatorScene(ctx, view, st) {

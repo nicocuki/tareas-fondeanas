@@ -865,7 +865,15 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.38.3 = La Timba: cuotas por día con multiplicadores y partida de 12 días
+1.38.3 = La Timba: cuotas por día con multiplicadores y partida de 12 días
 - La cuota de cada día es la plata que hay en la caja al empezarlo por un multiplicador (día 1 ×1,20 hasta día 12 ×3,70), redondeada a un entero. Lo que sobra de un día ya está en la caja, así que no se suma de nuevo.
 - La partida dura 12 días (ya no hay demo de 3). Si superan el día 12 ganan, y si no llegan a la cuota es game over.
 - Los multiplicadores están juntos en un solo archivo (quota.js), listos para cambiarlos cuando haya más datos del juego original.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.39.0 = La Timba: 4 casinos de 3 pisos cada uno, cada vez más lujosos
+- Ahora hay 12 pisos, repartidos en 4 casinos: cada casino dura 3 días (casino 1: días 1-3, casino 2: días 4-6, casino 3: días 7-9 y casino 4: días 10-12). El ascensor ofrece los 3 pisos del casino de hoy.
+- Cuanto más avanzás, más lujoso: el Casino Clásico, el Casino Terciopelo (alfombra bordó, cortinas y columnas), el Casino Mármol (baldosas, estatuas y fuentes con agua que se mueve) y el Casino Dorado (mármol negro con oro, fuente grande y un palco VIP con escalera).
+- Por ahora todos los casinos tienen los mismos 6 juegos, con un reparto distinto de mesas en cada piso. Los juegos nuevos entran más adelante.
+- Al cambiar de casino aparece un aviso, y el reloj del día muestra en qué casino estás.

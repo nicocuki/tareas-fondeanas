@@ -7,7 +7,7 @@
 //
 // Los lugares (`loc`): `wait` (la casita, la camioneta y la limusina de la sala de espera), `limo` (arriba de la
 // limusina, esperando salir), `outside` (la puerta del casino), `back` (arriba de la limusina de la puerta del
-// casino, esperando para volver a casa), `elevator` y `f1` (el piso 1; los pisos que sigan serán `f2`…). Cada
+// casino, esperando para volver a casa), `elevator` y `f1`…`f12` (los pisos de juego: 3 por casino, ver `casinos.js`). Cada
 // jugador pasa de uno a otro con `loc`, y los viajes (limusina, ascensor) los arrancan cuando están todos adentro.
 //
 // Las mesas: `room.tb[id]` existe solo mientras alguien juega ahí (cada una es de uno solo). Tiene `kind`, `by` (quién
@@ -19,8 +19,9 @@ import { RESHUFFLE_UNDER, dealerPlay, freshDeck, handValue, isNatural, payoutFor
 import {
   DUCK_PAY, SPIN_KINDS, WHEEL, betLimits, crapsStep, isSpot, raceDucks, roulettePays, slotsEval, spinRoulette, spinSlots, spinWheel, validDice,
 } from './games.js';
+import { floorOfLoc, floorsOfDay, locOfFloor } from './casinos.js';
 import { TOTAL_DAYS, quotaFor } from './quota.js';
-import { TABLE_BY_ID } from './scenes.js';
+import { FLOOR_OF_TABLE, TABLE_BY_ID } from './scenes.js';
 
 export const GAME_TYPE = 'timba';
 export const MAX_PLAYERS = 8;
@@ -44,8 +45,6 @@ export const COLORS = ['#e0525a', '#4a9be8', '#5ec46b', '#f0c33c', '#b46bf0', '#
 export const cleanName = (name) => String(name || '').trim().slice(0, 16);
 export const makeId = () => Math.random().toString(36).slice(2, 10);
 export const findPlayer = (room, id) => room?.players.find((p) => p.id === id) || null;
-export const locOfFloor = (n) => (n === 0 ? 'outside' : `f${n}`);
-export const floorOfLoc = (loc) => (/^f(\d+)$/.exec(loc) ? Number(/^f(\d+)$/.exec(loc)[1]) : null);
 
 
 function newPlayer(id, name, avatar, color) {
@@ -61,7 +60,6 @@ export function newRoom(hostId, hostName, avatar, now = Date.now()) {
     run: 0,
     money: START_MONEY,
     tickets: START_TICKETS,
-    floors: 1,
     day: { n: 1, quota: START_QUOTA, endsAt: 0, over: false, last: null },
     elev: { floor: 0 },
     trip: null,
@@ -76,7 +74,7 @@ const freeColor = (room) => COLORS.find((c) => !room.players.some((p) => p.color
 
 function resetRun(next) {
   Object.assign(next, {
-    run: (next.run || 0) + 1, money: START_MONEY, tickets: START_TICKETS, floors: 1, trip: null,
+    run: (next.run || 0) + 1, money: START_MONEY, tickets: START_TICKETS, trip: null,
     day: { n: 1, quota: START_QUOTA, endsAt: 0, over: false, last: null }, elev: { floor: 0 }, tb: {}, net: {},
   });
   for (const p of next.players) p.loc = 'wait';
@@ -256,7 +254,7 @@ export function applyAction(room, action, ctx = {}) {
     case 'floor': {
       const to = action.to;
       if (!playing || !me || next.trip || !allAt(next, 'elevator')) return null;
-      if (!Number.isInteger(to) || to < 0 || to > next.floors || to === next.elev.floor) return null;
+      if (!Number.isInteger(to) || (to !== 0 && !floorsOfDay(next.day.n).includes(to)) || to === next.elev.floor) return null; // solo los 3 pisos del casino de hoy
       if (next.day.over && to !== 0) return null;
       if (!next.day.endsAt && to > 0) next.day.endsAt = now + DAY_MS; // el día arranca con el primer viaje a un piso de juego
       startTrip(next, 'elev', to, now);
@@ -295,7 +293,7 @@ export function applyAction(room, action, ctx = {}) {
       } else if (next.day.endsAt && !next.day.over && now >= next.day.endsAt) {
         closeTables(next, now, rand);
         next.day.over = true;
-        for (const p of next.players) if (p.loc === 'f1') p.loc = 'elevator'; // los que siguen adentro vuelven al ascensor
+        for (const p of next.players) if (floorOfLoc(p.loc) !== null) p.loc = 'elevator'; // los que siguen adentro vuelven al ascensor
       } else return null;
       break;
     }
@@ -303,7 +301,7 @@ export function applyAction(room, action, ctx = {}) {
     // Sentarse en una mesa o máquina: es de uno solo, así que si hay alguien jugando está ocupada.
     case 'sit': {
       const spot = TABLE_BY_ID[action.table];
-      if (!playing || !me || !spot || me.loc !== 'f1' || next.day.over) return null;
+      if (!playing || !me || !spot || me.loc !== locOfFloor(FLOOR_OF_TABLE[spot.id]) || next.day.over) return null;
       const [mine] = tableOfPlayer(next, me.id);
       if (mine === spot.id) break;
       if (mine || next.tb[spot.id]) return null;
