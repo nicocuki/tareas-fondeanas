@@ -912,5 +912,10 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.44.1 = Esperar en la sala si la partida ya empezó
+1.44.1 = Esperar en la sala si la partida ya empezó
 - En los juegos que no se pueden mirar, si entrás a una sala pública en curso podés esperar adentro: ves los jugadores y el cartel «Jugando», y cuando termina la partida y vuelven a la sala de espera, entrás solo para jugar.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST OCULTA 1.44.2 = Avisos para todos
+- Se puede mandar un aviso que aparece arriba en el medio de la pantalla de todos, por unos segundos.

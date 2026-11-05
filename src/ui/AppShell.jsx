@@ -4,6 +4,7 @@ import { MENU_GAMES, gameById } from './games.js';
 import { copyInvite, fullscreenElement, syncProfileName, toggleFullscreen, useCurrentRoom, useProfile, useToast } from './store.js';
 import SideMenu from './SideMenu.jsx';
 import { SuggestionsDialog } from './Suggestions.jsx';
+import Notice from './Notice.jsx';
 import { useAdminKey } from './admin.js';
 
 export function Logo({ size = 34 }) {
@@ -143,6 +144,7 @@ export default function AppShell({ activeGame, onNavigate, children }) {
         games={MENU_GAMES}
       />
 
+      <Notice />
       {suggest && <SuggestionsDialog onClose={() => setSuggest(false)} />}
 
       <div className="tf-toast-wrap" aria-live="polite">

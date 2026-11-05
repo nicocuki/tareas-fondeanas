@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adminListing, handleAdmin, isAdminKey } from '../worker/admin.js';
+import { adminListing, cleanNotice, handleAdmin, isAdminKey } from '../worker/admin.js';
 import { isAdminProfile, isAdminTrigger } from '../src/ui/admin.js';
 
 const room = (extra = {}) => JSON.stringify({ gameType: 'teg', hostId: 'a', phase: 'lobby', players: [{ id: 'a', name: 'Nico' }, { id: 'b', name: 'Juli' }], ...extra });
@@ -37,7 +37,7 @@ function fakeEnv() {
     calls,
     ADMIN_CLAVE: 'k',
     BUZON: ns(() => ({ listar: async () => [{ id: 'm:1', text: 'hola' }], borrar: async (id) => calls.push(['borrar', id]) })),
-    DIRECTORIO: ns(() => ({ todas: async () => [{ code: 'ABCD' }] })),
+    DIRECTORIO: ns(() => ({ todas: async () => [{ code: 'ABCD' }], avisar: async (text, ms) => calls.push(['avisar', text, ms]) })),
     SALA: ns((code) => ({ cerrar: async () => calls.push(['cerrar', code]) })),
   };
 }
@@ -56,4 +56,17 @@ test('admin: las rutas hacen lo suyo y con otra clave todo da 404', async () => 
   assert.equal((await call(env, 'POST', '/sugerencias/borrar', { body: { id: 'm:1' } })).status, 200);
   assert.equal((await call(env, 'POST', '/sugerencias/borrar', { body: { id: 'r:ip' } })).status, 400, 'no se borran los contadores de envíos');
   assert.deepEqual(env.calls, [['cerrar', 'WXYZ'], ['borrar', 'm:1']]);
+});
+
+test('admin: el aviso se limpia (140 letras, entre 3 y 60 segundos) y se manda al directorio', async () => {
+  assert.deepEqual(cleanNotice({ text: '  hola   mundo ', seconds: 20 }), { text: 'hola mundo', seconds: 20 });
+  assert.equal(cleanNotice({ text: 'x'.repeat(500) }).text.length, 140);
+  assert.equal(cleanNotice({ text: 'a' }).seconds, 10);
+  assert.equal(cleanNotice({ text: 'a', seconds: 1 }).seconds, 3);
+  assert.equal(cleanNotice({ text: 'a', seconds: 999 }).seconds, 60);
+  const env = fakeEnv();
+  assert.equal((await call(env, 'POST', '/aviso', { clave: 'mal', body: { text: 'hola' } })).status, 404);
+  assert.equal((await call(env, 'POST', '/aviso', { body: { text: '¡Hola a todos!', seconds: 5 } })).status, 200);
+  assert.equal((await call(env, 'POST', '/aviso', { body: {} })).status, 200, 'sin texto saca el aviso');
+  assert.deepEqual(env.calls.filter((c) => c[0] === 'avisar'), [['avisar', '¡Hola a todos!', 5000], ['avisar', '', 10000]]);
 });

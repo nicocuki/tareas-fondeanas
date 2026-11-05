@@ -347,6 +347,7 @@ por código, y las sugerencias para leerlas, copiarlas o borrarlas. En la portad
 - **Quiénes están en cada sala**: `adminListing` suma `who` (`adminPlayers`: nombre, avatar, `h` anfitrión, `b` bot, `x` ya no juega; hasta 30), y el panel los muestra debajo de cada sala. Solo viaja por las rutas de admin: la lista pública de la portada no lleva nombres.
 - **Cerrar** es la RPC `Sala.cerrar()`, que hace lo mismo que el cierre por inactividad (`shutdown`): saca la sala de la portada y
   de la lista, cierra los WebSocket con 4000 y borra todo. Las pantallas que estaban adentro muestran «Esa sala ya no existe».
+- **Avisar a todos** (`Announce` en `AdminPanel.jsx`, `POST /api/admin/aviso` con `{ text, seconds }`, `cleanNotice` en `admin.js`: hasta 140 letras y de 3 a 60 s): el Directorio guarda el último aviso (`avisar`) y lo manda por `/api/aviso` (WebSocket con la etiqueta `aviso`; los de la portada llevan `salas`) a todas las pantallas, que lo muestran arriba en el medio (`Notice.jsx`, montado en `AppShell`) con lo que le queda (`left`). El que se conecta con un aviso todavía a la vista lo ve también. Sin texto, saca el aviso.
 - Para probar en local: `npx wrangler dev --var ADMIN_CLAVE:prueba`.
 - **No lo cuentes en `updates`**: su entrada va con `OCULTA` (`LATEST OCULTA 1.23.0 = …`), que cuenta para la versión pero no sale
   en Novedades ni en «Última novedad» (pedido de Nico: ahí había quedado escrito cómo hacerse admin).

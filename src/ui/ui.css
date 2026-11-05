@@ -447,3 +447,11 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-spectator { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 40; padding: 6px 16px; border-radius: 999px; background: rgba(20, 16, 28, 0.88); color: #fff; font: 600 13px Inter, sans-serif; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
 .tf-waiting { max-width: 520px; margin: 0 auto; padding: 48px 16px; text-align: center; }
 .tf-waiting h1 { margin: 0 0 16px; font-size: 24px; }
+
+/* El aviso del admin: arriba en el medio, encima de todo */
+.tf-notice { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9999; max-width: min(92vw, 640px); padding: 12px 22px; border-radius: 14px; background: #ffd23f; color: #1b1530; border: 3px solid #1b1530; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.35); font: 800 clamp(15px, 2.4vw, 20px) Inter, system-ui, sans-serif; text-align: center; overflow-wrap: anywhere; pointer-events: none; animation: tf-notice-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1); }
+@keyframes tf-notice-in { from { transform: translate(-50%, -140%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .tf-notice { animation: none; } }
+.tf-admin-notice { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tf-admin-notice > .tf-input:first-child { flex: 1 1 280px; }
+.tf-admin-secs { display: flex; gap: 6px; align-items: center; color: var(--text-2); }

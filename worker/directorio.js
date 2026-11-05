@@ -8,11 +8,13 @@ export class Directorio extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.entries = new Map();
+    this.notice = null; // el último aviso del admin: { id, text, until }
     this.all = new Map(); // todas las salas con gente, para el modo admin (`a:` en disco)
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     ctx.blockConcurrencyWhile(async () => {
       for (const [key, value] of await ctx.storage.list({ prefix: 's:' })) this.entries.set(key.slice(2), value);
       for (const [key, value] of await ctx.storage.list({ prefix: 'a:' })) this.all.set(key.slice(2), value);
+      this.notice = (await ctx.storage.get('aviso')) || null;
     });
   }
 
@@ -37,8 +39,23 @@ export class Directorio extends DurableObject {
       await this.ctx.storage.delete('s:' + code);
     }
     const text = this.message();
-    for (const ws of this.ctx.getWebSockets()) {
+    for (const ws of this.ctx.getWebSockets('salas')) {
       try { ws.send(text); } catch {}
+    }
+  }
+
+  // El aviso que ven todos (`/api/aviso`): `left` es lo que le queda a la vista, así cada pantalla lo cuenta con su reloj.
+  noticeMessage() {
+    const left = this.notice ? this.notice.until - Date.now() : 0;
+    return JSON.stringify({ t: 'aviso', m: this.notice && left > 0 ? { id: this.notice.id, text: this.notice.text, left } : null });
+  }
+
+  async avisar(text, ms) {
+    this.notice = text ? { id: crypto.randomUUID(), text, until: Date.now() + ms } : null;
+    await this.ctx.storage.put('aviso', this.notice);
+    const message = this.noticeMessage();
+    for (const ws of this.ctx.getWebSockets('aviso')) {
+      try { ws.send(message); } catch {}
     }
   }
 
@@ -61,12 +78,14 @@ export class Directorio extends DurableObject {
   }
 
   async fetch(request) {
+    const notice = new URL(request.url).pathname === '/api/aviso';
     if (request.headers.get('Upgrade') !== 'websocket') {
+      if (notice) return new Response(JSON.stringify({ error: 'Se esperaba un WebSocket.' }), { status: 426, headers: { 'content-type': 'application/json' } });
       return new Response(JSON.stringify(this.list()), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
     }
     const [client, server] = Object.values(new WebSocketPair());
-    this.ctx.acceptWebSocket(server);
-    server.send(this.message());
+    this.ctx.acceptWebSocket(server, [notice ? 'aviso' : 'salas']);
+    server.send(notice ? this.noticeMessage() : this.message());
     return new Response(null, { status: 101, webSocket: client });
   }
 

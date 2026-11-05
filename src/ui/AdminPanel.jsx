@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { gameById } from './games.js';
 import { showToast, useProfile } from './store.js';
-import { adminFetch, closeRoom, isAdminProfile, setAdminKey, useAdminKey } from './admin.js';
+import { adminFetch, closeRoom, sendNotice, isAdminProfile, setAdminKey, useAdminKey } from './admin.js';
 import { cleanCode } from './rooms.js';
 
 const REFRESH_MS = 10000;
@@ -131,6 +131,34 @@ function Suggestions({ list, onReload }) {
   );
 }
 
+// Un aviso que aparece arriba en el medio en la pantalla de todos, por unos segundos.
+function Announce() {
+  const [text, setText] = useState('');
+  const [seconds, setSeconds] = useState(10);
+  const [busy, setBusy] = useState(false);
+  async function send(e, clear = false) {
+    e?.preventDefault();
+    if (!clear && !text.trim()) return;
+    setBusy(true);
+    try {
+      await sendNotice(clear ? '' : text, seconds);
+      showToast(clear ? 'Aviso sacado' : 'Aviso enviado a todos 📣');
+      if (!clear) setText('');
+    } catch (err) { showToast(err.message); } finally { setBusy(false); }
+  }
+  return (
+    <section className="tf-admin-card" aria-labelledby="tf-admin-aviso">
+      <div className="tf-admin-head"><h2 id="tf-admin-aviso">Avisar a todos 📣</h2></div>
+      <form className="tf-admin-notice" onSubmit={send} data-admin-notice>
+        <input className="tf-input" value={text} maxLength={140} placeholder="Un mensaje que aparece arriba en la pantalla de todos" onChange={(e) => setText(e.target.value)} />
+        <label className="tf-admin-secs">Dura <select className="tf-input" value={seconds} onChange={(e) => setSeconds(Number(e.target.value))}>{[5, 10, 20, 30, 60].map((s) => <option key={s} value={s}>{s} s</option>)}</select></label>
+        <button type="submit" className="tf-btn tf-btn-primary" disabled={busy || !text.trim()}>Enviar</button>
+        <button type="button" className="tf-btn tf-btn-soft" disabled={busy} onClick={(e) => send(e, true)}>Sacar el aviso</button>
+      </form>
+    </section>
+  );
+}
+
 export default function AdminPanel({ onNavigate }) {
   const profile = useProfile();
   const key = useAdminKey();
@@ -188,6 +216,7 @@ export default function AdminPanel({ onNavigate }) {
             <li><strong>{data.suggestions.length}</strong> sugerencias</li>
           </ul>
           {data.error && <p className="tf-join-error" role="alert">{data.error}</p>}
+          <Announce />
           <Rooms rooms={data.rooms} onReload={reload} onNavigate={onNavigate} />
           <Suggestions list={data.suggestions} onReload={reload} />
         </>

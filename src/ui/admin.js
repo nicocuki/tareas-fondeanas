@@ -36,4 +36,6 @@ export async function adminFetch(path, { body, clave = key } = {}) {
   return data;
 }
 
+// Manda un aviso que aparece arriba en el medio en todas las pantallas (sin texto, saca el que esté).
+export const sendNotice = (text, seconds) => adminFetch('/aviso', { body: { text, seconds } });
 export const closeRoom = (code) => adminFetch('/salas/cerrar', { body: { code } });

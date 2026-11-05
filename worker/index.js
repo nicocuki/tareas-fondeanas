@@ -3,6 +3,7 @@
 //   /api/sala/ABCD     → WebSocket con el Durable Object de esa sala
 //   /api/salas         → salas públicas (WebSocket con la lista en vivo, o JSON)
 //   /api/photon/…      → puente a Photon para Mario vs Luigi (ver photon.js)
+//   /api/aviso         → el aviso del admin para todas las pantallas (WebSocket; ver Notice.jsx)
 //   /api/sugerencias   → buzón de sugerencias de la portada (POST las manda a Discord; ver sugerencias.js)
 //   /api/admin/…      → modo admin, con la clave ADMIN_CLAVE (ver admin.js)
 //   /api/photon-auth   → autenticación de nuestra app de Photon (deja pasar a todos)
@@ -24,7 +25,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/hora') return json({ now: Date.now() });
-    if (url.pathname === '/api/salas') return env.DIRECTORIO.get(env.DIRECTORIO.idFromName('portada')).fetch(request);
+    if (url.pathname === '/api/salas' || url.pathname === '/api/aviso') return env.DIRECTORIO.get(env.DIRECTORIO.idFromName('portada')).fetch(request);
     const sala = url.pathname.match(/^\/api\/sala\/([A-Z]{4})$/);
     if (sala) {
       if (request.headers.get('Upgrade') !== 'websocket') return json({ error: 'Se esperaba un WebSocket.' }, 426);

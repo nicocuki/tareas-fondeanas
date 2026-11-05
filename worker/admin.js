@@ -51,6 +51,16 @@ export function adminListing(tree, code, connections) {
   };
 }
 
+export const NOTICE_MAX = 140;
+export const NOTICE_SECONDS = [3, 60]; // cuánto puede durar a la vista
+// El aviso que mandó el admin: el texto sin espacios de más (hasta 140 letras) y los segundos que dura (10 si no dice).
+export function cleanNotice(input) {
+  const text = String(input?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, NOTICE_MAX);
+  const secs = Number(input?.seconds);
+  const seconds = Number.isFinite(secs) && input?.seconds != null ? Math.max(NOTICE_SECONDS[0], Math.min(NOTICE_SECONDS[1], Math.round(secs))) : 10;
+  return { text, seconds };
+}
+
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
   headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
@@ -73,6 +83,12 @@ export async function handleAdmin(request, env, url) {
     if (typeof id !== 'string' || !id.startsWith('m:')) return json({ error: 'Falta cuál borrar.' }, 400);
     await buzon().borrar(id);
     return json({ ok: true });
+  }
+  // Un aviso para todas las pantallas (sin texto, saca el que esté a la vista).
+  if (route === 'POST /aviso') {
+    const { text, seconds } = cleanNotice(await body(request));
+    await directorio().avisar(text, seconds * 1000);
+    return json({ ok: true, text, seconds });
   }
   if (route === 'GET /salas') return json(await directorio().todas());
   if (route === 'POST /salas/cerrar') {
