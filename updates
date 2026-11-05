@@ -956,5 +956,10 @@ OCULTA 1.44.2 = Avisos para todos
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.47.1 = Monopoly: tu ficha más discreta
+1.47.1 = Monopoly: tu ficha más discreta
 - Tu ficha vuelve a tener el mismo tamaño que las demás y se marca solo con un aro chico que late. Se sacó el cartelito «VOS».
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.47.2 = Monopoly: Edesur y AySA
+- Las dos compañías del tablero ahora se llaman Edesur (luz) y AySA (agua).
