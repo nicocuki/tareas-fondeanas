@@ -8,7 +8,7 @@ import {
   DAY_MS, ELEV_MS, HOME_MS, LIMO_MS, RESULT_MS, ROULETTE_MS, START_MONEY, WHEEL_SPIN_MS, applyAction, findPlayer, fmtMoney, newRoom,
 } from '../src/timba/game.js';
 import { QUOTA_MULTIPLIERS, TOTAL_DAYS, quotaFor } from '../src/timba/quota.js';
-import { CASINOS, FLOOR_COUNT, casinoOfDay, casinoOfFloor, floorOfLoc, floorsOfDay, locOfFloor } from '../src/timba/casinos.js';
+import { FLOOR_COUNT, FLOOR_LOOKS, floorOfLoc, floorsOfDay, locOfFloor, lookOfFloor, topFloor } from '../src/timba/casinos.js';
 import {
   DECOR, FLOOR_OF_TABLE, MAX_BIG_PER_ROW, SCENES, TABLES, canStand, doorFor, floorTables, nearby, spawnPoint, standAt, stepSide, stepTop,
 } from '../src/timba/scenes.js';
@@ -706,25 +706,24 @@ test('timba: los límites de cada juego: los de tirar muchas veces son más bajo
 });
 
 // ─── Casinos y pisos ─────────────────────────────────────────────────────────
-test('timba: cada casino dura 3 días y tiene 3 pisos (días 1-3, 4-6, 7-9 y 10-12)', () => {
-  assert.equal(CASINOS.length, 4);
-  assert.equal(FLOOR_COUNT, 12);
-  assert.deepEqual([1, 3, 4, 6, 7, 9, 10, 12].map(casinoOfDay), [1, 1, 2, 2, 3, 3, 4, 4]);
-  assert.deepEqual([1, 3, 4, 6, 7, 9, 10, 12].map(casinoOfFloor), [1, 1, 2, 2, 3, 3, 4, 4]);
-  assert.deepEqual([1, 4, 7, 10].map(floorsOfDay), [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]]);
+test('timba: un solo casino de 4 pisos que se abren de a uno cada 3 días (1-3, 4-6, 7-9 y 10-12)', () => {
+  assert.equal(FLOOR_LOOKS.length, 4);
+  assert.equal(FLOOR_COUNT, 4);
+  assert.deepEqual([1, 3, 4, 6, 7, 9, 10, 12].map(topFloor), [1, 1, 2, 2, 3, 3, 4, 4]);
+  assert.deepEqual([1, 4, 7, 10].map(floorsOfDay), [[1], [1, 2], [1, 2, 3], [1, 2, 3, 4]]);
   assert.equal(locOfFloor(0), 'outside');
-  assert.equal(locOfFloor(9), 'f9');
-  assert.equal(floorOfLoc('f12'), 12);
+  assert.equal(locOfFloor(4), 'f4');
+  assert.equal(floorOfLoc('f4'), 4);
   assert.equal(floorOfLoc('outside'), null);
   assert.equal(floorOfLoc('elevator'), null);
 });
 
-test('timba: cuanto más avanzás más lujoso: cada casino tiene su decoración y la de arriba es mayor', () => {
-  assert.deepEqual(CASINOS.map((c) => c.theme), ['classic', 'velvet', 'marble', 'gold']);
+test('timba: cuanto más avanzás más lujoso: cada piso tiene su decoración y la de arriba es mayor', () => {
+  assert.deepEqual(FLOOR_LOOKS.map((c) => c.theme), ['classic', 'velvet', 'marble', 'gold']);
   const fountains = (c) => DECOR[c].filter((d) => d.kind === 'fountain').length;
-  assert.deepEqual([1, 2, 3, 4].map(fountains), [0, 0, 2, 1], 'las fuentes llegan en el casino 3');
-  assert.ok(DECOR[4].some((d) => d.kind === 'fountain' && d.w * d.h > 120 * 90), 'la del casino 4 es la más grande');
-  for (let n = 1; n <= FLOOR_COUNT; n++) assert.equal(SCENES[`f${n}`].casino, casinoOfFloor(n));
+  assert.deepEqual([1, 2, 3, 4].map(fountains), [0, 0, 2, 1], 'las fuentes llegan en el piso 3');
+  assert.ok(DECOR[4].some((d) => d.kind === 'fountain' && d.w * d.h > 120 * 90), 'la del piso 4 es la más grande');
+  for (let n = 1; n <= FLOOR_COUNT; n++) assert.equal(lookOfFloor(SCENES[`f${n}`].look).id, n);
 });
 
 // Lleva a todos a un piso de juego de hoy (ya con la limusina hecha y el ascensor arriba).
@@ -738,44 +737,40 @@ function atFloor(room, floor) {
   return r;
 }
 
-test('timba: el ascensor ofrece los 3 pisos del casino de hoy y las mesas son del piso donde están', () => {
+test('timba: el ascensor ofrece solo los pisos ganados y las mesas son del piso donde están', () => {
   let room = started(1);
   room = act(room, 'a', { type: 'loc', to: 'limo' });
   clock += LIMO_MS + 10;
   room = act(room, 'a', { type: 'tick' }, clock);
   room = act(room, 'a', { type: 'loc', to: 'elevator' });
-  for (const to of [4, 7, 10, 12, 13, -1]) assert.equal(act(room, 'a', { type: 'floor', to }), null, `el piso ${to} no es del casino de hoy`);
-  room = atFloor(room, 3);
-  assert.equal(findPlayer(room, 'a').loc, 'f3');
-  const here = floorTables(3)[0];
-  const other = floorTables(2)[0];
-  assert.equal(act(room, 'a', { type: 'sit', table: other.id }), null, 'una mesa de otro piso no se usa');
-  assert.ok(act(room, 'a', { type: 'sit', table: here.id }), 'una del piso 3 sí');
+  for (const to of [2, 3, 4, 5, -1]) assert.equal(act(room, 'a', { type: 'floor', to }), null, `el piso ${to} todavía no se ganó`);
+  room = atFloor(room, 1);
+  assert.equal(findPlayer(room, 'a').loc, 'f1');
+  assert.ok(act(room, 'a', { type: 'sit', table: floorTables(1)[0].id }));
+  assert.equal(act(room, 'a', { type: 'sit', table: floorTables(2)[0].id }), null, 'una mesa de otro piso no se usa');
 });
 
-test('timba: el día siguiente (casino 2) ofrece los pisos 4 a 6 y no los del casino anterior', () => {
+test('timba: los días 4 a 6 se suma el piso 2, del 7 al 9 el 3 y del 10 al 12 el 4', () => {
   let room = finishDay(3, 5000);
   assert.equal(room.day.n, 4);
   for (const id of ids(room)) room = act(room, id, { type: 'loc', to: 'limo' });
   clock += LIMO_MS + 10;
   room = act(room, 'a', { type: 'tick' }, clock);
   for (const id of ids(room)) room = act(room, id, { type: 'loc', to: 'elevator' });
-  assert.equal(act(room, 'a', { type: 'floor', to: 1 }), null, 'el piso 1 ya es del casino anterior');
-  assert.equal(act(room, 'a', { type: 'floor', to: 3 }), null);
-  const up = act(room, 'a', { type: 'floor', to: 5 });
-  assert.equal(up.trip.to, 5);
-  room = atFloor(room, 6);
-  assert.equal(findPlayer(room, 'a').loc, 'f6');
-  const t = floorTables(6)[0];
-  assert.ok(act(room, 'a', { type: 'sit', table: t.id }));
+  assert.equal(act(room, 'a', { type: 'floor', to: 3 }), null, 'el 3 todavía no');
+  assert.ok(act(room, 'a', { type: 'floor', to: 1 }), 'el 1 sigue abierto');
+  assert.equal(act(room, 'a', { type: 'floor', to: 2 }).trip.to, 2);
+  room = atFloor(room, 2);
+  assert.equal(findPlayer(room, 'a').loc, 'f2');
+  assert.ok(act(room, 'a', { type: 'sit', table: floorTables(2)[0].id }));
 });
 
-test('timba: al terminar el día los que están en un piso de cualquier casino vuelven al ascensor', () => {
+test('timba: al terminar el día los que están en un piso vuelven al ascensor', () => {
   let room = started(1);
   room = act(room, 'a', { type: 'loc', to: 'limo' });
   clock += LIMO_MS + 10;
   room = act(room, 'a', { type: 'tick' }, clock);
-  room = atFloor(room, 2);
+  room = atFloor(room, 1);
   room = act(room, 'a', { type: 'tick' }, room.day.endsAt);
   assert.equal(room.day.over, true);
   assert.equal(findPlayer(room, 'a').loc, 'elevator');

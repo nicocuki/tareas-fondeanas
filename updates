@@ -893,6 +893,12 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.42.0 = La Timba: Mayor o menor y Buscaminas
+1.42.0 = La Timba: Mayor o menor y Buscaminas
 - Dos juegos más del casino 2 en adelante: Mayor o menor (sale una carta y adivinás si la que sigue es mayor o menor; cada acierto multiplica y podés retirar) y Buscaminas (una grilla de 5 × 5 con 1, 3, 5 o 10 minas: cada casillero seguro sube el multiplicador y una mina se lleva todo).
 - Con esto, del casino 2 en adelante están todos los juegos que se entendieron de la wiki. Los que faltan explicar quedaron anotados en docs/TIMBA_PENDIENTES.md.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.43.0 = La Timba: un solo casino de 4 pisos que se abren con los días
+- Hay un solo casino con 4 pisos. Los días 1 a 3 solo está el piso 1; del 4 al 6 se suma el piso 2; del 7 al 9, el 3; y del 10 al 12, el 4. Los pisos ganados quedan abiertos.
+- Cada piso se ve más lujoso que el anterior (clásico, terciopelo, mármol y dorado). El piso 1 tiene los 6 juegos de siempre y del piso 2 en adelante se suman los nuevos.

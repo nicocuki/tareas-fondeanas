@@ -4,7 +4,7 @@
 //
 // Un «pixel» del juego son `Q` unidades del mundo y el canvas se dibuja con escala 1/Q: todo pasa por `R` (rectángulo
 // pegado a la grilla), `disc`, `ell`, `tri`, `line` y el texto de 3 × 5 (`txt`), así nunca queda un borde suavizado.
-import { casinoById } from './casinos.js';
+import { lookOfFloor } from './casinos.js';
 import { GROUND, SCENES } from './scenes.js';
 import { isRed, rankOf } from './bj.js';
 
@@ -968,7 +968,7 @@ function drawWallDeco(ctx, sc, theme, th, t) {
 function drawFloor(ctx, view, key, st) {
   const sc = SCENES[key];
   const t = st.time;
-  const theme = casinoById(sc.casino).theme;
+  const theme = lookOfFloor(sc.look).theme;
   const th = THEMES[theme];
   R(ctx, -40, -40, sc.w + 80, sc.h + 80, '#1c1410');
   ctx.fillStyle = walls[theme]; ctx.fillRect(0, 0, sc.w, sc.h);

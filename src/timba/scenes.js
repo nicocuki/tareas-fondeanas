@@ -4,7 +4,7 @@
 // Hay dos clases de escena:
 // - `side` (la sala de espera y la puerta del casino): vista de costado, solo se camina de izquierda a derecha.
 // - `top` (el ascensor y los pisos): vista desde arriba, se camina para todos lados.
-import { FLOOR_COUNT, casinoOfFloor, floorOfLoc, locOfFloor } from './casinos.js';
+import { FLOOR_COUNT, floorOfLoc, locOfFloor } from './casinos.js';
 import { NAMES } from './games.js';
 
 export const SPEED_SIDE = 190;
@@ -27,7 +27,7 @@ const BIG_ORDER = ['bj', 'roulette', 'craps', 'duck', 'baccarat', 'penguin', 'cr
 const ROW0 = 260;                  // la primera fila de mesas grandes…
 const ROW_GAP = 380;               // …y lo que baja cada fila siguiente
 const BIG_X0 = 200;                // las mesas de una fila se reparten, parejas, desde acá…
-const wideOf = (casino) => (casino === 1 ? 1900 : 2500); // el casino 1 es una sala chica; del 2 en adelante son más grandes
+const wideOf = (floor) => (floor === 1 ? 1900 : 2500); // el piso 1 es una sala chica; del 2 en adelante son más grandes
 const bigX1 = (w) => w - 140;      // …hasta acá
 export const MAX_BIG_PER_ROW = 6;  // en la sala chica
 const maxPerRow = (w) => (w <= 1900 ? MAX_BIG_PER_ROW : 9);
@@ -49,8 +49,8 @@ const FLOOR1 = [
   { id: 'duck1', kind: 'duck', x: 1560, y: 250 },
   { id: 'duck2', kind: 'duck', x: 1560, y: 640 },
 ];
-// Cuántas de cada una en los otros pisos: el 1.º, 2.º y 3.º piso de cada casino tienen su propio reparto. Del casino 2 en
-// adelante se suman los juegos nuevos (`NEW_MIXES`).
+// Cuántas de cada una en los otros pisos (el 2.º, 3.º y 4.º; el 4.º repite el reparto del 1.º). Del piso 2 en adelante se
+// suman los juegos nuevos (`NEW_MIXES`).
 const MIXES = [
   { slots: 4, bj: 4, wheel: 2, roulette: 2, craps: 2, duck: 2 },
   { slots: 6, bj: 3, wheel: 3, roulette: 3, craps: 2, duck: 2 },
@@ -61,13 +61,12 @@ const NEW_MIXES = [
   { crash: 2, penguin: 1, keno: 1, plinko: 2, mwheel: 1, baccarat: 2, hilo: 2, mines: 1 },
   { crash: 1, penguin: 2, keno: 2, plinko: 1, mwheel: 2, baccarat: 1, hilo: 1, mines: 2 },
 ];
-const mixFor = (n) => ({ ...MIXES[(n - 1) % 3], ...(casinoOfFloor(n) > 1 ? NEW_MIXES[(n - 1) % 3] : {}) });
+const mixFor = (n) => ({ ...MIXES[(n - 1) % 3], ...(n > 1 ? NEW_MIXES[(n - 1) % 3] : {}) });
 
 // Reparte las máquinas chicas en la pared de arriba y las mesas grandes en filas, parejas y sin pisarse. Devuelve las mesas
 // y el tamaño de la sala (más filas, más alta).
 function packFloor(n, counts) {
-  const casino = casinoOfFloor(n);
-  const w = wideOf(casino);
+  const w = wideOf(n);
   const out = [];
   const add = (kind, i, x, y) => out.push({ id: `f${n}-${kind}${i}`, kind, x, y });
   let x = 240;
@@ -100,7 +99,7 @@ const FLOORS = Object.fromEntries(Array.from({ length: FLOOR_COUNT }, (_, i) => 
   const f = n === 1 ? { tables: FLOOR1, w: 1900, h: 1000 } : packFloor(n, mixFor(n));
   return [n, { tables: sized(f.tables), w: f.w, h: f.h }];
 }));
-// Las mesas de cada piso (1 a 12) y cuánto mide cada sala.
+// Las mesas de cada piso (1 a 4) y cuánto mide cada sala.
 export const FLOOR_TABLES = Object.fromEntries(Object.entries(FLOORS).map(([n, f]) => [n, f.tables]));
 export const FLOOR_DIMS = Object.fromEntries(Object.entries(FLOORS).map(([n, f]) => [n, { w: f.w, h: f.h }]));
 export const floorTables = (n) => FLOOR_TABLES[n] || [];
@@ -152,12 +151,11 @@ export const DECOR = Object.fromEntries([1, 2, 3, 4].map((c) => [c, decorFor(c, 
 
 // Un piso de juego: la sala con el ascensor en la pared de la izquierda, las mesas del piso y la decoración de su casino.
 function floorScene(n) {
-  const casino = casinoOfFloor(n);
   const { w, h } = FLOOR_DIMS[n];
   const tables = floorTables(n);
-  const decor = decorFor(casino, w, h);
+  const decor = decorFor(n, w, h);
   return {
-    kind: 'top', w, h, casino, floor: n, tables, decor,
+    kind: 'top', w, h, look: n, floor: n, tables, decor,
     areas: [{ x: 60, y: 70, w: w - 120, h: h - 120 }, { x: 20, y: h / 2 - 60, w: 44, h: 120 }],
     blocks: [...tables, ...decor].map(({ x, y, w: bw, h: bh }) => ({ x, y, w: bw, h: bh })),
     door: { x: 20, y: h / 2 - 60, w: 120 },     // el ascensor, en la pared de la izquierda

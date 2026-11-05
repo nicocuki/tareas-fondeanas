@@ -25,7 +25,7 @@ import RoulettePanel from './RoulettePanel.jsx';
 import SlotsPanel from './SlotsPanel.jsx';
 import WheelPanel from './WheelPanel.jsx';
 import './tbgame.css';
-import { casinoById, casinoOfDay, floorOfLoc, floorsOfDay, locOfFloor } from './casinos.js';
+import { floorOfLoc, topFloor, floorsOfDay, locOfFloor } from './casinos.js';
 import { TOTAL_DAYS } from './quota.js';
 import { DAY_MS, allAt, dayLeftMs, findPlayer, fmtClock, fmtMoney, tableOfPlayer } from './game.js';
 
@@ -375,7 +375,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
 
       {showDay && (
         <div className={`tbg-day tbg-panel${room.day.over ? ' is-over' : left < 30000 ? ' is-low' : ''}`}>
-          <span className="tbg-day-n">DÍA {room.day.n} · {casinoById(casinoOfDay(room.day.n)).name.toUpperCase()}</span>
+          <span className="tbg-day-n">DÍA {room.day.n}</span>
           <strong className="tbg-day-time">{room.day.over ? 'TERMINÓ' : fmtClock(left)}</strong>
           {!room.day.over && <div className="tbg-day-bar"><i style={{ width: `${Math.max(0, Math.min(100, (left / DAY_MS) * 100))}%` }} /></div>}
         </div>
@@ -423,7 +423,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
         <div className="tbg-modal tbg-small" role="dialog" aria-label="Día superado">
           <h2 className="tbg-title">¡DÍA {room.day.last.n} SUPERADO!</h2>
           <p className="tbg-text">Juntaron {fmtMoney(room.day.last.money)} de {fmtMoney(room.day.last.quota)}. La cuota de hoy es <b>{fmtMoney(room.day.quota)}</b>.</p>
-          {casinoOfDay(room.day.n) !== casinoOfDay(room.day.last.n) && <p className="tbg-text">¡Hoy pasan al <b>{casinoById(casinoOfDay(room.day.n)).name}</b>, más lujoso!</p>}
+          {topFloor(room.day.n) !== topFloor(room.day.last.n) && <p className="tbg-text">¡Ganaron acceso al <b>piso {topFloor(room.day.n)}</b>, más lujoso!</p>}
           <button type="button" className="tbg-btn" onClick={() => setSeenDay(room.day.n)}>¡A SEGUIR!</button>
         </div>
       )}
@@ -472,12 +472,10 @@ function useMoneyFx(value) {
 function ElevatorPanel({ room, inElev, onPick, onClose }) {
   const all = allAt(room, 'elevator');
   const floors = [0, ...floorsOfDay(room.day.n)];
-  const casino = casinoById(casinoOfDay(room.day.n));
   return (
     <div className="tbg-modal tbg-small tbg-elev" role="dialog" aria-label="Ascensor" data-elevator>
       <button type="button" className="tbg-close" onClick={onClose} aria-label="Cerrar">✕</button>
       <h2 className="tbg-title">ASCENSOR</h2>
-      <p className="tbg-text is-dim" data-casino={casino.id}>{casino.name}</p>
       <p className={`tbg-text${all ? '' : ' is-warn'}`}>{all ? 'Están todos a bordo.' : `Faltan subir: ${room.players.length - inElev}. El ascensor solo viaja con todos adentro.`}</p>
       <div className="tbg-floors">
         {floors.slice().reverse().map((f) => {

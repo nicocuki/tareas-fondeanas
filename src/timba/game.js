@@ -7,7 +7,7 @@
 //
 // Los lugares (`loc`): `wait` (la casita, la camioneta y la limusina de la sala de espera), `limo` (arriba de la
 // limusina, esperando salir), `outside` (la puerta del casino), `back` (arriba de la limusina de la puerta del
-// casino, esperando para volver a casa), `elevator` y `f1`…`f12` (los pisos de juego: 3 por casino, ver `casinos.js`). Cada
+// casino, esperando para volver a casa), `elevator` y `f1`…`f4` (los pisos de juego: se abren de a uno cada 3 días, ver `casinos.js`). Cada
 // jugador pasa de uno a otro con `loc`, y los viajes (limusina, ascensor) los arrancan cuando están todos adentro.
 //
 // Las mesas: `room.tb[id]` existe solo mientras alguien juega ahí (cada una es de uno solo). Tiene `kind`, `by` (quién
@@ -258,7 +258,7 @@ export function applyAction(room, action, ctx = {}) {
     case 'floor': {
       const to = action.to;
       if (!playing || !me || next.trip || !allAt(next, 'elevator')) return null;
-      if (!Number.isInteger(to) || (to !== 0 && !floorsOfDay(next.day.n).includes(to)) || to === next.elev.floor) return null; // solo los 3 pisos del casino de hoy
+      if (!Number.isInteger(to) || (to !== 0 && !floorsOfDay(next.day.n).includes(to)) || to === next.elev.floor) return null; // solo los pisos que ya se ganaron
       if (next.day.over && to !== 0) return null;
       if (!next.day.endsAt && to > 0) next.day.endsAt = now + DAY_MS; // el día arranca con el primer viaje a un piso de juego
       startTrip(next, 'elev', to, now);
@@ -440,7 +440,7 @@ export function applyAction(room, action, ctx = {}) {
     }
 
     default: {
-      // Los juegos por pasos del casino 2 en adelante (Crash, Penguin Cross, Buscaminas y Mayor o menor).
+      // Los juegos por pasos del piso 2 en adelante (Crash, Penguin Cross, Buscaminas y Mayor o menor).
       const done = applyStepAction(next, me, action, { now, rand, playing });
       if (!done) return null;
     }

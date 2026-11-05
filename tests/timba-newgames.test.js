@@ -1,4 +1,4 @@
-// La Timba: los juegos del casino 2 en adelante (Crash, Penguin Cross, Keno, Plinko, Rueda del dinero, Baccarat, Mayor o menor
+// La Timba: los juegos del piso 2 en adelante (Crash, Penguin Cross, Keno, Plinko, Rueda del dinero, Baccarat, Mayor o menor
 // y Buscaminas) y los límites de apuesta que crecen con los días.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -170,11 +170,11 @@ test('baccarat: se reparte, se saca la tercera carta con las reglas del punto ba
   for (const side of BACCARAT_SIDES) assert.ok(newSpin('baccarat', { side }, Math.random));
 });
 
-// ─── La sala: Crash y Penguin Cross en el casino 2 ───────────────────────────
+// ─── La sala: Crash y Penguin Cross en el piso 2 ───────────────────────────
 let clock = 1000;
 const act = (room, id, action, now = clock, rand = Math.random) => applyAction(room, { ...action, playerId: id }, { now, rand });
 
-// Un jugador en el piso 5 del casino 2 (día 4), con la caja llena.
+// Un jugador en el piso 2 (se gana el día 4), con la caja llena.
 function inCasino2(money = 100000) {
   let room = applyAction(newRoom('a', 'Ana', '🐸', 0), { type: 'start', playerId: 'a' }, { now: 1000, rand: Math.random });
   room.day.n = 4;
@@ -184,17 +184,17 @@ function inCasino2(money = 100000) {
   clock += LIMO_MS + 10;
   room = act(room, 'a', { type: 'tick' }, clock);
   room = act(room, 'a', { type: 'loc', to: 'elevator' });
-  room = act(room, 'a', { type: 'floor', to: 5 }, clock);
+  room = act(room, 'a', { type: 'floor', to: 2 }, clock);
   clock += ELEV_MS + 10;
   room = act(room, 'a', { type: 'tick' }, clock);
-  return act(room, 'a', { type: 'loc', to: 'f5' });
+  return act(room, 'a', { type: 'loc', to: 'f2' });
 }
-const tableOf = (kind) => floorTables(5).find((t) => t.kind === kind);
+const tableOf = (kind) => floorTables(2).find((t) => t.kind === kind);
 const sitAt = (room, kind) => act(room, 'a', { type: 'sit', table: tableOf(kind).id });
 
 test('crash: lanzar descuenta la apuesta, retirar paga lo que llegó y chocar antes la pierde', () => {
   assert.ok(tableOf('crash'), 'el piso 5 tiene mesa de crash');
-  assert.equal(act(inCasino2(), 'a', { type: 'sit', table: floorTables(2).find((t) => t.kind === 'bj').id }), null, 'las mesas son de su piso');
+  assert.equal(act(inCasino2(), 'a', { type: 'sit', table: floorTables(1).find((t) => t.kind === 'bj').id }), null, 'las mesas son de su piso');
   let room = sitAt(inCasino2(), 'crash');
   const money0 = room.money;
   assert.equal(act(room, 'a', { type: 'crashLaunch', amount: 1 }, clock), null, 'menos del mínimo del día 4');
@@ -369,10 +369,10 @@ test('mesas nuevas: levantarse con una tirada sin cobrar la cobra al toque', () 
   assert.deepEqual(left.tb, {});
 });
 
-test('los juegos nuevos están en los casinos 2 a 4 y no en el casino 1', () => {
+test('los juegos nuevos están en los pisos 2 a 4 y no en el piso 1', () => {
   const kindsOf = (n) => new Set(floorTables(n).map((t) => t.kind));
-  for (let n = 1; n <= 3; n++) for (const kind of ['crash', 'penguin', 'keno', 'plinko', 'mwheel', 'baccarat', 'hilo', 'mines']) assert.ok(!kindsOf(n).has(kind), `el piso ${n} no tiene ${kind}`);
-  for (let n = 4; n <= 12; n++) {
+  for (let n = 1; n <= 1; n++) for (const kind of ['crash', 'penguin', 'keno', 'plinko', 'mwheel', 'baccarat', 'hilo', 'mines']) assert.ok(!kindsOf(n).has(kind), `el piso ${n} no tiene ${kind}`);
+  for (let n = 2; n <= 4; n++) {
     for (const kind of ['bj', 'slots', 'wheel', 'roulette', 'duck', 'craps', 'crash', 'penguin', 'keno', 'plinko', 'mwheel', 'baccarat', 'hilo', 'mines']) assert.ok(kindsOf(n).has(kind), `el piso ${n} tiene ${kind}`);
   }
 });
