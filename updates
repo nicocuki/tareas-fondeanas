@@ -917,5 +917,11 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST OCULTA 1.44.2 = Avisos para todos
+OCULTA 1.44.2 = Avisos para todos
 - Se puede mandar un aviso que aparece arriba en el medio de la pantalla de todos, por unos segundos.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.45.0 = Portada con capturas de cada juego 🖼️
+- Los juegos del menú ahora son tarjetas más chicas, cuatro por fila, y en lugar del emoji muestran una captura de la partida.
+- Los juegos nuevos van siempre primero.

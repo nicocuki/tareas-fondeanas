@@ -16,7 +16,7 @@ function GameCard({ game, onPlay }) {
     <article className="tf-game-card" style={{ '--chip-color': game.color, '--chip-on': game.onColor }}>
       <button type="button" className="tf-game-card-hit" onClick={onPlay} aria-label={`Jugar ${game.title}`} />
       <div className="tf-game-card-art" aria-hidden="true">
-        <span className="tf-game-card-emoji">{game.emoji}</span>
+        <img className="tf-game-card-img" src={game.image} alt="" loading="lazy" decoding="async" />
         {game.badge && <em className="tf-badge tf-badge-float">{game.badge}</em>}
       </div>
       <div className="tf-game-card-body">

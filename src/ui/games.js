@@ -1,8 +1,10 @@
 // Catálogo de juegos: lo usan la portada, el menú, el header y «Cómo jugar».
-// Para sumar un juego nuevo: agregalo acá, en el enrutador de App.jsx y en ROOTS (worker/rules.js).
+// Para sumar un juego nuevo: agregalo acá **al principio de la lista** (los nuevos van primero en la portada y el menú), en el
+// enrutador de App.jsx y en ROOTS (worker/rules.js). Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
 export const GAMES = [
   {
     id: 'generala',
+    image: '/juegos/generala.jpg',
     title: 'Generala',
     emoji: '🎲',
     color: 'var(--game-generala)',
@@ -27,6 +29,7 @@ export const GAMES = [
   },
   {
     id: 'mine',
+    image: '/juegos/mine.jpg',
     title: 'Cubolandia',
     emoji: '⛏️',
     color: 'var(--game-mine)',
@@ -50,6 +53,7 @@ export const GAMES = [
   },
   {
     id: 'pixel',
+    image: '/juegos/pixel.jpg',
     title: 'Pixel Royale',
     emoji: '🪂',
     color: 'var(--game-pixel)',
@@ -73,6 +77,7 @@ export const GAMES = [
   },
   {
     id: 'cohetes',
+    image: '/juegos/cohetes.jpg',
     title: 'Cohete Royale',
     emoji: '🤖',
     color: 'var(--game-cohetes)',
@@ -96,6 +101,7 @@ export const GAMES = [
   },
   {
     id: 'timba',
+    image: '/juegos/timba.jpg',
     title: 'La Timba',
     emoji: '🎰',
     color: 'var(--game-timba)',
@@ -118,6 +124,7 @@ export const GAMES = [
   },
   {
     id: 'arena',
+    image: '/juegos/arena.jpg',
     title: 'Arena Royale',
     emoji: '👑',
     color: 'var(--game-arena)',
@@ -141,6 +148,7 @@ export const GAMES = [
   },
   {
     id: 'tiros',
+    image: '/juegos/tiros.jpg',
     title: 'A los Tiros',
     emoji: '🎯',
     color: 'var(--game-tiros)',
@@ -163,6 +171,7 @@ export const GAMES = [
   },
   {
     id: 'monopoly',
+    image: '/juegos/monopoly.jpg',
     title: 'Monopoly',
     emoji: '🎩',
     color: 'var(--game-monopoly)',
@@ -186,6 +195,7 @@ export const GAMES = [
   },
   {
     id: 'meme',
+    image: '/juegos/meme.jpg',
     title: 'Armá el Meme',
     emoji: '🖼️',
     color: 'var(--game-meme)',
@@ -207,6 +217,7 @@ export const GAMES = [
   },
   {
     id: 'gartic',
+    image: '/juegos/gartic.jpg',
     title: 'Trazo Loco',
     emoji: '🎨',
     color: 'var(--game-gartic)',
@@ -228,6 +239,7 @@ export const GAMES = [
   },
   {
     id: 'futbol',
+    image: '/juegos/futbol.jpg',
     title: 'Fútbol',
     emoji: '⚽',
     color: 'var(--game-futbol)',
@@ -250,6 +262,7 @@ export const GAMES = [
   },
   {
     id: 'nave',
+    image: '/juegos/nave.jpg',
     title: 'Entre Nosotros',
     emoji: '🚀',
     color: 'var(--game-nave)',
@@ -272,6 +285,7 @@ export const GAMES = [
   },
   {
     id: 'la-mecha',
+    image: '/juegos/la-mecha.jpg',
     title: 'La Mecha',
     emoji: '💣',
     color: 'var(--game-mecha)',
@@ -293,6 +307,7 @@ export const GAMES = [
   },
   {
     id: 'teg',
+    image: '/juegos/teg.jpg',
     title: 'T.E.G.',
     emoji: '🌍',
     color: 'var(--game-teg)',
@@ -316,6 +331,7 @@ export const GAMES = [
   },
   {
     id: 'codigo-secreto',
+    image: '/juegos/codigo-secreto.jpg',
     title: 'Código Secreto',
     emoji: '🕵️',
     color: 'var(--game-codigo)',
@@ -337,6 +353,7 @@ export const GAMES = [
   },
   {
     id: 'cafe-o-te',
+    image: '/juegos/cafe-o-te.jpg',
     title: 'Café o Té',
     emoji: '☕',
     color: 'var(--game-cafe)',

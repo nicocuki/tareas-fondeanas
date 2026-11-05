@@ -234,6 +234,7 @@ el HUD y la reunión, oscuros como el original) y Trazo Loco (copia el look
 de Gartic Phone, con sus variables `--gp-*` en `src/gartic/gartic.css`), que son iguales en los dos temas.
 
 - **Mario vs Luigi está oculto del menú y la portada** (`menu: false` en `games.js`; las dos usan `MENU_GAMES`): el juego, `src/mvl/`, `public/mvl/` y `?juego=mvl` siguen andando. Para volver a mostrarlo, sacá esa línea.
+- **La portada** (`Home.jsx`): los juegos son tarjetas chicas, 4 por fila en pantalla ancha (`.tf-game-grid`, mínimo 230 px), con la captura del juego arriba (`image` en `games.js`, un JPG de 640 × 400 en `public/juegos/{id}.jpg`; pedido de Nico: la captura más representativa, la que dé ganas de jugar, en lugar del emoji). **Un juego nuevo lleva su captura** y va **primero** en la lista de `games.js` (los más nuevos arriba). El emoji sigue en la lista, el menú y las salas públicas.
 - `games.js` es el catálogo (nombre, emoji, color, jugadores con `min`/`max` en números, «cómo jugar»). **Un juego nuevo se
   agrega ahí, en `SCREENS` de `App.jsx` y en `ROOTS` de `worker/rules.js`.**
 - `store.js`: preferencias, perfil (el nombre usa la misma clave que `session.js`), la sala actual y
