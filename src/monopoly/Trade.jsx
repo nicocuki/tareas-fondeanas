@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { backgroundTimeout } from '../ticker.js';
 import { GROUPS, GROUP_KEYS, SQUARES, groupSquares } from './board.js';
-import { findPlayer, groupHasBuildings, ownedBy, tradeEffects, tradeFee, tradeProblem } from './game.js';
+import { findPlayer, groupHasBuildings, isCounter, ownedBy, tradeEffects, tradeFee, tradeProblem } from './game.js';
 import { Token, propColor } from './Board.jsx';
 import { Modal } from './Modals.jsx';
 
@@ -138,13 +138,14 @@ export function TradeCard({ room, me, view, dispatch, onPick, onRespond }) {
   if (!from || !to) return null;
   const mine = t.from === me?.id;
   const forMe = t.to === me?.id && !me?.out;
+  const did = t.counter ? 'hizo una contraoferta' : outcome ? 'propuso un trato' : 'propone un trato';
   return (
     <section className={`mp-trade-card${outcome ? ` is-${outcome}` : ''}${forMe && !outcome ? ' is-for-me' : ''}`} data-trade-card={outcome || 'open'} aria-label="Trato en curso" aria-live="polite">
       <h2>
         <span aria-hidden="true">🤝</span>{' '}
-        {mine ? <>Le propusiste un trato a <b>{to.name}</b></>
-          : t.to === me?.id ? <><b>{from.name}</b> te {outcome ? 'propuso' : 'propone'} un trato</>
-            : <><b>{from.name}</b> le {outcome ? 'propuso' : 'propone'} un trato a <b>{to.name}</b></>}
+        {mine ? <>Le {t.counter ? 'hiciste una contraoferta' : 'propusiste un trato'} a <b>{to.name}</b></>
+          : t.to === me?.id ? <><b>{from.name}</b> te {did}</>
+            : <><b>{from.name}</b> le {did} a <b>{to.name}</b></>}
       </h2>
       <OfferView room={room} trade={t} me={me} onPick={onPick} notes={!outcome} />
       {outcome ? <p className="mp-trade-outcome" data-trade-outcome={outcome}>{OUTCOME[outcome]}</p> : (
@@ -160,17 +161,18 @@ export function TradeCard({ room, me, view, dispatch, onPick, onRespond }) {
 }
 
 // La ventana del que recibe la oferta. Se puede correr para mirar el tablero: la oferta queda en la tarjeta del costado.
-export function TradeIncoming({ room, me, dispatch, onHide, onPick }) {
+export function TradeIncoming({ room, me, dispatch, onHide, onCounter, onPick }) {
   const t = room.trade;
   const from = findPlayer(room, t.from);
   const problem = tradeProblem(room, t, true);
   return (
-    <Modal title={`🤝 ${from.name} te propone un trato`} label="Trato" wide>
+    <Modal title={t.counter ? `🔁 ${from.name} te hizo una contraoferta` : `🤝 ${from.name} te propone un trato`} label="Trato" wide>
       <OfferView room={room} trade={t} me={me} onPick={onPick} />
       {problem && <p className="mp-problem">{problem}</p>}
       <div className="mp-modal-actions">
         <button type="button" className="tf-btn tf-btn-primary" disabled={Boolean(problem)} data-act="tradeAccept" onClick={() => dispatch({ type: 'tradeAccept' })}>✓ Aceptar</button>
         <button type="button" className="tf-btn tf-btn-danger-soft" data-act="tradeDecline" onClick={() => dispatch({ type: 'tradeDecline' })}>✕ Rechazar</button>
+        <button type="button" className="tf-btn tf-btn-soft" data-act="tradeCounter" onClick={onCounter}>🔁 Contraofertar</button>
         <button type="button" className="tf-btn tf-btn-soft" data-act="tradeHide" onClick={onHide}>👀 Mirar el tablero</button>
       </div>
       <p className="mp-hint">Tocá una propiedad para ver su ficha. Si mirás el tablero, la oferta queda a la vista para responder cuando quieras.</p>
@@ -179,17 +181,25 @@ export function TradeIncoming({ room, me, dispatch, onHide, onPick }) {
 }
 
 const emptySide = () => ({ cash: '', props: [], cards: 0 });
+const filledSide = (s) => ({ cash: s.cash ? String(s.cash) : '', props: [...s.props], cards: s.cards });
+const sameSide = (a, b) => a.cash === b.cash && a.cards === b.cards && a.props.length === b.props.length && a.props.every((pos) => b.props.includes(pos));
 
-export function TradeComposer({ room, me, initialTo, onClose, dispatch }) {
+// `counter`: la oferta que se está contestando. La ventana arranca con esa oferta dada vuelta (lo que me pedían es lo que
+// doy), para cambiarle lo que haga falta, y al mandarla reemplaza a la original.
+export function TradeComposer({ room, me, initialTo, counter, onClose, dispatch }) {
   const others = room.players.filter((p) => !p.out && p.id !== me.id);
-  const [to, setTo] = useState(initialTo && others.some((p) => p.id === initialTo) ? initialTo : others[0]?.id);
-  const [give, setGive] = useState(emptySide);
-  const [take, setTake] = useState(emptySide);
+  const [to, setTo] = useState(counter ? counter.from : initialTo && others.some((p) => p.id === initialTo) ? initialTo : others[0]?.id);
+  const [give, setGive] = useState(() => (counter ? filledSide(counter.take) : emptySide()));
+  const [take, setTake] = useState(() => (counter ? filledSide(counter.give) : emptySide()));
   const partner = others.find((p) => p.id === to);
   const toggle = (set) => (pos) => set((s) => ({ ...s, props: s.props.includes(pos) ? s.props.filter((x) => x !== pos) : [...s.props, pos] }));
   const clean = (s) => ({ cash: Number.parseInt(s.cash, 10) || 0, props: s.props, cards: s.cards });
   const trade = { from: me.id, to, give: clean(give), take: clean(take) };
-  const problem = !partner ? 'No hay con quién tratar.' : room.trade ? 'Ya hay un trato esperando respuesta: hay que esperar a que se cierre.' : tradeProblem(room, trade);
+  const answering = isCounter(room, me.id, to); // sigue abierta la oferta que estoy contestando
+  const problem = !partner ? 'No hay con quién tratar.'
+    : room.trade && !answering ? 'Ya hay un trato esperando respuesta: hay que esperar a que se cierre.'
+      : answering && sameSide(trade.give, room.trade.take) && sameSide(trade.take, room.trade.give) ? 'Es la misma oferta que te hicieron: cambiale algo, o cerrá esta ventana y aceptala.'
+        : tradeProblem(room, trade);
   const pickTo = (id) => { setTo(id); setTake(emptySide()); };
 
   const sideBox = (title, owner, side, set) => {
@@ -229,9 +239,13 @@ export function TradeComposer({ room, me, initialTo, onClose, dispatch }) {
   };
 
   return (
-    <Modal title="🤝 Hacer un trato" onClose={onClose} wide>
-      <p className="mp-note">Elegí con quién, y tocá lo que das y lo que querés a cambio. Si acepta, se intercambia todo junto. No se pueden tratar propiedades con edificios en su color.</p>
-      <div className="mp-tpartners" role="group" aria-label="Tratar con">
+    <Modal title={counter ? '🔁 Contraoferta' : '🤝 Hacer un trato'} onClose={onClose} wide>
+      <p className="mp-note">
+        {counter
+          ? <>Es la oferta de <b>{partner?.name}</b>, vista desde tu lado: cambiale lo que quieras y mandásela. Tu contraoferta reemplaza a la suya.</>
+          : 'Elegí con quién, y tocá lo que das y lo que querés a cambio. Si acepta, se intercambia todo junto. No se pueden tratar propiedades con edificios en su color.'}
+      </p>
+      <div className="mp-tpartners" role="group" aria-label="Tratar con" hidden={Boolean(counter)}>
         {others.map((p) => (
           <button key={p.id} type="button" aria-pressed={p.id === to} className={p.id === to ? 'is-picked' : ''} data-partner={p.name} onClick={() => pickTo(p.id)}>
             <Token player={p} size={26} />
@@ -247,7 +261,7 @@ export function TradeComposer({ room, me, initialTo, onClose, dispatch }) {
       {partner && <OfferNotes room={room} trade={trade} me={me} />}
       {problem && <p className="mp-problem">{problem}</p>}
       <div className="mp-modal-actions">
-        <button type="button" className="tf-btn tf-btn-primary" disabled={Boolean(problem)} data-act="tradeSend" onClick={() => { dispatch({ type: 'tradeOffer', to, give: trade.give, take: trade.take }); onClose(); }}>Proponer trato</button>
+        <button type="button" className="tf-btn tf-btn-primary" disabled={Boolean(problem)} data-act="tradeSend" onClick={() => { dispatch({ type: 'tradeOffer', to, give: trade.give, take: trade.take }); onClose(); }}>{answering ? 'Enviar contraoferta' : 'Proponer trato'}</button>
         <button type="button" className="tf-btn tf-btn-soft" onClick={onClose}>Cancelar</button>
       </div>
     </Modal>

@@ -501,6 +501,9 @@ tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires
   queda solo sin oferta decide si pone algo o nadie la compra. `auction.resume` es el paso al que se vuelve cuando termina.
 - **Tratos** (`room.trade`, uno a la vez): `give` es lo que da quien propone y `take` lo que recibe. Se revalida entero al aceptar.
   Las propiedades con edificios en su color no se tratan. Quien recibe una hipotecada paga al banco el 10 % de su hipoteca.
+  **Contraoferta**: un `tradeOffer` del que recibió la oferta hacia quien se la hizo (`isCounter`) la reemplaza en vez de rechazarse, lleva
+  `counter: true` y se anota como `counter`; si no es válida, la original sigue en pie. En pantalla, «Contraofertar» abre `TradeComposer` con la
+  oferta dada vuelta (`counter`).
   La entrada `traded` de la bitácora lleva qué dio cada uno (`g` y `t`: `{ c plata, s propiedades, j cartas }`, sin lo vacío).
 - **Cómo se ven los tratos** (`Trade.jsx`; pedido de Feli: que los demás vean la oferta al costado y que se vea el color de cada propiedad):
   mientras hay un trato abierto **todos** ven `TradeCard` (arriba de la columna derecha, fija al desplazar; en el celular, arriba de los botones) y,
@@ -518,10 +521,11 @@ tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires
   texto con los nombres.
 - **Interfaz**: el tablero (`Board.jsx`) es una grilla de 11 × 11 con esquinas más grandes; los textos se miden en `cqw` (unidades del
   contenedor) y por debajo de 470 px de ancho se esconden los nombres (queda color, precio y tocar para ver la ficha).
-  **En pantallas de 860 px o más no es cuadrado** (pedido de Feli: se veía chico): como lo que limita es el alto, usa todo el alto de la página
-  y se estira a lo ancho hasta `--mp-stretch` (1,36) veces, así los casilleros y las letras quedan más grandes; si la columna es angosta vuelve a
-  ser cuadrado. `.mp-board-wrap` es el tablero con lo que va encima (dados, avisos, carta) y mide eso; `.mp-board-col` es contenedor (`cqw`) solo
-  en pantallas anchas, porque un contenedor atrapa a los `position: fixed` de adentro y en el celular los avisos van fijos. En pantallas
+  **El tablero es siempre cuadrado** (pedido de Feli: se probó estirarlo a lo ancho para agrandarlo y quedaba «raro, como bugueado»; no lo vuelvas a
+  estirar). En pantallas de 860 px o más lo limita el alto, así que usa todo el que hay (`--mp-h` = alto de la página menos 12 px).
+  `.mp-board-wrap` es el tablero con lo que va encima (dados, avisos, carta). **Para verlo grande de verdad está la pantalla completa**: `.mp-screen`
+  (el contenedor de la partida y del final, en `MonopolyApp`) es el `useFullscreenTarget`, y con `:fullscreen` pone `--header-h` en 0 y `--page-h` en
+  `100dvh`, así el tablero ocupa todo el alto del monitor. Hay un botón en el centro del tablero (`data-act="fullscreen"`), además del del header. En pantallas
   de 860 px o más, el panel «qué hacer ahora» (`ActionPanel.jsx`) va en el centro del tablero; en celular, debajo. Las fichas
   caminan casillero por casillero (solo dibujo). `Modals.jsx`: ficha de propiedad, subasta (no se puede cerrar), tratos y la carta
   recién sacada (la ven todos unos segundos). **Un `Modal` solo enfoca al abrirse**: si enfocara en cada render, escribir en un campo

@@ -56,6 +56,7 @@ export function describe(e, room) {
     case 'mortgage': return { icon: '🏦', text: `${p} hipotecó ${sq(e.s)}.` };
     case 'unmortgage': return { icon: '✅', text: `${p} levantó la hipoteca de ${sq(e.s)}.` };
     case 'offer': return { icon: '🤝', text: `${p} le propuso un trato a ${name(e.o)}.` };
+    case 'counter': return { icon: '🔁', text: `${p} le hizo una contraoferta a ${name(e.o)}.` };
     case 'refused': return { icon: '🚫', text: `${p} rechazó el trato de ${name(e.o)}.` };
     case 'traded': {
       const gave = (who, side) => `${who} dio ${tradeItems(side).join(', ')}`;
@@ -104,6 +105,7 @@ export function announce(e, room, meId) {
     case 'debt': return mine ? out('⚠️', `No te alcanza el efectivo para pagar ${money(e.n)}. Juntalos hipotecando, vendiendo casas o con un trato.`, 'loss', { big: true }) : out(base.icon, base.text, 'info', { big: true });
     case 'bankrupt': return mine ? out('💀', 'Quebraste. Podés seguir mirando la partida.', 'loss', { big: true }) : out(base.icon, base.text, 'info', { big: true });
     case 'offer': return toMe ? out('🤝', `${name(e.p)} te propone un trato.`, 'good') : mine ? null : out(base.icon, base.text);
+    case 'counter': return toMe ? out('🔁', `${name(e.p)} te hizo una contraoferta.`, 'good') : mine ? null : out(base.icon, base.text);
     case 'refused': return toMe ? out('🚫', `${name(e.p)} rechazó tu trato.`, 'loss') : mine ? null : out(base.icon, base.text);
     case 'traded':
       if (!mine && !toMe) return out(base.icon, base.text);

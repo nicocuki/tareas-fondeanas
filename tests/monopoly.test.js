@@ -715,6 +715,48 @@ test('trato: no mientras se subasta', () => {
   rejects(room, 'b', { ...offer({ cash: 5 }), to: 'c' });
 });
 
+test('trato: el que recibe la oferta puede contestar con una contraoferta, que reemplaza a la original', () => {
+  let room = game();
+  own(room, 'a', 1);
+  own(room, 'b', 3);
+  room = act(room, 'a', offer({ props: [1] }, { props: [3] }));
+  const back = (give = {}, take = {}) => ({ ...offer(give, take), to: 'a' });
+  rejects(room, 'c', back({ cash: 5 }));               // un tercero no puede meterse
+  rejects(room, 'a', offer({ cash: 5 }));              // ni el que propuso mandar otra encima
+  rejects(room, 'b', { ...offer({ cash: 5 }), to: 'c' }); // ni contestarle a otro
+  rejects(room, 'b', back({ props: [1] }));            // una contraoferta inválida no pasa…
+  assert.deepEqual(room.trade.give.props, [1], '…y la original sigue en pie');
+  room = act(room, 'b', back({ props: [3] }, { props: [1], cash: 50 }));
+  assert.deepEqual(room.trade, { from: 'b', to: 'a', give: { cash: 0, cards: 0, props: [3] }, take: { cash: 50, cards: 0, props: [1] }, counter: true });
+  assert.deepEqual(room.log.at(-1), { k: 'counter', p: 'b', o: 'a' });
+  assert.equal(describe(room.log.at(-1), room).text, 'Jb le hizo una contraoferta a Ana.');
+  assert.equal(announce(room.log.at(-1), room, 'a').text, 'Jb te hizo una contraoferta.');
+  assert.equal(announce(room.log.at(-1), room, 'b'), null);
+  rejects(room, 'b', { type: 'tradeAccept' });         // ahora le toca contestar al otro
+  // Se puede contraofertar de vuelta, y al final se acepta como cualquier trato.
+  room = act(room, 'a', offer({ props: [1], cash: 20 }, { props: [3] }));
+  assert.equal(room.trade.counter, true);
+  room = act(room, 'b', { type: 'tradeAccept' });
+  assert.equal(room.trade, null);
+  assert.equal(room.props[1].o, 'b');
+  assert.equal(room.props[3].o, 'a');
+  assert.equal(me(room, 'a').cash, 1480);
+  // Con la oferta cerrada, la siguiente es una oferta común.
+  room = act(room, 'b', back({ cash: 5 }));
+  assert.equal(room.trade.counter, undefined);
+  assert.equal(room.log.at(-1).k, 'offer');
+});
+
+test('trato: un bot también responde una contraoferta', () => {
+  let room = game(2);
+  me(room, 'b').bot = true;
+  own(room, 'b', 3);
+  room.trade = { from: 'b', to: 'a', give: { cash: 0, cards: 0, props: [3] }, take: { cash: 10, cards: 0, props: [] } };
+  room = act(room, 'a', { type: 'tradeOffer', to: 'b', give: { cash: 300 }, take: { props: [3] } });
+  assert.equal(room.trade.counter, true);
+  assert.deepEqual(botMove(room), { botId: 'b', action: { type: 'tradeAccept' } });
+});
+
 test('trato: avisa qué tandas arma y cuáles desarma, sin cambiar la sala', () => {
   const room = game();
   own(room, 'a', 1, 6, 8, 9, 5, 15, 25); // La Boca, las tres celestes y tres estaciones

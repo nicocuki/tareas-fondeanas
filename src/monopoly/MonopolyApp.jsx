@@ -1,5 +1,5 @@
 // Monopoly: entrada, sala de espera, partida y final.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { backgroundTimeout } from '../ticker.js';
 import { backend } from '../storage.js';
 import { clearSession, loadSession, saveSession } from '../session.js';
@@ -9,7 +9,7 @@ import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
 import { ghostMe, useSpectatorJoin } from '../ui/spectate.js';
 import { useAutoCreate } from '../ui/mudanza.js';
-import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
+import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
 import GameChat from '../ui/GameChat.jsx';
 import SpectatorBadge from '../ui/SpectatorBadge.jsx';
 import { gameUrl } from '../ui/games.js';
@@ -312,6 +312,15 @@ function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [flash, setFlash] = useState(null);
   const [sound, setSoundOn] = useState(soundOn);
+  // Pantalla completa: el tablero es cuadrado y lo limita el alto, así que es la forma de verlo bien grande.
+  const [full, setFull] = useState(() => Boolean(fullscreenElement()));
+  useEffect(() => {
+    const update = () => setFull(Boolean(fullscreenElement()));
+    document.addEventListener('fullscreenchange', update);
+    document.addEventListener('webkitfullscreenchange', update);
+    return () => { document.removeEventListener('fullscreenchange', update); document.removeEventListener('webkitfullscreenchange', update); };
+  }, []);
+  const canFull = Boolean(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
   const tradeView = useTradeView(room);
   const [tradeHidden, setTradeHidden] = useState(false); // el que recibe la oferta corrió la ventana para mirar el tablero
   const tradeKey = room.trade ? JSON.stringify(room.trade) : '';
@@ -354,9 +363,16 @@ function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
             <Board room={room} onPick={setDeed} selected={deed} flash={flash}>
               <div className="mp-center-inner">
                 <h1 className="mp-logo" aria-hidden="true">MONOPOLY</h1>
-                <button type="button" className="mp-sound" aria-pressed={sound} data-act="sound" onClick={() => { setSound(!sound); setSoundOn(!sound); }}>
-                  {sound ? '🔊 Sonido' : '🔇 Sin sonido'}
-                </button>
+                <div className="mp-center-tools">
+                  <button type="button" className="mp-sound" aria-pressed={sound} data-act="sound" onClick={() => { setSound(!sound); setSoundOn(!sound); }}>
+                    {sound ? '🔊 Sonido' : '🔇 Sin sonido'}
+                  </button>
+                  {canFull && (
+                    <button type="button" className="mp-sound" aria-pressed={full} data-act="fullscreen" onClick={() => toggleFullscreen()}>
+                      {full ? '⤡ Salir de pantalla completa' : '⤢ Pantalla completa'}
+                    </button>
+                  )}
+                </div>
                 {room.options.freeParking && <p className="mp-pot">🅿️ Pozo del Descanso: <b>${room.pot}</b></p>}
                 {wide && action}
                 {wide && recent.length > 0 && (
@@ -400,8 +416,8 @@ function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
       </div>
 
       {room.auction && me &&<AuctionModal room={room} me={me} dispatch={onDispatch} />}
-      {!room.auction && room.trade?.to === me?.id && !me.out && !tradeHidden && <TradeIncoming room={room} me={me} dispatch={onDispatch} onHide={() => setTradeHidden(true)} onPick={setDeed} />}
-      {composer && me && !me.out && !room.auction && <TradeComposer room={room} me={me} initialTo={composer.to} onClose={() => setComposer(null)} dispatch={onDispatch} />}
+      {!room.auction && room.trade?.to === me?.id && !me.out && !tradeHidden && <TradeIncoming room={room} me={me} dispatch={onDispatch} onHide={() => setTradeHidden(true)} onCounter={() => { setTradeHidden(true); setComposer({ counter: room.trade }); }} onPick={setDeed} />}
+      {composer && me && !me.out && !room.auction && <TradeComposer room={room} me={me} initialTo={composer.to} counter={composer.counter} onClose={() => setComposer(null)} dispatch={onDispatch} />}
       {deed !== null && !room.auction && <DeedModal room={room} me={me} pos={deed} onClose={() => setDeed(null)} dispatch={onDispatch} />}
     </div>
   );
@@ -466,6 +482,9 @@ export default function MonopolyApp({ onBackToMenu }) {
   const code = session?.code;
   const spectating = Boolean(session?.spectator);
   const me = spectating ? ghostMe(session) : findPlayer(room, session?.playerId);
+  // La pantalla completa agranda solo la partida (este contenedor, que no cambia entre la partida y el final).
+  const screenRef = useRef(null);
+  useFullscreenTarget(screenRef);
 
   useRegisterRoom(GAME, code, () => handleLeave());
 
@@ -612,6 +631,12 @@ export default function MonopolyApp({ onBackToMenu }) {
     );
   }
   if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} />{spectating ? <SpectatorBadge /> : <GameChat code={code} me={me} />}</>;
-  if (room.phase === 'ended') return <><Ended room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />{spectating ? <SpectatorBadge /> : <GameChat code={code} me={me} />}</>;
-  return <>{banner}<Game room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />{spectating ? <SpectatorBadge /> : <GameChat code={code} me={me} />}</>;
+  return (
+    <div className="mp-screen" ref={screenRef}>
+      {room.phase === 'ended'
+        ? <Ended room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />
+        : <>{banner}<Game room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} /></>}
+      {spectating ? <SpectatorBadge /> : <GameChat code={code} me={me} />}
+    </div>
+  );
 }

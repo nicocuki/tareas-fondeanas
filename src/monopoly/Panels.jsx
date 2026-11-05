@@ -174,7 +174,7 @@ const RULES = [
   ['Construir', 'Con la tanda completa podés comprar casas (hasta 4) y después un hotel en cada calle. Cada casa sube mucho el alquiler. Hay que construir parejo: no podés poner la 2.ª casa en una calle si otra del color tiene 0. Solo se construye en tu turno, y el banco tiene 32 casas y 12 hoteles.'],
   ['Hipotecas', 'Si necesitás plata, hipotecá una propiedad: el banco te da la mitad de su precio, pero deja de cobrar alquiler. Para levantar la hipoteca devolvés lo que te dieron más un 10 %. Si hay casas en el color, primero hay que venderlas (el banco te paga la mitad de lo que costaron).'],
   ['Cárcel', 'Vas a la cárcel si caés en «Andá a la cárcel», si sacás tres dobles seguidos o si lo dice una carta. Para salir: pagás $50, usás una carta de «Salir gratis», o tirás buscando dobles (hasta 3 intentos; al tercero, si no salen, pagás $50 igual). Preso, igual cobrás alquileres.'],
-  ['Tratos', 'Podés proponerle a otro jugador un intercambio de propiedades, plata y cartas de la cárcel, en cualquier momento. Si acepta, se hace todo junto. No se pueden tratar propiedades con edificios en su color.'],
+  ['Tratos', 'Podés proponerle a otro jugador un intercambio de propiedades, plata y cartas de la cárcel, en cualquier momento. Si acepta, se hace todo junto. El que recibe la oferta también puede contestar con una contraoferta, que reemplaza a la original. No se pueden tratar propiedades con edificios en su color.'],
   ['Deudas y quiebra', 'Si tenés que pagar más plata de la que tenés, juntala hipotecando, vendiendo casas o haciendo tratos, y después pagá. Si ni vendiendo todo llegás, declarás la quiebra: le das todo al acreedor (o, si le debías al banco, todo se subasta) y quedás afuera.'],
 ];
 

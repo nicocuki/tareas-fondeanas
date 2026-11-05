@@ -34,18 +34,18 @@
 /* ─── Disposición ─── */
 .mp-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
 .mp-board-col { min-width: 0; }
-/* El tablero con lo que va encima (dados, avisos, carta). En el celular es cuadrado. */
-.mp-board-wrap { position: relative; width: 100%; aspect-ratio: 1; margin: 0 auto; }
+/* El tablero (siempre cuadrado) con lo que va encima: dados, avisos y carta. */
+.mp-board-wrap { position: relative; width: 100%; aspect-ratio: 1; }
 .mp-side-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-/* En pantallas anchas el alto es el que manda (no entra más), así que el tablero usa todo el alto y se estira a lo
-   ancho hasta --mp-stretch veces: los casilleros y las letras, que se miden con el ancho, quedan más grandes.
-   Si la columna es angosta, vuelve a ser cuadrado (100cqw es el ancho de la columna). */
+/* En pantallas anchas lo que limita al tablero es el alto: usa todo el que hay (--mp-h), sin dejar márgenes de más.
+   Para agrandarlo de verdad está la pantalla completa (ver .mp-screen), que saca el header y la barra del navegador. */
 @media (min-width: 860px) {
-  .mp-playing { --mp-h: calc(var(--page-h) - 20px); --mp-stretch: 1.36; max-width: none; padding-top: 10px; }
-  .mp-layout { grid-template-columns: minmax(0, calc(var(--mp-h) * var(--mp-stretch))) minmax(300px, 360px); justify-content: center; }
-  .mp-board-col { position: sticky; top: calc(var(--header-h) + 10px); container-type: inline-size; }
-  .mp-board-wrap { aspect-ratio: auto; width: min(100cqw, calc(var(--mp-h) * var(--mp-stretch))); height: min(var(--mp-h), 100cqw); }
+  .mp-playing { --mp-h: calc(var(--page-h) - 12px); max-width: none; padding-top: 6px; }
+  .mp-layout { grid-template-columns: minmax(0, var(--mp-h)) minmax(300px, 360px); justify-content: center; }
+  .mp-board-col { position: sticky; top: calc(var(--header-h) + 6px); }
 }
+/* Pantalla completa (botón del header o el del centro del tablero): se agranda solo la partida, sin el header. */
+.mp-screen:fullscreen { --header-h: 0px; --page-h: 100dvh; background: var(--bg); color: var(--text); overflow: auto; }
 
 /* ─── Tablero ─── */
 .mp-board {
@@ -79,9 +79,9 @@
 .mp-hotel { display: block; width: max(8px, 2.1cqw); height: max(5px, 1cqw); background: #d62d2d; border: 1px solid #5d0c0c; border-radius: 2px; }
 .mp-sq-body { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2cqw; padding: 0.3cqw; }
 .mp-sq-icon { font-size: max(9px, 2.3cqw); line-height: 1; }
-.mp-sq-name { font-size: clamp(5px, 1.18cqw, 14px); font-weight: 750; line-height: 1.08; text-wrap: balance; overflow-wrap: anywhere; }
-.mp-sq-price { font-size: clamp(5px, 1.05cqw, 12px); color: #46523f; font-weight: 600; }
-.mp-sq-go .mp-sq-name, .mp-sq-jail .mp-sq-name, .mp-sq-parking .mp-sq-name, .mp-sq-gotojail .mp-sq-name { font-size: clamp(6px, 1.4cqw, 16px); text-transform: uppercase; }
+.mp-sq-name { font-size: clamp(5px, 1.26cqw, 17px); font-weight: 750; line-height: 1.08; text-wrap: balance; overflow-wrap: anywhere; }
+.mp-sq-price { font-size: clamp(5px, 1.14cqw, 15px); color: #46523f; font-weight: 600; }
+.mp-sq-go .mp-sq-name, .mp-sq-jail .mp-sq-name, .mp-sq-parking .mp-sq-name, .mp-sq-gotojail .mp-sq-name { font-size: clamp(6px, 1.5cqw, 20px); text-transform: uppercase; }
 .mp-sq-go, .mp-sq-jail, .mp-sq-parking, .mp-sq-gotojail { background: #e6ddb8; }
 .mp-sq-go .mp-sq-icon, .mp-sq-jail .mp-sq-icon, .mp-sq-parking .mp-sq-icon, .mp-sq-gotojail .mp-sq-icon { font-size: max(12px, 3.4cqw); }
 .mp-sq-chance .mp-sq-icon { color: #d96c00; }
@@ -96,7 +96,7 @@
 }
 
 .mp-center { grid-area: 2 / 2 / 11 / 11; display: flex; align-items: stretch; justify-content: center; min-width: 0; min-height: 0; overflow: auto; background: radial-gradient(circle at 50% 40%, #d8eedb, #bfdcc4); padding: 1.5cqw; }
-.mp-center-inner { margin: auto; width: 100%; max-width: 560px; display: flex; flex-direction: column; align-items: center; gap: min(1.4cqw, 10px); }
+.mp-center-inner { margin: auto; width: 100%; max-width: max(560px, 68cqw); display: flex; flex-direction: column; align-items: center; gap: min(1.4cqw, 10px); }
 .mp-logo { margin: 0; font-family: var(--font-display); font-weight: 900; font-size: clamp(16px, 4.4cqw, 54px); letter-spacing: 0.06em; color: #b32323; text-shadow: 0 2px 0 rgba(255, 255, 255, 0.6); transform: rotate(-4deg); line-height: 1; }
 .mp-pot { margin: 0; color: #1d2a20; font-size: 13px; }
 .mp-recent { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: #1d2a20; }
@@ -106,7 +106,7 @@
 .mp-dock .mp-recent li { background: var(--surface-2); }
 
 /* ─── Qué hacer ahora ─── */
-.mp-action { width: 100%; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; text-align: left; }
+.mp-action { width: 100%; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: clamp(14px, 1.5cqw, 17px); text-align: left; }
 .mp-turn { display: flex; align-items: center; gap: 10px; font-weight: 700; font-family: var(--font-display); }
 .mp-turn .mp-dice { margin-left: auto; }
 .mp-say { margin: 0; line-height: 1.45; }
@@ -258,6 +258,7 @@ button.mp-tchip:hover:not(:disabled) { border-color: var(--text-2); }
 
 /* Armar un trato. */
 .mp-tpartners { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.mp-tpartners[hidden] { display: none; }
 .mp-tpartners button { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-2); color: var(--text); font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; }
 .mp-tpartners button small { color: var(--text-3); font-weight: 500; }
 .mp-tpartners button.is-picked { border-color: var(--mp); background: color-mix(in srgb, var(--mp) 14%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--mp) 40%, transparent); }
@@ -345,6 +346,7 @@ button.mp-tchip:hover:not(:disabled) { border-color: var(--text-2); }
 @keyframes mp-float { 0% { opacity: 0; transform: translateY(6px) scale(0.8); } 15% { opacity: 1; transform: translateY(-6px) scale(1.15); } 100% { opacity: 0; transform: translateY(-30px) scale(1); } }
 @keyframes mp-bump { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
 
+.mp-center-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .mp-sound { padding: 4px 12px; border-radius: 999px; border: 1px solid #1d2a20; background: rgba(255, 255, 255, 0.6); color: #1d2a20; font: inherit; font-size: 12px; font-weight: 650; line-height: 1.4; cursor: pointer; }
 .mp-sound[aria-pressed='true'] { background: #fff; }
 .mp-saved-note { flex-basis: 100%; margin: 0; }

@@ -220,6 +220,9 @@ export function tradeProblem(room, t, settle = false) {
   return null;
 }
 
+// ¿Una oferta de `from` a `to` sería una contraoferta? Lo es si `from` tiene abierta una oferta que le hizo `to`.
+export const isCounter = (room, from, to) => Boolean(room.trade && room.trade.to === from && room.trade.from === to);
+
 // Quien recibe una propiedad hipotecada le paga al banco el 10 % del valor de la hipoteca.
 export const tradeFee = (room, props) => props.reduce((n, pos) => n + (room.props[pos]?.m ? mortgageFee(pos) : 0), 0);
 
@@ -832,11 +835,14 @@ export function applyAction(room, action, ctx = {}) {
     // ─── Tratos ──────────────────────────────────────────────────────────────
     case 'tradeOffer': {
       const side = (s) => ({ cash: s?.cash ?? 0, cards: s?.cards ?? 0, props: [...(s?.props || [])] });
-      const trade = { from: me?.id, to: action.to, give: side(action.give), take: side(action.take) };
-      if (!live || next.trade || next.auction) return null;
+      // Contraoferta: el que recibió una oferta le contesta con otra al que se la hizo, y la reemplaza (lleva `counter`).
+      // Si la nueva no es válida se rechaza y la original sigue en pie.
+      const counter = Boolean(me) && isCounter(next, me.id, action.to);
+      const trade = { from: me?.id, to: action.to, give: side(action.give), take: side(action.take), ...(counter ? { counter: true } : {}) };
+      if (!live || (next.trade && !counter) || next.auction) return null;
       if (tradeProblem(next, trade)) return null;
       next.trade = trade;
-      addLog(next, { k: 'offer', p: trade.from, o: trade.to });
+      addLog(next, { k: counter ? 'counter' : 'offer', p: trade.from, o: trade.to });
       return next;
     }
 
