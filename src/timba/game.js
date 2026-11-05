@@ -238,6 +238,7 @@ export function applyAction(room, action, ctx = {}) {
         startTrip(next, 'home', 'wait', now);
       } else {
         if (to === next.elev.floor) return null;
+        if (!next.day.endsAt && to > 0) next.day.endsAt = now + DAY_MS; // el día arranca con el primer viaje a un piso de juego
         startTrip(next, 'elev', to, now);
       }
       break;
@@ -253,7 +254,6 @@ export function applyAction(room, action, ctx = {}) {
         if (t.kind === 'limo') {
           for (const p of next.players) p.loc = 'outside';
           next.elev.floor = 0;
-          next.day.endsAt = now + DAY_MS;
         } else if (t.kind === 'elev') {
           next.elev.floor = t.to;
         } else {

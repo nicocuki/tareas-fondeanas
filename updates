@@ -826,8 +826,12 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.37.1.5 = Generala: podio con suspenso y mesa más liviana
+1.37.1.5 = Generala: podio con suspenso y mesa más liviana
 - El total ya no se ve durante la partida: se descubre al final.
 - El final es un podio con suspenso: redoble, y se destapan de a uno el tercero, el segundo y el primero, con los puntos subiendo. Después aparecen los demás puestos y la planilla completa. Se puede saltar.
 - Botones nuevos abajo de la planilla: el anfitrión puede terminar la partida cuando quiera (va al podio con lo anotado hasta ahí) y cualquiera puede salir. Los dos piden confirmar con un segundo toque.
 - La mesa, la bandeja y el cubilete se dibujan mucho más simples (colores lisos, sin reflejos ni texturas) para que no pese. La física de los dados es exactamente la misma.
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.37.2 = Fix: el reloj del día de La Timba arranca con el ascensor
+- El día ya no arranca al llegar a la puerta del casino: arranca cuando el ascensor viaja por primera vez a un piso de juego (no cuenta ir al lobby). Hasta entonces el reloj no corre.

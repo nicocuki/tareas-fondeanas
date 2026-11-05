@@ -412,7 +412,7 @@ function goalText(room, loc, aboard, inElev, done) {
   if (loc === 'elevator') {
     if (room.day.over) return 'Se acabó el día: usá el panel y bajá al lobby';
     if (inElev < room.players.length) return `Esperá a que suban todos al ascensor (${inElev}/${room.players.length})`;
-    return room.elev.floor === 0 ? 'Usá el panel (E) y subí al piso 1' : 'Salí del ascensor por la puerta de abajo';
+    return room.elev.floor === 0 ? 'Usá el panel (E) y subí al piso 1: ahí arranca el reloj del día' : 'Salí del ascensor por la puerta de abajo';
   }
   if (loc === 'f1') return done ? '¡Ya tienen la cuota! Sigan sumando hasta que termine el día' : 'Jugá al blackjack: acercate a la mesa y tocá E';
   return '';

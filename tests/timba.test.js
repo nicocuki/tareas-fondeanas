@@ -104,7 +104,7 @@ test('timba: la limusina sale cuando están todos adentro y llega a la puerta de
   assert.equal(act(room, 'a', { type: 'tick' }, 1000 + LIMO_MS - 1), null, 'todavía no llegó');
   const arrived = act(room, 'a', { type: 'tick' }, 1000 + LIMO_MS);
   assert.ok(arrived.players.every((p) => p.loc === 'outside'));
-  assert.equal(arrived.day.endsAt, 1000 + LIMO_MS + DAY_MS, 'el día arranca al llegar');
+  assert.equal(arrived.day.endsAt, 0, 'el día todavía no arrancó: arranca con el ascensor');
   assert.equal(arrived.trip, null);
 });
 
@@ -125,8 +125,10 @@ test('timba: el ascensor solo viaja con todos a bordo', () => {
   room = act(room, 'b', { type: 'loc', to: 'elevator' });
   assert.equal(act(room, 'a', { type: 'floor', to: 0 }, 5000), null, 'ya está en el lobby');
   assert.equal(act(room, 'a', { type: 'floor', to: 2 }, 5000), null, 'todavía no hay piso 2');
+  assert.equal(room.day.endsAt, 0, 'en el lobby el reloj no corre');
   room = act(room, 'b', { type: 'floor', to: 1 }, 5000);
   assert.equal(room.trip.kind, 'elev');
+  assert.equal(room.day.endsAt, 5000 + DAY_MS, 'el día arranca con el primer viaje a un piso');
   assert.equal(act(room, 'a', { type: 'loc', to: 'outside' }, 5001), null, 'no se sale con el ascensor andando');
   assert.equal(act(room, 'a', { type: 'tick' }, 5000 + ELEV_MS - 1), null);
   room = act(room, 'a', { type: 'tick' }, 5000 + ELEV_MS);
