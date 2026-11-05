@@ -309,9 +309,9 @@ con un clic (lleva a `?juego=…&sala=ABCD`, igual que un link de invitación).
   preferencia `publicRooms`: se aplica la primera vez que el anfitrión ve su sala con un solo jugador.
 - **Decide el servidor**: después de cada escritura en `rooms`, `garticRooms` o `publica`, y al
   abrirse o cerrarse un WebSocket, `Sala.publish()` calcula `roomListing` (pública, no llena, con alguien conectado;
-  empezada solo si el juego está en `JOIN_IN_PROGRESS` de `roomSummary.js`, y ahí va con `playing` y la portada
-  le pone «En curso») y, si cambió, se lo manda por RPC al
+  una partida en juego (`isPlaying`) se lista siempre, con `playing`, y la portada le pone «En curso»; una sala de espera llena no) y, si cambió, se lo manda por RPC al
   **Directorio**: un Durable Object único (`idFromName('portada')`).
+- **Mirar una partida en curso** (`src/ui/spectate.js`, pedido de Nico): en los juegos donde no se entra en medio (todos menos los de `JOIN_IN_PROGRESS`), `JoinInvite` muestra «Jugando», la lista de jugadores (`people` de `summarizeRoom`) y un botón «Mirar» en lugar de unirse. «Mirar» entra con una sesión `spectator: true` (id que no es de ningún jugador): la pantalla del juego se arma con `ghostMe(session)` (un `me` fantasma con los campos vacíos que las pantallas leen), `dispatch` no manda nada y en lugar del chat va `SpectatorBadge`. Cuando la sala vuelve a `lobby`, `useSpectatorJoin` lo une como jugador. Hoy miran Monopoly, T.E.G. y Generala (`SPECTATE_GAMES`); **para sumar otro juego** hay que probar que su pantalla no se rompa con el `me` fantasma (T.E.G. necesitó `color: 0`, el índice de su ejército) y agregarlo ahí. En los juegos de mover un personaje (Cubolandia, Pixel Royale, Cohete Royale, Entre Nosotros, La Timba) falta el espectador que sigue a los jugadores con las flechas; Arena Royale, A los Tiros, Fútbol y Café o Té también están pendientes. Los juegos con el cableado hecho pero sin habilitar: Arena, Tiros, Cohetes, Pixel, Cubolandia, Entre Nosotros y La Timba.
 - La portada escucha `/api/salas` por WebSocket (hiberna; un GET devuelve el JSON). Una entrada sin
   avisos en seis horas se descarta (`LISTING_TTL_MS`). **Un juego nuevo** que guarde la sala en
   `rooms/` con `phase`, `hostId` y `players` se lista solo; si tiene tope, sumalo a `MAX` en

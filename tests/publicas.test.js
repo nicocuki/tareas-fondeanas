@@ -29,12 +29,13 @@ test('Código Secreto (sin gameType) se lista como codigo-secreto', () => {
   assert.equal(listing.host, 'Uri');
 });
 
-test('una partida empezada se lista «en curso» si el juego deja entrar en medio', () => {
+test('una partida empezada se lista «en curso», en cualquier juego', () => {
   const room = newTiros('a', 'Nico', '🐸', 0);
   assert.equal(roomListing(tree('ABCD', { ...room, phase: 'fight' }, pub('ABCD')), 'ABCD', 1).playing, true);
   assert.equal(roomListing(tree('ABCD', room, pub('ABCD')), 'ABCD', 1).playing, undefined);
   const futbol = { gameType: 'futbol', phase: 'playing', hostId: 'a', players: [{ id: 'a', name: 'Nico' }] };
-  assert.equal(roomListing(tree('ABCD', futbol, pub('ABCD')), 'ABCD', 1), null, 'el fútbol no deja entrar en medio');
+  assert.equal(roomListing(tree('ABCD', futbol, pub('ABCD')), 'ABCD', 1).playing, true, 'el fútbol también se lista: quien entra, mira');
+  assert.equal(roomListing(tree('ABCD', { ...futbol, phase: 'ended' }, pub('ABCD')), 'ABCD', 1).playing, undefined, 'una partida terminada ya no está en curso');
   const gartic = { hostId: 'u1', settings: { maxPlayers: 6 }, players: { u1: { name: 'Alan' } }, state: { phase: 'playing' } };
   assert.equal(roomListing({ garticRooms: { WXYZ: gartic }, ...pub('WXYZ') }, 'WXYZ', 1).playing, true);
 });

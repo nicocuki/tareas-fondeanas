@@ -899,6 +899,13 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.43.0 = La Timba: un solo casino de 4 pisos que se abren con los días
+1.43.0 = La Timba: un solo casino de 4 pisos que se abren con los días
 - Hay un solo casino con 4 pisos. Los días 1 a 3 solo está el piso 1; del 4 al 6 se suma el piso 2; del 7 al 9, el 3; y del 10 al 12, el 4. Los pisos ganados quedan abiertos.
 - Cada piso se ve más lujoso que el anterior (clásico, terciopelo, mármol y dorado). El piso 1 tiene los 6 juegos de siempre y del piso 2 en adelante se suman los nuevos.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.44.0 = Salas públicas siempre a la vista y mirar partidas en curso 👀
+- Las salas públicas ahora aparecen siempre en el menú, también las que ya están jugando, con el cartel «En curso».
+- Si entrás a una sala en curso, ves la sala de espera con los jugadores, el cartel «Jugando» y un botón «Mirar» en lugar de unirte. Cuando termina la partida y la sala vuelve a la sala de espera, entrás solo como jugador.
+- Por ahora se puede mirar Monopoly, T.E.G. y Generala (sin poder tocar nada). En los demás juegos el botón «Mirar» todavía está apagado.

@@ -29,6 +29,7 @@ export function summarizeRoom(code, gartic, raw) {
     return {
       code, game: 'gartic', host: String(host?.name || '').slice(0, 24), hostAvatar: host?.avatar || '',
       players, max: Number(roomSettings(gartic.settings).maxPlayers) || null, phase: gartic.state?.phase || 'lobby', local: false,
+      people: Object.values(gartic.players || {}).slice(0, 30).map((p) => ({ name: String(p?.name || '').slice(0, 24), avatar: typeof p?.avatar === 'string' ? p.avatar : '' })),
     };
   }
   if (typeof raw !== 'string') return null;
@@ -40,12 +41,18 @@ export function summarizeRoom(code, gartic, raw) {
   const host = list.find((p) => p?.id === room.hostId) || list[0];
   return {
     code, game, host: String(host?.name || '').slice(0, 24), hostAvatar: typeof host?.avatar === 'string' ? host.avatar : '',
-    players: list.length, max: MAX[game] || null, phase: room.phase || 'lobby', local: Boolean(room.isTrainingMode || room.isLocalGame),
+    players: list.length, max: MAX[game] || null,
+    people: list.slice(0, 30).map((p) => ({ name: String(p?.name || '').slice(0, 24), avatar: typeof p?.avatar === 'string' ? p.avatar : '', bot: Boolean(p?.bot) })),
+    phase: room.phase || 'lobby', local: Boolean(room.isTrainingMode || room.isLocalGame),
   };
 }
 
 // Juegos en los que se puede entrar con la partida empezada: entrás mirando y jugás en la próxima.
 // Fútbol y Café o Té no (sus reducers rechazan el `join` fuera de la sala de espera).
 export const JOIN_IN_PROGRESS = ['codigo-secreto', 'gartic', 'la-mecha', 'meme', 'tiros'];
+
+// ¿La partida está en juego? (ni en la sala de espera ni terminada.) Las salas así se listan «En curso» y se pueden mirar.
+const NOT_PLAYING = ['lobby', 'resume', 'ended', 'final', 'finished', 'results'];
+export const isPlaying = (phase) => !NOT_PLAYING.includes(phase);
 
 export const isFull = (s) => Boolean(s?.max && s.players >= s.max);

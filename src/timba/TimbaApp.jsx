@@ -5,6 +5,8 @@ import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
+import SpectatorBadge from '../ui/SpectatorBadge.jsx';
+import { ghostMe, useSpectatorJoin } from '../ui/spectate.js';
 import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
 import GameChat from '../ui/GameChat.jsx';
@@ -23,7 +25,7 @@ function codeFromUrl() {
 const setUrlCode = (code) => window.history.replaceState(null, '', gameUrl(GAME, code));
 
 // ─── Entrada ─────────────────────────────────────────────────────────────────
-function Entry({ onCreate, onJoin, busy, error, onBack }) {
+function Entry({ onCreate, onJoin, onSpectate, busy, error, onBack }) {
   const profile = getProfile();
   const [name, setName] = useState(profile.name);
   const [avatar, setAvatar] = useState(profile.avatar);
@@ -39,6 +41,7 @@ function Entry({ onCreate, onJoin, busy, error, onBack }) {
           gameId={GAME} code={code} name={name} onName={setName} avatar={avatar} onAvatar={setAvatar} maxName={16}
           busy={busy} error={error} onBack={onBack}
           onJoin={() => { save(); onJoin(code, name, avatar); }}
+          onSpectate={() => onSpectate(code)}
           onCancel={() => { setInvite(false); setCode(''); setUrlCode(''); }}
         />
       </div>
@@ -148,7 +151,8 @@ export default function PixelApp({ onBackToMenu }) {
   const [copied, setCopied] = useState(false);
   const [offset, setOffset] = useState(0);
   const code = session?.code;
-  const me = findPlayer(room, session?.playerId);
+  const spectating = Boolean(session?.spectator);
+  const me = spectating ? ghostMe(session) : findPlayer(room, session?.playerId);
 
   useRegisterRoom(GAME, code, () => handleLeave());
   const screenRef = useRef(null);
@@ -174,7 +178,7 @@ export default function PixelApp({ onBackToMenu }) {
   }
 
   async function dispatch(action) {
-    if (!session) return null;
+    if (!session || session.spectator) return null; // el que mira no manda jugadas
     try {
       return await backend.updateRoom(session.code, (current) => applyAction(current, { ...action, playerId: session.playerId }, { now: Date.now() + offset, rand: Math.random }));
     } catch {
@@ -194,6 +198,11 @@ export default function PixelApp({ onBackToMenu }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  // Entra a mirar una partida en curso: no es jugador, no escribe nada en la sala.
+  function handleSpectate(target) {
+    enterRoom({ code: target, playerId: makeId(), name: getProfile().name || 'Espectador', spectator: true });
   }
 
   async function handleJoin(target, name, avatar) {
@@ -217,7 +226,7 @@ export default function PixelApp({ onBackToMenu }) {
     setUrlCode('');
     setSession(null);
     setRoom(null);
-    if (leaving) backend.updateRoom(leaving.code, (current) => applyAction(current, { type: 'leave', playerId: leaving.playerId }, { now: Date.now() + offset })).catch(() => {});
+    if (leaving && !leaving.spectator) backend.updateRoom(leaving.code, (current) => applyAction(current, { type: 'leave', playerId: leaving.playerId }, { now: Date.now() + offset })).catch(() => {});
   }
 
   async function copyInvite() {
@@ -231,8 +240,10 @@ export default function PixelApp({ onBackToMenu }) {
     }
   }
 
+  useSpectatorJoin(session, room, (target, name) => handleJoin(target, name, getProfile().avatar));
+
   const banner = error && <p className="tb-error tb-banner" role="alert">{error}</p>;
-  if (!session) return <Entry onCreate={handleCreate} onJoin={handleJoin} busy={busy} error={error} onBack={onBackToMenu} />;
+  if (!session) return <Entry onCreate={handleCreate} onJoin={handleJoin} onSpectate={handleSpectate} busy={busy} error={error} onBack={onBackToMenu} />;
   if (!room) return <div className="cs-root tb-page"><p className="tb-hint tb-center">Entrando a la sala…</p></div>;
   if (!me) {
     return (
@@ -245,7 +256,7 @@ export default function PixelApp({ onBackToMenu }) {
       </div>
     );
   }
-  if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} /><GameChat code={code} me={me} /></>;
+  if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} />{spectating ? <SpectatorBadge /> : <GameChat code={code} me={me} />}</>;
 
   let content;
   if (room.phase === 'ended') content = <Final room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />;
@@ -254,7 +265,7 @@ export default function PixelApp({ onBackToMenu }) {
     <div ref={screenRef} className="tb-screen">
       {banner}
       {content}
-      <GameChat code={code} me={me} />
+      {spectating ? <SpectatorBadge /> : <GameChat code={code} me={me} />}
       <button type="button" className="tb-screen-exit" onClick={() => { if (fullscreenElement()) toggleFullscreen(); }}>Salir de pantalla completa <kbd>Esc</kbd></button>
     </div>
   );

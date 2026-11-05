@@ -5,18 +5,21 @@ import React from 'react';
 import { AVATARS } from './store.js';
 import { gameById, gameUrl } from './games.js';
 import { useRoomInfo } from './rooms.js';
-import { isFull } from './roomSummary.js';
+import { isFull, isPlaying } from './roomSummary.js';
+import { canSpectate, watchOnly } from './spectate.js';
 import { useAutoJoin } from './mudanza.js';
 
 export default function JoinInvite({
-  gameId, code, name, onName, avatar, onAvatar, maxName = 20, busy, error, onJoin, onCancel, onBack,
+  gameId, code, name, onName, avatar, onAvatar, maxName = 20, busy, error, onJoin, onSpectate, onCancel, onBack,
 }) {
   const game = gameById(gameId);
   const info = useRoomInfo(code);
   const other = info && info.game !== gameId ? gameById(info.game) : null;
   const full = isFull(info);
   const started = info && info.phase !== 'lobby' && info.phase !== 'resume';
-  const canJoin = Boolean(info) && !other && !full && name.trim().length > 0 && !busy;
+  // La partida está en juego y en este juego no se entra en medio: se mira.
+  const watching = watchOnly(gameId, info && { ...info, playing: isPlaying(info.phase) }) && !other;
+  const canJoin = Boolean(info) && !other && !full && !watching && name.trim().length > 0 && !busy;
   // Siguiendo al anfitrión que cambió de juego: se entra solo.
   useAutoJoin(canJoin, onJoin);
 
@@ -52,7 +55,17 @@ export default function JoinInvite({
       {other && <p className="tf-invite-status is-bad">Esta sala es de {other.emoji} {other.title}. <a href={gameUrl(info.game, code)}>Ir a esa sala</a></p>}
       {full && <p className="tf-invite-status is-bad">La sala está llena.</p>}
 
-      <form className="tf-invite-card" onSubmit={(e) => { e.preventDefault(); if (canJoin) onJoin(); }}>
+      {watching && (
+        <div className="tf-invite-card tf-invite-watch" data-watch>
+          <p className="tf-invite-live">Jugando</p>
+          <ul className="tf-invite-people">
+            {(info.people || []).map((p, i) => <li key={i}><span>{p.avatar || '🙂'}</span> {p.name}{p.bot ? ' (bot)' : ''}</li>)}
+          </ul>
+          <button type="button" className="tf-btn tf-btn-primary tf-btn-block tf-invite-join" disabled={!onSpectate || !canSpectate(gameId)} onClick={onSpectate} data-act="watch">Mirar</button>
+          <p className="tf-invite-status">{canSpectate(gameId) ? 'Cuando termine la partida, podés jugar con los demás.' : 'Todavía no se puede mirar este juego. Cuando termine la partida, podés jugar con los demás.'}</p>
+        </div>
+      )}
+      {!watching && <form className="tf-invite-card" onSubmit={(e) => { e.preventDefault(); if (canJoin) onJoin(); }}>
         <label className="tf-field">
           <span>Tu nombre</span>
           <input
@@ -79,7 +92,7 @@ export default function JoinInvite({
         <button type="submit" className="tf-btn tf-btn-primary tf-btn-block tf-invite-join" disabled={!canJoin}>
           {busy ? 'Entrando…' : 'Unirme a la sala'}
         </button>
-      </form>
+      </form>}
       <button type="button" className="tf-invite-other" onClick={onCancel}>Prefiero crear mi propia sala</button>
     </div>
   );

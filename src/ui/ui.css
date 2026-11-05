@@ -440,3 +440,8 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-suggest.is-compact .tf-suggest-msg { font-size: 12px; padding: 8px 10px; margin-bottom: 8px; }
 .tf-suggest-x { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: none; color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; }
 .tf-suggest-x:hover { background: var(--surface-2); color: var(--text); }
+.tf-invite-watch { text-align: center; }
+.tf-invite-live { display: inline-block; margin: 0 0 10px; padding: 4px 14px; border-radius: 999px; background: var(--danger-soft, rgba(224, 82, 90, 0.18)); color: var(--danger, #e0525a); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-size: 13px; }
+.tf-invite-people { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.tf-invite-people li { padding: 5px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-weight: 600; }
+.tf-spectator { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 40; padding: 6px 16px; border-radius: 999px; background: rgba(20, 16, 28, 0.88); color: #fff; font: 600 13px Inter, sans-serif; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }

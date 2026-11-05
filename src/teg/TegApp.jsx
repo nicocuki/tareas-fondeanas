@@ -6,6 +6,8 @@ import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/inde
 import { isKicked } from '../lobby/kick.js';
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
+import SpectatorBadge from '../ui/SpectatorBadge.jsx';
+import { ghostMe, useSpectatorJoin } from '../ui/spectate.js';
 import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
 import GameChat from '../ui/GameChat.jsx';
@@ -35,7 +37,7 @@ function setUrlCode(code) {
 }
 
 // ─── Entrada ─────────────────────────────────────────────────────────────────
-function Entry({ onCreate, onJoin, busy, error, onBack }) {
+function Entry({ onCreate, onJoin, onSpectate, busy, error, onBack }) {
   const profile = getProfile();
   const [name, setName] = useState(profile.name);
   const [avatar, setAvatar] = useState(profile.avatar);
@@ -50,6 +52,7 @@ function Entry({ onCreate, onJoin, busy, error, onBack }) {
           gameId={GAME} code={code} name={name} onName={setName} avatar={avatar} onAvatar={setAvatar}
           busy={busy} error={error} onBack={onBack}
           onJoin={() => { save(); onJoin(code, name, avatar); }}
+          onSpectate={() => onSpectate(code)}
           onCancel={() => { setInvite(false); setCode(''); setUrlCode(''); }}
         />
       </div>
@@ -439,7 +442,8 @@ export default function TegApp({ onBackToMenu }) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const code = session?.code;
-  const me = findPlayer(room, session?.playerId);
+  const spectating = Boolean(session?.spectator);
+  const me = spectating ? ghostMe(session, { color: 0 }) : findPlayer(room, session?.playerId);
 
   useRegisterRoom(GAME, code, () => handleLeave());
 
@@ -463,7 +467,7 @@ export default function TegApp({ onBackToMenu }) {
   }
 
   async function dispatch(action) {
-    if (!session) return null;
+    if (!session || session.spectator) return null; // el que mira no manda jugadas
     try {
       return await backend.updateRoom(session.code, (current) => applyAction(current, { ...action, playerId: session.playerId }, { now: Date.now(), rand: Math.random }));
     } catch {
@@ -485,6 +489,11 @@ export default function TegApp({ onBackToMenu }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  // Entra a mirar una partida en curso: no es jugador, no escribe nada en la sala.
+  function handleSpectate(target) {
+    enterRoom({ code: target, playerId: makeId(), name: getProfile().name || 'Espectador', spectator: true });
   }
 
   async function handleJoin(target, name, avatar) {
@@ -510,7 +519,7 @@ export default function TegApp({ onBackToMenu }) {
     setUrlCode('');
     setSession(null);
     setRoom(null);
-    if (leaving) backend.updateRoom(leaving.code, (current) => applyAction(current, { type: 'leave', playerId: leaving.playerId })).catch(() => {});
+    if (leaving && !leaving.spectator) backend.updateRoom(leaving.code, (current) => applyAction(current, { type: 'leave', playerId: leaving.playerId })).catch(() => {});
   }
 
   async function copyInvite() {
@@ -524,9 +533,11 @@ export default function TegApp({ onBackToMenu }) {
     }
   }
 
+  useSpectatorJoin(session, room, (target, name) => handleJoin(target, name, getProfile().avatar));
+
   const banner = error && <p className="tg-error tg-banner" role="alert">{error}</p>;
 
-  if (!session) return <>{banner}<Entry onCreate={handleCreate} onJoin={handleJoin} busy={busy} error={error} onBack={onBackToMenu} /></>;
+  if (!session) return <>{banner}<Entry onCreate={handleCreate} onJoin={handleJoin} onSpectate={handleSpectate} busy={busy} error={error} onBack={onBackToMenu} /></>;
   if (!room) return <div className="cs-root tg-page"><p className="tg-hint tg-msg">Entrando a la sala…</p></div>;
   if (!me || me.left) {
     return (
@@ -539,7 +550,7 @@ export default function TegApp({ onBackToMenu }) {
       </div>
     );
   }
-  if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} /><GameChat code={code} me={me} /></>;
-  if (room.phase === 'ended') return <><Ended room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} /><GameChat code={code} me={me} /></>;
-  return <>{banner}<Game room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} /><GameChat code={code} me={me} /></>;
+  if (room.phase === 'lobby') return <>{banner}<Lobby room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} />{spectating ? <SpectatorBadge /> : <GameChat code={code} me={me} />}</>;
+  if (room.phase === 'ended') return <><Ended room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />{spectating ? <SpectatorBadge /> : <GameChat code={code} me={me} />}</>;
+  return <>{banner}<Game room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />{spectating ? <SpectatorBadge /> : <GameChat code={code} me={me} />}</>;
 }
