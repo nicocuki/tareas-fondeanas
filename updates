@@ -818,8 +818,16 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.37.0.5 = Fix: la Generala ya no se traba al tirar
+1.37.0.5 = Fix: la Generala ya no se traba al tirar
 - Al soltar el cubilete la pantalla se quedaba clavada un instante (más la primera tirada): la física de los dados ahora se calcula aparte y la mesa nunca deja de moverse.
 - La mesa carga mucho más rápido al entrar a la partida.
 - Los dados adentro del cubilete se sacuden de corrido, no a los saltos.
 - En compus o celulares lentos la mesa se aliviana sola (menos resolución y sombras más simples).
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.37.1.5 = Generala: podio con suspenso y mesa más liviana
+- El total ya no se ve durante la partida: se descubre al final.
+- El final es un podio con suspenso: redoble, y se destapan de a uno el tercero, el segundo y el primero, con los puntos subiendo. Después aparecen los demás puestos y la planilla completa. Se puede saltar.
+- Botones nuevos abajo de la planilla: el anfitrión puede terminar la partida cuando quiera (va al podio con lo anotado hasta ahí) y cualquiera puede salir. Los dos piden confirmar con un segundo toque.
+- La mesa, la bandeja y el cubilete se dibujan mucho más simples (colores lisos, sin reflejos ni texturas) para que no pese. La física de los dados es exactamente la misma.

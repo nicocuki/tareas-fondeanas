@@ -11,9 +11,9 @@ import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
 import { isKicked } from '../lobby/kick.js';
 import {
-  CATEGORIES, GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, makeId, newRoom, totalOf,
+  CATEGORIES, GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, makeId, newRoom, ranking,
 } from './game.js';
-import GeneralaGame, { Face, Sheet } from './GeneralaGame.jsx';
+import GeneralaGame, { ConfirmButton, Face, Sheet } from './GeneralaGame.jsx';
 import './generala.css';
 
 const GAME = 'generala';
@@ -124,40 +124,104 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   );
 }
 
-// ─── El final ────────────────────────────────────────────────────────────────
+// ─── El final: el podio, con suspenso ────────────────────────────────────────
+// Durante la partida nadie ve los totales. Acá se destapan de a uno: tercero, segundo y primero.
+const REVEAL_MS = [1500, 1700, 2100, 1300]; // cuánto dura cada paso antes de pasar al siguiente
+const PODIUM_KEY = 'tf:generala:podio';
+
+// Los puntos suben contando hasta su valor.
+function CountUp({ to }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = () => {
+      const k = Math.min(1, (performance.now() - t0) / 900);
+      setN(Math.round(to * (1 - (1 - k) ** 3)));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => cancelAnimationFrame(raf);
+  }, [to]);
+  return <>{n}</>;
+}
+
 function Final({ room, me, onDispatch, onLeave }) {
   const host = room.hostId === me.id;
-  const winners = room.winners.map((id) => findPlayer(room, id)).filter(Boolean);
-  const ranking = [...room.players].sort((a, b) => totalOf(b.sheet) - totalOf(a.sheet));
+  const list = ranking(room);
+  const top = list.slice(0, 3);
+  const winners = list.filter((p) => room.winners.includes(p.id));
+  // Los pasos: 0 redoble, 1 se destapa el tercero, 2 el segundo, 3 el primero, 4 todo lo demás (planilla y botones).
+  // Con menos de tres jugadores se saltean los que no hay.
+  const first = top.length >= 3 ? 1 : top.length === 2 ? 2 : 3;
+  const seen = () => { try { return sessionStorage.getItem(PODIUM_KEY) === String(room.endedAt); } catch { return false; } };
+  const [step, setStep] = useState(() => (seen() ? 4 : 0));
+  useEffect(() => {
+    if (step >= 4) { try { sessionStorage.setItem(PODIUM_KEY, String(room.endedAt)); } catch { /* da igual */ } return undefined; }
+    const t = setTimeout(() => setStep(step === 0 ? first : step + 1), REVEAL_MS[step]);
+    return () => clearTimeout(t);
+  }, [step, first, room.endedAt]);
+
+  const shown = (index) => step >= 3 - index; // el primero (0) en el paso 3, el segundo en el 2, el tercero en el 1
   const dice = room.turn?.dice || [];
+  const reason = room.reason === 'servida' ? '¡Generala servida!' : room.reason === 'cortada' ? 'Partida terminada' : 'Planillas completas';
+  // En el podio el primero va al medio, el segundo a la izquierda y el tercero a la derecha.
+  const order = [1, 0, 2].filter((i) => top[i]);
   return (
-    <div className="gn-final" data-final>
-      <p className="gn-eyebrow">{room.reason === 'servida' ? '¡Generala servida!' : 'Planillas completas'}</p>
+    <div className="gn-final" data-final data-step={step}>
+      <p className="gn-eyebrow">{reason}</p>
       <h1 className="gn-wins">
-        {winners.length ? <>{winners.map((w) => `${w.avatar} ${w.name}`).join(' y ')} {winners.length > 1 ? 'empatan' : 'gana'}</> : 'Se terminó la partida'}
+        {step < 3 ? <span className="gn-drum">Y el podio es<i>.</i><i>.</i><i>.</i></span>
+          : winners.length ? <>🏆 {winners.map((w) => w.name).join(' y ')} {winners.length > 1 ? 'empatan' : 'gana'}</> : 'Se terminó la partida'}
       </h1>
-      {room.reason === 'servida' && dice.every(Boolean) && (
-        <div className="gn-final-dice">{dice.map((d, i) => <span key={i} className="gn-die is-static"><Face value={d} /></span>)}</div>
-      )}
-      <ol className="gn-ranking">
-        {ranking.map((p, i) => (
-          <li key={p.id} className={`${p.id === me.id ? 'is-me' : ''} ${room.winners.includes(p.id) ? 'is-winner' : ''}`}>
-            <span>{i + 1}</span>
-            <strong><span className="gn-dot" style={{ background: p.color }} /> {p.avatar} {p.name}{p.left ? ' (se fue)' : ''}</strong>
-            <b>{totalOf(p.sheet)}</b>
-          </li>
-        ))}
-      </ol>
-      <div className="gn-final-sheet"><Sheet room={room} me={me} live={false} /></div>
-      <div className="gn-final-actions">
-        {host ? (
-          <>
-            <button type="button" className="tf-btn tf-btn-primary" data-act="again" onClick={() => onDispatch({ type: 'start' })}>🎲 Otra partida</button>
-            <button type="button" className="tf-btn tf-btn-soft" onClick={() => onDispatch({ type: 'toLobby' })}>Volver a la sala</button>
-          </>
-        ) : <p className="gn-muted">El anfitrión puede arrancar otra.</p>}
-        <button type="button" className="tf-btn tf-btn-soft" onClick={onLeave}>Salir</button>
+
+      <div className="gn-podium" data-podium>
+        {order.map((i) => {
+          const p = top[i];
+          const open = shown(i);
+          return (
+            <div key={p.id} className={`gn-step is-p${i + 1} ${open ? 'is-open' : ''} ${p.id === me.id ? 'is-me' : ''}`} style={{ '--c': p.color }} data-place={p.place} data-open={open ? 1 : 0}>
+              <div className="gn-step-who">
+                <span className="gn-step-avatar">{open ? p.avatar : '❔'}</span>
+                <strong>{open ? p.name : '¿?'}</strong>
+                <b>{open ? <CountUp to={p.total} /> : '···'}</b>
+              </div>
+              <div className="gn-step-block"><span>{p.place}°</span></div>
+            </div>
+          );
+        })}
       </div>
+
+      {step < 4 ? (
+        <button type="button" className="gn-skip" data-act="skip" onClick={() => setStep(4)}>Saltar</button>
+      ) : (
+        <div className="gn-after">
+          {room.reason === 'servida' && dice.every(Boolean) && (
+            <div className="gn-final-dice">{dice.map((d, i) => <span key={i} className="gn-die is-static"><Face value={d} /></span>)}</div>
+          )}
+          {list.length > 3 && (
+            <ol className="gn-ranking">
+              {list.slice(3).map((p) => (
+                <li key={p.id} className={p.id === me.id ? 'is-me' : ''}>
+                  <span>{p.place}°</span>
+                  <strong><span className="gn-dot" style={{ background: p.color }} /> {p.avatar} {p.name}{p.left ? ' (se fue)' : ''}</strong>
+                  <b>{p.total}</b>
+                </li>
+              ))}
+            </ol>
+          )}
+          <div className="gn-final-actions">
+            {host ? (
+              <>
+                <button type="button" className="tf-btn tf-btn-primary" data-act="again" onClick={() => onDispatch({ type: 'start' })}>🎲 Otra partida</button>
+                <button type="button" className="tf-btn tf-btn-soft" data-act="lobby" onClick={() => onDispatch({ type: 'toLobby' })}>Volver a la sala</button>
+              </>
+            ) : <p className="gn-muted">El anfitrión puede arrancar otra.</p>}
+            <ConfirmButton className="tf-btn tf-btn-soft" data-act="leave" ask="¿Salir de la sala?" onConfirm={onLeave}>Salir</ConfirmButton>
+          </div>
+          <div className="gn-final-sheet"><Sheet room={room} me={me} live={false} totals /></div>
+        </div>
+      )}
     </div>
   );
 }
@@ -281,7 +345,7 @@ export default function GeneralaApp({ onBackToMenu }) {
       {banner}
       {room.phase === 'ended'
         ? <Final room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />
-        : <GeneralaGame room={room} me={me} code={code} onDispatch={dispatch} />}
+        : <GeneralaGame room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} />}
       <GameChat code={code} me={me} />
       <button type="button" className="gn-screen-exit" onClick={() => { if (fullscreenElement()) toggleFullscreen(); }}>Salir de pantalla completa <kbd>Esc</kbd></button>
     </div>

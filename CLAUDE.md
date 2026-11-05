@@ -1002,7 +1002,11 @@ raíz `generala/` en `ROOTS`, efímera, solo para la mano del que tira).
   también), generala 50, doble 100 (solo con la generala ya anotada con puntos). Servido (primera tirada) da 5 más en escalera, full y póker.
   Opciones: `servida` (la generala servida gana la partida) y `doble`. El que se va queda en la planilla con `left` y se saltea; nadie entra
   con la partida empezada; el anfitrión puede sacar a un ausente desde la planilla (`data-kick`).
-- **La mesa** (`table.js`): Three.js, todo hecho con código (texturas con canvas, sin imágenes). Recibe el turno con `sync` y **acomoda sola
+- **El dibujo es simple a propósito** (pedido de Feli: «lo que sí se tiene que mantener son las físicas de los dados, lo demás lo podés
+  hacer más simple para que no pese tanto»): colores lisos (`MeshLambertMaterial`), una lámpara, sombras de 1024 y `pixelRatio` hasta 1,5.
+  Sin reflejos, relieves, tono de película ni texturas, salvo las caras de los dados (128 px). **No le vuelvas a sumar materiales físicos,
+  mapa de entorno ni texturas a la mesada, la bandeja o el cubilete**; la física no se toca.
+- **La mesa** (`table.js`): Three.js, todo hecho con código (sin imágenes). Recibe el turno con `sync` y **acomoda sola
   lo que se ve** (`reconcile`): cada dado va al cubilete, al paño (donde cayó) o al estante (si está guardado); si la sala trae una tirada que
   todavía no mostró (`rollN` mayor que `shown`), la reproduce desde el gesto. El que tira ve su tirada al soltar, sin esperar a la sala
   (`local`). Usa `everyFrame` y un reloj propio (`this.time`): con la pestaña de fondo la tirada avanza igual, sin dibujar.
@@ -1015,19 +1019,26 @@ raíz `generala/` en `ROOTS`, efímera, solo para la mano del que tira).
   `waiting` cuenta como `busy()`. El Worker hace una tirada de práctica al arrancar. Si el Worker no se puede crear, la calcula la página.
   **No vuelvas a llamar a `simulate` de `dice.js` desde la página.**
 - **Se aliviana sola** (`pace`): si mientras algo se mueve hay 40 cuadros de más de 28 ms, baja una vez la resolución (`pixelRatio` 1) y las
-  sombras (1024). No vuelve a subir. Los dados adentro del cubilete se mueven de a poco hacia su lugar nuevo (`jitterTo`), no de golpe.
+  sombras (512). No vuelve a subir. Los dados adentro del cubilete se mueven de a poco hacia su lugar nuevo (`jitterTo`), no de golpe.
 - **El gesto**: mantener apretado (mouse o dedo sobre la mesa, el botón, o Espacio) levanta el cubilete con los dados adentro y lo sacude;
   al soltar se vuelca. Dónde estaba, para dónde se movía y cuánto se sacudió arman el `throw`. Mientras tanto la posición va por
   `generala/{sala}/mano` (`{ n, r, x, z }`, efímero): los demás ven el cubilete en la mano del que tira.
 - **La planilla espera a los dados** (`GeneralaGame.jsx`): mientras la mesa muestra una tirada (`room.turn.rollN !== shown`), la planilla y
   los botones siguen con la sala de antes (como `useStagedRoom` del Monopoly), así nadie ve el resultado antes de que los dados se queden quietos.
+- **El total no se ve durante la partida** (pedido de Feli: el resultado es con suspenso): `Sheet` solo muestra la fila del total con
+  `totals`, que se pasa recién en el final. **El final es un podio** (`Final` en `GeneralaApp.jsx`): redoble, y se destapan el tercero, el
+  segundo y el primero (pasos 0 a 4, `REVEAL_MS`), con los puntos subiendo; después aparecen los demás, la planilla con totales y los botones.
+  El orden sale de `ranking(room)` (los que ganaron primero —con la generala servida gana el que la sacó, sume lo que sume— y después por
+  puntos; los empatados comparten puesto). Al recargar no se repite (`tf:generala:podio` en `sessionStorage`). Se puede saltar.
+- **Terminar y salir**: el anfitrión puede cortar la partida (`endGame`: va al podio con lo anotado hasta ahí, `reason: 'cortada'`) y
+  cualquiera puede salir; los dos botones están abajo de la planilla y piden confirmar con un segundo toque (`ConfirmButton`).
 - **Sonido** (`sound.js`): cada golpe que anota la física (`events`: contra el paño, la madera u otro dado, con su fuerza) se sintetiza con
   Web Audio. **Apagado por defecto** (`tf:generala:sonido`), como en el Monopoly.
 - **Cuidado al probar en local**: `vite build` vacía `dist/` y `wrangler dev` deja de servir la página (404). Reiniciá wrangler, o compilá con
   `npx vite build --emptyOutDir=false`.
 - `window.__generala` (la mesa: `debug()`, con `light` si ya se alivianó, y `slow = 30` para verla en cámara lenta) y `data-generala-canvas`, `data-stage`, `data-rolls`,
   `data-die` (con `data-value` y `data-held`), `data-act`, `data-cat` (con `data-points`), `data-cell`, `data-total`, `data-kick`,
-  `data-sheet`, `data-final` existen para manejar el juego desde un navegador automatizado. No los saques.
+  `data-sheet`, `data-final` (con `data-step`), `data-podium` (con `data-place` y `data-open`) existen para manejar el juego desde un navegador automatizado. No los saques.
 - **Todavía no tiene**: reloj de turno, bots, ni entrar a mitad de partida.
 
 ## Mario vs Luigi

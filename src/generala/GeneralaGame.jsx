@@ -21,7 +21,8 @@ export function Face({ value }) {
 }
 
 // ─── La planilla ─────────────────────────────────────────────────────────────
-export function Sheet({ room, me, live, onScore, onKick }) {
+// `totals`: la fila del total. Durante la partida no se muestra (pedido de Feli: el resultado es con suspenso, al final).
+export function Sheet({ room, me, live, onScore, onKick, totals = false }) {
   const [confirm, setConfirm] = useState(null); // casilla que se está por tachar
   const cats = categoriesFor(room);
   const turn = room.turn;
@@ -86,19 +87,36 @@ export function Sheet({ room, me, live, onScore, onKick }) {
             </tr>
           ))}
         </tbody>
-        <tfoot>
-          <tr>
-            <th className="gn-cat" scope="row"><span>Total</span></th>
-            {room.players.map((p) => <td key={p.id} data-total={p.id}>{totalOf(p.sheet)}</td>)}
-          </tr>
-        </tfoot>
+        {totals && (
+          <tfoot>
+            <tr>
+              <th className="gn-cat" scope="row"><span>Total</span></th>
+              {room.players.map((p) => <td key={p.id} data-total={p.id}>{totalOf(p.sheet)}</td>)}
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
 }
 
+// Un botón que pide confirmar: el primer toque lo arma («¿Seguro?») y el segundo lo hace.
+export function ConfirmButton({ children, ask = '¿Seguro?', onConfirm, ...rest }) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return undefined;
+    const t = setTimeout(() => setArmed(false), 3500);
+    return () => clearTimeout(t);
+  }, [armed]);
+  return (
+    <button type="button" {...rest} data-armed={armed ? 1 : 0} onClick={() => { if (armed) { setArmed(false); onConfirm(); } else setArmed(true); }}>
+      {armed ? ask : children}
+    </button>
+  );
+}
+
 // ─── La partida ──────────────────────────────────────────────────────────────
-export default function GeneralaGame({ room, me, code, onDispatch }) {
+export default function GeneralaGame({ room, me, code, onDispatch, onLeave }) {
   const canvasRef = useRef(null);
   const tableRef = useRef(null);
   const [ready, setReady] = useState(false);
@@ -287,8 +305,14 @@ export default function GeneralaGame({ room, me, code, onDispatch }) {
           onKick={(id) => onDispatch({ type: 'kick', target: id })}
         />
         <p className="gn-note">
-          {view.options.servida ? 'Generala servida gana la partida. ' : ''}Servido (en la primera tirada) vale 5 más.
+          {view.options.servida ? 'Generala servida gana la partida. ' : ''}Servido (en la primera tirada) vale 5 más. El total se ve al final.
         </p>
+        <div className="gn-side-actions">
+          {room.hostId === me.id && (
+            <ConfirmButton className="tf-btn tf-btn-soft" data-act="end" ask="¿Terminar ahora?" onConfirm={() => onDispatch({ type: 'endGame' })}>🏁 Terminar la partida</ConfirmButton>
+          )}
+          <ConfirmButton className="tf-btn tf-btn-soft" data-act="leave" ask="¿Salir de la partida?" onConfirm={onLeave}>Salir</ConfirmButton>
+        </div>
       </aside>
     </div>
   );

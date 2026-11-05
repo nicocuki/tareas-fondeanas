@@ -114,9 +114,27 @@ function advance(next, now) {
     const p = order[(from + k) % order.length];
     if (!p.left && !isDone(next, p)) { next.turn = newTurn(p.id, next.turn.n + 1, next.turn.rollN); return; }
   }
+  finishByPoints(next, 'puntos', now);
+}
+
+// Gana el que más sumó entre los que siguen jugando (si empatan, ganan todos los empatados).
+function finishByPoints(next, reason, now) {
   const playing = active(next);
   const best = Math.max(0, ...playing.map((p) => totalOf(p.sheet)));
-  finish(next, playing.filter((p) => totalOf(p.sheet) === best).map((p) => p.id), 'puntos', now);
+  finish(next, playing.filter((p) => totalOf(p.sheet) === best).map((p) => p.id), reason, now);
+}
+
+// El orden del final: primero los que ganaron (con la generala servida gana el que la sacó, sume lo que sume),
+// después por puntos. Cada uno lleva su puesto; los empatados comparten puesto.
+export function ranking(room) {
+  const wins = (p) => (room.winners?.includes(p.id) ? 1 : 0);
+  const list = [...room.players].sort((a, b) => wins(b) - wins(a) || totalOf(b.sheet) - totalOf(a.sheet));
+  let place = 0;
+  return list.map((p, i) => {
+    const prev = list[i - 1];
+    if (!prev || wins(prev) !== wins(p) || totalOf(prev.sheet) !== totalOf(p.sheet)) place = i + 1;
+    return { ...p, total: totalOf(p.sheet), place };
+  });
 }
 
 function removePlayer(next, id, now) {
@@ -256,6 +274,13 @@ export function applyAction(room, action, ctx = {}) {
       next.last = null;
       next.winners = [];
       next.reason = '';
+      break;
+    }
+
+    // El anfitrión corta la partida: se termina ahí, con lo que cada uno lleva anotado.
+    case 'endGame': {
+      if (!host || next.phase !== 'playing') return null;
+      finishByPoints(next, 'cortada', now);
       break;
     }
 

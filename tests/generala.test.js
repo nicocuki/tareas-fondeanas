@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import RAPIER from '@dimforge/rapier3d-deterministic-compat';
 import {
   CATEGORIES, MAX_ROLLS, applyAction, categoriesFor, currentPlayer, diceToThrow, findPlayer, holdProblem, isDone, newRoom,
-  preview, rollProblem, scoreFor, scoreProblem, totalOf,
+  preview, ranking, rollProblem, scoreFor, scoreProblem, totalOf,
 } from '../src/generala/game.js';
 import {
   DIE, FACES, HALF, HAND, POUR_GAP, TRAY, cleanThrow, mulberry32, readDie, shelfSlot, simulate, throwSetup,
@@ -226,6 +226,35 @@ test('generala: el que se va en plena partida queda en la planilla y se saltea; 
   assert.deepEqual(room.kicked, ['c']);
   room = act(room, 'b', { type: 'leave' });
   assert.equal(room.phase, 'ended', 'no queda nadie');
+});
+
+test('generala: el anfitrión puede terminar la partida antes: gana el que más lleva anotado', () => {
+  let room = started(3, { servida: false });
+  room = score(roll(room, [6, 6, 6, 1, 2]), 'n6'); // a: 18
+  room = score(roll(room, [5, 5, 1, 2, 3]), 'n5'); // b: 10
+  assert.equal(act(room, 'b', { type: 'endGame' }), null, 'solo el anfitrión');
+  room = act(room, 'a', { type: 'endGame' });
+  assert.equal(room.phase, 'ended');
+  assert.equal(room.reason, 'cortada');
+  assert.deepEqual(room.winners, ['a']);
+  assert.equal(act(room, 'a', { type: 'endGame' }), null, 'ya terminó');
+  assert.deepEqual(ranking(room).map((p) => [p.id, p.total, p.place]), [['a', 18, 1], ['b', 10, 2], ['c', 0, 3]]);
+});
+
+test('generala: en el podio los empatados comparten puesto y la generala servida va primera aunque sume menos', () => {
+  let room = started(3, { servida: false });
+  for (const p of room.players) p.sheet = { n1: 3 };
+  room.players[2].sheet = { n1: 1 };
+  room = act(room, 'a', { type: 'endGame' });
+  assert.deepEqual(ranking(room).map((p) => [p.id, p.place]), [['a', 1], ['b', 1], ['c', 3]]);
+
+  room = started(2);
+  room = score(roll(room, [1, 2, 3, 4, 5]), 'esc');       // a: 25
+  room = score(roll(room, [1, 1, 1, 1, 1]), 'n1');         // b: 5
+  room = score(roll(room, [6, 6, 6, 6, 5]), 'poker');      // a: 70
+  room = score(roll(room, [2, 2, 2, 2, 2]), 'gen');        // b saca generala servida: gana con 55
+  assert.equal(room.reason, 'servida');
+  assert.deepEqual(ranking(room).map((p) => [p.id, p.total, p.place]), [['b', 55, 1], ['a', 70, 2]]);
 });
 
 test('generala: las opciones las cambia solo el anfitrión, en la sala de espera', () => {

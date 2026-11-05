@@ -6,10 +6,12 @@
 // GeneralaGame.jsx): no pesan en la portada ni en los otros juegos. La física (Rapier) corre aparte, en un
 // Web Worker (`simWorker.js`): calcular una tirada lleva decenas de milisegundos y en la página la trababa.
 //
-// Los colores son fijos (madera, paño verde, cuero): la mesa se ve igual en los dos temas.
+// **El dibujo es simple a propósito** (pedido de Feli: «lo que sí se tiene que mantener son las físicas de los
+// dados, lo demás lo podés hacer más simple para que no pese tanto»): colores lisos, una lámpara y sombras
+// chicas. Sin reflejos, relieves ni texturas, salvo las caras de los dados. Los colores son fijos (madera, paño
+// verde, cuero): la mesa se ve igual en los dos temas.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { everyFrame } from '../ticker.js';
 import {
   CUP, DIE, FACES, HALF, HAND, SHELF, SHELF_Z, TRAY, cleanThrow, mulberry32, shelfSlot, simulate,
@@ -27,71 +29,7 @@ const MOVE_MS = 260;
 const SHAKE_MS = 420;          // cuánto se ve sacudir el cubilete en la tirada de otro, si no se lo vio antes
 const LOCAL_WAIT_MS = 6000;    // cuánto se espera que la sala confirme una tirada propia
 
-// ─── Texturas hechas con canvas (no hay imágenes) ────────────────────────────
-function texture(size, draw, { repeat, color = true } = {}) {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  draw(canvas.getContext('2d'), size);
-  const t = new THREE.CanvasTexture(canvas);
-  if (color) t.colorSpace = THREE.SRGBColorSpace;
-  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
-  t.anisotropy = 8;
-  return t;
-}
-
-function speckle(ctx, s, rnd, count, alpha, light = '#ffffff', dark = '#000000') {
-  for (let i = 0; i < count; i++) {
-    ctx.globalAlpha = rnd() * alpha;
-    ctx.fillStyle = rnd() < 0.5 ? light : dark;
-    ctx.fillRect(rnd() * s, rnd() * s, 1 + rnd() * 1.6, 1 + rnd() * 1.6);
-  }
-  ctx.globalAlpha = 1;
-}
-
-// Madera: vetas onduladas a lo largo de u. Con `planks`, además, las juntas de las tablas.
-function wood(base, vein, seed, planks = 0, strength = 1) {
-  return (ctx, s) => {
-    const rnd = mulberry32(seed);
-    ctx.fillStyle = base;
-    ctx.fillRect(0, 0, s, s);
-    for (let i = 0; i < 110; i++) {
-      const y = rnd() * s, amp = 1 + rnd() * 4, wave = 200 + rnd() * 500, phase = rnd() * 6.28;
-      ctx.strokeStyle = rnd() < 0.9 ? vein : '#e8c9a0';
-      ctx.globalAlpha = Math.min(1, (0.04 + rnd() * 0.15) * strength);
-      ctx.lineWidth = 0.5 + rnd() * 2.6;
-      ctx.beginPath();
-      for (let x = 0; x <= s; x += 8) {
-        const yy = y + Math.sin((x / wave) * 6.28 + phase) * amp;
-        if (x) ctx.lineTo(x, yy); else ctx.moveTo(x, yy);
-      }
-      ctx.stroke();
-    }
-    speckle(ctx, s, rnd, 5000, 0.07);
-    if (planks) {
-      ctx.globalAlpha = 0.55;
-      ctx.fillStyle = '#000000';
-      for (let p = 0; p < planks; p++) {
-        ctx.fillRect(0, (p * s) / planks, s, 2);
-        ctx.fillRect(((p % 2) * 0.5 + 0.2 + rnd() * 0.1) * s, (p * s) / planks, 2, s / planks);
-      }
-      ctx.globalAlpha = 1;
-    }
-  };
-}
-
-const feltColor = (ctx, s) => {
-  const rnd = mulberry32(11);
-  ctx.fillStyle = '#125a37';
-  ctx.fillRect(0, 0, s, s);
-  speckle(ctx, s, rnd, 34000, 0.13, '#4aa877', '#02110a');
-};
-const grain = (seed, count, alpha) => (ctx, s) => {
-  const rnd = mulberry32(seed);
-  ctx.fillStyle = '#808080';
-  ctx.fillRect(0, 0, s, s);
-  speckle(ctx, s, rnd, count, alpha);
-};
-
+// ─── Las caras de los dados (lo único con textura), dibujadas con canvas ─────
 // Dónde van los puntos de cada cara (en fracciones del lado).
 const A = 0.27, B = 0.5, C = 0.73;
 const PIPS = {
@@ -103,43 +41,23 @@ const PIPS = {
   6: [[A, A], [C, A], [A, B], [C, B], [A, C], [C, C]],
 };
 
-function faceColor(value) {
-  return (ctx, s) => {
-    const g = ctx.createRadialGradient(s / 2, s / 2, s * 0.1, s / 2, s / 2, s * 0.75);
-    g.addColorStop(0, '#f7f3e8');
-    g.addColorStop(1, '#e6dfcc');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, s, s);
-    for (const [x, y] of PIPS[value]) {
-      const r = s * (value === 1 ? 0.1 : 0.082);
-      const pip = ctx.createRadialGradient(x * s - r * 0.2, y * s - r * 0.25, r * 0.1, x * s, y * s, r);
-      pip.addColorStop(0, '#2a2622');
-      pip.addColorStop(0.75, '#100e0c');
-      pip.addColorStop(1, '#050404');
-      ctx.fillStyle = pip;
-      ctx.beginPath();
-      ctx.arc(x * s, y * s, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  };
-}
-// El relieve: cada punto es un hoyito.
-function faceBump(value) {
-  return (ctx, s) => {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, s, s);
-    for (const [x, y] of PIPS[value]) {
-      const r = s * (value === 1 ? 0.1 : 0.082) * 1.12;
-      const pip = ctx.createRadialGradient(x * s, y * s, 0, x * s, y * s, r);
-      pip.addColorStop(0, '#000000');
-      pip.addColorStop(0.7, '#3a3a3a');
-      pip.addColorStop(1, '#ffffff');
-      ctx.fillStyle = pip;
-      ctx.beginPath();
-      ctx.arc(x * s, y * s, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  };
+function faceTexture(value) {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f4efe2';
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = '#14110e';
+  for (const [x, y] of PIPS[value]) {
+    ctx.beginPath();
+    ctx.arc(x * size, y * size, size * (value === 1 ? 0.1 : 0.085), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(canvas);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
 }
 
 const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - ((-2 * k + 2) ** 2) / 2);
@@ -224,74 +142,56 @@ class Table {
   // ─── Armado de la escena ───────────────────────────────────────────────────
   buildScene() {
     const renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1;
     this.renderer = renderer;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#0d0907');
-    scene.fog = new THREE.Fog('#0d0907', 85, 190);
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    this.envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    pmrem.dispose();
-    scene.environment = this.envMap;
-    scene.environmentIntensity = 0.42;
+    scene.background = new THREE.Color('#1d1611');
     this.scene = scene;
     this.camera = new THREE.PerspectiveCamera(30, 1, 1, 400);
 
     // Una lámpara arriba y un poco adelante a la izquierda: es la que hace las sombras.
-    const lamp = new THREE.DirectionalLight('#fff0d8', 3.7);
+    const lamp = new THREE.DirectionalLight('#fff3e0', 2.5);
     lamp.position.set(-14, 44, 16);
     lamp.target.position.set(3, 0, 2);
     lamp.castShadow = true;
-    lamp.shadow.mapSize.set(2048, 2048);
-    Object.assign(lamp.shadow.camera, { left: -30, right: 34, top: 26, bottom: -26, near: 5, far: 120 });
-    lamp.shadow.bias = -0.0006;
-    lamp.shadow.normalBias = 0.03;
-    lamp.shadow.radius = 5;
+    lamp.shadow.mapSize.set(1024, 1024);
+    Object.assign(lamp.shadow.camera, { left: -24, right: 30, top: 22, bottom: -22, near: 5, far: 110 });
+    lamp.shadow.bias = -0.0008;
+    lamp.shadow.normalBias = 0.04;
+    lamp.shadow.radius = 2.5;
     this.lamp = lamp;
-    scene.add(lamp, lamp.target, new THREE.HemisphereLight('#ffe9cf', '#20140c', 0.32));
+    scene.add(lamp, lamp.target, new THREE.HemisphereLight('#fff1dd', '#3a2a1e', 1.25));
 
     const { hx, hz, wall, front, thick } = TRAY;
+    const flat = (color) => new THREE.MeshLambertMaterial({ color });
     const add = (mesh, cast = true) => { mesh.castShadow = cast; mesh.receiveShadow = true; scene.add(mesh); return mesh; };
 
-    // La mesa: tablas oscuras.
-    const tableMat = new THREE.MeshStandardMaterial({ map: texture(1024, wood('#33200f', '#0d0603', 3, 4, 0.5), { repeat: [5, 5] }), roughness: 0.55, metalness: 0 });
-    const table = add(new THREE.Mesh(new THREE.PlaneGeometry(420, 420), tableMat), false);
+    // La mesada: un plano liso, solo para que la bandeja y el cubilete le hagan sombra.
+    const table = add(new THREE.Mesh(new THREE.PlaneGeometry(300, 300), flat('#3b2b20')), false);
     table.rotation.x = -Math.PI / 2;
     table.position.y = TABLE_Y;
 
-    // La bandeja: base, paño y marco de madera barnizada.
+    // La bandeja: una base, el paño y cuatro paredes (la de adelante más baja), más el estante.
     const frontEdge = hz + thick + SHELF.depth + LIP;
-    const along = texture(512, wood('#6b3619', '#210d04', 5, 0, 1.5));
-    const across = along.clone();
-    across.needsUpdate = true;
-    across.center.set(0.5, 0.5);
-    across.rotation = Math.PI / 2;
-    const varnish = (map) => new THREE.MeshPhysicalMaterial({ map, roughness: 0.38, clearcoat: 0.55, clearcoatRoughness: 0.2 });
-    const woodX = varnish(along), woodZ = varnish(across);
-    const beam = (w, h, d, x, z, mat) => {
-      const m = add(new THREE.Mesh(new RoundedBoxGeometry(w, h - TABLE_Y, d, 3, 0.2), mat));
+    const wood = flat('#8d532d'), woodDark = flat('#70401f');
+    const box = (w, h, d, x, z, mat) => {
+      const m = add(new THREE.Mesh(new THREE.BoxGeometry(w, h - TABLE_Y, d), mat));
       m.position.set(x, (h + TABLE_Y) / 2, z);
       return m;
     };
-    beam(2 * (hx + thick) - 0.12, 0.05, hz + thick + frontEdge - 0.12, 0, (frontEdge - hz - thick) / 2, woodX); // la base
-    beam(thick, wall, 2 * (hz + thick), -hx - thick / 2, 0, woodZ);
-    beam(thick, wall, 2 * (hz + thick), hx + thick / 2, 0, woodZ);
-    beam(2 * hx, wall, thick, 0, -hz - thick / 2, woodX);
-    beam(2 * hx, front, thick, 0, hz + thick / 2, woodX);                  // la pared de adelante, más baja
-    beam(thick, SHELF.lip, SHELF.depth + LIP, -hx - thick / 2, hz + thick + (SHELF.depth + LIP) / 2, woodZ);
-    beam(thick, SHELF.lip, SHELF.depth + LIP, hx + thick / 2, hz + thick + (SHELF.depth + LIP) / 2, woodZ);
-    beam(2 * hx, SHELF.lip, LIP, 0, frontEdge - LIP / 2, woodX);
+    box(2 * (hx + thick) - 0.12, 0.05, hz + thick + frontEdge - 0.12, 0, (frontEdge - hz - thick) / 2, woodDark); // la base
+    box(thick, wall, 2 * (hz + thick), -hx - thick / 2, 0, wood);
+    box(thick, wall, 2 * (hz + thick), hx + thick / 2, 0, wood);
+    box(2 * hx, wall, thick, 0, -hz - thick / 2, wood);
+    box(2 * hx, front, thick, 0, hz + thick / 2, wood);
+    box(thick, SHELF.lip, SHELF.depth + LIP, -hx - thick / 2, hz + thick + (SHELF.depth + LIP) / 2, wood);
+    box(thick, SHELF.lip, SHELF.depth + LIP, hx + thick / 2, hz + thick + (SHELF.depth + LIP) / 2, wood);
+    box(2 * hx, SHELF.lip, LIP, 0, frontEdge - LIP / 2, wood);
 
-    const feltMat = new THREE.MeshPhysicalMaterial({
-      map: texture(512, feltColor, { repeat: [3, 2] }),
-      bumpMap: texture(512, grain(13, 30000, 0.5), { repeat: [3, 2], color: false }),
-      bumpScale: 0.8, roughness: 1, sheen: 0.45, sheenRoughness: 0.8, sheenColor: new THREE.Color('#3f9468'),
-    });
+    const feltMat = flat('#1f7a4c');
     const felt = add(new THREE.Mesh(new THREE.PlaneGeometry(2 * hx, 2 * hz), feltMat), false);
     felt.rotation.x = -Math.PI / 2;
     felt.position.y = 0.06;
@@ -299,19 +199,16 @@ class Table {
     shelfFelt.rotation.x = -Math.PI / 2;
     shelfFelt.position.set(0, 0.06, SHELF_Z);
 
-    // Los dados: marfil, con los puntos hundidos.
-    const dieGeo = new RoundedBoxGeometry(DIE, DIE, DIE, 5, 0.24);
-    const dieMats = FACES.map((value) => new THREE.MeshPhysicalMaterial({
-      map: texture(256, faceColor(value)), bumpMap: texture(256, faceBump(value), { color: false }), bumpScale: 1.6,
-      roughness: 0.24, clearcoat: 0.7, clearcoatRoughness: 0.14,
-    }));
+    // Los dados: marfil con los puntos negros, apenas brillosos.
+    const dieGeo = new RoundedBoxGeometry(DIE, DIE, DIE, 3, 0.22);
+    const dieMats = FACES.map((value) => new THREE.MeshPhongMaterial({ map: faceTexture(value), shininess: 55, specular: '#3a3a3a' }));
     this.dice = [0, 1, 2, 3, 4].map((i) => {
       const mesh = add(new THREE.Mesh(dieGeo, dieMats));
       mesh.userData.die = i;
       return { i, mesh, place: 'cup', pose: null, anim: null, jitter: new THREE.Vector3(), spin: new THREE.Quaternion(), jitterTo: new THREE.Vector3(), spinTo: new THREE.Quaternion() };
     });
     // Aro rojo debajo de un dado montado.
-    const ringGeo = new THREE.RingGeometry(1.35, 1.7, 40);
+    const ringGeo = new THREE.RingGeometry(1.35, 1.7, 32);
     const ringMat = new THREE.MeshBasicMaterial({ color: '#ff4b3e', transparent: true, opacity: 0.85, depthWrite: false });
     this.rings = this.dice.map(() => {
       const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -321,29 +218,16 @@ class Table {
       return ring;
     });
 
-    // El cubilete de cuero.
+    // El cubilete: un vaso liso.
     const H = CUP.height;
     const profile = [
-      [0, 0], [CUP.bottom - 0.3, 0], [CUP.bottom, 0.3], [CUP.top, H - 0.2], [CUP.top + 0.02, H], [CUP.top - 0.16, H + 0.05],
-      [CUP.top - 0.3, H - 0.1], [CUP.bottom - 0.28, 0.55], [0, 0.55],
+      [0, 0], [CUP.bottom, 0], [CUP.top, H], [CUP.top - 0.3, H], [CUP.bottom - 0.28, 0.55], [0, 0.55],
     ].map(([r, y]) => new THREE.Vector2(r, y));
-    const leather = new THREE.MeshStandardMaterial({
-      color: '#4a2817', roughness: 0.6, side: THREE.DoubleSide,
-      bumpMap: texture(256, grain(17, 9000, 0.9), { repeat: [6, 3], color: false }), bumpScale: 0.9,
-    });
     const cup = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.LatheGeometry(profile, 56), leather);
+    const body = new THREE.Mesh(new THREE.LatheGeometry(profile, 32), new THREE.MeshLambertMaterial({ color: '#5b3420', side: THREE.DoubleSide }));
     body.castShadow = true;
     body.receiveShadow = true;
     cup.add(body);
-    const trim = new THREE.MeshStandardMaterial({ color: '#b98a52', roughness: 0.5 });
-    for (const y of [H - 0.75, 0.9]) {
-      const r = CUP.bottom + ((CUP.top - CUP.bottom) * y) / H + 0.03; // el radio del cubilete a esa altura
-      const band = new THREE.Mesh(new THREE.TorusGeometry(r, 0.09, 8, 72), trim);
-      band.rotation.x = Math.PI / 2;
-      band.position.y = y;
-      cup.add(band);
-    }
     scene.add(cup);
     this.cup = { group: cup, anim: null, mode: 'rest' };
     cup.position.set(CUP.x, TABLE_Y, CUP.z);
@@ -771,7 +655,7 @@ class Table {
   }
 
   // Si la compu o el celu no llega a dibujar parejo (menos de ~35 cuadros por segundo sostenidos mientras algo
-  // se mueve), la mesa se aliviana sola una vez: menos resolución y sombras más chicas. No vuelve a subir.
+  // se mueve), la mesa se aliviana sola una vez más: menos resolución y sombras más chicas. No vuelve a subir.
   pace(real) {
     if (this.light) return;
     const gap = this.drawnAt ? real - this.drawnAt : 0;
@@ -781,7 +665,7 @@ class Table {
     if (this.slowFrames < 40) return;
     this.light = true;
     this.renderer.setPixelRatio(1);
-    this.lamp.shadow.mapSize.set(1024, 1024);
+    this.lamp.shadow.mapSize.set(512, 512);
     this.lamp.shadow.map?.dispose();
     this.lamp.shadow.map = null;
     this.fit();
@@ -860,11 +744,10 @@ class Table {
       if (!o.isMesh) return;
       o.geometry.dispose();
       for (const m of [].concat(o.material)) {
-        for (const key of ['map', 'bumpMap']) m[key]?.dispose();
+        m.map?.dispose();
         m.dispose();
       }
     });
-    this.envMap.dispose();
     this.renderer.dispose();
   }
 }
