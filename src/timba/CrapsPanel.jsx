@@ -27,7 +27,7 @@ export default function CrapsPanel({ room, table: t, onAct, onClose, toast }) {
   const [rolling, setRolling] = useState(false);
   const [faces, setFaces] = useState([1, 1]);
   const roundOn = t.bet > 0 && !t.res;
-  const bet = useBet({ kind: 'craps', money: room.money, active: !roundOn && !rolling, toast });
+  const bet = useBet({ kind: 'craps', money: room.money, day: room.day.n, active: !roundOn && !rolling, toast });
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
   const placeBet = () => { const amount = bet.take(); if (amount) onAct({ type: 'crapsBet', amount }); };

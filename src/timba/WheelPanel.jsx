@@ -42,7 +42,7 @@ function angleAt(steps, elapsed) {
 
 export default function WheelPanel({ room, table: t, clock, onAct, onClose, toast }) {
   const spin = useSpin(t, clock, onAct);
-  const bet = useBet({ kind: 'wheel', money: room.money, active: !spin.pending, toast });
+  const bet = useBet({ kind: 'wheel', money: room.money, day: room.day.n, active: !spin.pending, toast });
   const play = () => { const amount = bet.take(); if (amount) onAct({ type: 'spin', amount }); };
   const steps = plan(t.spins || []);
   const angle = angleAt(steps, spin.elapsed);

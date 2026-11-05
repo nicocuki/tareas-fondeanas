@@ -2,29 +2,49 @@
 // cada uno y lo puro de cada juego (tragamonedas, rueda de la fortuna, ruleta, carrera de patos y craps). Sin React
 // ni red: el reducer (`game.js`) lo usa dentro de la transacción y recibe el azar por parámetro.
 
-// Mínimo y máximo de cada juego. Los de tirar muchas veces (tragamonedas, rueda) son de $1 a $60, y los de una
-// partida entera (blackjack, craps) tienen un rango más alto.
+import { NEW_LIMITS, NEW_NAMES, NEW_SPIN_KINDS } from './newgames.js';
+import { betScale } from './quota.js';
+
+// Mínimo y máximo de cada juego **el día 1**. Los de tirar muchas veces (tragamonedas, rueda) son de $1 a $60, y los de una
+// partida entera (blackjack, craps) tienen un rango más alto. Cada día los dos crecen (`limitsFor`).
 export const LIMITS = {
   bj: [36, 360], slots: [1, 60], wheel: [1, 60], roulette: [5, 180], duck: [5, 120], craps: [20, 360],
+  ...NEW_LIMITS,
 };
 export const NAMES = {
   bj: 'Blackjack', slots: 'Tragamonedas', wheel: 'Rueda de la fortuna', roulette: 'Ruleta', duck: 'Carrera de patos', craps: 'Craps',
+  ...NEW_NAMES,
 };
 // Los que se juegan de una tirada: se apuesta, pasa la animación y después se cobra (`spin` y `settle` en el reducer).
-export const SPIN_KINDS = ['slots', 'wheel', 'roulette', 'duck'];
+export const SPIN_KINDS = ['slots', 'wheel', 'roulette', 'duck', ...NEW_SPIN_KINDS];
+
+// Redondea a dos cifras significativas (64.332 → 64.000) para que los límites sean números lindos.
+const pretty = (n) => {
+  if (n < 100) return Math.round(n);
+  const p = 10 ** (Math.floor(Math.log10(n)) - 1);
+  return Math.round(n / p) * p;
+};
+
+// El mínimo y el máximo de un juego el día `day`: los del día 1 por lo que crecen las cuotas (`betScale`). Así el día 12 las
+// apuestas son de miles y hasta de cientos de miles.
+export function limitsFor(kind, day = 1) {
+  const [lo, hi] = LIMITS[kind];
+  const k = betScale(day);
+  return [Math.max(lo, pretty(lo * k)), Math.max(hi, pretty(hi * k))];
+}
 
 // Lo que se puede apostar ahora: del mínimo al máximo del juego, sin pasarse de la plata que hay. null = no alcanza.
-export function betLimits(kind, money) {
-  const [lo, hi] = LIMITS[kind];
+export function betLimits(kind, money, day = 1) {
+  const [lo, hi] = limitsFor(kind, day);
   const max = Math.min(hi, Math.max(0, Math.floor(money)));
   return max < lo ? null : { min: lo, max };
 }
 
 // Los cuatro botones rápidos: mínimo, 1/4, 1/2 y todo (del máximo del juego, sin pasarse de la plata).
-export function quickBet(kind, button, money) {
-  const lim = betLimits(kind, money);
+export function quickBet(kind, button, money, day = 1) {
+  const lim = betLimits(kind, money, day);
   if (!lim) return 0;
-  const [lo, hi] = LIMITS[kind];
+  const [lo, hi] = limitsFor(kind, day);
   const of = { min: lo, q: Math.floor(hi / 4), h: Math.floor(hi / 2), all: hi }[button] ?? lo;
   return Math.max(lim.min, Math.min(lim.max, of));
 }

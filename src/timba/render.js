@@ -481,10 +481,10 @@ function patterns(ctx) {
 
 // Lo que cambia de un casino a otro: el filete del borde, el color de las luces del piso y el material de las cosas.
 const THEMES = {
-  classic: { trim: GOLD, lights: [[500, 300, '140,100,255'], [1400, 300, '255,140,70'], [500, 760, '255,140,70'], [1400, 760, '140,100,255'], [950, 520, '90,210,255']], stone: '#d8d0c0', stone2: '#eee8d8' },
-  velvet: { trim: '#f0c860', lights: [[500, 300, '255,90,120'], [1400, 300, '255,200,90'], [500, 760, '255,200,90'], [1400, 760, '255,90,120'], [950, 520, '255,150,90']], stone: '#e4d8c4', stone2: '#f4ecdc' },
-  marble: { trim: '#f4dc8a', lights: [[500, 300, '190,215,255'], [1400, 300, '255,240,200'], [500, 760, '255,240,200'], [1400, 760, '190,215,255'], [950, 520, '200,230,255']], stone: '#eceff6', stone2: '#ffffff' },
-  gold: { trim: '#ffd75a', lights: [[500, 300, '255,215,100'], [1400, 300, '255,180,70'], [500, 760, '255,180,70'], [1400, 760, '255,215,100'], [950, 520, '255,225,140']], stone: '#f0c33c', stone2: '#ffe27a' },
+  classic: { trim: GOLD, lights: [[0.26, 0.3, '140,100,255'], [0.74, 0.3, '255,140,70'], [0.26, 0.76, '255,140,70'], [0.74, 0.76, '140,100,255'], [0.5, 0.52, '90,210,255']], stone: '#d8d0c0', stone2: '#eee8d8' },
+  velvet: { trim: '#f0c860', lights: [[0.26, 0.3, '255,90,120'], [0.74, 0.3, '255,200,90'], [0.26, 0.76, '255,200,90'], [0.74, 0.76, '255,90,120'], [0.5, 0.52, '255,150,90']], stone: '#e4d8c4', stone2: '#f4ecdc' },
+  marble: { trim: '#f4dc8a', lights: [[0.26, 0.3, '190,215,255'], [0.74, 0.3, '255,240,200'], [0.26, 0.76, '255,240,200'], [0.74, 0.76, '190,215,255'], [0.5, 0.52, '200,230,255']], stone: '#eceff6', stone2: '#ffffff' },
+  gold: { trim: '#ffd75a', lights: [[0.26, 0.3, '255,215,100'], [0.74, 0.3, '255,180,70'], [0.26, 0.76, '255,180,70'], [0.74, 0.76, '255,215,100'], [0.5, 0.52, '255,225,140']], stone: '#f0c33c', stone2: '#ffe27a' },
 };
 
 // Cartas de 9 × 12 pixeles.
@@ -703,7 +703,58 @@ function drawDuckRace(ctx, blk, tb, st) {
   led(ctx, x + 6, y + 8, tb);
 }
 
-const TABLE_DRAWERS = { bj: drawBjTable, slots: drawSlots, wheel: drawWheelWall, roulette: drawRoulette, craps: drawCraps, duck: drawDuckRace };
+// Crash: la pantalla con la curva del cohete (con estrellas y planetas a los lados) y un cohete parado al lado.
+function drawCrash(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  const t = st.time;
+  const on = Boolean(tb && tb.bet > 0 && !tb.res);
+  ctx.globalAlpha = 0.3; R(ctx, x + 4, y + 8, w, h, '#000'); ctx.globalAlpha = 1;
+  box(ctx, x, y, w - 36, h - 14, '#080a1e', '#3a2a6a');
+  for (let k = 0; k < 16; k++) R(ctx, x + 6 + ((k * 37) % (w - 52)), y + 6 + ((k * 23) % (h - 40)), Q, Q, (Math.floor(t * 2 + k) % 3) ? '#fff' : '#6a6aa8');
+  disc(ctx, x + 18, y + 20, 7, '#e8602a'); disc(ctx, x + 16, y + 18, 3, '#f4a05a');
+  // la curva y el cohete que la sigue
+  const prog = on ? 0.55 + 0.45 * Math.abs(Math.sin(t * 0.8)) : 0.5;
+  let ex = x + 10; let ey = y + h - 30;
+  for (let i = 0; i <= 18; i++) {
+    const u = (i / 18) * prog;
+    ex = x + 10 + u * (w - 70); ey = y + h - 30 - (u ** 1.8) * (h - 62);
+    R(ctx, ex, ey, 4, 4, on ? '#4ee06a' : '#3a7a4a');
+  }
+  R(ctx, ex - 2, ey - 6, 10, 6, '#f4f0e6'); R(ctx, ex + 8, ey - 5, 3, 4, '#e0525a'); R(ctx, ex - 6, ey - 4, 4, 2, on ? '#ffb02e' : '#a86a1a');
+  txt(ctx, 'CRASH', x + (w - 36) / 2, y + 12, 2, '#ff8aa0', '#14101c');
+  txt(ctx, on ? 'EN VUELO' : '1.00X', x + (w - 36) / 2, y + h - 22, 1, '#fff');
+  R(ctx, x + 10, y + h - 12, 34, 10, '#4ee06a'); R(ctx, x + 50, y + h - 12, 34, 10, '#ffb02e');
+  // el cohete parado
+  const rx = x + w - 22;
+  box(ctx, rx, y + 8, 16, 62, '#f4f0e6'); R(ctx, rx + 2, y + 10, 4, 58, '#c8c4d8');
+  tri(ctx, rx + 8, y - 8, 8, 16, '#e0525a'); R(ctx, rx + 4, y + 26, 8, 8, '#4fd8e8');
+  R(ctx, rx - 6, y + 56, 6, 16, '#e0525a'); R(ctx, rx + 16, y + 56, 6, 16, '#e0525a');
+  if (on) { R(ctx, rx + 3, y + 72, 10, 8 + Math.floor(t * 8) % 3 * 3, '#ffb02e'); R(ctx, rx + 6, y + 72, 4, 6, '#ffe27a'); }
+  led(ctx, x + w - 44, y + h - 4, tb);
+}
+
+// Cruce del pingüino: el agua cubierta de cubos de hielo y el pingüino parado en el primero (salta mientras alguien juega).
+function drawPenguin(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  const t = st.time;
+  const on = Boolean(tb && tb.bet > 0 && !tb.res);
+  ctx.globalAlpha = 0.3; R(ctx, x + 4, y + 8, w, h, '#000'); ctx.globalAlpha = 1;
+  box(ctx, x, y, w, h, '#2a74c8', '#e8f4fa');
+  for (let k = 0; k < 5; k++) R(ctx, x + 6 + k * 40 + Math.floor(Math.sin(t * 2 + k) * 3), y + 8 + (k % 2) * 6, 12, 2, '#6ab4f0');
+  const pos = on ? Math.min(8, tb.pos) : Math.floor(t / 1.2) % 9;
+  for (let i = 0; i < 9; i++) {
+    const cx = x + 8 + i * 23; const cy = y + 46 + (i % 2) * 8;
+    box(ctx, cx, cy, 18, 16, i <= pos ? '#bfe4f8' : '#f4fbff', '#6aa8d0');
+    R(ctx, cx + 2, cy + 2, 14, 3, '#fff');
+  }
+  const px = x + 8 + pos * 23 + 4; const py = y + 46 + (pos % 2) * 8 - 18 - (on ? Math.floor(Math.abs(Math.sin(t * 5)) * 4) : 0);
+  R(ctx, px, py + 4, 10, 14, INK); R(ctx, px + 2, py + 8, 6, 9, '#f4f0e6'); R(ctx, px + 2, py + 2, 6, 4, INK); R(ctx, px + 7, py + 6, 3, 2, '#f08a3c');
+  R(ctx, px + 1, py + 18, 3, 2, '#f08a3c'); R(ctx, px + 6, py + 18, 3, 2, '#f08a3c');
+  txt(ctx, 'PINGUINO', x + w / 2, y + 10, 1, '#fff', '#14101c');
+  led(ctx, x + w - 12, y + 6, tb);
+}
+
+const TABLE_DRAWERS = { bj: drawBjTable, slots: drawSlots, wheel: drawWheelWall, roulette: drawRoulette, craps: drawCraps, duck: drawDuckRace, crash: drawCrash, penguin: drawPenguin };
 
 // ─── Decoración de cada casino ──────────────────────────────────────────────
 function drawPlant(ctx, b, t) {
@@ -803,7 +854,7 @@ function drawWallDeco(ctx, sc, theme, th, t) {
     }
     txt(ctx, 'SALON VIP', sc.w / 2, 24, 2, th.trim, INK);
     // la escalera al palco: cada escalón más angosto que el de abajo
-    for (let i = 0; i < 6; i++) { const w = 120 - i * 10; R(ctx, 1640 + (120 - w) / 2, 16 + i * 8, w, 8, i % 2 ? '#c8a050' : '#e8c878'); R(ctx, 1640 + (120 - w) / 2, 22 + i * 8, w, 2, '#6a4a14'); }
+    for (let i = 0; i < 6; i++) { const w = 120 - i * 10; R(ctx, sc.w - 260 + (120 - w) / 2, 16 + i * 8, w, 8, i % 2 ? '#c8a050' : '#e8c878'); R(ctx, sc.w - 260 + (120 - w) / 2, 22 + i * 8, w, 2, '#6a4a14'); }
   }
 }
 
@@ -821,7 +872,8 @@ function drawFloor(ctx, view, key, st) {
   }
   drawWallDeco(ctx, sc, theme, th, t);
   // luces de colores que se mueven por el piso (puntitos con transparencia)
-  for (const [lx, ly, c] of th.lights) {
+  for (const [fx, fy, c] of th.lights) {
+    const lx = fx * sc.w; const ly = fy * sc.h;
     const pulse = 0.5 + 0.5 * Math.sin(t * 1.5 + lx);
     for (let k = 4; k >= 1; k--) { ctx.globalAlpha = 0.045 + pulse * 0.02; disc(ctx, lx, ly, k * 50, `rgb(${c})`); }
     ctx.globalAlpha = 1;

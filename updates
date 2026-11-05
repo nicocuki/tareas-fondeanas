@@ -872,8 +872,15 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.39.0 = La Timba: 4 casinos de 3 pisos cada uno, cada vez más lujosos
+1.39.0 = La Timba: 4 casinos de 3 pisos cada uno, cada vez más lujosos
 - Ahora hay 12 pisos, repartidos en 4 casinos: cada casino dura 3 días (casino 1: días 1-3, casino 2: días 4-6, casino 3: días 7-9 y casino 4: días 10-12). El ascensor ofrece los 3 pisos del casino de hoy.
 - Cuanto más avanzás, más lujoso: el Casino Clásico, el Casino Terciopelo (alfombra bordó, cortinas y columnas), el Casino Mármol (baldosas, estatuas y fuentes con agua que se mueve) y el Casino Dorado (mármol negro con oro, fuente grande y un palco VIP con escalera).
 - Por ahora todos los casinos tienen los mismos 6 juegos, con un reparto distinto de mesas en cada piso. Los juegos nuevos entran más adelante.
 - Al cambiar de casino aparece un aviso, y el reloj del día muestra en qué casino estás.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.40.0 = La Timba: Crash y Cruce del pingüino, y apuestas que crecen con los días
+- Del casino 2 en adelante hay dos juegos nuevos: Crash (el cohete sube 0,01x por paso y en cualquier momento puede chocar: retirá antes o perdés) y el Cruce del pingüino (9 cubos de hielo, cada salto tiene 1/2 de caer y multiplica por 1,5).
+- Las apuestas mínimas y máximas de todos los juegos crecen cada día: el día 12 son de miles y hasta cientos de miles. La plata ahora se muestra también con M y B.
+- Los casinos 2, 3 y 4 son salas más grandes.

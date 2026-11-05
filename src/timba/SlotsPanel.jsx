@@ -12,7 +12,7 @@ const fmtMult = (m) => String(Math.round(m * 100) / 100).replace('.', ',');
 
 export default function SlotsPanel({ room, table: t, clock, onAct, onClose, toast }) {
   const spin = useSpin(t, clock, onAct);
-  const bet = useBet({ kind: 'slots', money: room.money, active: !spin.pending, toast });
+  const bet = useBet({ kind: 'slots', money: room.money, day: room.day.n, active: !spin.pending, toast });
   const play = () => { const amount = bet.take(); if (amount) onAct({ type: 'spin', amount }); };
   const grid = t.grid || IDLE;
   const result = spin.played && !spin.running ? slotsEval(grid) : null;

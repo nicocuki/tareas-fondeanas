@@ -54,7 +54,7 @@ export function Burst() {
 
 export default function BjPanel({ room, me, table: t, now, onAct, onClose, toast }) {
   const canBet = !room.day.over && ((t.phase === 'bet' && !t.ready) || (t.phase === 'result' && now >= t.resultAt + RESULT_MS));
-  const bet = useBet({ kind: 'bj', money: room.money, active: canBet, toast });
+  const bet = useBet({ kind: 'bj', money: room.money, day: room.day.n, active: canBet, toast });
   const myTurn = t.phase === 'play' && t.st === 'play';
   const canDouble = myTurn && t.hand.length === 2 && room.money >= t.bet;
   const play = () => { const amount = bet.take(); if (amount) onAct({ type: 'bjBet', amount }); };

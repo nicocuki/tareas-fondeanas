@@ -1,30 +1,31 @@
 // Lo que comparten las ventanas de los juegos del casino: el marco con el título y la ✕, el panel de apuesta (la
 // cantidad a la vista, el teclado numérico y los botones rápidos) y el reloj de los juegos de una tirada.
 import React, { useEffect, useRef, useState } from 'react';
-import { LIMITS, betLimits, quickBet } from './games.js';
+import { betLimits, limitsFor, quickBet } from './games.js';
 import { fmtMoney } from './game.js';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '000'];
 
 // La apuesta que se está escribiendo. `typed`: si el próximo dígito se agrega a lo escrito (true) o empieza un número nuevo
 // (después de un botón rápido). `take()` devuelve la apuesta ya revisada (o 0 y avisa por qué no).
-export function useBet({ kind, money, active, toast }) {
-  const lim = betLimits(kind, money);
-  const [bet, setBet] = useState({ amount: LIMITS[kind][0], typed: false });
+export function useBet({ kind, money, day = 1, active, toast }) {
+  const lim = betLimits(kind, money, day);
+  const range = limitsFor(kind, day);
+  const [bet, setBet] = useState({ amount: range[0], typed: false });
   const press = (k) => {
     if (!active) return;
     if (k === 'C') { setBet({ amount: 0, typed: false }); return; }
-    setBet((prev) => ({ amount: Math.min(999999, Number((prev.typed ? String(prev.amount) : '') + k) || 0), typed: true }));
+    setBet((prev) => ({ amount: Math.min(999999999999, Number((prev.typed ? String(prev.amount) : '') + k) || 0), typed: true }));
   };
-  const quick = (button) => { if (active) setBet({ amount: quickBet(kind, button, money), typed: false }); };
+  const quick = (button) => { if (active) setBet({ amount: quickBet(kind, button, money, day), typed: false }); };
   const take = () => {
     if (!active) return 0;
-    if (!lim) { toast(`Con menos de ${fmtMoney(LIMITS[kind][0])} en la caja no se puede apostar.`); return 0; }
+    if (!lim) { toast(`Con menos de ${fmtMoney(range[0])} en la caja no se puede apostar.`); return 0; }
     if (bet.amount < lim.min) { toast(`La apuesta mínima es ${fmtMoney(lim.min)}.`); return 0; }
     if (bet.amount > lim.max) { setBet({ amount: lim.max, typed: false }); toast(`La apuesta máxima es ${fmtMoney(lim.max)}.`); return 0; }
     return bet.amount;
   };
-  return { kind, lim, amount: bet.amount, press, quick, take, overMax: lim ? bet.amount > lim.max : true };
+  return { kind, lim, range, amount: bet.amount, press, quick, take, overMax: lim ? bet.amount > lim.max : true };
 }
 
 // El panel de apuesta. `shown`: si se pasa, es lo que se muestra en lugar de lo que se escribe (la apuesta en marcha).
@@ -40,7 +41,7 @@ export function BetPad({ bet, money, active, shown, onEnter }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  const [lo, hi] = LIMITS[bet.kind];
+  const [lo, hi] = bet.range;
   const over = bet.overMax && active;
   return (
     <div className={`tbg-betpanel${active ? '' : ' is-off'}`} data-bet-panel>

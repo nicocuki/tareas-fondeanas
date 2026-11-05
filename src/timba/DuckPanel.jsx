@@ -16,7 +16,7 @@ const progress = (times, i, ms) => {
 
 export default function DuckPanel({ room, table: t, clock, onAct, onClose, toast }) {
   const spin = useSpin(t, clock, onAct);
-  const bet = useBet({ kind: 'duck', money: room.money, active: !spin.pending, toast });
+  const bet = useBet({ kind: 'duck', money: room.money, day: room.day.n, active: !spin.pending, toast });
   const [pick, setPick] = useState(0);
   const play = () => {
     const amount = bet.take();

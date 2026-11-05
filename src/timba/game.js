@@ -21,6 +21,8 @@ import {
 } from './games.js';
 import { floorOfLoc, floorsOfDay, locOfFloor } from './casinos.js';
 import { TOTAL_DAYS, quotaFor } from './quota.js';
+import { NEW_SPIN_KINDS, STEP_KINDS, newSpin } from './newgames.js';
+import { applyStepAction, newStepTable, releaseStep } from './newtables.js';
 import { FLOOR_OF_TABLE, TABLE_BY_ID } from './scenes.js';
 
 export const GAME_TYPE = 'timba';
@@ -98,6 +100,7 @@ function newTable(kind, by) {
   const base = { kind, by, bet: 0 };
   if (kind === 'bj') return { ...base, phase: 'bet', n: 0, ready: false, hand: [], dealer: [], deck: [], st: 'idle', dbl: false, pay: 0, res: '', resultAt: 0 };
   if (kind === 'craps') return { ...base, point: 0, dice: [], n: 0, res: '', pay: 0 };
+  if (STEP_KINDS.includes(kind)) return newStepTable(kind, base);
   return { ...base, pay: 0, at: 0, ms: 0, paid: true };
 }
 
@@ -117,7 +120,8 @@ function releaseTable(next, tid, now, rand) {
     else if (t.phase === 'play') { if (t.st === 'play') t.st = 'stand'; finishIfDone(next, t, now, rand); }
   } else if (t.kind === 'craps') {
     if (t.bet && !t.res) next.money += t.bet;
-  } else if (!t.paid) settleSpin(next, t);
+  } else if (STEP_KINDS.includes(t.kind)) releaseStep(next, t, now);
+  else if (!t.paid) settleSpin(next, t);
   delete next.tb[tid];
 }
 
@@ -328,7 +332,7 @@ export function applyAction(room, action, ctx = {}) {
         Object.assign(t, { phase: 'bet', dealer: [], bet: 0, ready: false, hand: [], st: 'idle', dbl: false, pay: 0, res: '' });
       }
       if (t.phase !== 'bet' || t.ready) return null;
-      const lim = betLimits('bj', next.money);
+      const lim = betLimits('bj', next.money, next.day.n);
       if (!lim || amount < lim.min || amount > lim.max) return null;
       next.money -= amount;
       t.bet = amount;
@@ -364,13 +368,19 @@ export function applyAction(room, action, ctx = {}) {
       const [, t] = tableOfPlayer(next, me?.id);
       const amount = action.amount;
       if (!playing || !t || !SPIN_SET.has(t.kind) || next.day.over || !t.paid || !Number.isInteger(amount)) return null;
-      const lim = betLimits(t.kind, next.money);
+      const lim = betLimits(t.kind, next.money, next.day.n);
       if (!lim || amount < lim.min || amount > lim.max) return null;
       if (t.kind === 'roulette' && !isSpot(action.spot)) return null;
       if (t.kind === 'duck' && !(Number.isInteger(action.pick) && action.pick >= 0 && action.pick < 4)) return null;
+      const ext = NEW_SPIN_KINDS.includes(t.kind) ? newSpin(t.kind, action, rand) : undefined;
+      if (ext === null) return null;
       next.money -= amount;
       Object.assign(t, { bet: amount, paid: false, at: now, pay: 0 });
-      if (t.kind === 'slots') {
+      if (ext) {
+        Object.assign(t, ext.state);
+        t.pay = Math.floor(amount * ext.mult + 1e-9);
+        t.ms = ext.ms;
+      } else if (t.kind === 'slots') {
         t.grid = spinSlots(rand);
         t.pay = Math.round(amount * slotsEval(t.grid).mult);
         t.ms = SLOTS_MS;
@@ -406,7 +416,7 @@ export function applyAction(room, action, ctx = {}) {
       const [, t] = tableOfPlayer(next, me?.id);
       const amount = action.amount;
       if (!playing || t?.kind !== 'craps' || next.day.over || !Number.isInteger(amount) || (t.bet && !t.res)) return null;
-      const lim = betLimits('craps', next.money);
+      const lim = betLimits('craps', next.money, next.day.n);
       if (!lim || amount < lim.min || amount > lim.max) return null;
       next.money -= amount;
       Object.assign(t, { bet: amount, point: 0, dice: [], res: '', pay: 0 });
@@ -429,8 +439,11 @@ export function applyAction(room, action, ctx = {}) {
       break;
     }
 
-    default:
-      return null;
+    default: {
+      // Los juegos por pasos del casino 2 en adelante (Crash, Penguin Cross, Buscaminas y Mayor o menor).
+      const done = applyStepAction(next, me, action, { now, rand, playing });
+      if (!done) return null;
+    }
   }
   next.updatedAt = now;
   return next;
@@ -441,7 +454,9 @@ export const dayLeftMs = (room, now) => (room.day.endsAt && !room.day.over ? Mat
 export const fmtClock = (ms) => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 export const fmtMoney = (n) => {
   const v = Math.round(n);
-  if (Math.abs(v) < 1000) return `$${v}`;
-  const k = v / 1000;
-  return `$${Number.isInteger(k) ? k : k.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}K`;
+  const a = Math.abs(v);
+  if (a < 1000) return `$${v}`;
+  const [div, unit] = a >= 999995000 ? [1e9, 'B'] : a >= 999995 ? [1e6, 'M'] : [1e3, 'K'];
+  const k = v / div;
+  return `$${Number.isInteger(k) ? k : k.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}${unit}`;
 };

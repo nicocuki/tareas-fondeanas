@@ -690,9 +690,11 @@ test('timba: los 12 pisos tienen ids de mesa únicas y nada de lo que se arma se
   assert.equal(new Set(TABLES.map((t) => t.id)).size, TABLES.length);
   for (let n = 1; n <= FLOOR_COUNT; n++) {
     const sc = SCENES[`f${n}`];
-    for (const o of [...sc.tables, ...sc.decor]) assert.ok(o.x >= 60 && o.y >= 70 && o.x + o.w <= 1840 && o.y + o.h <= 950, `f${n}: ${o.id || o.kind} entra en la sala`);
-    const big = sc.tables.filter((t) => t.y >= 200).length;
-    assert.ok(big <= 2 * MAX_BIG_PER_ROW, `f${n}: las mesas grandes entran en dos filas`);
+    for (const o of [...sc.tables, ...sc.decor]) assert.ok(o.x >= 60 && o.y >= 70 && o.x + o.w <= sc.w - 60 && o.y + o.h <= sc.h - 50, `f${n}: ${o.id || o.kind} entra en la sala`);
+    const big = sc.tables.filter((t) => t.y >= 200);
+    const perRow = new Map();
+    for (const t of big) perRow.set(t.y, (perRow.get(t.y) || 0) + 1);
+    for (const [y, count] of perRow) assert.ok(count <= (sc.w <= 1900 ? MAX_BIG_PER_ROW : 9), `f${n}: demasiadas mesas en la fila de y=${y}`);
   }
 });
 

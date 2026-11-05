@@ -26,7 +26,7 @@ const ROWS = [0, 1, 2].map((r) => Array.from({ length: 12 }, (_, c) => c * 3 + (
 
 export default function RoulettePanel({ room, table: t, clock, onAct, onClose, toast }) {
   const spin = useSpin(t, clock, onAct);
-  const bet = useBet({ kind: 'roulette', money: room.money, active: !spin.pending, toast });
+  const bet = useBet({ kind: 'roulette', money: room.money, day: room.day.n, active: !spin.pending, toast });
   const [spot, setSpot] = useState('red');
   const play = () => {
     const amount = bet.take();

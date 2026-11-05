@@ -13,6 +13,11 @@ export const TOTAL_DAYS = QUOTA_MULTIPLIERS.length;
 // Multiplicador del día `day` (1 a TOTAL_DAYS); null si el día no existe.
 export const multiplierFor = (day) => QUOTA_MULTIPLIERS[day - 1] ?? null;
 
+// Cuánto crecen los límites de apuesta con los días: lo mismo que lo mínimo que puede haber en la caja al empezar el
+// día (el producto de los multiplicadores de los días anteriores). Día 1 = ×1, día 4 = ×2,6… y día 12 = ×1.787: ahí
+// las apuestas son de miles y hasta de cientos de miles.
+export const betScale = (day) => QUOTA_MULTIPLIERS.slice(0, Math.max(0, Math.min(day, TOTAL_DAYS) - 1)).reduce((a, m) => a * m, 1);
+
 // Cuota del día `day` con `bank` en la caja al empezar. Se multiplica en centésimos y recién después se divide:
 // así un .5 exacto (1.250 × 1,15 = 1.437,5) redondea siempre para arriba y no depende de los decimales de coma flotante.
 export function quotaFor(day, bank) {

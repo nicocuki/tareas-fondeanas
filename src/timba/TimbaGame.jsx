@@ -12,7 +12,9 @@ import { SCENES, SEAT_FACE, TABLE_BY_ID, doorFor, nearby, sceneKey, spawnPoint, 
 import { Q, drawScene } from './render.js';
 import BjPanel from './BjPanel.jsx';
 import CrapsPanel from './CrapsPanel.jsx';
+import CrashPanel from './CrashPanel.jsx';
 import DuckPanel from './DuckPanel.jsx';
+import PenguinPanel from './PenguinPanel.jsx';
 import RoulettePanel from './RoulettePanel.jsx';
 import SlotsPanel from './SlotsPanel.jsx';
 import WheelPanel from './WheelPanel.jsx';
@@ -21,7 +23,7 @@ import { casinoById, casinoOfDay, floorOfLoc, floorsOfDay, locOfFloor } from './
 import { TOTAL_DAYS } from './quota.js';
 import { DAY_MS, allAt, dayLeftMs, findPlayer, fmtClock, fmtMoney, tableOfPlayer } from './game.js';
 
-const PANELS = { bj: BjPanel, slots: SlotsPanel, wheel: WheelPanel, roulette: RoulettePanel, duck: DuckPanel, craps: CrapsPanel };
+const PANELS = { bj: BjPanel, slots: SlotsPanel, wheel: WheelPanel, roulette: RoulettePanel, duck: DuckPanel, craps: CrapsPanel, crash: CrashPanel, penguin: PenguinPanel };
 const ABOARD = ['limo', 'back']; // arriba de la limusina (de ida o de vuelta)
 
 const SEND_EVERY = 1 / 15;
@@ -41,7 +43,7 @@ function landing(loc, prev, index) {
   if (loc === 'outside' && prev === 'back') return { ...base, x: SCENES.outside.limo.x + SCENES.outside.limo.w + 40 };
   if (loc === 'wait' && prev === 'limo') return { ...base, x: SCENES.wait.limo.x - 70 + (index % 3) * 18 };
   if (loc === 'outside' && prev === 'elevator') return { ...base, x: SCENES.outside.doorX - 90 - (index % 3) * 18 };
-  if (floorOfLoc(loc) !== null && prev === 'elevator') return { x: 112 + (index % 2) * 16, y: 492 + (index % 4) * 10 };
+  if (floorOfLoc(loc) !== null && prev === 'elevator') return { x: 112 + (index % 2) * 16, y: SCENES[loc].spawn.y - 8 + (index % 4) * 10 };
   if (loc === 'elevator' && floorOfLoc(prev) !== null) return { x: 150 + ((index % 4) - 1.5) * 18, y: 150 };
   return base;
 }
