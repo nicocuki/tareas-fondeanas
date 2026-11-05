@@ -3,7 +3,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   CARDS, DECK_NAMES, GROUPS, SQUARES, groupSquares, houseCost, mortgageValue, unmortgageCost,
 } from './board.js';
-import { buildProblem, findPlayer, mortgageProblem, rentFor, sellBuildingProblem, unmortgageProblem } from './game.js';
+import {
+  AUCTION_BID_MS, AUCTION_OPEN_MS, buildProblem, findPlayer, minBid, mortgageProblem, rentFor, sellBuildingProblem, unmortgageProblem,
+} from './game.js';
+import { backgroundInterval } from '../ticker.js';
 import { Token } from './Board.jsx';
 
 export function Modal({ title, onClose, children, wide, label }) {
@@ -124,59 +127,89 @@ const ABOUT = {
 };
 
 // ─── Subasta ─────────────────────────────────────────────────────────────────
-export function AuctionModal({ room, me, dispatch }) {
+// En vivo: todos los que siguen en carrera ofrecen cuando quieran (de a $50 como mínimo) y cada oferta vuelve a poner
+// el reloj. Cuando llega a cero, se la lleva la oferta más alta (la manda `Game`, no esta ventana).
+const QUICK = [50, 100, 200];
+
+export function useCountdown(deadline, offset = 0) {
+  const [now, setNow] = useState(() => Date.now() + offset);
+  useEffect(() => {
+    setNow(Date.now() + offset);
+    return backgroundInterval(() => setNow(Date.now() + offset), 100);
+  }, [offset, deadline]);
+  return Math.max(0, deadline - now);
+}
+
+export function AuctionModal({ room, me, dispatch, offset }) {
   const a = room.auction;
   const sq = SQUARES[a.pos];
-  const mine = a.turn === me?.id;
-  const turnPlayer = findPlayer(room, a.turn);
-  const bidder = findPlayer(room, a.bidder);
-  const [amount, setAmount] = useState(String(a.bid + 10));
-  useEffect(() => { setAmount(String(a.bid + 10)); }, [a.bid, a.turn]);
-  const value = Number.parseInt(amount, 10);
-  const problem = !Number.isInteger(value) ? 'Escribí un número.' : value <= a.bid ? `Tiene que ser más de ${money(a.bid)}.` : value > (me?.cash ?? 0) ? `Solo tenés ${money(me?.cash ?? 0)}.` : null;
   const group = sq.g && GROUPS[sq.g];
+  const left = useCountdown(a.deadline, offset);
+  const total = a.bidder ? AUCTION_BID_MS : AUCTION_OPEN_MS;
+  const inRace = Boolean(me) && a.active.includes(me.id);
+  const leading = a.bidder === me?.id;
+  const bidder = findPlayer(room, a.bidder);
+  const min = minBid(a);
+  const [custom, setCustom] = useState('');
+  const bids = room.log.filter((e) => e.k === 'bid' && e.s === a.pos).slice(-4).reverse();
+  const canBid = (n) => inRace && !leading && n >= min && n <= (me?.cash ?? 0);
+  const value = Number.parseInt(custom, 10);
+  const problem = !inRace ? null : leading ? 'Vas ganando: esperá a que alguien te supere.'
+    : !Number.isInteger(value) ? null : value < min ? `Mínimo ${money(min)}.` : value > me.cash ? `Solo tenés ${money(me.cash)}.` : null;
+  const secs = Math.ceil(left / 1000);
   return (
     <Modal title="🔨 Subasta" label={`Subasta de ${sq.name}`}>
       <div className="mp-deed-head" style={{ background: group ? group.color : 'var(--paper-shadow)', color: sq.g === 'lightblue' || sq.g === 'yellow' ? '#241b05' : '#fff' }}>
         <small>Precio de lista {money(sq.price)}</small>
         <strong>{sq.name}</strong>
       </div>
-      <p className="mp-note">
-        {bidder ? <>Mejor oferta: <b>{money(a.bid)}</b> de <b>{bidder.id === me?.id ? 'vos' : bidder.name}</b>.</> : 'Todavía nadie ofreció. Se puede empezar desde $1.'}
-        {' '}Van ofreciendo por turnos: o subís la oferta, o te bajás. Gana el que queda con la oferta más alta y paga lo que ofreció.
-      </p>
+      <div className={`mp-auc-clock${left < 4000 ? ' is-low' : ''}`} data-auction-clock={secs} role="timer" aria-label={`Quedan ${secs} segundos`}>
+        <div className="mp-auc-bar"><i style={{ width: `${Math.min(100, (left / total) * 100)}%` }} /></div>
+        <b>{secs}s</b>
+      </div>
+      <div className="mp-auc-bid" data-auction-bid={a.bid}>
+        {bidder
+          ? <><small>Va ganando</small><strong key={a.bid}>{money(a.bid)}</strong><span><Token player={bidder} size={26} /> {bidder.id === me?.id ? 'Vos' : bidder.name}</span></>
+          : <><small>Todavía nadie ofreció</small><strong>{money(0)}</strong><span>Se empieza en {money(min)}. Si nadie ofrece, queda sin dueño.</span></>}
+      </div>
       <ul className="mp-bidders">
         {a.order.map((id) => {
           const p = findPlayer(room, id);
           const active = a.active.includes(id);
           return (
-            <li key={id} className={`${id === a.turn ? 'is-turn' : ''}${active ? '' : ' is-dropped'}`}>
-              <Token player={p} size={26} />
+            <li key={id} className={`${id === a.bidder ? 'is-turn' : ''}${active ? '' : ' is-dropped'}`}>
+              <Token player={p} size={24} />
               <span>{p.id === me?.id ? 'Vos' : p.name}</span>
-              <small>{!active ? 'se bajó' : id === a.bidder ? `ofrece ${money(a.bid)}` : id === a.turn ? 'le toca' : 'espera'}</small>
+              <small>{!active ? 'se bajó' : id === a.bidder ? `ofrece ${money(a.bid)}` : 'puede ofrecer'}</small>
             </li>
           );
         })}
       </ul>
-      {mine ? (
+      {bids.length > 0 && (
+        <ol className="mp-auc-hist" aria-label="Últimas ofertas">
+          {bids.map((e, i) => <li key={i}>{findPlayer(room, e.p)?.name}: {money(e.n)}</li>)}
+        </ol>
+      )}
+      {inRace ? (
         <div className="mp-bid-box">
-          <p><b>Te toca.</b> Tenés {money(me.cash)} (podés hipotecar para juntar más).</p>
           <div className="mp-quick">
-            {[1, 10, 50, 100].map((n) => (
-              <button key={n} type="button" className="tf-btn tf-btn-soft" onClick={() => setAmount(String(a.bid + n))}>+{n}</button>
-            ))}
+            {QUICK.map((n) => {
+              const amount = a.bid + n;
+              return <button key={n} type="button" className="tf-btn tf-btn-primary" disabled={!canBid(amount)} data-act="bid" data-amount={amount} onClick={() => dispatch({ type: 'bid', amount })}>+{n}<small>{money(amount)}</small></button>;
+            })}
           </div>
           <div className="tf-join-row">
-            <input className="tf-input" inputMode="numeric" aria-label="Tu oferta" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))} />
-            <button type="button" className="tf-btn tf-btn-primary" disabled={Boolean(problem)} data-act="bid" onClick={() => dispatch({ type: 'bid', amount: value })}>Ofrecer {Number.isInteger(value) ? money(value) : ''}</button>
+            <input className="tf-input" inputMode="numeric" placeholder={`Otro monto (mín. ${money(min)})`} aria-label="Otra oferta" value={custom} onChange={(e) => setCustom(e.target.value.replace(/[^0-9]/g, ''))} />
+            <button type="button" className="tf-btn tf-btn-soft" disabled={!canBid(value) || Boolean(problem)} data-act="bidCustom" onClick={() => { dispatch({ type: 'bid', amount: value }); setCustom(''); }}>Ofrecer {Number.isInteger(value) ? money(value) : ''}</button>
           </div>
           {problem && <small className="mp-problem">{problem}</small>}
-          <button type="button" className="tf-btn tf-btn-danger-soft tf-btn-block" data-act="passBid" onClick={() => dispatch({ type: 'passBid' })}>
+          <small className="mp-hint">Tenés {money(me.cash)} (podés hipotecar para juntar más).</small>
+          <button type="button" className="tf-btn tf-btn-danger-soft tf-btn-block" disabled={leading} data-act="passBid" onClick={() => dispatch({ type: 'passBid' })}>
             Bajarme de la subasta
           </button>
         </div>
       ) : (
-        <p className="mp-waiting">Le toca a <b>{turnPlayer?.name}</b>…</p>
+        <p className="mp-waiting">{me && !me.out ? 'Te bajaste de la subasta.' : 'Estás mirando la subasta.'}</p>
       )}
     </Modal>
   );

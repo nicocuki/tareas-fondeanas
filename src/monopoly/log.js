@@ -84,7 +84,7 @@ export function announce(e, room, meId) {
   const out = (icon, text, tone = 'info', extra = {}) => ({ icon, text, tone, ...extra });
   const base = describe(e, room);
   switch (e.k) {
-    case 'roll': case 'card': return null;
+    case 'roll': case 'card': case 'bid': case 'drop': return null;
     case 'at': return out('📍', mine ? `Caíste en ${sq(e.s)}.` : `${name(e.p)} cayó en ${sq(e.s)}.`, 'info', { weak: true });
     case 'go': return mine ? out('🏁', `¡Pasaste por la Salida! Cobrás ${money(e.n)}.`, 'gain') : out(base.icon, base.text, 'info', { weak: true });
     case 'rent':

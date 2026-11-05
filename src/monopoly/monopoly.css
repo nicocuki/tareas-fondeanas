@@ -373,5 +373,28 @@ button.mp-tchip:hover:not(:disabled) { border-color: var(--text-2); }
   .mp-diceroll, .mp-diceroll *, .mp-toast, .mp-delta, .mp-sq.is-flash, .mp-cash-amount, .mp-confetti i { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; }
   .mp-confetti { display: none; }
 }
+.mp-token.is-mine { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--tk), 0 3px 8px rgba(0, 0, 0, 0.5); }
+.mp-tokens .mp-token.is-mine { z-index: 2; transform: scale(1.35); animation: mp-me 1.3s ease-in-out infinite; }
+.mp-tokens .mp-token.is-mine::after { content: '▼ VOS'; position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); padding: 0 4px; border-radius: 4px; background: var(--tk); color: #fff; font-size: max(7px, 1.2cqw); font-weight: 900; line-height: 1.35; white-space: nowrap; text-shadow: 0 0 2px #000; }
+.mp-tokens .mp-token { position: relative; }
+@keyframes mp-me { 0%, 100% { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--tk), 0 0 0 4px transparent; } 50% { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--tk), 0 0 0 11px color-mix(in srgb, var(--tk) 0%, transparent); } }
+.mp-sq:has(.mp-token.is-mine) { box-shadow: inset 0 0 0 max(2px, 0.35cqw) #fff; }
+.mp-token-pick { margin-top: 14px; }
+.mp-token-pick .tf-avatar-grid button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ─── Subasta en vivo ─── */
+.mp-auc-clock { display: flex; align-items: center; gap: 10px; margin: 10px 0 6px; }
+.mp-auc-bar { flex: 1; height: 12px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.mp-auc-bar i { display: block; height: 100%; background: var(--mp); border-radius: 999px; transition: width 0.12s linear; }
+.mp-auc-clock b { min-width: 2.6em; text-align: right; font-family: var(--font-display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.mp-auc-clock.is-low .mp-auc-bar i { background: var(--danger); }
+.mp-auc-clock.is-low b { color: var(--danger); animation: mp-bump 0.5s var(--ease) infinite; }
+.mp-auc-bid { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px; margin-bottom: 8px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); text-align: center; }
+.mp-auc-bid small { color: var(--text-3); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+.mp-auc-bid strong { font-family: var(--font-display); font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; animation: mp-pop-big 0.35s var(--ease); }
+.mp-auc-bid span { display: inline-flex; align-items: center; gap: 6px; font-weight: 650; font-size: 14px; }
+.mp-auc-hist { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--text-2); }
+.mp-quick .tf-btn { flex-direction: column; gap: 0; min-height: 52px; font-size: 18px; line-height: 1.1; }
+.mp-quick .tf-btn small { font-size: 11px; font-weight: 500; opacity: 0.85; }
 .mp-bots { align-items: center; margin-top: 10px; }
 .mp-bots small { color: var(--text-3); font-size: 12px; }

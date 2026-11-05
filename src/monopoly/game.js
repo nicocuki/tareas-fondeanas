@@ -12,7 +12,7 @@
 // Las deudas pendientes (`room.debts`) frenan todo: nadie tira, compra ni termina el turno hasta pagarlas.
 import {
   BUYABLE, CARDS, GO_SALARY, GROUPS, JAIL_BAIL, JAIL_POS, MAX_HOTELS, MAX_HOUSES,
-  SQUARES, STATIONS, UTILITIES, groupSquares, houseCost, jailFreeIndex, mortgageFee, mortgageValue, unmortgageCost,
+  SQUARES, STATIONS, TOKENS, UTILITIES, groupSquares, houseCost, jailFreeIndex, mortgageFee, mortgageValue, unmortgageCost,
 } from './board.js';
 import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
@@ -21,6 +21,11 @@ export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 8;
 export const MAX_LOG = 60;
 export const MAX_TRADE_PROPS = 12;
+// Subasta en vivo: todos ofrecen a la vez y cada oferta vuelve a poner el reloj.
+export const AUCTION_OPEN_MS = 25000; // lo que hay para hacer la primera oferta (incluye los segundos de la escena de los dados)
+export const AUCTION_BID_MS = 10000;  // lo que hay para superar una oferta
+export const BID_STEP = 50;           // la primera oferta y cada suba, como mínimo
+export const minBid = (auction) => auction.bid + BID_STEP;
 
 // `auctionChance`: probabilidad (en %) de que, cuando alguien no compra una propiedad, se subaste.
 export const DEFAULT_OPTIONS = { startCash: 1500, freeParking: false, auctionChance: 50 };
@@ -38,6 +43,15 @@ export const makeId = () => Math.random().toString(36).slice(2, 10);
 
 export function makeCode(rand = Math.random) {
   return Array.from({ length: 4 }, () => String.fromCharCode(65 + Math.floor(rand() * 26))).join('');
+}
+
+// La ficha de alguien que entra: la que pidió si está libre; si no (o si no pidió ninguna), una libre al azar.
+// Así en una sala nunca hay dos fichas iguales (hay 16 y entran 8).
+export const tokenTaken = (room, avatar, exceptId) => room.players.some((p) => p.id !== exceptId && p.avatar === avatar);
+function freeToken(room, wanted, rand) {
+  if (wanted && !tokenTaken(room, wanted)) return wanted;
+  const free = TOKENS.filter((t) => !tokenTaken(room, t));
+  return free[Math.floor(rand() * free.length)] || wanted || TOKENS[0];
 }
 
 function newPlayer(id, name, avatar, color) {
@@ -66,6 +80,7 @@ export function roomFromSave(saved, seatId, now = Date.now()) {
   room.hostId = seat.id;
   room.players = room.players.map((p) => ({ ...p, by: p.id === seat.id || p.bot ? p.id : null })); // los bots no necesitan que se sienten
   room.trade = null; // un trato a medias no se retoma
+  if (room.auction) room.auction.deadline = 0; // el reloj de la subasta arranca de nuevo al retomar
   room.card = null;
   delete room.kicked;
   room.createdAt = now;
@@ -442,24 +457,17 @@ function checkWin(room) {
 }
 
 // ─── Subastas ────────────────────────────────────────────────────────────────
-// Por turnos: cada uno sube la oferta o se baja. Gana el último que queda con la oferta más alta.
+// En vivo (pedido de Feli: por turnos y subiendo de a $10 era eterna): todos los que siguen en carrera (`active`) pueden
+// ofrecer cuando quieran, de a `BID_STEP` como mínimo, y cada oferta vuelve a poner el reloj (`deadline`). Cuando el reloj
+// llega a cero se la lleva la oferta más alta (`auctionEnd`), o nadie si no hubo ofertas. Si se bajan todos menos el que
+// va ganando, se cierra ahí nomás. `deadline: 0` = todavía sin reloj: lo pone `applyAction`, que es quien sabe la hora.
 // Que salga o no la subasta depende de `auctionChance` (ver `auctionHappens`).
 function startAuction(room, pos, resume, afterId) {
   const order = orderFrom(room, afterId);
-  room.auction = { pos, bid: 0, bidder: null, order, active: [...order], turn: order[0], resume };
+  room.auction = { pos, bid: 0, bidder: null, order, active: [...order], resume, deadline: 0 };
   room.step = 'auction';
   const chance = auctionChance(room);
   addLog(room, { k: 'auction', s: pos, ...(chance < 100 ? { c: chance } : {}) });
-}
-
-function nextBidder(a, afterId) {
-  const n = a.order.length;
-  const start = a.order.indexOf(afterId);
-  for (let k = 1; k <= n; k++) {
-    const id = a.order[(start + k + n) % n];
-    if (a.active.includes(id) && id !== a.bidder) return id;
-  }
-  return null;
 }
 
 function endAuction(room, sold) {
@@ -485,8 +493,7 @@ function settleAuction(room) {
   a.active = a.active.filter((id) => !findPlayer(room, id)?.out);
   if (a.bidder && !a.active.includes(a.bidder)) { a.bidder = null; a.bid = 0; }
   if (!a.active.length) { endAuction(room, false); return; }
-  if (a.bidder && a.active.length === 1) { endAuction(room, true); return; }
-  if (!a.active.includes(a.turn) || a.turn === a.bidder) a.turn = nextBidder(a, a.turn);
+  if (a.bidder && a.active.length === 1) endAuction(room, true);
 }
 
 // ─── Quiebra ─────────────────────────────────────────────────────────────────
@@ -553,6 +560,13 @@ const POS_ACTIONS = ['build', 'sellBuilding', 'mortgage', 'unmortgage'];
 const isTurn = (room, id, ...steps) => room.phase === 'playing' && room.current === id && steps.includes(room.step) && !room.debts.length;
 
 export function applyAction(room, action, ctx = {}) {
+  const next = reduce(room, action, ctx);
+  // Una subasta recién abierta (por no comprar, por una quiebra, al retomar una partida) todavía no tiene reloj.
+  if (next?.phase === 'playing' && next.auction && !next.auction.deadline) next.auction.deadline = (ctx.now ?? Date.now()) + AUCTION_OPEN_MS;
+  return next;
+}
+
+function reduce(room, action, ctx) {
   if (!room || room.gameType !== GAME_TYPE) return null;
   // El anfitrión saca a alguien (también en plena partida: sirve para el que se fue sin avisar).
   if (action.type === 'kick') {
@@ -574,7 +588,7 @@ export function applyAction(room, action, ctx = {}) {
     case 'join': {
       if (me) {
         me.name = cleanName(action.name) || me.name;
-        if (action.avatar) me.avatar = action.avatar;
+        if (action.avatar && !tokenTaken(next, action.avatar, me.id)) me.avatar = action.avatar;
         return next;
       }
       if (next.phase === 'resume') return next; // entra mirando y después elige su lugar (`claim`)
@@ -584,7 +598,14 @@ export function applyAction(room, action, ctx = {}) {
       const used = new Set(next.players.map((p) => p.color));
       let color = 0;
       while (used.has(color)) color += 1;
-      next.players.push(newPlayer(action.playerId, name, action.avatar, color));
+      next.players.push(newPlayer(action.playerId, name, freeToken(next, action.avatar, rand), color));
+      return next;
+    }
+
+    // Cambiar de ficha en la sala de espera: cualquiera de la lista que no tenga otro.
+    case 'setAvatar': {
+      if (next.phase !== 'lobby' || !me || !TOKENS.includes(action.avatar) || tokenTaken(next, action.avatar, me.id)) return null;
+      me.avatar = action.avatar;
       return next;
     }
 
@@ -640,7 +661,7 @@ export function applyAction(room, action, ctx = {}) {
       const used = new Set(next.players.map((p) => p.color));
       let color = 0;
       while (used.has(color)) color += 1;
-      next.players.push({ ...newPlayer(id, name, '🤖', color), bot: true });
+      next.players.push({ ...newPlayer(id, name, freeToken(next, '🤖', rand), color), bot: true });
       return next;
     }
 
@@ -777,23 +798,31 @@ export function applyAction(room, action, ctx = {}) {
     case 'bid': {
       const a = next.auction;
       const amount = action.amount;
-      if (!live || next.step !== 'auction' || !a || a.turn !== me.id) return null;
-      if (!Number.isInteger(amount) || amount <= a.bid || amount > me.cash) return null;
+      if (!live || next.step !== 'auction' || !a || !a.active.includes(me.id) || a.bidder === me.id) return null;
+      if (!Number.isInteger(amount) || amount < minBid(a) || amount > me.cash) return null;
       a.bid = amount;
       a.bidder = me.id;
+      a.deadline = now + AUCTION_BID_MS;
       addLog(next, { k: 'bid', p: me.id, s: a.pos, n: amount });
-      a.turn = nextBidder(a, me.id) || me.id;
       settleAuction(next);
       return next;
     }
 
     case 'passBid': {
       const a = next.auction;
-      if (!live || next.step !== 'auction' || !a || a.turn !== me.id) return null;
+      if (!live || next.step !== 'auction' || !a || !a.active.includes(me.id) || a.bidder === me.id) return null; // el que va ganando no se baja
       a.active = a.active.filter((id) => id !== me.id);
       addLog(next, { k: 'drop', p: me.id, s: a.pos });
-      a.turn = nextBidder(a, me.id) || a.turn;
       settleAuction(next);
+      return next;
+    }
+
+    // Se acabó el reloj: la manda cualquier pantalla de la sala cuando lo ve en cero (con la hora del servidor); la
+    // transacción deja pasar solo a la primera.
+    case 'auctionEnd': {
+      const a = next.auction;
+      if (next.phase !== 'playing' || next.step !== 'auction' || !a || !me || !a.deadline || now < a.deadline) return null;
+      endAuction(next, Boolean(a.bidder));
       return next;
     }
 

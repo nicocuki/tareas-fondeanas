@@ -13,6 +13,17 @@ import { play } from './sfx.js';
 export const DICE_MS = 1750; // girando + frenado
 const LAND_AT = 1050; // desde acá se ve lo que salió
 const STEP_MS = 130; // lo que tarda la ficha por casillero (el mismo valor que Board.jsx)
+export const CARD_MS = 3200; // lo que la ficha se queda donde cayó mientras se lee la carta, antes de irse a otro lado
+
+// Si la tirada terminó con la ficha mandada a otro lado (carta que te lleva, «Andá a la cárcel»…), el casillero donde cayó
+// primero. Sale de la bitácora: las entradas `at` del que tiró van en orden. null si no hubo salto.
+function firstLanding(room, rollerId, fromLogN) {
+  const fresh = Math.max(0, (room.logN ?? 0) - fromLogN);
+  const entries = fresh ? room.log.slice(-Math.min(fresh, room.log.length)) : [];
+  const lands = entries.filter((e) => e.k === 'at' && e.p === rollerId).map((e) => e.s);
+  const last = room.players.find((p) => p.id === rollerId)?.pos;
+  return lands.length && lands[0] !== last ? lands[0] : null;
+}
 
 // Devuelve la sala que hay que mostrar ahora (`shown`) y, mientras hay una tirada en escena, `stage`.
 // Mientras dura la escena se muestra la sala de antes de tirar; en el tramo de la caminata, la misma pero con la ficha
@@ -28,7 +39,7 @@ export function useStagedRoom(room) {
     setSeenRoll(room.rollN);
     const before = shownRef.current;
     if (room.rollN > seenRoll && room.phase === 'playing' && before.phase === 'playing') {
-      setHold({ before, phase: 'dice', key: room.rollN, roller: before.current, dice: room.dice });
+      setHold({ before, phase: 'dice', key: room.rollN, roller: before.current, dice: room.dice, logN: before.logN ?? 0 });
     }
   }
 
@@ -36,8 +47,11 @@ export function useStagedRoom(room) {
   let shown = room;
   if (active) {
     shown = hold.before;
-    const target = room.players.find((p) => p.id === hold.roller)?.pos;
-    if (hold.phase === 'walk' && target !== undefined) {
+    // Con salto, la ficha camina hasta donde cayó y ahí espera (fase `card`); recién después se va.
+    const first = firstLanding(room, hold.roller, hold.logN);
+    const target = first ?? room.players.find((p) => p.id === hold.roller)?.pos;
+    if (hold.phase === 'card') shown = { ...room, players: room.players.map((p) => (p.id === hold.roller ? { ...p, pos: target } : p)) };
+    else if (hold.phase === 'walk' && target !== undefined) {
       shown = { ...hold.before, players: hold.before.players.map((p) => (p.id === hold.roller ? { ...p, pos: target } : p)) };
     }
   }
@@ -48,10 +62,12 @@ export function useStagedRoom(room) {
     if (!active) { setHold(null); return undefined; }
     if (hold.phase === 'dice') return backgroundTimeout(() => setHold((h) => (h && h.key === hold.key ? { ...h, phase: 'walk' } : h)), DICE_MS);
     const from = hold.before.players.find((p) => p.id === hold.roller)?.pos ?? 0;
-    const to = latest.current.players.find((p) => p.id === hold.roller)?.pos ?? from;
+    if (hold.phase === 'card') return backgroundTimeout(() => setHold((h) => (h && h.key === hold.key ? null : h)), CARD_MS);
+    const jump = firstLanding(latest.current, hold.roller, hold.logN);
+    const to = jump ?? latest.current.players.find((p) => p.id === hold.roller)?.pos ?? from;
     const steps = (to - from + 40) % 40;
     const ms = steps === 0 ? 0 : steps <= 13 ? steps * STEP_MS + 350 : 450;
-    return backgroundTimeout(() => setHold((h) => (h && h.key === hold.key ? null : h)), ms);
+    return backgroundTimeout(() => setHold((h) => (h && h.key === hold.key ? (jump !== null ? { ...h, phase: 'card' } : null) : h)), ms);
   }, [hold?.key, hold?.phase, active]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { shown, stage: active ? { phase: hold.phase, dice: hold.dice, roller: hold.roller, key: hold.key } : null };

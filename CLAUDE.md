@@ -497,8 +497,19 @@ tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires
 - **La subasta no sale siempre** (pedido de Nico: «tiene que tener un porcentaje de salir»): al no comprar, `declineBuy` tira `rand()` contra
   `auctionChance` (100 y 0 no tiran nada). Si no sale, la propiedad queda libre y la bitácora lo dice (`noauction`). Al quebrar contra el banco,
   cada propiedad tira por separado. Por defecto 50 %; los tests usan 100 (el helper `game()`) para no depender del azar.
-- **Subasta por turnos** (`room.auction`): cada uno sube la oferta o se baja; gana el último que queda con la oferta más alta. El que
-  queda solo sin oferta decide si pone algo o nadie la compra. `auction.resume` es el paso al que se vuelve cuando termina.
+- **Subasta en vivo** (`room.auction`; pedido de Feli: por turnos y de a $10 era eterna y «una paja»): todos los de `active` ofrecen cuando quieran,
+  de a `BID_STEP` ($50) como mínimo (`minBid`), y cada oferta vuelve a poner `deadline` (`AUCTION_BID_MS`, 10 s; la primera oferta tiene
+  `AUCTION_OPEN_MS`, 25 s, que incluye los segundos de la escena de los dados). Cuando el reloj llega a cero **cualquier pantalla** manda `auctionEnd`
+  (`Game`, cada 1,5 s y a la hora justa; el reducer exige `now >= deadline`, así entra una sola): gana la oferta más alta o nadie si no hubo. El que va
+  ganando no ofrece ni se baja (`bidder`); si se bajan todos los demás se cierra sin esperar; si el que ganaba se va, la oferta se anula.
+  `deadline: 0` = sin reloj todavía: lo pone el envoltorio `applyAction` (el reducer es `reduce`), que es quien conoce la hora, tanto en una
+  subasta nueva como al retomar una partida guardada. **`dispatch` manda la hora del servidor** (`backend.subscribeServerOffset`), si no los relojes de
+  dos dispositivos desincronizaban el cierre. Los bots juegan en vivo (`botMove`: cualquier bot en carrera que no vaya ganando). `auction.resume` es el paso al que se vuelve.
+- **Fichas** (`TOKENS` en `board.js`, los mismos 16 emojis de los avatares): **no se repiten en una sala** (`tokenTaken`/`freeToken`: al entrar con una
+  ocupada, o sin pedir ninguna, o un bot, toca una libre al azar). En la sala de espera cada uno elige la suya con `setAvatar`. En el tablero la tuya
+  (`meId` → `Token mine`) es más grande, con aro que late y «▼ VOS».
+- **Las cartas que te mandan a otro lado no teletransportan**: `useStagedRoom` mira en la bitácora (`firstLanding`) dónde cayó primero la ficha;
+  camina hasta ahí y se queda `CARD_MS` (fase `card`, mientras se lee la carta) antes de irse al casillero final.
 - **Tratos** (`room.trade`, uno a la vez): `give` es lo que da quien propone y `take` lo que recibe. Se revalida entero al aceptar.
   Las propiedades con edificios en su color no se tratan. Quien recibe una hipotecada paga al banco el 10 % de su hipoteca.
   **Contraoferta**: un `tradeOffer` del que recibió la oferta hacia quien se la hizo (`isCounter`) la reemplaza en vez de rechazarse, lleva

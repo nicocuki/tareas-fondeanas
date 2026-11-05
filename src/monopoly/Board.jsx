@@ -22,10 +22,10 @@ export const tokenColor = (p) => TOKEN_COLORS[p.color % TOKEN_COLORS.length];
 // El color con el que se reconoce una propiedad: el de su calle, gris las estaciones y dorado las compañías.
 export const propColor = (pos) => (SQUARES[pos].g ? GROUPS[SQUARES[pos].g].color : SQUARES[pos].t === 'station' ? '#444' : '#c9b24a');
 
-export function Token({ player, size, current, jailed }) {
+export function Token({ player, size, current, jailed, mine }) {
   return (
     <span
-      className={`mp-token${current ? ' is-current' : ''}${jailed ? ' is-jailed' : ''}${player.out ? ' is-out' : ''}`}
+      className={`mp-token${current ? ' is-current' : ''}${jailed ? ' is-jailed' : ''}${player.out ? ' is-out' : ''}${mine ? ' is-mine' : ''}`}
       style={{ '--tk': tokenColor(player), ...(size ? { width: size, height: size, fontSize: Math.round(size * 0.5) } : {}) }}
       title={player.name}
       data-token={player.name}
@@ -59,7 +59,7 @@ function useShownPositions(players) {
   return shown;
 }
 
-function Square({ pos, room, here, onPick, selected, flash }) {
+function Square({ pos, room, here, onPick, selected, flash, meId }) {
   const sq = SQUARES[pos];
   const { row, col, side } = cellOf(pos);
   const st = room.props[pos];
@@ -92,7 +92,7 @@ function Square({ pos, room, here, onPick, selected, flash }) {
       {st?.m ? <span className="mp-mort" aria-hidden="true">H</span> : null}
       {here.length > 0 && (
         <span className="mp-tokens">
-          {here.map((p) => <Token key={p.id} player={p} current={p.id === room.current} jailed={pos === JAIL_POS && p.jail > 0} />)}
+          {here.map((p) => <Token key={p.id} player={p} current={p.id === room.current} mine={p.id === meId} jailed={pos === JAIL_POS && p.jail > 0} />)}
         </span>
       )}
     </button>
@@ -100,7 +100,7 @@ function Square({ pos, room, here, onPick, selected, flash }) {
 }
 
 // `flash`: casillero que se resalta un instante (el del último aviso).
-export default function Board({ room, onPick, selected, flash, children }) {
+export default function Board({ room, onPick, selected, flash, meId, children }) {
   const shown = useShownPositions(room.players);
   const byPos = {};
   for (const p of room.players) {
@@ -110,7 +110,7 @@ export default function Board({ room, onPick, selected, flash, children }) {
   }
   return (
     <div className="mp-board" data-board>
-      {SQUARES.map((_, pos) => <Square key={pos} pos={pos} room={room} here={byPos[pos] || []} onPick={onPick} selected={selected === pos} flash={flash === pos} />)}
+      {SQUARES.map((_, pos) => <Square key={pos} pos={pos} room={room} here={byPos[pos] || []} onPick={onPick} selected={selected === pos} flash={flash === pos} meId={meId} />)}
       <div className="mp-center">{children}</div>
     </div>
   );

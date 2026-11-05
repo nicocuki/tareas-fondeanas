@@ -1,6 +1,6 @@
 // Monopoly: entrada, sala de espera, partida y final.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { backgroundTimeout } from '../ticker.js';
+import { backgroundInterval, backgroundTimeout } from '../ticker.js';
 import { backend } from '../storage.js';
 import { clearSession, loadSession, saveSession } from '../session.js';
 import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/index.js';
@@ -14,8 +14,9 @@ import GameChat from '../ui/GameChat.jsx';
 import SpectatorBadge from '../ui/SpectatorBadge.jsx';
 import { gameUrl } from '../ui/games.js';
 import {
-  GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, auctionChance, cleanName, findPlayer, makeId, netWorth, newRoom, ownedBy, roomFromSave,
+  GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, auctionChance, cleanName, findPlayer, makeId, netWorth, newRoom, ownedBy, roomFromSave, tokenTaken,
 } from './game.js';
+import { TOKENS } from './board.js';
 import Board, { Token } from './Board.jsx';
 import ActionPanel from './ActionPanel.jsx';
 import { LogPanel, PlayersPanel, PropertiesPanel, RulesPanel } from './Panels.jsx';
@@ -209,6 +210,16 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
             </li>
           ))}
         </ul>
+        <div className="mp-token-pick" data-token-pick>
+          <p className="mp-hint">Elegí tu ficha. En la partida no puede haber dos iguales.</p>
+          <div className="tf-avatar-grid">
+            {TOKENS.map((t) => {
+              const taken = tokenTaken(room, t, me?.id);
+              const owner = room.players.find((p) => p.avatar === t);
+              return <button key={t} type="button" aria-label={`Ficha ${t}${taken ? ` (la tiene ${owner?.name})` : ''}`} aria-pressed={me?.avatar === t} disabled={taken} title={taken ? `La tiene ${owner?.name}` : undefined} className={me?.avatar === t ? 'is-selected' : ''} data-token={t} onClick={() => { onDispatch({ type: 'setAvatar', avatar: t }); setProfile({ name: getProfile().name, avatar: t }); }}>{t}</button>;
+            })}
+          </div>
+        </div>
         {host && (
           <div className="mp-btn-row mp-bots">
             <button type="button" className="tf-btn tf-btn-soft" disabled={room.players.length >= MAX_PLAYERS} data-act="addBot" onClick={addBot}>🤖 Agregar un bot</button>
@@ -303,7 +314,7 @@ function Resume({ room, me, code, onDispatch, onLeave, onCopy, copied, onClaim }
 }
 
 // ─── Partida ─────────────────────────────────────────────────────────────────
-function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
+function Game({ room: live, me: liveMe, onDispatch, onLeave, offset }) {
   const wide = useWide();
   const { shown: room, stage } = useStagedRoom(live); // lo que se ve va un paso atrás de la sala mientras ruedan los dados
   const me = findPlayer(room, liveMe.id) || liveMe;
@@ -344,6 +355,17 @@ function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
     return backgroundTimeout(() => onDispatch(move.action, move.botId), 1100);
   }, [live, stage, host]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // La subasta es en vivo y tiene reloj: cuando llega a cero, cualquier pantalla de la sala lo avisa (el reducer deja pasar a la
+  // primera). Se mira cada segundo con la hora del servidor, así una pantalla con el reloj atrasado no se la pierde.
+  const deadline = live.auction?.deadline;
+  useEffect(() => {
+    if (!deadline) return undefined;
+    const check = () => { if (Date.now() + offset >= deadline) onDispatch({ type: 'auctionEnd' }); };
+    const stop = backgroundTimeout(check, Math.max(0, deadline - (Date.now() + offset)) + 80);
+    const again = backgroundInterval(check, 1500);
+    return () => { stop(); again(); };
+  }, [deadline, offset]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // El casillero del último aviso se ilumina un momento.
   useEffect(() => {
     if (flash === null) return undefined;
@@ -360,7 +382,7 @@ function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
       <div className="mp-layout">
         <div className="mp-board-col">
           <div className="mp-board-wrap">
-            <Board room={room} onPick={setDeed} selected={deed} flash={flash}>
+            <Board room={room} onPick={setDeed} selected={deed} flash={flash} meId={me?.id}>
               <div className="mp-center-inner">
                 <h1 className="mp-logo" aria-hidden="true">MONOPOLY</h1>
                 <div className="mp-center-tools">
@@ -415,7 +437,7 @@ function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
         </div>
       </div>
 
-      {room.auction && me &&<AuctionModal room={room} me={me} dispatch={onDispatch} />}
+      {room.auction && me &&<AuctionModal room={room} me={me} dispatch={onDispatch} offset={offset} />}
       {!room.auction && room.trade?.to === me?.id && !me.out && !tradeHidden && <TradeIncoming room={room} me={me} dispatch={onDispatch} onHide={() => setTradeHidden(true)} onCounter={() => { setTradeHidden(true); setComposer({ counter: room.trade }); }} onPick={setDeed} />}
       {composer && me && !me.out && !room.auction && <TradeComposer room={room} me={me} initialTo={composer.to} counter={composer.counter} onClose={() => setComposer(null)} dispatch={onDispatch} />}
       {deed !== null && !room.auction && <DeedModal room={room} me={me} pos={deed} onClose={() => setDeed(null)} dispatch={onDispatch} />}
@@ -479,6 +501,8 @@ export default function MonopolyApp({ onBackToMenu }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [offset, setOffset] = useState(0); // lo que hay que sumarle al reloj de este dispositivo para tener la hora del servidor
+  useEffect(() => backend.subscribeServerOffset(setOffset), []);
   const code = session?.code;
   const spectating = Boolean(session?.spectator);
   const me = spectating ? ghostMe(session) : findPlayer(room, session?.playerId);
@@ -518,7 +542,7 @@ export default function MonopolyApp({ onBackToMenu }) {
   async function dispatch(action, asId) {
     if (!session || session.spectator) return null; // el que mira no manda jugadas
     try {
-      return await backend.updateRoom(session.code, (current) => applyAction(current, { ...action, playerId: asId ?? session.playerId }, { now: Date.now(), rand: Math.random }));
+      return await backend.updateRoom(session.code, (current) => applyAction(current, { ...action, playerId: asId ?? session.playerId }, { now: Date.now() + offset, rand: Math.random }));
     } catch {
       setError('No se pudo guardar la jugada. Revisá tu conexión.');
       return null;
@@ -635,7 +659,7 @@ export default function MonopolyApp({ onBackToMenu }) {
     <div className="mp-screen" ref={screenRef}>
       {room.phase === 'ended'
         ? <Ended room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} />
-        : <>{banner}<Game room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} /></>}
+        : <>{banner}<Game room={room} me={me} onDispatch={dispatch} onLeave={handleLeave} offset={offset} /></>}
       {spectating ? <SpectatorBadge /> : <GameChat code={code} me={me} />}
     </div>
   );

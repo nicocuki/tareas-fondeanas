@@ -940,7 +940,16 @@ OCULTA 1.44.2 = Avisos para todos
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.46.1 = Monopoly: contraofertas y el tablero vuelve a ser cuadrado 🔁
+1.46.1 = Monopoly: contraofertas y el tablero vuelve a ser cuadrado 🔁
 - Contraoferta: cuando te proponen un trato, además de aceptar o rechazar podés contestar con otra oferta. Se abre el armado con la oferta que te hicieron, le cambiás lo que quieras y reemplaza a la original. El otro puede aceptarla, rechazarla o contraofertar de vuelta.
 - El tablero vuelve a ser cuadrado (estirado a lo ancho quedaba raro) y ahora usa todo el alto de la pantalla, sin márgenes de más. Las letras de los casilleros son un poco más grandes.
 - Pantalla completa: el botón nuevo del centro del tablero (o el del header) agranda solo la partida, sin el header ni la barra del navegador. Es la forma de ver el tablero bien grande. Se sale con Esc.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.47.0 = Monopoly: subasta en vivo, fichas que no se repiten y movimientos más claros 🔨
+- Subasta en vivo: ya no es por turnos. Todos ofrecen cuando quieran, de a $50 como mínimo (botones +50, +100 y +200, o el monto que quieras), y cada oferta vuelve a poner el reloj en 10 segundos. Cuando se acaba, se la lleva la oferta más alta. Si nadie ofrece, queda sin dueño.
+- La ventana de la subasta muestra el reloj, quién va ganando con el monto bien grande, quién sigue en carrera y las últimas ofertas. El que va ganando no se puede bajar; si se bajan todos los demás, se cierra al instante.
+- Fichas: en una sala ya no puede haber dos iguales. En la sala de espera elegís la tuya (las que tiene otro aparecen apagadas); si entrás con una ocupada te toca una libre al azar. Los bots también eligen distinto.
+- Tu ficha se distingue en el tablero: más grande, con un aro que late y el cartelito «VOS», y tu casillero se marca.
+- Cuando una carta (o «Andá a la cárcel») te manda a otro lado, la ficha se queda donde caíste mientras se lee la carta y recién después se va. Antes saltaba de inmediato y no se entendía qué había pasado.

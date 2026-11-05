@@ -4,7 +4,7 @@
 // Juegan simple: compran con colchón de plata, construyen parejo, hipotecan solo cuando deben y aceptan tratos solo si salen ganando (no los proponen).
 import { JAIL_BAIL, SQUARES, groupSquares, houseCost, unmortgageCost } from './board.js';
 import {
-  buildProblem, debtTotal, debtsOf, findPlayer, liquidation, mortgageProblem, ownedBy, ownerOf, sellBuildingProblem,
+  buildProblem, debtTotal, debtsOf, findPlayer, liquidation, minBid, mortgageProblem, ownedBy, ownerOf, sellBuildingProblem,
   tradeProblem, unmortgageProblem,
 } from './game.js';
 
@@ -61,7 +61,7 @@ function debtMove(room, bot) {
 
 function auctionMove(room, bot) {
   const a = room.auction;
-  const next = a.bid + 10;
+  const next = minBid(a);
   return next <= auctionLimit(room, bot.id, a.pos, bot.cash) ? { type: 'bid', amount: next } : { type: 'passBid' };
 }
 
@@ -102,7 +102,10 @@ export function botMove(room) {
   }
   if (room.trade && isBot(room.trade.to)) return { botId: room.trade.to, action: tradeMove(room, findPlayer(room, room.trade.to)) };
   if (room.auction) {
-    return isBot(room.auction.turn) ? { botId: room.auction.turn, action: auctionMove(room, findPlayer(room, room.auction.turn)) } : null;
+    // La subasta es en vivo: juega cualquier bot que siga en carrera y no vaya ganando (sube lo mínimo o se baja).
+    const a = room.auction;
+    const id = a.active.find((x) => x !== a.bidder && isBot(x));
+    return id ? { botId: id, action: auctionMove(room, findPlayer(room, id)) } : null;
   }
   const cur = findPlayer(room, room.current);
   if (!cur?.bot || cur.out) return null;

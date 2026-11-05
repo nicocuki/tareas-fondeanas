@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CARDS, GROUPS, GROUP_KEYS, SQUARES, STATIONS, UTILITIES, groupSquares, mortgageValue, unmortgageCost } from '../src/monopoly/board.js';
+import { CARDS, GROUPS, GROUP_KEYS, SQUARES, STATIONS, TOKENS, UTILITIES, groupSquares, mortgageValue, unmortgageCost } from '../src/monopoly/board.js';
 import {
-  MAX_LOG, MAX_PLAYERS, applyAction, auctionChance, buildProblem, debtTotal, findPlayer, liquidation, makeId, netWorth, newRoom, ownedBy, rentFor, roomFromSave,
+  AUCTION_BID_MS, AUCTION_OPEN_MS, MAX_LOG, MAX_PLAYERS, applyAction, auctionChance, buildProblem, debtTotal, findPlayer, liquidation, makeId, netWorth, newRoom, ownedBy, rentFor, roomFromSave,
   tradeEffects,
 } from '../src/monopoly/game.js';
 import { announce, describe } from '../src/monopoly/log.js';
@@ -493,13 +493,14 @@ test('quiebra contra el banco: sus propiedades se subastan una por una', () => {
   assert.deepEqual(room.queue, [6]);
   assert.equal(room.props[1], undefined, 'vuelve al banco sin hipoteca');
   assert.equal(room.current, 'b');
-  // la primera sale a $10, la segunda se queda sin comprador
-  room = act(room, room.auction.turn, { type: 'bid', amount: 10 });
-  room = act(room, room.auction.turn, { type: 'passBid' });
-  assert.equal(room.props[1].o, room.log.findLast((l) => l.k === 'sold').p);
+  // la primera sale a $50 (el otro se baja), la segunda se queda sin comprador
+  room = act(room, 'b', { type: 'bid', amount: 50 });
+  room = act(room, 'c', { type: 'passBid' });
+  assert.equal(room.props[1].o, 'b');
   assert.equal(room.auction.pos, 6);
-  room = act(room, room.auction.turn, { type: 'passBid' });
-  room = act(room, room.auction.turn, { type: 'passBid' });
+  assert.equal(room.auction.deadline, NOW + AUCTION_OPEN_MS, 'la segunda subasta arranca con su reloj');
+  room = act(room, 'b', { type: 'passBid' });
+  room = act(room, 'c', { type: 'passBid' });
   assert.equal(room.auction, null);
   assert.equal(room.step, 'roll');
   assert.equal(room.current, 'b');
@@ -514,20 +515,24 @@ test('subasta: no comprar abre una subasta; gana la oferta más alta y paga lo o
   assert.equal(room.step, 'auction');
   assert.equal(room.auction.pos, 3);
   assert.deepEqual(room.auction.order, ['b', 'c', 'a']);
-  assert.equal(room.auction.turn, 'b');
-  rejects(room, 'a', { type: 'bid', amount: 5 }); // no es su turno
+  assert.equal(room.auction.deadline, NOW + AUCTION_OPEN_MS, 'hay un rato para la primera oferta');
   rejects(room, 'b', { type: 'bid', amount: 0 });
+  rejects(room, 'b', { type: 'bid', amount: 49 });   // se empieza en $50
   rejects(room, 'b', { type: 'bid', amount: 2000 }); // más de lo que tiene
-  room = act(room, 'b', { type: 'bid', amount: 20 });
-  assert.equal(room.auction.turn, 'c');
-  rejects(room, 'c', { type: 'bid', amount: 20 }); // hay que superar
-  room = act(room, 'c', { type: 'bid', amount: 30 });
-  room = act(room, 'a', { type: 'passBid' });
-  assert.equal(room.auction.turn, 'b');
+  // Es en vivo: ofrece cualquiera de los que siguen en carrera, sin esperar turno.
+  room = act(room, 'a', { type: 'bid', amount: 50 }, { now: NOW + 4000 });
+  assert.equal(room.auction.deadline, NOW + 4000 + AUCTION_BID_MS, 'cada oferta vuelve a poner el reloj');
+  rejects(room, 'a', { type: 'bid', amount: 100 });  // el que va ganando no se sube a sí mismo
+  rejects(room, 'a', { type: 'passBid' });           // ni se baja
+  rejects(room, 'c', { type: 'bid', amount: 99 });   // hay que subir de a $50 como mínimo
+  room = act(room, 'c', { type: 'bid', amount: 100 });
   room = act(room, 'b', { type: 'passBid' });
-  assert.equal(room.auction, null);
+  rejects(room, 'b', { type: 'bid', amount: 300 });  // el que se bajó ya no ofrece
+  assert.equal(room.step, 'auction', 'sigue mientras haya alguien que pueda superar la oferta');
+  room = act(room, 'a', { type: 'passBid' });
+  assert.equal(room.auction, null, 'se bajaron todos menos el que va ganando: se cierra sin esperar el reloj');
   assert.deepEqual(room.props[3], { o: 'c', h: 0, m: 0 });
-  assert.equal(me(room, 'c').cash, 1470);
+  assert.equal(me(room, 'c').cash, 1400);
   assert.equal(room.step, 'act');
   assert.equal(room.current, 'a');
 });
@@ -543,6 +548,88 @@ test('subasta: si nadie ofrece, la propiedad queda sin dueño', () => {
   assert.equal(room.auction, null);
   assert.equal(room.props[3], undefined);
   assert.equal(room.step, 'act');
+});
+
+test('subasta: cuando se acaba el reloj se la lleva la oferta más alta, o nadie si no hubo ofertas', () => {
+  let room = game();
+  room = roll(room, 'a', 1, 2);
+  room = act(room, 'a', { type: 'declineBuy' });
+  rejects(room, 'b', { type: 'auctionEnd' }, { now: NOW + AUCTION_OPEN_MS - 1 }); // todavía hay tiempo
+  rejects(room, 'zz', { type: 'auctionEnd' }, { now: NOW + AUCTION_OPEN_MS });   // alguien de afuera no
+  const nobody = act(room, 'c', { type: 'auctionEnd' }, { now: NOW + AUCTION_OPEN_MS });
+  assert.equal(nobody.auction, null);
+  assert.equal(nobody.props[3], undefined);
+  assert.equal(nobody.log.at(-1).k, 'unsold');
+  assert.equal(nobody.step, 'act');
+  // Con una oferta: el reloj corre desde la oferta y, al terminar, la propiedad es del que ofreció.
+  room = act(room, 'b', { type: 'bid', amount: 150 }, { now: NOW + 9000 });
+  rejects(room, 'a', { type: 'auctionEnd' }, { now: NOW + 9000 + AUCTION_BID_MS - 1 }); // el reloj lo movió la oferta
+  room = act(room, 'a', { type: 'auctionEnd' }, { now: NOW + 9000 + AUCTION_BID_MS });
+  assert.deepEqual(room.props[3], { o: 'b', h: 0, m: 0 });
+  assert.equal(me(room, 'b').cash, 1350);
+  assert.equal(room.step, 'act');
+  rejects(room, 'a', { type: 'auctionEnd' }, { now: NOW + 99999 }); // ya no hay subasta
+});
+
+test('subasta: si el que va ganando se va, la oferta se anula y la subasta sigue', () => {
+  let room = game();
+  room = roll(room, 'a', 1, 2);
+  room = act(room, 'a', { type: 'declineBuy' });
+  room = act(room, 'b', { type: 'bid', amount: 200 });
+  room = act(room, 'b', { type: 'leave' });
+  assert.equal(room.auction.pos, 3);
+  assert.equal(room.auction.bid, 0);
+  assert.equal(room.auction.bidder, null);
+  assert.deepEqual(room.auction.active, ['c', 'a']);
+  room = act(room, 'c', { type: 'bid', amount: 50 });
+  room = act(room, 'a', { type: 'passBid' });
+  assert.equal(room.props[3].o, 'c');
+});
+
+test('subasta: al retomar una partida guardada el reloj arranca de nuevo', () => {
+  let room = game();
+  room = roll(room, 'a', 1, 2);
+  room = act(room, 'a', { type: 'declineBuy' });
+  room = act(room, 'b', { type: 'bid', amount: 50 });
+  const { room: saved } = roomFromSave(room, 'a', NOW + 500000);
+  assert.equal(saved.auction.deadline, 0);
+  let back = act(saved, 'tmpb', { type: 'join', name: 'Otra', avatar: '🦊' }, { now: NOW + 500000 });
+  back = act(back, 'tmpb', { type: 'claim', seat: 'b' }, { now: NOW + 500000 });
+  back = act(back, 'a', { type: 'resumeStart' }, { now: NOW + 600000 });
+  assert.equal(back.phase, 'playing');
+  assert.equal(back.auction.deadline, NOW + 600000 + AUCTION_OPEN_MS);
+});
+
+// ─── Fichas ──────────────────────────────────────────────────────────────────
+test('fichas: en una sala no se repiten; si la que pedís está ocupada te toca otra libre', () => {
+  let room = newRoom('a', 'Ana', '🐸', NOW);
+  room = act(room, 'b', { type: 'join', name: 'Beto', avatar: '🦊' });
+  assert.equal(me(room, 'b').avatar, '🦊', 'si está libre, es la que pidió');
+  room = act(room, 'c', { type: 'join', name: 'Caro', avatar: '🐸' }, { rand: () => 0 });
+  assert.equal(me(room, 'c').avatar, '🐼', 'la primera libre de la lista (rand = 0)');
+  room = act(room, 'd', { type: 'join', name: 'Dani' }, { rand: () => 0.999 });
+  assert.equal(me(room, 'd').avatar, '🤖', 'sin pedir ninguna: una libre al azar');
+  // Los bots tampoco repiten.
+  for (let i = 0; i < 4; i++) room = act(room, 'a', { type: 'addBot', botId: `bot-x${i}yz`, name: `Bot ${i}` });
+  const all = room.players.map((p) => p.avatar);
+  assert.equal(new Set(all).size, MAX_PLAYERS);
+  assert.ok(all.every((t) => TOKENS.includes(t)));
+  // Volver a entrar con una ficha ocupada no pisa la de otro.
+  room = act(room, 'b', { type: 'join', name: 'Beto', avatar: '🐸' });
+  assert.equal(me(room, 'b').avatar, '🦊');
+});
+
+test('fichas: en la sala de espera cada uno elige la suya entre las libres', () => {
+  let room = newRoom('a', 'Ana', '🐸', NOW);
+  room = act(room, 'b', { type: 'join', name: 'Beto', avatar: '🦊' });
+  rejects(room, 'b', { type: 'setAvatar', avatar: '🐸' });  // la tiene Ana
+  rejects(room, 'b', { type: 'setAvatar', avatar: '💩' });  // no es una ficha
+  rejects(room, 'zz', { type: 'setAvatar', avatar: '🐢' }); // no está en la sala
+  room = act(room, 'b', { type: 'setAvatar', avatar: '🐢' });
+  assert.equal(me(room, 'b').avatar, '🐢');
+  room = act(room, 'a', { type: 'setAvatar', avatar: '🦊' }); // la que soltó Beto
+  room = act(room, 'a', { type: 'start' });
+  rejects(room, 'a', { type: 'setAvatar', avatar: '🐼' });  // con la partida empezada, no
 });
 
 test('subasta: con la opción apagada, no comprar deja la propiedad libre', () => {
@@ -869,7 +956,7 @@ test('la sala del peor caso entra en el tope de 30.000 caracteres', () => {
   for (let k = 0; k < MAX_LOG + 10; k++) room.log.push({ k: 'rent', p: owners[0], o: owners[1], s: 39, n: 2000, d: 12 });
   room.log = room.log.slice(-MAX_LOG);
   room.trade = { from: owners[0], to: owners[1], give: { cash: 1500, cards: 1, props: [1, 3, 5, 6, 8, 9, 11, 13, 14, 16, 18, 19] }, take: { cash: 1500, cards: 1, props: [21, 23, 24, 26, 27, 29, 31, 32, 34, 37, 39, 12] } };
-  room.auction = { pos: 39, bid: 1000, bidder: owners[2], order: owners, active: owners, turn: owners[3], resume: 'act' };
+  room.auction = { pos: 39, bid: 1000, bidder: owners[2], order: owners, active: owners, resume: 'act', deadline: 1700000000000 };
   room.debts = owners.map((id) => ({ from: id, to: owners[0], n: 4000, s: 39 }));
   const size = serializeRoom(room).length;
   assert.ok(size < 12000, `pesa ${size}`);
@@ -1119,9 +1206,15 @@ test('bots: compra con colchón, rechaza sin plata y se baja de una subasta cara
   me(room, 'a').cash = 1500;
   room = act(room, 'a', { type: 'declineBuy' });
   room.players[1].bot = true;
+  // En la subasta en vivo sube lo mínimo mientras le convenga, y si va ganando espera.
+  assert.deepEqual(botMove(room), { botId: 'b', action: { type: 'bid', amount: 50 } });
   room.auction.bid = 500;
-  assert.equal(botMove(room).botId, 'b');
-  assert.equal(botMove(room).action.type, 'passBid');
+  assert.deepEqual(botMove(room), { botId: 'b', action: { type: 'passBid' } });
+  room.auction.bid = 0;
+  room = act(room, 'b', { type: 'bid', amount: 50 });
+  assert.deepEqual(botMove(room), { botId: 'a', action: { type: 'passBid' } }, 'el que va ganando espera; al otro ya no le conviene');
+  me(room, 'a').bot = false;
+  assert.equal(botMove(room), null, 'si el que falta es una persona, el bot que va ganando espera el reloj');
 });
 
 test('bots: aceptan un trato que los favorece y rechazan uno que no', () => {
@@ -1149,10 +1242,10 @@ test('bots: no se mueven si no es su turno, si debe una persona o si la partida 
 
 test('bots: una partida entera entre bots avanza sin que el reducer rechace ninguna jugada', () => {
   let room = newRoom('a', 'Ana', '🐸', NOW);
-  for (const id of ['bot-b11111', 'bot-c22222', 'bot-d33333']) room = applyAction(room, { type: 'addBot', playerId: 'a', botId: id, name: id }, { now: NOW });
-  room.players[0].bot = true;
-  let seed = 11;
+  let seed = 3;
   const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  for (const id of ['bot-b11111', 'bot-c22222', 'bot-d33333']) room = applyAction(room, { type: 'addBot', playerId: 'a', botId: id, name: id }, { now: NOW, rand });
+  room.players[0].bot = true;
   room = applyAction(room, { type: 'start', playerId: 'a' }, { now: NOW, rand });
   let steps = 0;
   const seen = new Set();

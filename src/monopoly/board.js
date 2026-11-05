@@ -133,5 +133,8 @@ export const CARDS = {
 export const DECK_NAMES = { chance: 'Suerte', chest: 'Caja comunal' };
 export const jailFreeIndex = (deck) => CARDS[deck].findIndex((c) => c.t === 'jailfree');
 
+// Las fichas (los mismos emojis que los avatares del perfil): en una sala no se repiten, ver `freeToken` en game.js.
+export const TOKENS = ['🐸', '🦊', '🐼', '🐙', '🐨', '🦄', '🐱', '🐧', '🦖', '🐝', '🦉', '🐵', '🐯', '🐢', '👾', '🤖'];
+
 // Colores de las fichas (cada jugador tiene el suyo).
 export const TOKEN_COLORS = ['#e5484d', '#3b82f6', '#f5b82e', '#2fbf71', '#a855f7', '#f97316', '#14b8a6', '#ec4899'];
