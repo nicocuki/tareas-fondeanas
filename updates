@@ -922,6 +922,18 @@ OCULTA 1.44.2 = Avisos para todos
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.45.0 = Portada con capturas de cada juego 🖼️
+1.45.0 = Portada con capturas de cada juego 🖼️
 - Los juegos del menú ahora son tarjetas más chicas, cuatro por fila, y en lugar del emoji muestran una captura de la partida.
 - Los juegos nuevos van siempre primero.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.46.0 = Monopoly: tratos a la vista de todos, tablero más grande y avisos que se leen 🤝
+- Tratos: mientras hay una oferta abierta, todos la ven en una tarjeta al costado (quién le ofrece qué a quién) y, cuando se cierra, si se aceptó, se rechazó o se canceló.
+- Cada propiedad de un trato aparece con la franja de su color, el precio y si está hipotecada. Tocándola se abre su ficha.
+- La oferta avisa lo que está en juego: quién completa un color (y va a poder construir), quién deja de tenerlo y cuánto hay que pagarle al banco por las hipotecadas.
+- El que recibe la oferta puede correr la ventana para mirar el tablero: la oferta queda a la vista con el botón «Responder».
+- Armar un trato es más fácil: elegís con quién tocando su ficha y marcás las propiedades tocándolas.
+- Cuando se cierra un trato, la bitácora y el aviso cuentan qué dio cada uno. Si te rechazan una oferta, te avisa.
+- El tablero es más grande: en compu ocupa todo el alto y se estira a lo ancho, así los casilleros y las letras se ven mejor.
+- Los avisos (alquileres, cobros, compras) ahora salen en el medio del tablero, tirando para arriba, con colores firmes: el verde y el rojo antes eran casi transparentes y no se leían.

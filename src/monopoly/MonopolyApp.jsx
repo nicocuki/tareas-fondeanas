@@ -19,9 +19,8 @@ import {
 import Board, { Token } from './Board.jsx';
 import ActionPanel from './ActionPanel.jsx';
 import { LogPanel, PlayersPanel, PropertiesPanel, RulesPanel } from './Panels.jsx';
-import {
-  AuctionModal, CardToast, DeedModal, TradeComposer, TradeIncoming,
-} from './Modals.jsx';
+import { AuctionModal, CardToast, DeedModal } from './Modals.jsx';
+import { TradeCard, TradeComposer, TradeIncoming, useTradeView } from './Trade.jsx';
 import { describe } from './log.js';
 import { BOT_NAMES, botMove } from './bots.js';
 import { Announcer, DiceRoll, useStagedRoom } from './Stage.jsx';
@@ -313,6 +312,10 @@ function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [flash, setFlash] = useState(null);
   const [sound, setSoundOn] = useState(soundOn);
+  const tradeView = useTradeView(room);
+  const [tradeHidden, setTradeHidden] = useState(false); // el que recibe la oferta corrió la ventana para mirar el tablero
+  const tradeKey = room.trade ? JSON.stringify(room.trade) : '';
+  useEffect(() => { setTradeHidden(false); }, [tradeKey]); // una oferta nueva vuelve a abrirse sola
   const host = room.hostId === me?.id;
   const myTurn = Boolean(me) && room.current === me.id && !me.out;
 
@@ -340,29 +343,36 @@ function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
 
   const recent = room.log.filter((e) => e.k !== 'at').slice(-3).map((e) => describe(e, room)).filter((e) => e.text);
   const action = <ActionPanel room={room} me={me} dispatch={onDispatch} onTrade={() => setComposer({})} busy={Boolean(stage)} />;
+  // El trato abierto, a la vista de todos: al costado en pantallas anchas y arriba de los botones en el celular.
+  const tradeCard = <TradeCard room={room} me={me} view={tradeView} dispatch={onDispatch} onPick={setDeed} onRespond={() => setTradeHidden(false)} />;
 
   return (
     <div className="cs-root mp-page mp-playing">
       <div className="mp-layout">
         <div className="mp-board-col">
-          <Board room={room} onPick={setDeed} selected={deed} flash={flash}>
-            <div className="mp-center-inner">
-              <h1 className="mp-logo" aria-hidden="true">MONOPOLY</h1>
-              <button type="button" className="mp-sound" aria-pressed={sound} data-act="sound" onClick={() => { setSound(!sound); setSoundOn(!sound); }}>
-                {sound ? '🔊 Sonido' : '🔇 Sin sonido'}
-              </button>
-              {room.options.freeParking && <p className="mp-pot">🅿️ Pozo del Descanso: <b>${room.pot}</b></p>}
-              {wide && action}
-              {wide && recent.length > 0 && (
-                <ul className="mp-recent" aria-label="Lo último que pasó">
-                  {recent.map((e, i) => <li key={i}><span aria-hidden="true">{e.icon}</span> {e.text}</li>)}
-                </ul>
-              )}
+          <div className="mp-board-wrap">
+            <Board room={room} onPick={setDeed} selected={deed} flash={flash}>
+              <div className="mp-center-inner">
+                <h1 className="mp-logo" aria-hidden="true">MONOPOLY</h1>
+                <button type="button" className="mp-sound" aria-pressed={sound} data-act="sound" onClick={() => { setSound(!sound); setSoundOn(!sound); }}>
+                  {sound ? '🔊 Sonido' : '🔇 Sin sonido'}
+                </button>
+                {room.options.freeParking && <p className="mp-pot">🅿️ Pozo del Descanso: <b>${room.pot}</b></p>}
+                {wide && action}
+                {wide && recent.length > 0 && (
+                  <ul className="mp-recent" aria-label="Lo último que pasó">
+                    {recent.map((e, i) => <li key={i}><span aria-hidden="true">{e.icon}</span> {e.text}</li>)}
+                  </ul>
+                )}
+              </div>
+            </Board>
+            {stage?.phase === 'dice' && <DiceRoll stage={stage} room={room} meId={me.id} />}
+            <div className="mp-notices" data-notices>
+              <CardToast room={room} />
+              <Announcer room={room} meId={me.id} onSquare={setFlash} />
             </div>
-          </Board>
-          {stage?.phase === 'dice' && <DiceRoll stage={stage} room={room} meId={me.id} />}
-          <CardToast room={room} />
-          {!wide && <div className="mp-dock">{action}<p className="mp-hint">Tocá un casillero para ver su ficha: precio, alquileres y de quién es.</p>{recent.length > 0 && (
+          </div>
+          {!wide && <div className="mp-dock">{tradeCard}{action}<p className="mp-hint">Tocá un casillero para ver su ficha: precio, alquileres y de quién es.</p>{recent.length > 0 && (
             <ul className="mp-recent" aria-label="Lo último que pasó">
               {recent.map((e, i) => <li key={i}><span aria-hidden="true">{e.icon}</span> {e.text}</li>)}
             </ul>
@@ -370,6 +380,7 @@ function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
         </div>
 
         <div className="mp-side-col">
+          {wide && tradeCard}
           <PlayersPanel room={room} me={me} onPick={setDeed} onTrade={(id) => setComposer({ to: id })} onKick={(id) => onDispatch({ type: 'kick', target: id })} />
           <PropertiesPanel room={room} me={me} dispatch={onDispatch} onPick={setDeed} />
           <LogPanel room={room} />
@@ -388,9 +399,8 @@ function Game({ room: live, me: liveMe, onDispatch, onLeave }) {
         </div>
       </div>
 
-      <Announcer room={room} meId={me.id} onSquare={setFlash} />
-      {room.auction && me && <AuctionModal room={room} me={me} dispatch={onDispatch} />}
-      {!room.auction && room.trade?.to === me?.id && !me.out && <TradeIncoming room={room} me={me} dispatch={onDispatch} />}
+      {room.auction && me &&<AuctionModal room={room} me={me} dispatch={onDispatch} />}
+      {!room.auction && room.trade?.to === me?.id && !me.out && !tradeHidden && <TradeIncoming room={room} me={me} dispatch={onDispatch} onHide={() => setTradeHidden(true)} onPick={setDeed} />}
       {composer && me && !me.out && !room.auction && <TradeComposer room={room} me={me} initialTo={composer.to} onClose={() => setComposer(null)} dispatch={onDispatch} />}
       {deed !== null && !room.auction && <DeedModal room={room} me={me} pos={deed} onClose={() => setDeed(null)} dispatch={onDispatch} />}
     </div>

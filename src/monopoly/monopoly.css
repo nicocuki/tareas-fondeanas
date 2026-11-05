@@ -33,19 +33,25 @@
 
 /* ─── Disposición ─── */
 .mp-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
-.mp-board-col { position: relative; min-width: 0; }
+.mp-board-col { min-width: 0; }
+/* El tablero con lo que va encima (dados, avisos, carta). En el celular es cuadrado. */
+.mp-board-wrap { position: relative; width: 100%; aspect-ratio: 1; margin: 0 auto; }
 .mp-side-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+/* En pantallas anchas el alto es el que manda (no entra más), así que el tablero usa todo el alto y se estira a lo
+   ancho hasta --mp-stretch veces: los casilleros y las letras, que se miden con el ancho, quedan más grandes.
+   Si la columna es angosta, vuelve a ser cuadrado (100cqw es el ancho de la columna). */
 @media (min-width: 860px) {
-  .mp-playing { padding-top: 12px; }
-  .mp-layout { grid-template-columns: minmax(0, calc(var(--page-h) - 28px)) minmax(300px, 360px); justify-content: center; }
-  .mp-board-col { position: sticky; top: calc(var(--header-h) + 8px); }
+  .mp-playing { --mp-h: calc(var(--page-h) - 20px); --mp-stretch: 1.36; max-width: none; padding-top: 10px; }
+  .mp-layout { grid-template-columns: minmax(0, calc(var(--mp-h) * var(--mp-stretch))) minmax(300px, 360px); justify-content: center; }
+  .mp-board-col { position: sticky; top: calc(var(--header-h) + 10px); container-type: inline-size; }
+  .mp-board-wrap { aspect-ratio: auto; width: min(100cqw, calc(var(--mp-h) * var(--mp-stretch))); height: min(var(--mp-h), 100cqw); }
 }
 
 /* ─── Tablero ─── */
 .mp-board {
   --line: #234a32;
   container-type: inline-size;
-  display: grid; width: 100%; aspect-ratio: 1;
+  display: grid; width: 100%; height: 100%;
   grid-template-columns: 1.45fr repeat(9, 1fr) 1.45fr;
   grid-template-rows: 1.45fr repeat(9, 1fr) 1.45fr;
   background: #c8e3cc; border: 3px solid var(--line); border-radius: 12px; overflow: hidden;
@@ -90,8 +96,8 @@
 }
 
 .mp-center { grid-area: 2 / 2 / 11 / 11; display: flex; align-items: stretch; justify-content: center; min-width: 0; min-height: 0; overflow: auto; background: radial-gradient(circle at 50% 40%, #d8eedb, #bfdcc4); padding: 1.5cqw; }
-.mp-center-inner { margin: auto; width: 100%; max-width: 560px; display: flex; flex-direction: column; align-items: center; gap: 1.4cqw; }
-.mp-logo { margin: 0; font-family: var(--font-display); font-weight: 900; font-size: clamp(16px, 5.2cqw, 54px); letter-spacing: 0.06em; color: #b32323; text-shadow: 0 2px 0 rgba(255, 255, 255, 0.6); transform: rotate(-4deg); line-height: 1; }
+.mp-center-inner { margin: auto; width: 100%; max-width: 560px; display: flex; flex-direction: column; align-items: center; gap: min(1.4cqw, 10px); }
+.mp-logo { margin: 0; font-family: var(--font-display); font-weight: 900; font-size: clamp(16px, 4.4cqw, 54px); letter-spacing: 0.06em; color: #b32323; text-shadow: 0 2px 0 rgba(255, 255, 255, 0.6); transform: rotate(-4deg); line-height: 1; }
 .mp-pot { margin: 0; color: #1d2a20; font-size: 13px; }
 .mp-recent { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: #1d2a20; }
 .mp-recent li { background: rgba(255, 255, 255, 0.55); padding: 4px 8px; border-radius: 8px; line-height: 1.3; }
@@ -119,12 +125,12 @@
 .mp-die.is-rolling { animation: mp-roll 0.18s linear infinite; }
 @keyframes mp-roll { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(14deg) scale(1.08); } 100% { transform: rotate(-12deg) scale(1); } }
 
-.mp-card-toast { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); z-index: 6; width: min(86%, 440px); display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; text-align: left; border: 3px solid #1d2a20; border-radius: 12px; font: inherit; cursor: pointer; box-shadow: var(--shadow-lg); animation: mp-drop 0.35s var(--ease); }
+.mp-card-toast { width: 100%; display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; text-align: left; border: 3px solid #1d2a20; border-radius: 12px; font: inherit; cursor: pointer; box-shadow: var(--shadow-lg); animation: mp-drop 0.35s var(--ease); }
 .mp-card-toast small { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
 .mp-card-toast strong { font-size: 15px; line-height: 1.35; font-weight: 650; }
 .mp-card-toast.is-chance { background: #ffd9a0; color: #3a2100; }
 .mp-card-toast.is-chest { background: #bfe3ff; color: #072b4a; }
-@keyframes mp-drop { from { opacity: 0; transform: translate(-50%, -14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes mp-drop { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
 
 /* ─── Paneles ─── */
 .mp-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; box-shadow: var(--shadow); }
@@ -204,18 +210,63 @@
 .mp-quick { display: flex; gap: 6px; }
 .mp-quick .tf-btn { flex: 1; min-height: 36px; padding: 0; }
 
-.mp-trade-sum { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.mp-trade-sum > div { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; font-size: 13.5px; }
-.mp-trade-sum ul { margin: 4px 0 0; padding-left: 16px; }
+/* ─── Tratos ─── */
+/* Cada propiedad es una fichita con la franja de su color (--c), el nombre y el precio. */
+.mp-tchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mp-tchip { display: inline-flex; align-items: stretch; min-height: 30px; max-width: 100%; margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; font-weight: 650; line-height: 1.2; text-align: left; }
+button.mp-tchip { cursor: pointer; }
+button.mp-tchip:hover:not(:disabled) { border-color: var(--text-2); }
+.mp-tchip > i { flex: none; width: 22px; display: grid; place-items: center; background-color: var(--c, var(--surface-3)); border-right: 1px solid rgba(0, 0, 0, 0.35); font-style: normal; font-size: 12px; font-weight: 900; color: #fff; text-shadow: 0 0 3px #000, 0 0 2px #000; }
+.mp-tchip-name { align-self: center; min-width: 0; padding: 5px 4px 5px 8px; overflow-wrap: anywhere; }
+.mp-tchip small { align-self: center; padding-right: 8px; color: var(--text-3); font-weight: 500; font-size: 11.5px; white-space: nowrap; }
+.mp-tchip.is-mortgaged > i { background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgba(0, 0, 0, 0.55) 3px 5px); }
+.mp-tchip.is-mortgaged small { color: var(--danger); font-weight: 650; }
+.mp-tchip.is-cash > i, .mp-tchip.is-jf > i { background: var(--surface-3); text-shadow: none; }
+.mp-tchip.is-cash .mp-tchip-name { padding-right: 10px; font-family: var(--font-display); font-size: 15px; font-variant-numeric: tabular-nums; }
+.mp-tchip.is-jf .mp-tchip-name { padding-right: 10px; }
+.mp-tchip.is-picked { border-color: var(--mp); background: color-mix(in srgb, var(--mp) 14%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--mp) 45%, transparent); }
+.mp-tchip:disabled { opacity: 0.45; cursor: not-allowed; }
+.mp-tnone { color: var(--text-3); font-size: 13px; }
+
+/* La oferta: lo que da cada uno, lado a lado. */
+.mp-offer { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; }
+.mp-oside { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); }
+.mp-oside-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.mp-offer-swap { align-self: center; justify-self: center; font-size: 20px; line-height: 1; color: var(--text-3); }
+.mp-tnotes { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.4; }
+.mp-tnotes li { padding: 5px 9px; border-radius: 8px; background: var(--surface-2); border-left: 3px solid var(--border-strong); }
+.mp-tnotes li.is-good { border-left-color: var(--success); }
+.mp-tnotes li.is-warn { border-left-color: var(--danger); }
+
+/* La tarjeta que ven todos al costado mientras hay un trato abierto. */
+.mp-trade-card { padding: 12px; background: var(--surface); border: 2px solid var(--mp); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); animation: mp-pop 0.25s var(--ease); }
+.mp-trade-card h2 { margin: 0 0 8px; font-family: inherit; font-size: 14.5px; font-weight: 500; line-height: 1.35; }
+.mp-trade-card.is-for-me { animation: mp-pop 0.25s var(--ease), mp-trade-pulse 1.4s ease-in-out 0.3s infinite; }
+.mp-trade-card.is-accepted { border-color: var(--success); }
+.mp-trade-card.is-refused { border-color: var(--danger); }
+.mp-trade-card.is-cancelled { border-color: var(--border-strong); }
+.mp-trade-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.mp-trade-foot .tf-btn { min-height: 36px; padding: 0 14px; font-size: 14px; }
+.mp-trade-wait { flex: 1 1 140px; color: var(--text-2); font-size: 13px; }
+.mp-trade-outcome { margin: 10px 0 0; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 16px; animation: mp-pop-big 0.4s var(--ease); }
+@keyframes mp-trade-pulse { 0%, 100% { box-shadow: var(--shadow-lg), 0 0 0 0 color-mix(in srgb, var(--mp) 55%, transparent); } 50% { box-shadow: var(--shadow-lg), 0 0 0 7px color-mix(in srgb, var(--mp) 0%, transparent); } }
+@media (min-width: 860px) {
+  .mp-trade-card { position: sticky; top: calc(var(--header-h) + 10px); z-index: 4; }
+  .mp-trade-card .mp-offer { grid-template-columns: minmax(0, 1fr); }
+  .mp-trade-card .mp-offer-swap { transform: rotate(90deg); }
+}
+
+/* Armar un trato. */
+.mp-tpartners { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.mp-tpartners button { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-2); color: var(--text); font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; }
+.mp-tpartners button small { color: var(--text-3); font-weight: 500; }
+.mp-tpartners button.is-picked { border-color: var(--mp); background: color-mix(in srgb, var(--mp) 14%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--mp) 40%, transparent); }
 .mp-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .mp-side { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; margin: 0; min-width: 0; }
-.mp-side legend { font-weight: 700; font-size: 13px; padding: 0 6px; }
+.mp-side legend { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; padding: 0 6px; }
 .mp-cash { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; font-size: 13px; }
 .mp-cash small { color: var(--text-3); }
-.mp-prop-pick { display: flex; flex-direction: column; gap: 2px; max-height: 190px; overflow: auto; }
-.mp-prop-pick label { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 2px; cursor: pointer; }
-.mp-prop-pick label.is-blocked { opacity: 0.4; cursor: not-allowed; }
-.mp-prop-pick i { width: 12px; height: 12px; border-radius: 3px; flex: none; border: 1px solid rgba(0, 0, 0, 0.35); }
+.mp-tpick { max-height: 230px; overflow: auto; padding: 3px; }
 .mp-cards { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; font-size: 13px; }
 
 /* ─── Final ─── */
@@ -229,12 +280,13 @@
 .mp-ended-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 
 @media (max-width: 560px) {
-  .mp-sides, .mp-trade-sum { grid-template-columns: 1fr; }
+  .mp-sides, .mp-offer { grid-template-columns: minmax(0, 1fr); }
+  .mp-offer-swap { transform: rotate(90deg); }
   .mp-page { padding: 12px 10px 40px; }
 }
 
 /* ─── Suspenso: los dados sobre el tablero ─── */
-.mp-diceroll { --ds: clamp(58px, 15vmin, 108px); position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #fff; pointer-events: none; background: radial-gradient(circle at 50% 50%, rgba(8, 24, 14, 0.86), rgba(8, 24, 14, 0.6)); animation: mp-fade-in 0.18s ease-out, mp-fade-out 0.25s ease-in 1.5s forwards; }
+.mp-diceroll { --ds: clamp(58px, 15vmin, 108px); position: absolute; inset: 0; z-index: 8; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #fff; pointer-events: none; background: radial-gradient(circle at 50% 50%, rgba(8, 24, 14, 0.86), rgba(8, 24, 14, 0.6)); animation: mp-fade-in 0.18s ease-out, mp-fade-out 0.25s ease-in 1.5s forwards; }
 .mp-diceroll-who { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(16px, 3.6vmin, 26px); text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); }
 .mp-diceroll-dice { display: flex; gap: clamp(12px, 3vmin, 26px); }
 .mp-diceroll .mp-die { width: var(--ds); height: var(--ds); padding: calc(var(--ds) * 0.13); border-radius: 20%; box-shadow: 0 5px 0 #bdb7a3, 0 14px 28px rgba(0, 0, 0, 0.55); }
@@ -264,12 +316,20 @@
 @keyframes mp-flash { 0%, 30%, 60% { box-shadow: inset 0 0 0 100px rgba(255, 211, 78, 0.75), 0 0 0 3px #ffb300; } 15%, 45%, 100% { box-shadow: inset 0 0 0 100px rgba(255, 211, 78, 0), 0 0 0 0 transparent; } }
 
 /* ─── Avisos de lo que pasa ─── */
-.mp-announce { position: fixed; z-index: 250; top: calc(var(--header-h, 56px) + 10px); left: 50%; transform: translateX(-50%); width: min(calc(100vw - 24px), 520px); pointer-events: none; }
-.mp-toast { pointer-events: auto; width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 16px; text-align: left; font: inherit; font-size: 15px; font-weight: 650; line-height: 1.35; color: var(--text); background: var(--surface); border: 2px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); cursor: pointer; animation: mp-toast-in 0.35s var(--ease); }
+/* Los avisos y la carta recién sacada van en el medio del tablero, tirando para arriba (justo debajo de la fila de
+   casilleros de arriba), uno debajo del otro. En el celular la página se mueve y el tablero puede no estar a la vista:
+   ahí quedan fijos arriba de la pantalla. Son de colores fijos y sin transparencia, como el tablero: con los tonos
+   suaves del tema (casi transparentes) el verde y el rojo no se leían encima de los casilleros. */
+.mp-notices { position: absolute; z-index: 9; left: 50%; top: calc(12.2% + 8px); transform: translateX(-50%); width: min(70%, 520px); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.mp-notices > * { pointer-events: auto; }
+@media (max-width: 859px) {
+  .mp-notices { position: fixed; z-index: 250; top: calc(var(--header-h, 56px) + 10px); width: min(calc(100vw - 24px), 520px); }
+}
+.mp-toast { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 16px; text-align: left; font: inherit; font-size: 15px; font-weight: 650; line-height: 1.35; color: #1d2a20; background: #fffdf3; border: 3px solid #1d2a20; border-radius: var(--radius-lg); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); cursor: pointer; animation: mp-toast-in 0.35s var(--ease); }
 .mp-toast-icon { font-size: 28px; line-height: 1; flex: none; }
-.mp-toast.is-gain { background: var(--success-soft); border-color: var(--success); }
-.mp-toast.is-loss { background: var(--danger-soft); border-color: var(--danger); }
-.mp-toast.is-good { background: #fff3c4; border-color: #e0a800; color: #3a2a00; }
+.mp-toast.is-gain { background: #d3f5df; border-color: #178a48; color: #06361b; }
+.mp-toast.is-loss { background: #ffd9d3; border-color: #cc3020; color: #590f08; }
+.mp-toast.is-good { background: #fff0b8; border-color: #dba200; color: #3a2a00; }
 .mp-toast.is-big { font-size: 17px; padding: 15px 18px; animation: mp-toast-in 0.35s var(--ease), mp-shake 0.5s ease-in-out 0.25s; }
 .mp-toast.is-big .mp-toast-icon { font-size: 34px; }
 @keyframes mp-toast-in { from { opacity: 0; transform: translateY(-18px) scale(0.92); } to { opacity: 1; transform: none; } }

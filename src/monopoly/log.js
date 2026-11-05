@@ -15,6 +15,15 @@ const JAILED = {
   card: 'va directo a la cárcel.',
 };
 
+// Lo que entregó un lado de un trato cerrado ({ c plata, s propiedades, j cartas }), en palabras.
+export function tradeItems(side) {
+  const parts = [];
+  if (side?.c) parts.push(money(side.c));
+  for (const pos of side?.s || []) parts.push(SQUARES[pos]?.name || '?');
+  if (side?.j) parts.push(`${side.j} carta${side.j > 1 ? 's' : ''} de «Salir de la cárcel»`);
+  return parts.length ? parts : ['nada'];
+}
+
 // { icon, text } de una entrada. `room` sirve para buscar los nombres.
 export function describe(e, room) {
   const name = (id) => room.players.find((p) => p.id === id)?.name || 'Alguien';
@@ -48,7 +57,10 @@ export function describe(e, room) {
     case 'unmortgage': return { icon: '✅', text: `${p} levantó la hipoteca de ${sq(e.s)}.` };
     case 'offer': return { icon: '🤝', text: `${p} le propuso un trato a ${name(e.o)}.` };
     case 'refused': return { icon: '🚫', text: `${p} rechazó el trato de ${name(e.o)}.` };
-    case 'traded': return { icon: '🤝', text: `${p} y ${name(e.o)} cerraron un trato.` };
+    case 'traded': {
+      const gave = (who, side) => `${who} dio ${tradeItems(side).join(', ')}`;
+      return { icon: '🤝', text: e.g && e.t ? `${p} y ${name(e.o)} cerraron un trato: ${gave(p, e.g)}; ${gave(name(e.o), e.t)}.` : `${p} y ${name(e.o)} cerraron un trato.` };
+    }
     case 'debt': return { icon: '⚠️', text: `${p} no tiene ${money(e.n)} a mano para pagar${e.o ? ` a ${name(e.o)}` : ''}: tiene que juntarlos.` };
     case 'paid': return { icon: '✅', text: `${p} pagó su deuda de ${money(e.n)}${e.o ? ` a ${name(e.o)}` : ''}.` };
     case 'bankrupt': return { icon: '💀', text: e.w === 'left' ? `${p} se fue de la partida.` : `${p} quebró${e.o ? `: sus bienes pasan a ${name(e.o)}` : ': sus bienes vuelven al banco'}.` };
@@ -91,7 +103,11 @@ export function announce(e, room, meId) {
     case 'freed': return mine ? out('🔓', `¡Saliste de la cárcel! (${FREED[e.w]})`, 'good') : out(base.icon, base.text);
     case 'debt': return mine ? out('⚠️', `No te alcanza el efectivo para pagar ${money(e.n)}. Juntalos hipotecando, vendiendo casas o con un trato.`, 'loss', { big: true }) : out(base.icon, base.text, 'info', { big: true });
     case 'bankrupt': return mine ? out('💀', 'Quebraste. Podés seguir mirando la partida.', 'loss', { big: true }) : out(base.icon, base.text, 'info', { big: true });
-    case 'offer': return toMe ? out('🤝', `${name(e.p)} te propone un trato.`, 'good') : out(base.icon, base.text);
+    case 'offer': return toMe ? out('🤝', `${name(e.p)} te propone un trato.`, 'good') : mine ? null : out(base.icon, base.text);
+    case 'refused': return toMe ? out('🚫', `${name(e.p)} rechazó tu trato.`, 'loss') : mine ? null : out(base.icon, base.text);
+    case 'traded':
+      if (!mine && !toMe) return out(base.icon, base.text);
+      return out('🤝', `¡Trato cerrado con ${name(mine ? e.o : e.p)}!${e.g && e.t ? ` Recibís ${tradeItems(mine ? e.t : e.g).join(', ')}.` : ''}`, 'good');
     case 'auction': case 'noauction': return out(base.icon, base.text, 'info', { big: true });
     case 'win': return mine ? out('🏆', '¡Ganaste la partida!', 'gain', { big: true }) : out(base.icon, base.text, 'info', { big: true });
     default: return base.text ? out(base.icon, base.text) : null;

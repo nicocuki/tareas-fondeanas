@@ -19,6 +19,8 @@ const ICONS = { go: '🏁', jail: '🔒', parking: '🅿️', gotojail: '🚔', 
 const SHORT = { go: 'Salida', jail: 'Cárcel', parking: 'Descanso', gotojail: 'Andá a la cárcel' };
 
 export const tokenColor = (p) => TOKEN_COLORS[p.color % TOKEN_COLORS.length];
+// El color con el que se reconoce una propiedad: el de su calle, gris las estaciones y dorado las compañías.
+export const propColor = (pos) => (SQUARES[pos].g ? GROUPS[SQUARES[pos].g].color : SQUARES[pos].t === 'station' ? '#444' : '#c9b24a');
 
 export function Token({ player, size, current, jailed }) {
   return (

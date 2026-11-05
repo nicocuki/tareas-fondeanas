@@ -6,7 +6,7 @@ import {
   sellBuildingProblem, unmortgageProblem,
 } from './game.js';
 import { describe } from './log.js';
-import { Token, tokenColor } from './Board.jsx';
+import { Token, propColor, tokenColor } from './Board.jsx';
 import { CashAmount } from './Stage.jsx';
 
 const money = (n) => `$${n}`;
@@ -24,7 +24,7 @@ function Deeds({ room, id, onPick }) {
           <button
             key={pos} type="button" onClick={() => onPick(pos)}
             className={`mp-dot${st.m ? ' is-mortgaged' : ''}`}
-            style={{ background: sq.g ? GROUPS[sq.g].color : sq.t === 'station' ? '#444' : '#c9b24a' }}
+            style={{ background: propColor(pos) }}
             title={`${sq.name}${st.m ? ' (hipotecada)' : st.h ? ` · ${st.h === 5 ? 'hotel' : `${st.h} casa${st.h > 1 ? 's' : ''}`}` : ''}`}
             aria-label={sq.name}
           >

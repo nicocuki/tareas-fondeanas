@@ -184,7 +184,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/theme.js` | Colores y estilos para los estilos en línea de los juegos (apuntan a las variables de `src/ui/tokens.css`) |
 | `src/gartic/` | Trazo Loco: lógica (`game.js`), trazos y balde (`drawing.js`), red (`storage.js`), pantallas (ver `docs/GARTIC.md`) |
 | `src/teg/` | T.E.G.: países, cartas y objetivos (`board.js`), geografía del mapa (`geo.js`), reducer (`game.js`), bitácora (`log.js`), el mapa en SVG (`Map.jsx`), apertura con misiones y reparto (`Opening.jsx`), reserva de fichas (`Reserve.jsx`), bandeja de dados (`Dice.jsx`), ventanas de combate (`Dialogs.jsx`), paneles y pantallas (ver *T.E.G.*) |
-| `src/monopoly/` | Monopoly: tablero y mazos (`board.js`), reducer (`game.js`), bitácora en texto y avisos (`log.js`), escena de los dados y avisos (`Stage.jsx`), guardado local (`saves.js`), sonidos (`sfx.js`), pantallas (ver *Monopoly*) |
+| `src/monopoly/` | Monopoly: tablero y mazos (`board.js`), reducer (`game.js`), bitácora en texto y avisos (`log.js`), escena de los dados y avisos (`Stage.jsx`), tratos (`Trade.jsx`), guardado local (`saves.js`), sonidos (`sfx.js`), pantallas (ver *Monopoly*) |
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), sprites de los efectos (`sprites/`, `sprites.js`), pelea en tiempo real (`TirosGame.jsx`) |
@@ -501,6 +501,13 @@ tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires
   queda solo sin oferta decide si pone algo o nadie la compra. `auction.resume` es el paso al que se vuelve cuando termina.
 - **Tratos** (`room.trade`, uno a la vez): `give` es lo que da quien propone y `take` lo que recibe. Se revalida entero al aceptar.
   Las propiedades con edificios en su color no se tratan. Quien recibe una hipotecada paga al banco el 10 % de su hipoteca.
+  La entrada `traded` de la bitácora lleva qué dio cada uno (`g` y `t`: `{ c plata, s propiedades, j cartas }`, sin lo vacío).
+- **Cómo se ven los tratos** (`Trade.jsx`; pedido de Feli: que los demás vean la oferta al costado y que se vea el color de cada propiedad):
+  mientras hay un trato abierto **todos** ven `TradeCard` (arriba de la columna derecha, fija al desplazar; en el celular, arriba de los botones) y,
+  al cerrarse, queda unos segundos con cómo terminó (`useTradeView` lo saca de lo que se anotó en la bitácora desde que apareció la oferta). Cada
+  propiedad es un `PropChip` con la franja de su color (`propColor` de `Board.jsx`). `OfferNotes` avisa lo que está en juego con `tradeEffects`
+  (puro, en `game.js`: quién completa o desarma un color, las estaciones o las compañías) y `tradeFee`. El que recibe la oferta tiene la ventana
+  (`TradeIncoming`) y puede correrla para mirar el tablero («Mirar el tablero»; vuelve con «Responder» de la tarjeta); una oferta nueva se abre sola.
 - **Cuentas con el 10 %: nada de decimales** (`mortgageFee` = `ceil(hipoteca / 10)`): `200 * 1.1` da `220.00000000000003` y
   `Math.ceil` lo subía a 221. Ya mordió.
 - **Mazos**: `room.deck.chance|chest` son el orden de las cartas (índices de `CARDS`); al sacar una vuelve al fondo, salvo
@@ -510,15 +517,20 @@ tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires
   muy por debajo de los 30.000. Hay un test. La bitácora (`MAX_LOG` 60) guarda entradas chicas `{ k, p, … }` y `log.js` las pasa a
   texto con los nombres.
 - **Interfaz**: el tablero (`Board.jsx`) es una grilla de 11 × 11 con esquinas más grandes; los textos se miden en `cqw` (unidades del
-  contenedor) y por debajo de 470 px de ancho se esconden los nombres (queda color, precio y tocar para ver la ficha). En pantallas
+  contenedor) y por debajo de 470 px de ancho se esconden los nombres (queda color, precio y tocar para ver la ficha).
+  **En pantallas de 860 px o más no es cuadrado** (pedido de Feli: se veía chico): como lo que limita es el alto, usa todo el alto de la página
+  y se estira a lo ancho hasta `--mp-stretch` (1,36) veces, así los casilleros y las letras quedan más grandes; si la columna es angosta vuelve a
+  ser cuadrado. `.mp-board-wrap` es el tablero con lo que va encima (dados, avisos, carta) y mide eso; `.mp-board-col` es contenedor (`cqw`) solo
+  en pantallas anchas, porque un contenedor atrapa a los `position: fixed` de adentro y en el celular los avisos van fijos. En pantallas
   de 860 px o más, el panel «qué hacer ahora» (`ActionPanel.jsx`) va en el centro del tablero; en celular, debajo. Las fichas
   caminan casillero por casillero (solo dibujo). `Modals.jsx`: ficha de propiedad, subasta (no se puede cerrar), tratos y la carta
   recién sacada (la ven todos unos segundos). **Un `Modal` solo enfoca al abrirse**: si enfocara en cada render, escribir en un campo
   perdería el foco a cada letra. Los problemas de cada acción salen de las funciones `*Problem` de `game.js`, las mismas que usa el
   reducer, así un botón deshabilitado dice por qué.
 - **Con `st.m` valiendo `0` (no `false`) no uses `{st.m && …}` en JSX**: React dibuja el «0». Pasó en el tablero y en la ficha.
-- `data-act`, `data-square`, `data-player`, `data-cash`, `data-log`, `data-board`, `data-prop`, `data-pos` existen para manejar el juego
-  desde un navegador automatizado. No los saques.
+- `data-act`, `data-square`, `data-player`, `data-cash`, `data-log`, `data-board`, `data-prop`, `data-pos`, `data-toast` (con el tono), `data-notices`,
+  `data-trade-card` (`open` o cómo terminó), `data-trade-outcome`, `data-trade-notes`, `data-offer-side`, `data-chip` (el casillero), `data-side`
+  (`give`/`take`) y `data-partner` existen para manejar el juego desde un navegador automatizado. No los saques.
 - Es una imitación entre amigos (Monopoly es de Hasbro): si llegara un pedido de bajarlo, se saca la entrada de `games.js`.
 - **Suspenso y avisos (todo es dibujo, la sala ya cambió)**: `useStagedRoom` (`Stage.jsx`) detecta que `rollN` subió y durante ~1,7 s muestra la sala
   *de antes* de tirar con los dados girando sobre el tablero (`DiceRoll`); después, ~130 ms por casillero, la misma sala con solo la ficha del que
@@ -528,7 +540,9 @@ tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires
 - **`logN`** cuenta todas las entradas de la bitácora (que guarda solo las últimas `MAX_LOG`): así `Announcer` sabe cuáles son nuevas sin comparar
   largos. `announce(e, room, meId)` (`log.js`) las pasa a avisos en segunda persona con tono (`gain`, `loss`, `good`, `info`); `weak` = relleno
   que se descarta si viene algo después (el «cayó en…» seguido de un alquiler); `big` = dura más y se sacude. Los dados y las cartas no se avisan
-  (ya tienen su animación). `land` anota `at` («X cayó en Y») en cada caída, también las de las cartas. Una entrada de bitácora nueva necesita su caso
+  (ya tienen su animación). **Los avisos y la carta recién sacada van en `.mp-notices`: en el medio del tablero, tirando para arriba** (pedido de Feli;
+  en el celular, fijos arriba de la pantalla) **y con colores fijos sin transparencia**: con `--success-soft` y `--danger-soft` del tema, que son casi
+  transparentes, el verde y el rojo no se leían sobre los casilleros. `land` anota `at` («X cayó en Y») en cada caída, también las de las cartas. Una entrada de bitácora nueva necesita su caso
   en `describe` y, si hay que destacarla, en `announce`. Cada aviso ilumina su casillero (`is-flash`) y `CashAmount` muestra el +/− flotante.
 - **Guardar y retomar**: las salas se cierran a los 15 minutos de inactividad y una partida dura mucho más, así que **cada pantalla guarda su copia de la sala
   en `localStorage`** (`saves.js`, clave `tf:monopoly:guardadas`, hasta 5, por `room.saveId` = hora de inicio) en cada cambio mientras se juega, y la borra al

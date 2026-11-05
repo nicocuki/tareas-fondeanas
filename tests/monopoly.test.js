@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { CARDS, GROUPS, GROUP_KEYS, SQUARES, STATIONS, UTILITIES, groupSquares, mortgageValue, unmortgageCost } from '../src/monopoly/board.js';
 import {
   MAX_LOG, MAX_PLAYERS, applyAction, auctionChance, buildProblem, debtTotal, findPlayer, liquidation, makeId, netWorth, newRoom, ownedBy, rentFor, roomFromSave,
+  tradeEffects,
 } from '../src/monopoly/game.js';
+import { announce, describe } from '../src/monopoly/log.js';
 import { botMove } from '../src/monopoly/bots.js';
 import { exportSave, parseSaveFile, roomProblem, signature } from '../src/monopoly/saveFile.js';
 import { serializeRoom } from '../src/codigo-secreto/game.js';
@@ -711,6 +713,56 @@ test('trato: no mientras se subasta', () => {
   room = roll(room, 'a', 1, 2);
   room = act(room, 'a', { type: 'declineBuy' });
   rejects(room, 'b', { ...offer({ cash: 5 }), to: 'c' });
+});
+
+test('trato: avisa qué tandas arma y cuáles desarma, sin cambiar la sala', () => {
+  const room = game();
+  own(room, 'a', 1, 6, 8, 9, 5, 15, 25); // La Boca, las tres celestes y tres estaciones
+  own(room, 'b', 3, 35, 12);              // Barracas, la cuarta estación y una compañía
+  const before = JSON.stringify(room);
+  const trade = (give, take) => ({ from: 'a', to: 'b', give: { cash: 0, cards: 0, props: give }, take: { cash: 0, cards: 0, props: take } });
+  // a entrega una celeste (desarma la tanda) y recibe Barracas (completa las marrones) y la estación que le faltaba.
+  assert.deepEqual(tradeEffects(room, trade([6], [3, 35])), [
+    { id: 'a', set: 'lightblue', kind: 'breaks' },
+    { id: 'a', set: 'brown', kind: 'completes' },
+    { id: 'a', set: 'station', kind: 'completes' },
+  ]);
+  // Al revés: el que completa es el otro.
+  assert.deepEqual(tradeEffects(room, trade([1], [])), [{ id: 'b', set: 'brown', kind: 'completes' }]);
+  // Una compañía suelta o pura plata no arman nada.
+  assert.deepEqual(tradeEffects(room, trade([], [12])), []);
+  assert.deepEqual(tradeEffects(room, trade([], [])), []);
+  assert.deepEqual(tradeEffects(room, null), []);
+  assert.equal(JSON.stringify(room), before);
+});
+
+test('trato: la bitácora cuenta qué se intercambió y los avisos le hablan a cada uno', () => {
+  let room = game();
+  own(room, 'a', 1);
+  own(room, 'b', 3);
+  me(room, 'b').jf = ['chance'];
+  room = act(room, 'a', offer({ props: [1], cash: 100 }, { props: [3], cards: 1 }));
+  assert.equal(announce(room.log.at(-1), room, 'b').text, 'Ana te propone un trato.');
+  assert.equal(announce(room.log.at(-1), room, 'a'), null, 'el que propone no necesita el aviso');
+  room = act(room, 'b', { type: 'tradeAccept' });
+  const entry = room.log.at(-1);
+  assert.deepEqual(entry, { k: 'traded', p: 'a', o: 'b', g: { c: 100, s: [1] }, t: { s: [3], j: 1 } });
+  assert.equal(describe(entry, room).text, 'Ana y Jb cerraron un trato: Ana dio $100, La Boca; Jb dio Barracas, 1 carta de «Salir de la cárcel».');
+  assert.equal(announce(entry, room, 'a').text, '¡Trato cerrado con Jb! Recibís Barracas, 1 carta de «Salir de la cárcel».');
+  assert.equal(announce(entry, room, 'b').text, '¡Trato cerrado con Ana! Recibís $100, La Boca.');
+  assert.equal(announce(entry, room, 'c').text, describe(entry, room).text);
+  // Una entrada de antes (sin el detalle) se sigue leyendo.
+  assert.equal(describe({ k: 'traded', p: 'a', o: 'b' }, room).text, 'Ana y Jb cerraron un trato.');
+  // Un regalo: un lado va vacío.
+  room = act(room, 'a', offer({ cash: 50 }));
+  room = act(room, 'b', { type: 'tradeAccept' });
+  assert.deepEqual(room.log.at(-1), { k: 'traded', p: 'a', o: 'b', g: { c: 50 }, t: {} });
+  assert.match(describe(room.log.at(-1), room).text, /Jb dio nada\.$/);
+  // Al que le rechazan el trato se le avisa en rojo.
+  room = act(room, 'a', offer({ cash: 5 }));
+  room = act(room, 'b', { type: 'tradeDecline' });
+  assert.deepEqual(announce(room.log.at(-1), room, 'a'), { icon: '🚫', text: 'Jb rechazó tu trato.', tone: 'loss' });
+  assert.equal(announce(room.log.at(-1), room, 'b'), null);
 });
 
 // ─── Salir, expulsar, volver ─────────────────────────────────────────────────

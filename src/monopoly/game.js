@@ -223,6 +223,27 @@ export function tradeProblem(room, t, settle = false) {
 // Quien recibe una propiedad hipotecada le paga al banco el 10 % del valor de la hipoteca.
 export const tradeFee = (room, props) => props.reduce((n, pos) => n + (room.props[pos]?.m ? mortgageFee(pos) : 0), 0);
 
+// Qué tandas arma o desarma un trato si se acepta: [{ id, set, kind }], con `set` = el color, 'station' o 'utility'
+// y `kind` = 'completes' (pasa a tenerlas todas) o 'breaks' (las tenía todas y deja de tenerlas). Es para avisar en
+// la oferta lo que está en juego; no cambia nada de la sala.
+export function tradeEffects(room, t) {
+  if (!t?.give?.props || !t?.take?.props) return [];
+  const setOf = (pos) => SQUARES[pos]?.g || SQUARES[pos]?.t;
+  const members = (set) => (set === 'station' ? STATIONS : set === 'utility' ? UTILITIES : groupSquares(set));
+  const after = (pos) => (t.give.props.includes(pos) ? t.to : t.take.props.includes(pos) ? t.from : ownerOf(room, pos));
+  const sets = [...new Set([...t.give.props, ...t.take.props].filter((pos) => BUYABLE.includes(SQUARES[pos]?.t)).map(setOf))];
+  const effects = [];
+  for (const set of sets) {
+    for (const id of [t.from, t.to]) {
+      const had = members(set).every((pos) => ownerOf(room, pos) === id);
+      const has = members(set).every((pos) => after(pos) === id);
+      if (has && !had) effects.push({ id, set, kind: 'completes' });
+      if (had && !has) effects.push({ id, set, kind: 'breaks' });
+    }
+  }
+  return effects;
+}
+
 // ─── Armado de la partida ────────────────────────────────────────────────────
 function shuffle(list, rand) {
   const a = [...list];
@@ -848,7 +869,9 @@ export function applyAction(room, action, ctx = {}) {
       moveCards(a, b, t.give.cards);
       moveCards(b, a, t.take.cards);
       next.trade = null;
-      addLog(next, { k: 'traded', p: a.id, o: b.id });
+      // La bitácora cuenta qué se intercambió (`g` lo que dio quien propuso, `t` lo que dio el otro), sin lo que está vacío.
+      const pack = (s) => ({ ...(s.cash ? { c: s.cash } : {}), ...(s.props.length ? { s: s.props } : {}), ...(s.cards ? { j: s.cards } : {}) });
+      addLog(next, { k: 'traded', p: a.id, o: b.id, g: pack(t.give), t: pack(t.take) });
       return next;
     }
 

@@ -91,7 +91,7 @@ export function DiceRoll({ stage, room, meId }) {
 const SHOW_MS = 2700;
 const BIG_MS = 4200;
 
-// Muestra de a uno, abajo del borde de arriba del tablero, cada cosa que apareció en la bitácora y los cambios de turno.
+// Muestra de a uno, en el medio del tablero tirando para arriba (dentro de `.mp-notices`), cada cosa que apareció en la bitácora y los cambios de turno.
 // Si se acumulan muchos, van más rápido para no quedar atrasados.
 export function Announcer({ room, meId, onSquare }) {
   const seen = useRef(room.logN ?? room.log.length);
@@ -144,12 +144,10 @@ export function Announcer({ room, meId, onSquare }) {
 
   if (!current) return null;
   return (
-    <div className="mp-announce" aria-live="polite">
-      <button type="button" key={current.id} className={`mp-toast is-${current.tone}${current.big ? ' is-big' : ''}`} onClick={() => setCurrent(null)} data-toast>
-        <span className="mp-toast-icon" aria-hidden="true">{current.icon}</span>
-        <span>{current.text}</span>
-      </button>
-    </div>
+    <button type="button" key={current.id} className={`mp-toast is-${current.tone}${current.big ? ' is-big' : ''}`} onClick={() => setCurrent(null)} data-toast={current.tone} aria-live="polite">
+      <span className="mp-toast-icon" aria-hidden="true">{current.icon}</span>
+      <span>{current.text}</span>
+    </button>
   );
 }
 

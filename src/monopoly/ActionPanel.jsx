@@ -67,7 +67,7 @@ export default function ActionPanel({ room, me, dispatch, onTrade, busy }) {
   const myDebt = me && debtsOf(room, me.id).length > 0;
   const pending = room.trade;
   const tradeBtn = me && !me.out && (
-    <button type="button" className="tf-btn tf-btn-soft" data-act="trade" disabled={Boolean(pending || room.auction)} onClick={onTrade} title={pending ? 'Ya hay un trato abierto.' : room.auction ? 'No mientras se subasta.' : undefined}>
+    <button type="button" className="tf-btn tf-btn-soft" data-act="trade" disabled={Boolean(pending || room.auction)} onClick={onTrade} title={pending ? 'Ya hay un trato esperando respuesta.' : room.auction ? 'No mientras se subasta.' : undefined}>
       🤝 Hacer un trato
     </button>
   );
@@ -135,12 +135,6 @@ export default function ActionPanel({ room, me, dispatch, onTrade, busy }) {
         <Dice dice={room.dice} rollN={room.rollN} />
       </div>
       {body}
-      {pending && (
-        <p className="mp-hint">
-          {pending.from === me?.id ? `Esperando que ${findPlayer(room, pending.to).name} responda tu trato…` : pending.to === me?.id ? 'Tenés un trato para responder.' : `${findPlayer(room, pending.from).name} le propuso un trato a ${findPlayer(room, pending.to).name}.`}
-          {pending.from === me?.id && <> <button type="button" className="mp-link" data-act="tradeCancel" onClick={() => dispatch({ type: 'tradeCancel' })}>Cancelar trato</button></>}
-        </p>
-      )}
       {tradeBtn && <div className="mp-btn-row mp-secondary">{tradeBtn}</div>}
     </div>
   );

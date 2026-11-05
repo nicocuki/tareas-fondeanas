@@ -1,12 +1,9 @@
-// Ventanas del juego: ficha de una propiedad, subasta, tratos y carta que se acaba de sacar.
+// Ventanas del juego: ficha de una propiedad, subasta y carta que se acaba de sacar. Los tratos están en Trade.jsx.
 import React, { useEffect, useRef, useState } from 'react';
 import {
   CARDS, DECK_NAMES, GROUPS, SQUARES, groupSquares, houseCost, mortgageValue, unmortgageCost,
 } from './board.js';
-import {
-  buildProblem, findPlayer, groupHasBuildings, mortgageProblem, ownedBy, rentFor, sellBuildingProblem, tradeFee, tradeProblem,
-  unmortgageProblem,
-} from './game.js';
+import { buildProblem, findPlayer, mortgageProblem, rentFor, sellBuildingProblem, unmortgageProblem } from './game.js';
 import { Token } from './Board.jsx';
 
 export function Modal({ title, onClose, children, wide, label }) {
@@ -185,120 +182,8 @@ export function AuctionModal({ room, me, dispatch }) {
   );
 }
 
-// ─── Tratos ──────────────────────────────────────────────────────────────────
-export function describeSide(room, side) {
-  const parts = [];
-  if (side.cash) parts.push(money(side.cash));
-  for (const pos of side.props) parts.push(`${SQUARES[pos].name}${room.props[pos]?.m ? ' (hipotecada)' : ''}`);
-  if (side.cards) parts.push(`${side.cards} carta${side.cards > 1 ? 's' : ''} de «Salir de la cárcel»`);
-  return parts.length ? parts : ['nada'];
-}
-
-export function TradeSummary({ room, trade, me }) {
-  const a = findPlayer(room, trade.from);
-  const b = findPlayer(room, trade.to);
-  const name = (p) => (p.id === me?.id ? 'Vos' : p.name);
-  return (
-    <div className="mp-trade-sum">
-      <div><b>{name(a)} {a.id === me?.id ? 'das' : 'da'}:</b><ul>{describeSide(room, trade.give).map((t) => <li key={t}>{t}</li>)}</ul></div>
-      <div><b>{name(b)} {b.id === me?.id ? 'das' : 'da'}:</b><ul>{describeSide(room, trade.take).map((t) => <li key={t}>{t}</li>)}</ul></div>
-    </div>
-  );
-}
-
-export function TradeIncoming({ room, me, dispatch }) {
-  const t = room.trade;
-  const from = findPlayer(room, t.from);
-  const problem = tradeProblem(room, t, true);
-  const feeMe = tradeFee(room, t.give.props);
-  return (
-    <Modal title="🤝 Te proponen un trato" label="Trato">
-      <p className="mp-note"><b>{from.name}</b> te propone esto:</p>
-      <TradeSummary room={room} trade={t} me={me} />
-      {feeMe > 0 && <p className="mp-note">Recibís propiedades hipotecadas: pagás al banco {money(feeMe)} (el 10 % de sus hipotecas).</p>}
-      {problem && <p className="mp-problem">{problem}</p>}
-      <div className="mp-modal-actions">
-        <button type="button" className="tf-btn tf-btn-primary" disabled={Boolean(problem)} data-act="tradeAccept" onClick={() => dispatch({ type: 'tradeAccept' })}>Aceptar</button>
-        <button type="button" className="tf-btn tf-btn-danger-soft" data-act="tradeDecline" onClick={() => dispatch({ type: 'tradeDecline' })}>Rechazar</button>
-      </div>
-    </Modal>
-  );
-}
-
-const emptySide = () => ({ cash: '', props: [], cards: 0 });
-
-export function TradeComposer({ room, me, initialTo, onClose, dispatch }) {
-  const others = room.players.filter((p) => !p.out && p.id !== me.id);
-  const [to, setTo] = useState(initialTo && others.some((p) => p.id === initialTo) ? initialTo : others[0]?.id);
-  const [give, setGive] = useState(emptySide);
-  const [take, setTake] = useState(emptySide);
-  const partner = findPlayer(room, to);
-  const toggle = (set) => (pos) => set((s) => ({ ...s, props: s.props.includes(pos) ? s.props.filter((x) => x !== pos) : [...s.props, pos] }));
-  const clean = (s) => ({ cash: Number.parseInt(s.cash, 10) || 0, props: s.props, cards: s.cards });
-  const trade = { from: me.id, to, give: clean(give), take: clean(take) };
-  const problem = partner ? tradeProblem(room, trade) : 'No hay con quién tratar.';
-  const pickTo = (id) => { setTo(id); setTake(emptySide()); };
-
-  const sideBox = (title, owner, side, set) => {
-    const owned = ownedBy(room, owner.id);
-    return (
-      <fieldset className="mp-side">
-        <legend>{title}</legend>
-        <label className="mp-cash">
-          <span>Plata</span>
-          <input className="tf-input" inputMode="numeric" placeholder="$0" aria-label={`Plata que ${owner.id === me.id ? 'das' : 'recibís'}`} value={side.cash} onChange={(e) => set((s) => ({ ...s, cash: e.target.value.replace(/[^0-9]/g, '') }))} />
-          <small>{owner.id === me.id ? 'Tenés' : 'Tiene'} {money(owner.cash)}</small>
-        </label>
-        <div className="mp-prop-pick">
-          {owned.length === 0 && <small>No tiene propiedades.</small>}
-          {owned.map((pos) => {
-            const g = SQUARES[pos].g;
-            const blocked = g && groupHasBuildings(room, g);
-            return (
-              <label key={pos} className={blocked ? 'is-blocked' : ''} title={blocked ? 'Hay edificios en ese color: hay que venderlos antes.' : undefined}>
-                <input type="checkbox" disabled={blocked} checked={side.props.includes(pos)} onChange={() => toggle(set)(pos)} />
-                <i style={{ background: g ? GROUPS[g].color : 'var(--text-3)' }} />
-                <span>{SQUARES[pos].name}{room.props[pos].m ? ' (hipotecada)' : ''}{blocked ? ' · con edificios' : ''}</span>
-              </label>
-            );
-          })}
-        </div>
-        {owner.jf.length > 0 && (
-          <label className="mp-cards">
-            <span>Cartas de «Salir de la cárcel»</span>
-            <select className="tf-input" value={side.cards} onChange={(e) => set((s) => ({ ...s, cards: Number(e.target.value) }))}>
-              {Array.from({ length: owner.jf.length + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </label>
-        )}
-      </fieldset>
-    );
-  };
-
-  return (
-    <Modal title="🤝 Hacer un trato" onClose={onClose} wide>
-      <p className="mp-note">Armá lo que das y lo que querés a cambio. Si el otro acepta, se intercambia todo junto. No se pueden tratar propiedades con edificios en su color.</p>
-      <label className="tf-field">
-        <span>Tratar con</span>
-        <select className="tf-input" value={to} onChange={(e) => pickTo(e.target.value)} aria-label="Tratar con">
-          {others.map((p) => <option key={p.id} value={p.id}>{p.avatar} {p.name} ({money(p.cash)})</option>)}
-        </select>
-      </label>
-      <div className="mp-sides">
-        {sideBox('Vos das', me, give, setGive)}
-        {partner && sideBox(`${partner.name} te da`, partner, take, setTake)}
-      </div>
-      {problem && <p className="mp-problem">{problem}</p>}
-      <div className="mp-modal-actions">
-        <button type="button" className="tf-btn tf-btn-primary" disabled={Boolean(problem)} data-act="tradeSend" onClick={() => { dispatch({ type: 'tradeOffer', to, give: trade.give, take: trade.take }); onClose(); }}>Proponer trato</button>
-        <button type="button" className="tf-btn tf-btn-soft" onClick={onClose}>Cancelar</button>
-      </div>
-    </Modal>
-  );
-}
-
 // ─── Carta recién sacada ─────────────────────────────────────────────────────
-// Se ve unos segundos arriba del tablero, para todos, y se cierra tocándola.
+// Se ve unos segundos sobre el tablero, para todos, y se cierra tocándola. Va dentro de `.mp-notices`, con los avisos.
 export function CardToast({ room }) {
   const card = room.card;
   const [shown, setShown] = useState(null);
