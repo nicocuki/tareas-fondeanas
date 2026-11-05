@@ -41,7 +41,7 @@ const PIPS = {
   6: [[A, A], [C, A], [A, B], [C, B], [A, C], [C, C]],
 };
 
-export function faceTexture(value) {
+function faceTexture(value) {
   const size = 128;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
