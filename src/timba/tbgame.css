@@ -183,3 +183,75 @@
 @media (prefers-reduced-motion: reduce) {
   .tbg-card, .tbg-stamp, .tbg-burst span, .tbg-chip, .tbg-modal, .tbg-act:not(:disabled) { animation: none !important; transition: none !important; }
 }
+
+/* ─── Los demás juegos del piso 1 (tragamonedas, rueda, ruleta, patos y craps) ─── */
+.tbg-game-slots .tbg-actions, .tbg-game-wheel .tbg-actions, .tbg-game-roulette .tbg-actions, .tbg-game-duck .tbg-actions { grid-template-columns: 1fr; }
+.tbg-game-craps .tbg-actions { grid-template-columns: 1fr 1fr; }
+.tbg-pixels { display: block; image-rendering: pixelated; }
+.tbg-result { padding: 8px 10px; min-height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; border: 4px solid #0b0814; background: #2a2540; box-shadow: inset 0 0 0 3px #4a4268; }
+.tbg-result b { margin-right: 6px; }
+.tbg-result.is-win { background: #2fa850; color: #fff; animation: tbg-stamp-pop 0.35s steps(4) 1; }
+.tbg-result.is-push { background: #e8e4f4; color: #1a1430; }
+.tbg-result.is-lose { background: #8a2a36; color: #fff; }
+@keyframes tbg-stamp-pop { from { transform: scale(1.25); } }
+.tbg-pickline { margin: 0; text-align: center; font-size: 15px; color: #cbb8ff; }
+.tbg-pickline b { color: #f0c33c; }
+
+/* Tragamonedas */
+.tbg-slots { display: flex; flex-direction: column; gap: 8px; }
+.tbg-reels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px; background: linear-gradient(#5a1220, #2a0a14); border: 5px solid #0b0814; box-shadow: inset 0 0 0 4px #f0c33c; }
+.tbg-reel { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; max-height: 92px; background: #14101c; border: 4px solid #0b0814; box-shadow: inset 0 0 0 3px #5a4a8a; }
+.tbg-reel.is-spinning .tbg-pixels { animation: tbg-reel-blur 0.14s steps(2) infinite; }
+.tbg-reel.is-hit { background: #4a3a10; box-shadow: inset 0 0 0 3px #f0c33c; animation: tbg-ready 0.6s steps(2) infinite; }
+@keyframes tbg-reel-blur { 50% { transform: translateY(6px); opacity: 0.7; } }
+.tbg-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; justify-content: center; font-size: 14px; color: #cbb8ff; }
+.tbg-legend li { display: flex; align-items: center; gap: 5px; }
+.tbg-legend .is-text { flex-basis: 100%; justify-content: center; }
+
+/* Rueda de la fortuna */
+.tbg-wheelbox { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.tbg-wheel { width: 100%; max-width: 330px; max-height: 320px; margin: 0 auto; display: block; }
+.tbg-wheel-text { font: 700 10px 'Pixelify Sans', monospace; fill: #fff; stroke: #0b0814; stroke-width: 2.5px; paint-order: stroke; }
+
+/* Ruleta */
+.tbg-roulette { display: flex; flex-direction: column; gap: 8px; }
+.tbg-rwheel { width: 100%; max-width: 210px; margin: 0 auto; display: block; }
+.tbg-rtext { font: 700 7px 'Pixelify Sans', monospace; fill: #fff; }
+.tbg-rcenter { font: 700 26px 'Pixelify Sans', monospace; fill: #14101c; }
+.tbg-board { display: flex; flex-wrap: wrap; gap: 3px; padding: 6px; background: #176a44; border: 4px solid #0b0814; box-shadow: inset 0 0 0 3px #5a3420; }
+.tbg-nums { flex: 1 1 0; display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; }
+.tbg-outside { flex: 1 1 100%; display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+.tbg-outside .tbg-spot:nth-last-child(-n+3) { grid-column: span 2; }
+.tbg-spot { padding: 5px 0; min-width: 0; border: 3px solid #0b0814; font: 700 14px 'Pixelify Sans', monospace; color: #fff; background: #1c1826; cursor: pointer; }
+.tbg-spot.is-red { background: #c8303a; }
+.tbg-spot.is-black { background: #1c1826; }
+.tbg-spot.is-green { background: #2f8a3f; padding: 0 8px; }
+.tbg-spot.is-out { font-size: 12px; background: #2a5a48; }
+.tbg-spot.is-out.is-red { background: #c8303a; }
+.tbg-spot.is-out.is-black { background: #1c1826; }
+.tbg-spot:hover:not(:disabled) { filter: brightness(1.25); }
+.tbg-spot.is-picked { outline: 4px solid #f0c33c; outline-offset: -1px; z-index: 1; animation: tbg-ready 0.7s steps(2) infinite; }
+.tbg-spot:disabled { cursor: not-allowed; }
+
+/* Carrera de patos */
+.tbg-duckbox { display: flex; flex-direction: column; gap: 8px; }
+.tbg-lanes { display: flex; flex-direction: column; gap: 4px; padding: 8px; background: #2a3a8a; border: 5px solid #0b0814; box-shadow: inset 0 0 0 4px #5a3420; }
+.tbg-lane { position: relative; display: flex; align-items: center; gap: 8px; padding: 2px 4px; background: #3a8ad8; border: 3px solid #0b0814; }
+.tbg-lane.is-picked { box-shadow: 0 0 0 3px #f0c33c; }
+.tbg-lane.is-won { background: #4aa8f0; animation: tbg-ready 0.6s steps(2) infinite; }
+.tbg-lane-name { flex: 0 0 64px; font-size: 14px; text-shadow: 0 2px 0 #0b0814; }
+.tbg-track { position: relative; flex: 1; height: 46px; }
+.tbg-duck { position: absolute; top: 0; animation: tbg-duck-bob 0.5s steps(2) infinite; animation-delay: var(--bob); }
+@keyframes tbg-duck-bob { 50% { transform: translateY(3px); } }
+.tbg-finish { flex: 0 0 12px; align-self: stretch; margin: -2px -4px -2px 0; background: repeating-conic-gradient(#fff 0 25%, #14101c 0 50%) 0 0 / 12px 12px; border-left: 3px solid #0b0814; }
+.tbg-picks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.tbg-pick { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 2px; border: 4px solid #0b0814; background: #2a2540; color: #fff; font: 700 14px 'Pixelify Sans', monospace; cursor: pointer; }
+.tbg-pick.is-picked { background: #f0c33c; color: #2a1a04; }
+.tbg-pick:disabled { cursor: not-allowed; }
+
+/* Craps */
+.tbg-crapsbox { display: flex; flex-direction: column; gap: 8px; }
+.tbg-rule { margin: 0; padding: 6px 8px; text-align: center; font-size: 15px; background: #2a0a14; border: 4px solid #0b0814; box-shadow: inset 0 0 0 3px #5a1a28; }
+.tbg-rule .is-good { color: #4ee06a; }
+.tbg-rule .is-bad { color: #ff6a72; }
+.tbg-dice { display: block; width: 100%; height: 300px; background: #14101c; border: 5px solid #0b0814; box-shadow: inset 0 0 0 4px #5a3420; }

@@ -10,7 +10,6 @@ import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, u
 import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
 import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, fmtMoney, makeId, newRoom } from './game.js';
-import { BJ_MAX, BJ_MIN } from './bj.js';
 import TimbaGame from './TimbaGame.jsx';
 import './timba.css';
 import { isKicked } from '../lobby/kick.js';
@@ -94,8 +93,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <li>Todos juegan con la <b>misma plata</b>: arrancan con <b>$1K</b> y <b>15 tickets</b> dorados, y cada día tienen que llegar a una <b>cuota</b> (la primera es $1,2K). Si no la juntan, se termina.</li>
           <li>Empiezan en una <b>casita</b>. Caminá con <kbd>A</kbd> <kbd>D</kbd> (o las flechas) y tocá las cosas con <kbd>E</kbd>. La camioneta va a vender items (por ahora está vacía) y la <b>limusina</b> los lleva al casino: sale cuando <b>están todos adentro</b>.</li>
           <li>En el casino, entren al <b>ascensor</b>. Con el panel (<kbd>E</kbd>) eligen el piso, y el ascensor <b>solo viaja con todos a bordo</b>. Desde arriba se camina con <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>.</li>
-          <li>El piso 1 tiene una mesa de <b>blackjack</b> (apuesta de {fmtMoney(BJ_MIN)} a {fmtMoney(BJ_MAX)}): hay botones rápidos (mínimo, 1/4, 1/2 y todo) y un teclado para escribir la apuesta. Lo que ganan o pierden es de todos.</li>
-          <li>El día dura <b>5 minutos</b>. Cuando se acaba, todos vuelven al ascensor, que se cierra: la única salida es el botón del <b>lobby</b>.</li>
+          <li>El piso 1 tiene 16 juegos de <b>una sola persona</b> cada uno: 4 de <b>blackjack</b>, 4 <b>tragamonedas</b>, 2 de <b>rueda de la fortuna</b>, 2 de <b>ruleta</b>, 2 <b>carreras de patos</b> y 2 de <b>craps</b> (con dados en 3D). Si alguien juega en una, está ocupada. Cada juego tiene su apuesta mínima y máxima, con botones rápidos y un teclado. Lo que ganan o pierden es de todos.</li>
+          <li>El día dura <b>5 minutos</b> y arranca cuando el ascensor sube por primera vez al piso 1. Cuando se acaba, todos vuelven al ascensor y tienen que bajar al lobby. Después de entrar al casino se puede volver a casa en la <b>limusina</b> de la puerta (cuando están todos arriba, vuelven): con la cuota juntada sigue otro día, y si no, es <b>game over</b>.</li>
         </ul>
       </div>
       <div className="tb-start">
@@ -112,7 +111,7 @@ function Final({ room, me, onDispatch, onLeave }) {
   const net = room.players.map((p) => ({ ...p, net: room.net[p.id] || 0 })).sort((a, b) => b.net - a.net);
   return (
     <div className="tb-final">
-      <div className="tb-wins is-lost">SE ACABÓ LA RACHA</div>
+      <div className="tb-wins is-lost">GAME OVER</div>
       <p className="tb-eyebrow">Llegaron hasta el día {last.n}, pero juntaron {fmtMoney(last.money)} y la cuota era {fmtMoney(last.quota)}.</p>
       <table className="tb-table">
         <thead><tr><th>#</th><th>Jugador</th><th>Ganó / perdió</th></tr></thead>

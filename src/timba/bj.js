@@ -3,8 +3,6 @@
 //
 // Una carta es un número de 0 a 51: `c % 13` es el valor (0 = As, 1 a 9 = 2 a 10, 10 a 12 = J, Q, K) y
 // `Math.floor(c / 13)` el palo.
-export const BJ_MIN = 36;
-export const BJ_MAX = 360;
 export const DECKS = 4;          // el mazo es de 4 barajas juntas
 export const RESHUFFLE_UNDER = 60; // con menos cartas que esto se vuelve a mezclar antes de repartir
 
@@ -52,18 +50,4 @@ export function payoutFor(bet, hand, dealer, busted) {
   const theirs = handValue(dealer).total;
   if (theirs > 21 || mine > theirs) return bet * 2;
   return mine === theirs ? bet : 0;
-}
-
-// Lo que se puede apostar ahora: del mínimo al máximo, sin pasarse de la plata que hay. null = no alcanza.
-export function betLimits(money) {
-  const max = Math.min(BJ_MAX, Math.max(0, Math.floor(money)));
-  return max < BJ_MIN ? null : { min: BJ_MIN, max };
-}
-
-// Los cuatro botones rápidos: mínimo, 1/4, 1/2 y todo (del máximo del juego, sin pasarse de la plata).
-export function quickBet(kind, money) {
-  const lim = betLimits(money);
-  if (!lim) return 0;
-  const of = { min: BJ_MIN, q: Math.floor(BJ_MAX / 4), h: Math.floor(BJ_MAX / 2), all: BJ_MAX }[kind] ?? BJ_MIN;
-  return Math.max(lim.min, Math.min(lim.max, of));
 }

@@ -833,5 +833,16 @@ OCULTA 1.29.3.5 = Ajuste interno
 - La mesa, la bandeja y el cubilete se dibujan mucho más simples (colores lisos, sin reflejos ni texturas) para que no pese. La física de los dados es exactamente la misma.
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.37.2 = Fix: el reloj del día de La Timba arranca con el ascensor
+1.37.2 = Fix: el reloj del día de La Timba arranca con el ascensor
 - El día ya no arranca al llegar a la puerta del casino: arranca cuando el ascensor viaja por primera vez a un piso de juego (no cuenta ir al lobby). Hasta entonces el reloj no corre.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.38.0 = La Timba: 16 juegos en el piso 1 y la vuelta en limusina 🎰🎲
+- El piso 1 ahora tiene todos los juegos: 4 mesas de blackjack, 4 tragamonedas, 2 ruedas de la fortuna, 2 ruletas, 2 carreras de patos y 2 mesas de craps. Cada una es de una sola persona: si alguien juega, está ocupada.
+- Tragamonedas «La cámara de la momia»: grilla de 3 × 3 con loto, escarabajo, ankh y ojo de Horus. Líneas, rombo, X y tablero lleno pagan y se suman (el tablero lleno de lotos paga 175 veces).
+- Rueda de la fortuna con los 20 casilleros del original (de 0x a 5x y «gira otra vez»), ruleta europea del 0 al 36 con apuestas a número, color, par o impar, mitad y docena, y carrera de patos con Cuki, Suti, Vitas y Gordon: nadie es favorito y paga 3,8 veces.
+- Craps con dados en 3D y la misma física que la Generala: gana el 7 o el 11 en la primera tirada, pierde el 2, el 3 o el 12, y cualquier otro número queda de punto hasta que salga de nuevo (gana) o salga un 7 (pierde).
+- Cada juego tiene su apuesta: tragamonedas y rueda de $1 a $60, patos de $5 a $120, ruleta de $5 a $180, craps de $20 a $360 y blackjack de $36 a $360. Todos usan el mismo teclado con botones rápidos.
+- La vuelta a casa es en la limusina: una vez que entraron al casino, desde la puerta pueden subir a la limusina y, cuando están todos arriba, vuelven. Si juntaron la cuota sigue otro día; si no, aparece el cartel de GAME OVER.
+- El piso es más grande: se ve más lejos y se camina más rápido.

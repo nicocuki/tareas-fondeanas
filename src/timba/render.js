@@ -4,7 +4,7 @@
 //
 // Un «pixel» del juego son `Q` unidades del mundo y el canvas se dibuja con escala 1/Q: todo pasa por `R` (rectángulo
 // pegado a la grilla), `disc`, `ell`, `tri`, `line` y el texto de 3 × 5 (`txt`), así nunca queda un borde suavizado.
-import { GROUND, SCENES, seatPos } from './scenes.js';
+import { GROUND, SCENES, TABLES } from './scenes.js';
 import { isRed, rankOf } from './bj.js';
 
 export const Q = 2;
@@ -373,7 +373,7 @@ function drawSide(ctx, view, key, st) {
     for (let x = 0; x < sc.w; x += 80) R(ctx, x, GROUND + 34, 40, Q * 2, 'rgba(255,230,170,0.55)');
   } else {
     drawEntrance(ctx, sc, st);
-    drawLimo(ctx, sc.limo, { door: 1, go: 0, heads: 0, t });
+    drawLimo(ctx, sc.limo, { door: st.limoDoor, go: st.limoGo, heads: st.heads, t });
   }
   for (const p of [...st.players].sort((a, b) => a.x - b.x)) {
     drawBlobSide(ctx, p.x, GROUND, p.color, p.face || 1, p.phase || 0, p.name, { moving: p.moving, hat: p.hat });
@@ -484,10 +484,18 @@ function seenAt(id, t, delay) {
 }
 const ease = (u) => 1 - (1 - u) * (1 - u);
 
-function drawTable(ctx, sc, st) {
-  const t = sc.table;
+// Una lucecita: verde si la mesa está libre y roja si alguien juega.
+function led(ctx, x, y, tb) {
+  R(ctx, x - Q, y - Q, 4 * Q, 4 * Q, INK);
+  R(ctx, x, y, 2 * Q, 2 * Q, tb ? '#ff4a4a' : '#5aff7a');
+}
+
+// La mesa de blackjack. `b` es la mesa en la sala (o undefined si está libre).
+function drawBjTable(ctx, blk, b, st) {
+  const t = { x: blk.x + blk.w / 2, y: blk.y + blk.h / 2, rx: 110, ry: 62 };
   const time = st.time;
-  const bj = st.bj;
+  const bj = b || { dealer: [], hand: [], n: 0, phase: 'bet', bet: 0 };
+  const seat = b || null;
   // sombra, madera y paño
   ctx.globalAlpha = 0.35; ell(ctx, t.x + 4, t.y + 10, t.rx + 20, t.ry + 18, '#000'); ctx.globalAlpha = 1;
   ell(ctx, t.x, t.y, t.rx + 14, t.ry + 12, INK);
@@ -502,8 +510,8 @@ function drawTable(ctx, sc, st) {
   // la caja de cartas (el «zapato»)
   const shoe = { x: t.x + t.rx - 30, y: t.y - t.ry + 14 };
   box(ctx, shoe.x, shoe.y, 22, 14, '#2a2a3c'); R(ctx, shoe.x + 2, shoe.y + 2, 18, 4, '#a8242e'); R(ctx, shoe.x + 2, shoe.y + 8, 18, 2, '#3a3a52');
+  led(ctx, blk.x + 8, blk.y + 8, b);
 
-  const seat = bj.seats[0];
   const px = t.x;
   const py = t.y + t.ry - 28;
   // cartas con la animación de repartir
@@ -521,16 +529,12 @@ function drawTable(ctx, sc, st) {
     }
     drawCard(ctx, x, y, c, hid, sx);
   };
-  const n = bj.n;
+  const n = `${blk.id}:${bj.n}`;
   bj.dealer.forEach((c, k) => {
-    const id = `${n}:d:${k}`;
     const delay = k === 0 ? 0.3 : k === 1 ? 0.9 : 0.45 + (k - 2) * 0.5;
-    place(id, delay, t.x - 5 * Q - (bj.dealer.length - 1) * 5.5 * Q + k * 11 * Q + 0, t.y - 64, c, k === 1 && bj.phase === 'play', k === 1 ? `${n}:flip` : null);
+    place(`${n}:d:${k}`, delay, t.x - 5 * Q - (bj.dealer.length - 1) * 5.5 * Q + k * 11 * Q, t.y - 64, c, k === 1 && bj.phase === 'play', k === 1 ? `${n}:flip` : null);
   });
-  if (seat) {
-    ell(ctx, px, py + 16, 14, 9, 'rgba(255,230,150,0.0)');
-    seat.hand.forEach((c, k) => place(`${n}:p:${k}`, k === 0 ? 0 : k === 1 ? 0.6 : 0, px - 5 * Q - (seat.hand.length - 1) * 4 * Q + k * 8 * Q, py - 26, c, false, null));
-  }
+  if (seat) seat.hand.forEach((c, k) => place(`${n}:p:${k}`, k === 0 ? 0 : k === 1 ? 0.6 : 0, px - 5 * Q - (seat.hand.length - 1) * 4 * Q + k * 8 * Q, py - 26, c, false, null));
   // el lugar de apuesta y las fichas
   const spotY = py + 18;
   for (let a = 0; a < 16; a++) R(ctx, px + Math.cos((a / 16) * Math.PI * 2) * 13, spotY + Math.sin((a / 16) * Math.PI * 2) * 7, Q, Q, seat ? 'rgba(255,230,150,0.9)' : 'rgba(255,240,200,0.3)');
@@ -542,12 +546,17 @@ function drawTable(ctx, sc, st) {
       ell(ctx, px, cy + 2, 10, 6, INK); ell(ctx, px, cy, 10, 6, '#d8403a'); ell(ctx, px, cy, 6, 3, '#f4e6b0'); ell(ctx, px, cy, 4, 2, '#d8403a');
     }
   }
+  // el croupier
+  drawBlobTop(ctx, t.x, blk.y + 15, '#7a1f2a', Math.PI / 2, 0, 'Croupier', { hat: INK });
   // limpiar lo viejo
-  if (cardSeen.size > 60) { for (const k of [...cardSeen.keys()].slice(0, 30)) cardSeen.delete(k); }
-  if (revealAt.size > 20) revealAt = new Map();
+  if (cardSeen.size > 120) { for (const k of [...cardSeen.keys()].slice(0, 60)) cardSeen.delete(k); }
+  if (revealAt.size > 40) revealAt = new Map();
 }
 
-function slotMachine(ctx, x, y, w, h, t, i) {
+// Una tragamonedas contra la pared: la pantalla con los rodillos girando (más rápido si alguien está jugando).
+function drawSlots(ctx, blk, tb, st, i) {
+  const { x, y, w, h } = blk;
+  const t = st.time * (tb && !tb.paid ? 2.4 : 1);
   box(ctx, x + 2, y, w - 4, h, '#2a2a46');
   R(ctx, x + 4, y + 2, w - 8, 6, [GOLD, '#e0525a', '#4a9be8', '#5ec46b'][(Math.floor(t * 3) + i) % 4]);
   box(ctx, x + 8, y + 12, w - 16, 18, '#f4f0e6');
@@ -559,7 +568,101 @@ function slotMachine(ctx, x, y, w, h, t, i) {
   }
   R(ctx, x + 6, y + h - 8, w - 12, 4, GOLD);
   R(ctx, x + w - 6, y + 14, 2, 14, '#b0b4c4'); disc(ctx, x + w - 5, y + 12, 3, '#d8303a');
+  led(ctx, x + 6, y + h - 14, tb);
 }
+
+// La rueda de la fortuna, colgada de la pared.
+const WHEEL_COLORS = ['#c8303a', '#f0a030', '#5a6aa8', '#a8b83a', '#e8602a', '#4a8a8a', '#b04a7a'];
+function drawWheelWall(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  const cx = x + w / 2; const cy = y + h / 2;
+  box(ctx, x, y, w, h, '#3a2418');
+  const spinning = tb && !tb.paid;
+  const rot = st.time * (spinning ? 5 : 0.35);
+  const r = 26;
+  disc(ctx, cx, cy, r + 3, INK); disc(ctx, cx, cy, r + 1, '#f0c33c');
+  for (let k = 0; k < 40; k++) {
+    const a = (k / 40) * Math.PI * 2 + rot;
+    line(ctx, cx, cy, cx + Math.cos(a) * r, cy + Math.sin(a) * r, Q * 2, WHEEL_COLORS[Math.floor(k / 3) % WHEEL_COLORS.length]);
+  }
+  disc(ctx, cx, cy, 7, '#3a2418'); disc(ctx, cx, cy, 4, '#7ad94a');
+  tri(ctx, cx, y - 4, 5, 10, INK);
+  led(ctx, x + w - 12, y + 6, tb);
+}
+
+// La mesa de la ruleta: la rueda con la bolita a la izquierda y el paño de apuestas a la derecha.
+function drawRoulette(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  const time = st.time;
+  ctx.globalAlpha = 0.3; R(ctx, x + 4, y + 8, w, h, '#000'); ctx.globalAlpha = 1;
+  box(ctx, x, y, w, h, '#176a44', '#3a1a0c');
+  R(ctx, x - 4, y - 4, w + 8, 4, '#7a4a2c'); R(ctx, x - 4, y + h, w + 8, 4, '#7a4a2c');
+  const cx = x + 56; const cy = y + h / 2;
+  disc(ctx, cx, cy, 44, INK); disc(ctx, cx, cy, 42, '#5a3420');
+  const spinning = tb && !tb.paid;
+  const rot = time * (spinning ? 3 : 0.4);
+  for (let k = 0; k < 37; k++) {
+    const a = (k / 37) * Math.PI * 2 + rot;
+    line(ctx, cx + Math.cos(a) * 22, cy + Math.sin(a) * 22, cx + Math.cos(a) * 36, cy + Math.sin(a) * 36, Q * 2, k === 0 ? '#2f8a3f' : k % 2 ? '#c8303a' : '#1c1826');
+  }
+  disc(ctx, cx, cy, 19, '#3a2418'); disc(ctx, cx, cy, 11, '#d8c079'); disc(ctx, cx, cy, 4, GOLD);
+  const ba = spinning ? -time * 7 : 1.3;
+  disc(ctx, cx + Math.cos(ba) * (spinning ? 31 : 29), cy + Math.sin(ba) * (spinning ? 31 : 29), 2, '#fff');
+  // el paño
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) R(ctx, x + 112 + c * 17, y + 22 + r * 20, 14, 16, (r * 6 + c) % 2 ? '#c8303a' : '#1c1826');
+  R(ctx, x + 112, y + 84, 100, 14, '#e8e0c8');
+  txt(ctx, 'RULETA', x + 162, y + 11, 2, '#f4e6b0', '#0c3a26');
+  led(ctx, x + w - 12, y + 6, tb);
+}
+
+// La mesa de craps: borde alto, paño rojo y los dados (con la última tirada).
+const PIPS = { 1: [[1, 1]], 2: [[0, 0], [2, 2]], 3: [[0, 0], [1, 1], [2, 2]], 4: [[0, 0], [2, 0], [0, 2], [2, 2]], 5: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]], 6: [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]] };
+function drawDie(ctx, x, y, v) {
+  box(ctx, x, y, 9 * Q, 9 * Q, '#f4efe2');
+  for (const [px, py] of PIPS[v] || PIPS[1]) R(ctx, x + (1.5 + px * 2.5) * Q, y + (1.5 + py * 2.5) * Q, Q, Q, INK);
+}
+function drawCraps(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  ctx.globalAlpha = 0.3; R(ctx, x + 4, y + 8, w, h, '#000'); ctx.globalAlpha = 1;
+  box(ctx, x - 8, y - 8, w + 16, h + 16, '#5a3420', INK);
+  box(ctx, x, y, w, h, '#a8242e');
+  R(ctx, x + 6, y + 6, w - 12, 2, GOLD); R(ctx, x + 6, y + h - 8, w - 12, 2, GOLD);
+  txt(ctx, 'STREET CRAPS', x + w / 2, y + 22, 2, '#f4e6b0', '#4a0a14');
+  txt(ctx, 'GANA 7 11  PIERDE 2 3 12', x + w / 2, y + 40, 1, '#ffd9d9');
+  const dice = tb?.dice?.length ? tb.dice : [3, 4];
+  const wob = tb && tb.bet && !tb.res ? Math.round(Math.sin(st.time * 6)) * Q : 0;
+  drawDie(ctx, x + w / 2 - 22, y + 62 + wob, dice[0]);
+  drawDie(ctx, x + w / 2 + 6, y + 66 - wob, dice[1]);
+  if (tb?.point) { disc(ctx, x + w - 26, y + h - 26, 10, INK); disc(ctx, x + w - 26, y + h - 26, 8, '#f4efe2'); txt(ctx, String(tb.point), x + w - 26, y + h - 26, 1, INK); }
+  led(ctx, x + 12, y + 12, tb);
+}
+
+// La carrera de patos: el cartel de neón, cuatro carriles de agua con sus patos y el tablero de control.
+const DUCK_BODIES = ['#f6d640', '#f08ab8', '#6ab4f0', '#7ad46a'];
+function drawDuckRace(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  ctx.globalAlpha = 0.3; R(ctx, x + 4, y + 8, w, h, '#000'); ctx.globalAlpha = 1;
+  box(ctx, x, y, w, h, '#3a2a5a');
+  const on = Math.sin(st.time * 6) > -0.8;
+  box(ctx, x + 10, y + 4, w - 20, 22, '#2a0a3a');
+  txt(ctx, 'DUCK RACE', x + w / 2, y + 15, 2, on ? '#ff8ae8' : '#a85a98');
+  const elapsed = tb && !tb.paid ? Math.max(0, st.now - tb.at) : tb?.times ? Infinity : 0;
+  for (let i = 0; i < 4; i++) {
+    const ly = y + 32 + i * 13;
+    R(ctx, x + 10, ly, w - 20, 11, '#3a8ad8'); R(ctx, x + 10, ly + 3 + ((Math.floor(st.time * 3) + i) % 2) * 3, w - 20, Q, '#7ac4f8');
+    R(ctx, x + w - 24, ly, 3, 11, (i % 2) ? '#fff' : INK); R(ctx, x + w - 21, ly, 3, 11, (i % 2) ? INK : '#fff');
+    let p = 0;
+    if (tb?.times) p = Math.max(0, Math.min(1, elapsed === Infinity ? 1 : elapsed / tb.times[i]));
+    const dx = x + 14 + p * (w - 52);
+    const bob = Math.round(Math.sin(st.time * 8 + i * 1.7)) * Q * (p > 0 && p < 1 ? 1 : 0);
+    R(ctx, dx, ly + 3 + bob, 8, 5, DUCK_BODIES[i]); R(ctx, dx + 6, ly + 1 + bob, 4, 4, DUCK_BODIES[i]); R(ctx, dx + 10, ly + 3 + bob, 3, 2, '#f08a3c'); R(ctx, dx + 7, ly + 2 + bob, 1, 1, INK);
+  }
+  R(ctx, x + 10, y + h - 16, w - 20, 10, '#2c2838');
+  for (let i = 0; i < 8; i++) R(ctx, x + 16 + i * 14, y + h - 14, 8, 6, i < 3 ? GOLD : '#c8c8d0');
+  led(ctx, x + 6, y + 8, tb);
+}
+
+const TABLE_DRAWERS = { bj: drawBjTable, slots: drawSlots, wheel: drawWheelWall, roulette: drawRoulette, craps: drawCraps, duck: drawDuckRace };
 
 function drawFloor(ctx, view, key, st) {
   const sc = SCENES[key];
@@ -572,22 +675,13 @@ function drawFloor(ctx, view, key, st) {
     ctx.fillStyle = carpetPattern; ctx.fillRect(q(a.x), q(a.y), q(a.w), q(a.h));
   }
   // luces de colores que se mueven por el piso (puntitos con transparencia)
-  for (const [lx, ly, c] of [[400, 300, '140,100,255'], [1200, 300, '255,140,70'], [400, 760, '255,140,70'], [1200, 760, '140,100,255'], [800, 500, '90,210,255']]) {
+  for (const [lx, ly, c] of [[500, 300, '140,100,255'], [1400, 300, '255,140,70'], [500, 760, '255,140,70'], [1400, 760, '140,100,255'], [950, 520, '90,210,255']]) {
     const pulse = 0.5 + 0.5 * Math.sin(t * 1.5 + lx);
     for (let k = 4; k >= 1; k--) { ctx.globalAlpha = 0.045 + pulse * 0.02; disc(ctx, lx, ly, k * 50, `rgb(${c})`); }
     ctx.globalAlpha = 1;
   }
-  // tragamonedas contra la pared de arriba (de adorno por ahora)
-  const strip = sc.blocks[1];
-  for (let x = strip.x, i = 0; x + 70 <= strip.x + strip.w; x += 72, i++) slotMachine(ctx, x, strip.y, 70, strip.h, t, i);
-  // columnas
-  for (const b of [sc.blocks[2], sc.blocks[3], sc.blocks[4], sc.blocks[5]]) {
-    ctx.globalAlpha = 0.3; disc(ctx, b.x + 24, b.y + 28, 24, '#000'); ctx.globalAlpha = 1;
-    disc(ctx, b.x + 22, b.y + 22, 23, INK); disc(ctx, b.x + 22, b.y + 22, 21, '#f0dcb4'); disc(ctx, b.x + 22, b.y + 22, 13, '#e0c690'); disc(ctx, b.x + 22, b.y + 22, 7, '#f6e8c4');
-    R(ctx, b.x + 8, b.y + 10, 6, 4, '#fff');
-  }
   // plantas que se mecen
-  for (const b of sc.blocks.slice(6)) {
+  for (const b of sc.blocks.slice(TABLES.length)) {
     const c = { x: b.x + 20, y: b.y + 20 };
     disc(ctx, c.x, c.y, 19, INK); disc(ctx, c.x, c.y, 17, '#8a4a2a'); disc(ctx, c.x, c.y, 11, '#5a3a22');
     for (let k = 0; k < 8; k++) {
@@ -603,9 +697,8 @@ function drawFloor(ctx, view, key, st) {
   box(ctx, 14, d.y - 22, 56, 14, INK);
   txt(ctx, 'ASCENSOR', 42, d.y - 15, 1, '#f4e6b0');
   R(ctx, 40, d.y - 8, 4, 4, (Math.floor(t * 2) % 2) ? '#5aff7a' : '#2a7a3a');
-  drawTable(ctx, sc, st);
-  // el croupier
-  drawBlobTop(ctx, sc.dealer.x, sc.dealer.y, '#7a1f2a', Math.PI / 2, 0, 'Croupier', { hat: INK });
+  // las mesas y máquinas
+  TABLES.forEach((blk, i) => TABLE_DRAWERS[blk.kind](ctx, blk, st.tables[blk.id], st, i));
 }
 
 function drawElevatorScene(ctx, view, st) {
@@ -662,5 +755,3 @@ export function drawScene(ctx, view, key, st) {
   if (SCENES[key].kind === 'side') drawSide(ctx, view, key, st); else drawTop(ctx, view, key, st);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
-
-export { seatPos };

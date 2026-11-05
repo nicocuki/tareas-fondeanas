@@ -4,12 +4,36 @@
 // Hay dos clases de escena:
 // - `side` (la sala de espera y la puerta del casino): vista de costado, solo se camina de izquierda a derecha.
 // - `top` (el ascensor y los pisos): vista desde arriba, se camina para todos lados.
+import { NAMES } from './games.js';
+
 export const SPEED_SIDE = 190;
-export const SPEED_TOP = 128;
+export const SPEED_TOP = 160;
 export const PLAYER_R = 8;
 
 export const SIDE_H = 360;      // alto que se ve en las escenas de costado
 export const GROUND = 300;      // la línea del piso
+
+// Las mesas y máquinas del piso 1, cada una de a un jugador. `x, y, w, h` es lo que ocupan (nadie lo pisa) y el
+// jugador se para abajo (`standAt`). Hay 4 tragamonedas y 4 de blackjack, y 2 de cada uno de los demás.
+export const TABLES = [
+  ...[240, 330, 420, 510].map((x, i) => ({ id: `slots${i + 1}`, kind: 'slots', x, y: 70, w: 70, h: 60 })),
+  { id: 'wheel1', kind: 'wheel', x: 880, y: 70, w: 110, h: 60 },
+  { id: 'wheel2', kind: 'wheel', x: 1060, y: 70, w: 110, h: 60 },
+  { id: 'bj1', kind: 'bj', x: 200, y: 260, w: 248, h: 140 },
+  { id: 'bj2', kind: 'bj', x: 480, y: 260, w: 248, h: 140 },
+  { id: 'bj3', kind: 'bj', x: 200, y: 640, w: 248, h: 140 },
+  { id: 'bj4', kind: 'bj', x: 480, y: 640, w: 248, h: 140 },
+  { id: 'roulette1', kind: 'roulette', x: 820, y: 300, w: 220, h: 110 },
+  { id: 'roulette2', kind: 'roulette', x: 1220, y: 300, w: 220, h: 110 },
+  { id: 'craps1', kind: 'craps', x: 820, y: 640, w: 220, h: 110 },
+  { id: 'craps2', kind: 'craps', x: 1220, y: 640, w: 220, h: 110 },
+  { id: 'duck1', kind: 'duck', x: 1560, y: 250, w: 200, h: 110 },
+  { id: 'duck2', kind: 'duck', x: 1560, y: 640, w: 200, h: 110 },
+];
+export const TABLE_BY_ID = Object.fromEntries(TABLES.map((t) => [t.id, t]));
+// Dónde se para el que juega: abajo de la mesa, mirando hacia ella.
+export const standAt = (t) => ({ x: t.x + t.w / 2, y: t.y + t.h + 22 });
+export const SEAT_FACE = -Math.PI / 2; // mira hacia arriba, a la mesa
 
 export const SCENES = {
   wait: {
@@ -36,23 +60,20 @@ export const SCENES = {
     spawn: { x: 150, y: 190 },
   },
   f1: {
-    kind: 'top', w: 1600, h: 1000,
-    areas: [{ x: 60, y: 70, w: 1480, h: 870 }, { x: 20, y: 440, w: 44, h: 120 }],
+    kind: 'top', w: 1900, h: 1000,
+    areas: [{ x: 60, y: 70, w: 1780, h: 880 }, { x: 20, y: 440, w: 44, h: 120 }],
+    // Las mesas y máquinas (`TABLES`) más las plantas de las esquinas.
     blocks: [
-      { x: 676, y: 425, w: 248, h: 140 },   // la mesa de blackjack (de a uno)
-      { x: 190, y: 70, w: 1230, h: 52 },    // los tragamonedas contra la pared de arriba
-      { x: 296, y: 296, w: 44, h: 44 }, { x: 1260, y: 296, w: 44, h: 44 },
-      { x: 296, y: 700, w: 44, h: 44 }, { x: 1260, y: 700, w: 44, h: 44 },  // columnas
-      { x: 70, y: 80, w: 40, h: 40 }, { x: 1490, y: 80, w: 40, h: 40 }, { x: 70, y: 890, w: 40, h: 40 }, { x: 1490, y: 890, w: 40, h: 40 }, // plantas
+      ...TABLES.map(({ x, y, w, h }) => ({ x, y, w, h })),
+      { x: 70, y: 80, w: 40, h: 40 }, { x: 1790, y: 80, w: 40, h: 40 }, { x: 70, y: 890, w: 40, h: 40 }, { x: 1790, y: 890, w: 40, h: 40 },
     ],
     door: { x: 20, y: 440, w: 120 },     // el ascensor, en la pared de la izquierda
-    table: { x: 800, y: 495, rx: 110, ry: 62 },
-    dealer: { x: 800, y: 440 },
     spawn: { x: 120, y: 500 },
   },
 };
 
-export const sceneKey = (loc) => (loc === 'limo' ? 'wait' : loc);
+// Dentro de la limusina (`limo` en la sala de espera, `back` en la puerta del casino) se ve la escena de afuera.
+export const sceneKey = (loc) => (loc === 'limo' ? 'wait' : loc === 'back' ? 'outside' : loc);
 
 // Dónde aparece un jugador al entrar a una escena (`i` = su número, para que no se amontonen).
 export function spawnPoint(loc, i = 0) {
@@ -98,23 +119,30 @@ export function stepTop(p, dx, dy, dt, scene) {
 }
 
 // ─── Qué se puede tocar ──────────────────────────────────────────────────────
-// Devuelve { key, label } de lo más cercano al jugador (o null). `E` lo usa.
-export function nearby(loc, p) {
+// Devuelve { key, label } de lo más cercano al jugador (o null). `E` lo usa. `ctx.home`: ya se entró al casino, así
+// que desde la puerta se puede subir a la limusina para volver.
+export function nearby(loc, p, ctx = {}) {
   if (loc === 'limo') return { key: 'unboard', label: 'Bajar de la limusina' };
+  if (loc === 'back') return { key: 'unboardBack', label: 'Bajar de la limusina' };
   const sc = SCENES[loc];
   if (!sc) return null;
   if (loc === 'wait') {
     if (Math.abs(p.x - (sc.van.x + sc.van.w / 2)) < 170) return { key: 'van', label: 'Mirar la camioneta' };
     if (p.x > sc.limo.x - 90 && p.x < sc.limo.x + 150) return { key: 'board', label: 'Subir a la limusina' };
   }
+  if (loc === 'outside' && ctx.home && p.x < sc.limo.x + sc.limo.w + 40) return { key: 'boardBack', label: 'Subir a la limusina y volver a casa' };
   if (loc === 'elevator') {
     if (Math.hypot(p.x - sc.panel.x, p.y - sc.panel.y) < 46) return { key: 'panel', label: 'Usar el panel del ascensor' };
     if (Math.hypot(p.x - sc.npc.x, p.y - sc.npc.y) < 46) return { key: 'npc', label: 'Hablar con el botones' };
   }
   if (loc === 'f1') {
-    const t = sc.table;
-    // Cerca de la mesa, en cualquier lado (la distancia se mide con la misma forma ovalada).
-    if (((p.x - t.x) / (t.rx + 70)) ** 2 + ((p.y - t.y) / (t.ry + 70)) ** 2 < 1) return { key: 'bj', label: 'Jugar al blackjack' };
+    // La mesa o máquina más cercana, a menos de 46 del borde.
+    let best = null;
+    for (const t of TABLES) {
+      const d = Math.hypot(Math.max(t.x - p.x, 0, p.x - (t.x + t.w)), Math.max(t.y - p.y, 0, p.y - (t.y + t.h)));
+      if (d < 46 && (!best || d < best.d)) best = { d, t };
+    }
+    if (best) return { key: `t:${best.t.id}`, label: `Jugar: ${NAMES[best.t.kind]}` };
   }
   return null;
 }
@@ -126,10 +154,4 @@ export function doorFor(loc, p, floor) {
   if (loc === 'elevator' && p.y > sc.door.y && p.x > sc.door.x && p.x < sc.door.x + sc.door.w) return floor === 0 ? 'outside' : `f${floor}`;
   if (loc === 'f1' && p.x < 52 && p.y > sc.door.y && p.y < sc.door.y + sc.door.w) return 'elevator';
   return null;
-}
-
-// La mesa es de uno solo: la silla está abajo, mirando al croupier.
-export function seatPos() {
-  const t = SCENES.f1.table;
-  return { x: t.x, y: t.y + t.ry + 26 };
 }

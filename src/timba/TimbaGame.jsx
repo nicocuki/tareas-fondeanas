@@ -1,5 +1,5 @@
 // La Timba en vivo: el dibujo, el teclado, la red y todo lo que se ve encima (el HUD, la ventana del ascensor,
-// la del blackjack, los viajes).
+// las de los juegos, los viajes).
 //
 // Cada pantalla es dueña de su jugador: lo mueve y manda su foto (posición y para dónde mira) directo a los demás
 // (WebRTC) o, si no se puede, por el servidor. Todo lo que se comparte (la plata, el día, dónde está cada uno, la
@@ -8,11 +8,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
 import { backgroundInterval, everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
-import { SCENES, doorFor, nearby, sceneKey, seatPos, spawnPoint, stepSide, stepTop } from './scenes.js';
+import { SCENES, SEAT_FACE, TABLE_BY_ID, doorFor, nearby, sceneKey, spawnPoint, standAt, stepSide, stepTop } from './scenes.js';
 import { Q, drawScene } from './render.js';
 import BjPanel from './BjPanel.jsx';
+import CrapsPanel from './CrapsPanel.jsx';
+import DuckPanel from './DuckPanel.jsx';
+import RoulettePanel from './RoulettePanel.jsx';
+import SlotsPanel from './SlotsPanel.jsx';
+import WheelPanel from './WheelPanel.jsx';
 import './tbgame.css';
-import { DAY_MS, allAt, dayLeftMs, findPlayer, fmtClock, fmtMoney, locOfFloor } from './game.js';
+import { DAY_MS, allAt, dayLeftMs, findPlayer, fmtClock, fmtMoney, locOfFloor, tableOfPlayer } from './game.js';
+
+const PANELS = { bj: BjPanel, slots: SlotsPanel, wheel: WheelPanel, roulette: RoulettePanel, duck: DuckPanel, craps: CrapsPanel };
+const ABOARD = ['limo', 'back']; // arriba de la limusina (de ida o de vuelta)
 
 const SEND_EVERY = 1 / 15;
 const SERVER_EVERY = 1 / 8;
@@ -28,6 +36,7 @@ function TicketIcon() {
 // Dónde aparece cada uno al cambiar de lugar.
 function landing(loc, prev, index) {
   const base = spawnPoint(loc, index);
+  if (loc === 'outside' && prev === 'back') return { ...base, x: SCENES.outside.limo.x + SCENES.outside.limo.w + 40 };
   if (loc === 'wait' && prev === 'limo') return { ...base, x: SCENES.wait.limo.x - 70 + (index % 3) * 18 };
   if (loc === 'outside' && prev === 'elevator') return { ...base, x: SCENES.outside.doorX - 90 - (index % 3) * 18 };
   if (loc === 'f1' && prev === 'elevator') return { x: 112 + (index % 2) * 16, y: 492 + (index % 4) * 10 };
@@ -45,7 +54,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
   roomRef.current = room;
   const dispatchRef = useRef(onDispatch);
   dispatchRef.current = onDispatch;
-  const [modal, setModal] = useState(null); // null | 'bj' | 'elev' | 'van'
+  const [modal, setModal] = useState(null); // null | 'elev' | 'van' | 't:{mesa}' (la ventana de la mesa donde estoy sentado)
   const modalRef = useRef(null);
   modalRef.current = modal;
   const [near, setNear] = useState(null);
@@ -115,12 +124,11 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
 
   // ─── Cerrar ventanas ────────────────────────────────────────────────────────
   const closeModal = async () => {
-    if (modalRef.current === 'bj') {
-      const r = roomRef.current;
-      const seat = r.bj.seats.find((x) => x.id === me.id);
-      if (seat) {
-        if (r.bj.phase === 'play' && seat.st === 'play') { flash('Terminá la mano antes de levantarte.'); return; }
-        if (await act({ type: 'bjLeave' }) && roomRef.current.players.length) sim.current.p.y += 34; // se levanta y da un paso atrás
+    if (modalRef.current?.startsWith('t:')) {
+      const [, t] = tableOfPlayer(roomRef.current, me.id);
+      if (t) {
+        if (t.kind === 'bj' && t.phase === 'play' && t.st === 'play') { flash('Terminá la mano antes de levantarte.'); return; }
+        if (await act({ type: 'stand' }) && roomRef.current.players.length) sim.current.p.y += 34; // se levanta y da un paso atrás
       }
     }
     setModal(null);
@@ -131,7 +139,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
   // Al cambiar de lugar se cierra lo que estuviera abierto.
   useEffect(() => { setModal(null); }, [me.loc]);
   // Si se terminó el día mientras se jugaba, la mesa ya se cerró.
-  useEffect(() => { if (room.day.over && modalRef.current === 'bj') setModal(null); }, [room.day.over]);
+  useEffect(() => { if (room.day.over && modalRef.current?.startsWith('t:')) setModal(null); }, [room.day.over]);
 
   // ─── Interactuar (E) ────────────────────────────────────────────────────────
   const interact = async () => {
@@ -142,15 +150,17 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
     if (!n) return;
     if (n.key === 'board') act({ type: 'loc', to: 'limo' });
     else if (n.key === 'unboard') act({ type: 'loc', to: 'wait' });
+    else if (n.key === 'boardBack') act({ type: 'loc', to: 'back' });
+    else if (n.key === 'unboardBack') act({ type: 'loc', to: 'outside' });
     else if (n.key === 'van') setModal('van');
     else if (n.key === 'npc') flash('«Todavía no compraste ningún item. ¡Pasá por la camioneta!»');
     else if (n.key === 'panel') { if (r.trip) flash('El ascensor se está moviendo.'); else setModal('elev'); }
-    else if (n.key === 'bj') {
+    else if (n.key.startsWith('t:')) {
       if (r.day.over) return;
-      const taken = r.bj.seats.find((x) => x.id !== me.id);
-      if (taken) { flash(`La mesa está ocupada por ${r.players.find((p) => p.id === taken.id)?.name || 'otro jugador'}.`); return; }
-      const ok = await act({ type: 'bjSit' });
-      if (ok) setModal('bj'); else flash('La mesa está ocupada.');
+      const id = n.key.slice(2);
+      const taken = r.tb[id];
+      if (taken && taken.by !== me.id) { flash(`Está ocupada: juega ${r.players.find((p) => p.id === taken.by)?.name || 'otro jugador'}.`); return; }
+      if (await act({ type: 'sit', table: id })) setModal(n.key); else flash('Ya está ocupada o estás jugando en otra.');
     }
   };
   const interactRef = useRef(interact);
@@ -179,7 +189,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
 
       // Cambió el lugar: aparezco donde corresponde y se hace un fundido.
       if (s.loc !== loc) {
-        if (loc !== 'limo') {
+        if (!ABOARD.includes(loc)) {
           const sp = landing(loc, s.loc, index);
           s.p = { x: sp.x, y: sp.y, face: sc.kind === 'side' ? 1 : Math.PI / 2, moving: false, phase: 0 };
         }
@@ -190,21 +200,21 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       }
 
       // Moverse (con el ascensor andando, la limusina esperando o una ventana abierta, no).
-      const frozen = Boolean(modalRef.current) || Boolean(r.trip) || loc === 'limo';
+      const frozen = Boolean(modalRef.current) || Boolean(r.trip) || ABOARD.includes(loc);
       const dx = (s.input.right ? 1 : 0) - (s.input.left ? 1 : 0);
       const dy = (s.input.down ? 1 : 0) - (s.input.up ? 1 : 0);
-      // Cada uno tiene su silla fija en la mesa (según su lugar en la sala), así no saltan cuando alguien se levanta.
-      const seated = r.bj.seats.some((x) => x.id === me.id);
-      if (loc === 'f1' && seated && modalRef.current === 'bj') {
-        const sp = seatPos();
-        s.p.x = sp.x; s.p.y = sp.y; s.p.moving = false; s.p.face = Math.atan2(SCENES.f1.table.y - sp.y, SCENES.f1.table.x - sp.x);
+      // El que juega en una mesa se queda parado en su lugar, mirándola.
+      const [myTable] = tableOfPlayer(r, me.id);
+      if (loc === 'f1' && myTable && modalRef.current === `t:${myTable}`) {
+        const sp = standAt(TABLE_BY_ID[myTable]);
+        s.p.x = sp.x; s.p.y = sp.y; s.p.moving = false; s.p.face = SEAT_FACE;
       } else if (frozen) s.p.moving = false;
       else if (sc.kind === 'side') stepSide(s.p, dx, dt, key);
       else stepTop(s.p, dx, dy, dt, key);
       if (s.p.moving) s.p.phase += dt;
 
       // Qué hay cerca para tocar con E.
-      const nb = r.trip || (frozen && loc !== 'limo') ? null : nearby(loc, s.p);
+      const nb = r.trip || (frozen && !ABOARD.includes(loc)) ? null : nearby(loc, s.p, { home: r.day.endsAt > 0 });
       const nbKey = nb ? nb.key : '';
       if (nbKey !== (s.near?.key || '')) { s.near = nb; setNear(nb); }
 
@@ -212,14 +222,14 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       if (!frozen && !r.trip && performance.now() - s.pendingAt > 900) {
         const to = doorFor(loc, s.p, r.elev.floor);
         const here = locOfFloor(r.elev.floor);
-        const allowed = to && ((loc === 'elevator' && !r.day.over && to === here) || (to === 'elevator' && loc === here));
+        const allowed = to && ((loc === 'elevator' && (!r.day.over || here === 'outside') && to === here) || (to === 'elevator' && loc === here));
         if (allowed) { s.pendingAt = performance.now(); dispatchRef.current({ type: 'loc', to }); }
       }
 
       // Mandar mi foto.
       if (t - s.sentAt >= (s.p.moving ? SEND_EVERY : 0.5)) {
         s.sentAt = t;
-        const snap = { n: r.run, t: now / 1000, sc: loc === 'limo' ? 'limo' : key, x: round1(s.p.x), y: round1(s.p.y), f: Math.round(s.p.face * 100) / 100, m: s.p.moving ? 1 : 0 };
+        const snap = { n: r.run, t: now / 1000, sc: ABOARD.includes(loc) ? 'limo' : key, x: round1(s.p.x), y: round1(s.p.y), f: Math.round(s.p.face * 100) / 100, m: s.p.moving ? 1 : 0 };
         s.mesh?.broadcast(snap);
         const others = r.players.filter((pl) => pl.id !== me.id);
         const needServer = !s.mesh || others.some((pl) => !s.mesh.isOpen(pl.id));
@@ -232,16 +242,16 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       // Los demás: los que están en mi escena, suavizados hacia su última foto.
       const players = [];
       const trip = r.trip;
-      const heads = r.players.filter((pl) => pl.loc === 'limo').length;
-      if (loc !== 'limo') players.push({ me: true, x: s.p.x, y: s.p.y, face: s.p.face, phase: s.p.phase, moving: s.p.moving, color: meP.color, name: '' });
+      const heads = r.players.filter((pl) => pl.loc === (key === 'outside' ? 'back' : 'limo')).length;
+      if (!ABOARD.includes(loc)) players.push({ me: true, x: s.p.x, y: s.p.y, face: s.p.face, phase: s.p.phase, moving: s.p.moving, color: meP.color, name: '' });
       for (const pl of r.players) {
-        if (pl.id === me.id || sceneKey(pl.loc) !== key || pl.loc === 'limo') continue;
+        if (pl.id === me.id || sceneKey(pl.loc) !== key || ABOARD.includes(pl.loc)) continue;
         const v = s.remotes.get(pl.id);
-        const seated = key === 'f1' && r.bj.seats.some((x) => x.id === pl.id);
+        const [theirTable] = key === 'f1' ? tableOfPlayer(r, pl.id) : [null];
         let x; let y; let face; let moving = false;
-        if (seated) {
-          const sp = seatPos();
-          x = sp.x; y = sp.y; face = Math.atan2(SCENES.f1.table.y - sp.y, SCENES.f1.table.x - sp.x);
+        if (theirTable) {
+          const sp = standAt(TABLE_BY_ID[theirTable]);
+          x = sp.x; y = sp.y; face = SEAT_FACE;
         } else if (v && v.snap.sc === key) {
           const k = Math.min(1, dt * 14);
           v.x += (v.snap.x - v.x) * k; v.y += (v.snap.y - v.y) * k;
@@ -253,7 +263,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       }
 
       // El canvas es chico (un pixel del juego = `ps` pixeles de pantalla) y el CSS lo agranda sin suavizar.
-      const ps = clamp(Math.round(wrap.clientHeight / (key === 'elevator' ? 170 : 260)), 2, 8);
+      const ps = clamp(Math.round(wrap.clientHeight / (key === 'elevator' ? 170 : key === 'f1' ? 330 : 260)), 2, 8);
       const cw = Math.ceil(wrap.clientWidth / ps);
       const ch = Math.ceil(wrap.clientHeight / ps);
       if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; canvas.style.width = `${cw * ps}px`; canvas.style.height = `${ch * ps}px`; }
@@ -263,7 +273,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       const vh = ch * Q;
       let tx; let ty = 0;
       if (sc.kind === 'side') {
-        tx = clamp((loc === 'limo' ? SCENES.wait.limo.x + 120 : s.p.x) - vw / 2, 0, Math.max(0, sc.w - vw));
+        tx = clamp((loc === 'limo' ? SCENES.wait.limo.x + 120 : loc === 'back' ? SCENES.outside.limo.x + 200 : s.p.x) - vw / 2, 0, Math.max(0, sc.w - vw));
       } else if (key === 'elevator') {
         tx = 150; ty = 130;
       } else {
@@ -276,18 +286,19 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
 
       // El viaje en limusina (se cierra la puerta y arranca) y el del ascensor (tiembla, cambia el número).
       const p = trip ? clamp((now - trip.at) / trip.ms, 0, 1) : 0;
-      const limoGo = trip?.kind === 'limo' ? clamp((p - 0.22) / 0.78, 0, 1) : 0;
-      const limoDoor = trip?.kind === 'limo' ? 1 - clamp(p / 0.2, 0, 1) : 1;
-      const moving = trip && (trip.kind === 'elev' || trip.kind === 'home');
+      const limoTrip = trip?.kind === 'limo' || trip?.kind === 'home';
+      const limoGo = limoTrip ? clamp((p - 0.22) / 0.78, 0, 1) : 0;
+      const limoDoor = limoTrip ? 1 - clamp(p / 0.2, 0, 1) : 1;
+      const moving = trip?.kind === 'elev';
       const labelOf = (f) => (f === 0 ? 'L' : String(f));
-      const floorLabel = moving ? (p < 0.5 ? labelOf(r.elev.floor) : labelOf(trip.to === 'wait' ? 0 : trip.to)) : labelOf(r.elev.floor);
-      const doorOpen = moving || r.day.over ? 0 : 1;
-      const fadeOut = trip?.kind === 'limo' || trip?.kind === 'home' ? clamp((p - 0.72) / 0.28, 0, 1) : 0;
+      const floorLabel = moving ? (p < 0.5 ? labelOf(r.elev.floor) : labelOf(trip.to)) : labelOf(r.elev.floor);
+      const doorOpen = moving || (r.day.over && r.elev.floor > 0) ? 0 : 1;
+      const fadeOut = limoTrip ? clamp((p - 0.72) / 0.28, 0, 1) : 0;
       if (fadeRef.current) fadeRef.current.style.opacity = String(Math.max(s.fade, fadeOut));
 
       const slots = Object.fromEntries(r.players.map((pl, i) => [pl.id, i]));
       drawScene(ctx, view, key, {
-        time: s.time, players, bj: r.bj, slots, heads, limoGo, limoDoor, floorLabel, doorOpen, near: Boolean(s.near),
+        time: s.time, now, players, tables: r.tb, slots, heads, limoGo, limoDoor, floorLabel, doorOpen, near: Boolean(s.near),
         shake: moving ? (Math.sin(s.time * 60) > 0 ? 1 : -1) : 0,
       });
     }
@@ -319,11 +330,14 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
   const loc = me.loc;
   const trip = room.trip;
   const left = dayLeftMs(room, now);
-  const aboard = room.players.filter((p) => p.loc === 'limo').length;
+  const boardLoc = loc === 'back' ? 'back' : 'limo';
+  const aboard = room.players.filter((p) => p.loc === boardLoc).length;
   const inElev = room.players.filter((p) => p.loc === 'elevator').length;
   const showDay = room.day.endsAt && loc !== 'wait' && loc !== 'limo';
   const dayPassed = room.day.last && !room.day.last.lost && room.day.n > seenDay && loc === 'wait' && !trip;
   const tripText = trip?.kind === 'limo' ? 'Rumbo al casino' : trip?.kind === 'home' ? 'Volviendo a casa' : trip ? (trip.to === 0 ? 'Bajando al lobby' : `Subiendo al piso ${trip.to}`) : '';
+  const [, myT] = tableOfPlayer(room, me.id);
+  const Panel = modal?.startsWith('t:') && myT ? PANELS[myT.kind] : null;
   const quota = room.day.quota;
   const done = room.money >= quota;
   const pct = Math.max(0, Math.min(100, (room.money / quota) * 100));
@@ -366,7 +380,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       </div>
 
       {goal && <p className="tbg-goal" data-goal>{goal}</p>}
-      {loc === 'limo' && !trip && (
+      {ABOARD.includes(loc) && !trip && (
         <div className="tbg-wait tbg-panel">
           EN LA LIMUSINA
           <small>Esperando a los demás ({aboard}/{room.players.length}) · E para bajar</small>
@@ -374,7 +388,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
         </div>
       )}
       {near && !modal && <p className="tbg-prompt tbg-panel" data-near><kbd>E</kbd> {near.label}</p>}
-      {!modal && loc !== 'limo' && !trip && (
+      {!modal && !ABOARD.includes(loc) && !trip && (
         <div className="tbg-keys tbg-panel">
           <div>{topScene ? <><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></> : <><kbd>A</kbd><kbd>D</kbd></>}<span>moverse</span></div>
           <div><kbd>E</kbd><span>tocar / usar</span></div>
@@ -383,7 +397,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       {toast && <p className="tbg-toast" role="status">{toast}</p>}
       {tripText && <p className="tbg-trip tbg-panel">{tripText}</p>}
 
-      {modal === 'bj' && <BjPanel room={room} me={me} now={now} toast={flash} onClose={closeModal} onAct={act} />}
+      {Panel && <Panel room={room} me={me} table={myT} now={now} clock={serverNow} toast={flash} onClose={closeModal} onAct={act} />}
       {modal === 'elev' && <ElevatorPanel room={room} inElev={inElev} onPick={async (to) => { if (await act({ type: 'floor', to })) setModal(null); else flash('Tienen que estar todos en el ascensor.'); }} onClose={() => setModal(null)} />}
       {modal === 'van' && (
         <div className="tbg-modal tbg-small" role="dialog" aria-label="Camioneta">
@@ -408,13 +422,14 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
 // Qué conviene hacer ahora, según dónde estás (la línea amarilla de arriba).
 function goalText(room, loc, aboard, inElev, done) {
   if (loc === 'wait') return aboard ? `Subí a la limusina con los demás (${aboard}/${room.players.length} a bordo)` : 'Caminá a la derecha hasta la limusina y tocá E para subir';
-  if (loc === 'outside') return 'Entrá al casino por la puerta de la derecha';
+  if (loc === 'outside') return room.day.endsAt ? 'Entrá al casino por la puerta de la derecha, o volvé a casa en la limusina de la izquierda' : 'Entrá al casino por la puerta de la derecha';
   if (loc === 'elevator') {
-    if (room.day.over) return 'Se acabó el día: usá el panel y bajá al lobby';
+    if (room.day.over) return room.elev.floor === 0 ? 'Se acabó el día: salí por la puerta y subí a la limusina' : 'Se acabó el día: usá el panel y bajá al lobby';
     if (inElev < room.players.length) return `Esperá a que suban todos al ascensor (${inElev}/${room.players.length})`;
-    return room.elev.floor === 0 ? 'Usá el panel (E) y subí al piso 1: ahí arranca el reloj del día' : 'Salí del ascensor por la puerta de abajo';
+    if (room.elev.floor === 0) return room.day.endsAt ? 'Usá el panel (E) y subí al piso 1' : 'Usá el panel (E) y subí al piso 1: ahí arranca el reloj del día';
+    return 'Salí del ascensor por la puerta de abajo';
   }
-  if (loc === 'f1') return done ? '¡Ya tienen la cuota! Sigan sumando hasta que termine el día' : 'Jugá al blackjack: acercate a la mesa y tocá E';
+  if (loc === 'f1') return done ? '¡Ya tienen la cuota! Sigan sumando o bajen y vuelvan a casa en la limusina' : 'Acercate a una mesa o máquina y tocá E para jugar';
   return '';
 }
 
