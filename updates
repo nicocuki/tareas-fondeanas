@@ -880,7 +880,13 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.40.0 = La Timba: Crash y Cruce del pingüino, y apuestas que crecen con los días
+1.40.0 = La Timba: Crash y Cruce del pingüino, y apuestas que crecen con los días
 - Del casino 2 en adelante hay dos juegos nuevos: Crash (el cohete sube 0,01x por paso y en cualquier momento puede chocar: retirá antes o perdés) y el Cruce del pingüino (9 cubos de hielo, cada salto tiene 1/2 de caer y multiplica por 1,5).
 - Las apuestas mínimas y máximas de todos los juegos crecen cada día: el día 12 son de miles y hasta cientos de miles. La plata ahora se muestra también con M y B.
 - Los casinos 2, 3 y 4 son salas más grandes.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.41.0 = La Timba: Keno, Plinko, Rueda del dinero y Baccarat
+- Cuatro juegos más del casino 2 en adelante: Keno (elegís hasta 10 números de 40 y salen 10), Plinko (la bolita baja por los clavos y cae en un casillero que paga), la Rueda del dinero (apostás a un número, al comodín o al logo) y Baccarat (jugador, banco o empate).
+- Cada piso del casino 2 en adelante tiene mesas de todos los juegos, con un reparto distinto.

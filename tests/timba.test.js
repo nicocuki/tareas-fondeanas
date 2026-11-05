@@ -629,7 +629,7 @@ test('timba: desde arriba se choca con las paredes y con las mesas, y el ascenso
   assert.ok(!canStand('f1', 910, 695), 'adentro de una mesa no se puede');
   assert.ok(!canStand('f1', 10, 10));
   for (const scene of floors) {
-    const p = { x: 120, y: 500 };
+    const p = { x: 120, y: SCENES[scene].spawn.y };
     for (let i = 0; i < 300; i++) stepTop(p, -1, 0, 0.016, scene);
     assert.ok(p.x < 52 && p.x > 20, `${scene}: se puede llegar a la puerta del ascensor`);
     assert.equal(doorFor(scene, p, floorOfLoc(scene)), 'elevator');

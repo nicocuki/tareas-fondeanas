@@ -754,7 +754,79 @@ function drawPenguin(ctx, blk, tb, st) {
   led(ctx, x + w - 12, y + 6, tb);
 }
 
-const TABLE_DRAWERS = { bj: drawBjTable, slots: drawSlots, wheel: drawWheelWall, roulette: drawRoulette, craps: drawCraps, duck: drawDuckRace, crash: drawCrash, penguin: drawPenguin };
+// Keno: la pantalla con los 40 números (se prenden algunos al azar, más rápido mientras alguien juega).
+function drawKeno(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  const t = st.time;
+  const on = Boolean(tb && !tb.paid);
+  ctx.globalAlpha = 0.3; R(ctx, x + 4, y + 8, w, h, '#000'); ctx.globalAlpha = 1;
+  box(ctx, x, y, w, h, '#0e1a3a', '#e8c25e');
+  txt(ctx, 'KENO', x + w / 2, y + 11, 2, '#ffe27a', '#14101c');
+  for (let k = 0; k < 40; k++) {
+    const cx = x + 12 + (k % 8) * 17; const cy = y + 22 + Math.floor(k / 8) * 14;
+    const lit = (k * 13 + Math.floor(t * (on ? 6 : 0.8)) * 7) % 9 === 0;
+    R(ctx, cx, cy, 13, 10, lit ? (on ? '#ff8aa0' : '#ffe27a') : '#26366a');
+  }
+  led(ctx, x + w - 12, y + 6, tb);
+}
+
+// Plinko: el tablero con los clavos, los casilleros de abajo y una bolita que baja mientras alguien juega.
+function drawPlinko(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  const t = st.time;
+  const on = Boolean(tb && !tb.paid);
+  ctx.globalAlpha = 0.3; R(ctx, x + 4, y + 8, w, h, '#000'); ctx.globalAlpha = 1;
+  box(ctx, x, y, w, h, '#1a1238', '#7a5ac8');
+  txt(ctx, 'PLINKO', x + w / 2, y + 10, 1, '#ffe27a');
+  for (let r = 0; r < 7; r++) for (let k = 0; k <= r; k++) R(ctx, x + w / 2 + (k - r / 2) * 16 - 1, y + 24 + r * 14, 3, 3, '#f4e6b0');
+  for (let b = 0; b < 9; b++) R(ctx, x + 6 + b * 14, y + h - 22, 12, 14, Math.abs(b - 4) >= 3 ? '#e0525a' : Math.abs(b - 4) === 2 ? '#f08a3c' : Math.abs(b - 4) === 1 ? '#f0c33c' : '#4a6be8');
+  const u = on ? (t * 0.9) % 1 : 0.1;
+  disc(ctx, x + w / 2 + Math.sin(u * 9) * 18 * u, y + 20 + u * (h - 50), 3, '#fff');
+  led(ctx, x + w - 12, y + 6, tb);
+}
+
+// La rueda del dinero, colgada de la pared (dorada, con casilleros de colores).
+const MWHEEL_COLORS = ['#4a6be8', '#f0c33c', '#e0525a', '#4ee06a', '#b46bf0', '#f08a3c', '#14101c'];
+function drawMoneyWheel(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  const cx = x + w / 2; const cy = y + h / 2;
+  box(ctx, x, y, w, h, '#2a1810');
+  const spinning = tb && !tb.paid;
+  const rot = st.time * (spinning ? 6 : 0.3);
+  const r = 26;
+  disc(ctx, cx, cy, r + 3, INK); disc(ctx, cx, cy, r + 1, '#ffe27a');
+  for (let k = 0; k < 42; k++) {
+    const a = (k / 42) * Math.PI * 2 + rot;
+    line(ctx, cx, cy, cx + Math.cos(a) * r, cy + Math.sin(a) * r, Q * 2, MWHEEL_COLORS[(k * 3) % MWHEEL_COLORS.length]);
+  }
+  disc(ctx, cx, cy, 7, '#2a1810'); disc(ctx, cx, cy, 4, GOLD);
+  tri(ctx, cx, y - 4, 5, 10, INK);
+  led(ctx, x + w - 12, y + 6, tb);
+}
+
+// La mesa de baccarat: paño bordó con tres lugares (jugador, banco y empate) y el croupier arriba.
+function drawBaccarat(ctx, blk, tb, st) {
+  const { x, y, w, h } = blk;
+  ctx.globalAlpha = 0.3; R(ctx, x + 4, y + 8, w, h, '#000'); ctx.globalAlpha = 1;
+  box(ctx, x - 6, y - 6, w + 12, h + 12, '#5a3420', INK);
+  box(ctx, x, y, w, h, '#7a1f2a');
+  R(ctx, x + 6, y + 6, w - 12, 2, GOLD); R(ctx, x + 6, y + h - 8, w - 12, 2, GOLD);
+  txt(ctx, 'BACCARAT', x + w / 2, y + 40, 2, '#f4e6b0', '#3a0c14');
+  for (const [i, label] of ['JUGADOR', 'EMPATE', 'BANCO'].entries()) {
+    const cx = x + 44 + i * ((w - 88) / 2);
+    disc(ctx, cx, y + 86, 22, '#f4e6b0'); disc(ctx, cx, y + 86, 20, '#7a1f2a');
+    txt(ctx, label, cx, y + 86, 1, '#f4e6b0');
+  }
+  const cards = tb && tb.p && !tb.paid;
+  if (cards) { R(ctx, x + 60, y + 52, 10, 14, '#fff'); R(ctx, x + w - 72, y + 52, 10, 14, '#fff'); }
+  drawBlobTop(ctx, x + w / 2, y + 16, '#7a1f2a', Math.PI / 2, 0, 'Croupier', { hat: INK });
+  led(ctx, x + w - 14, y + h - 14, tb);
+}
+
+const TABLE_DRAWERS = {
+  bj: drawBjTable, slots: drawSlots, wheel: drawWheelWall, roulette: drawRoulette, craps: drawCraps, duck: drawDuckRace,
+  crash: drawCrash, penguin: drawPenguin, keno: drawKeno, plinko: drawPlinko, mwheel: drawMoneyWheel, baccarat: drawBaccarat,
+};
 
 // ─── Decoración de cada casino ──────────────────────────────────────────────
 function drawPlant(ctx, b, t) {

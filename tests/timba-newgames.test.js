@@ -288,3 +288,91 @@ test('mesas nuevas: la plata nunca queda negativa ni con decimales jugando cosas
     for (const t of Object.values(room.tb)) assert.ok(Number.isInteger(t.bet) && t.bet >= 0);
   }
 });
+
+// ─── La sala: los juegos de una tirada (Keno, Plinko, Rueda del dinero y Baccarat) ───
+// Juega una tirada con el azar dado y la cobra cuando termina la animación.
+function playSpin(kind, extra, rand) {
+  let room = sitAt(inCasino2(), kind);
+  const money0 = room.money;
+  const bet = betLimits(kind, room.money, 4).min;
+  const t0 = clock + 50;
+  room = act(room, 'a', { type: 'spin', amount: bet, ...extra }, t0, rand);
+  assert.ok(room, `${kind}: la tirada vale`);
+  const tb = Object.values(room.tb)[0];
+  assert.equal(room.money, money0 - bet, 'la apuesta sale de la caja');
+  assert.equal(act(room, 'a', { type: 'settle' }, t0 + tb.ms - 1), null, 'no se cobra antes de que termine');
+  const paid = act(room, 'a', { type: 'settle' }, t0 + tb.ms);
+  assert.equal(paid.money, money0 - bet + tb.pay, 'se cobra el premio');
+  assert.equal(paid.net.a, tb.pay - bet);
+  assert.equal(act(paid, 'a', { type: 'settle' }, t0 + tb.ms + 10), null, 'no se cobra dos veces');
+  return { room, paid, tb, bet, money0 };
+}
+
+test('keno: se eligen números, salen 10 y se paga según los aciertos', () => {
+  const { tb, bet } = playSpin('keno', { picks: [0, 1, 2, 3, 4] }, () => 0); // con azar 0 salen del 0 al 9: acierta los 5
+  assert.deepEqual(tb.draw, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.equal(tb.hits, 5);
+  assert.equal(tb.pay, Math.floor(bet * 455.62));
+  const miss = playSpin('keno', { picks: [30, 31, 32] }, () => 0);
+  assert.equal(miss.tb.hits, 0);
+  assert.equal(miss.tb.pay, 0);
+  const room = sitAt(inCasino2(), 'keno');
+  for (const picks of [[], [1, 1], [40], Array.from({ length: 11 }, (_, i) => i), 'x', undefined]) {
+    assert.equal(act(room, 'a', { type: 'spin', amount: 10, picks }), null, `picks ${JSON.stringify(picks)} no valen`);
+  }
+});
+
+test('plinko: la bolita cae por el camino que sale y paga el casillero', () => {
+  const { tb, bet } = playSpin('plinko', {}, () => 0.1);
+  assert.deepEqual(tb.path, Array(8).fill(0));
+  assert.equal(tb.bin, 0);
+  assert.equal(tb.pay, Math.floor(bet * 9));
+  const mid = playSpin('plinko', {}, fixed(0.1, 0.1, 0.1, 0.1, 0.9, 0.9, 0.9, 0.9));
+  assert.equal(mid.tb.bin, 4);
+  assert.equal(mid.tb.pay, Math.floor(mid.bet * 0.4));
+});
+
+test('rueda del dinero: se apuesta a un casillero y paga solo si sale', () => {
+  const seg = MWHEEL.indexOf('1');
+  const win = playSpin('mwheel', { spot: '1' }, () => (seg + 0.5) / 54);
+  assert.equal(win.tb.seg, seg);
+  assert.equal(win.tb.pay, Math.floor(win.bet * 2.1));
+  const lose = playSpin('mwheel', { spot: '20' }, () => (seg + 0.5) / 54);
+  assert.equal(lose.tb.pay, 0);
+  const room = sitAt(inCasino2(), 'mwheel');
+  assert.equal(act(room, 'a', { type: 'spin', amount: 10, spot: '7' }), null);
+  assert.equal(act(room, 'a', { type: 'spin', amount: 10 }), null);
+});
+
+test('baccarat: jugador, banco o empate, con las cartas que salen', () => {
+  const win = playSpin('baccarat', { side: 'player' }, cards(4, 5, 2, 3)); // jugador 9 contra banco 5
+  assert.equal(win.tb.res, 'player');
+  assert.equal(win.tb.pay, win.bet * 2);
+  const bank = playSpin('baccarat', { side: 'banker' }, cards(4, 5, 2, 3));
+  assert.equal(bank.tb.pay, 0);
+  const tie = playSpin('baccarat', { side: 'player' }, cards(4, 4, 4, 4)); // 8 a 8: empate, se devuelve
+  assert.equal(tie.tb.res, 'tie');
+  assert.equal(tie.tb.pay, tie.bet);
+  const tieBet = playSpin('baccarat', { side: 'tie' }, cards(4, 4, 4, 4));
+  assert.equal(tieBet.tb.pay, tieBet.bet * 9);
+  const room = sitAt(inCasino2(), 'baccarat');
+  assert.equal(act(room, 'a', { type: 'spin', amount: 10, side: 'nadie' }), null);
+});
+
+test('mesas nuevas: levantarse con una tirada sin cobrar la cobra al toque', () => {
+  let room = sitAt(inCasino2(), 'plinko');
+  const money0 = room.money;
+  const bet = betLimits('plinko', room.money, 4).min;
+  room = act(room, 'a', { type: 'spin', amount: bet }, clock + 10, () => 0.1);
+  const left = act(room, 'a', { type: 'stand' }, clock + 20);
+  assert.equal(left.money, money0 - bet + Math.floor(bet * 9));
+  assert.deepEqual(left.tb, {});
+});
+
+test('los juegos nuevos están en los casinos 2 a 4 y no en el casino 1', () => {
+  const kindsOf = (n) => new Set(floorTables(n).map((t) => t.kind));
+  for (let n = 1; n <= 3; n++) for (const kind of ['crash', 'penguin', 'keno', 'plinko', 'mwheel', 'baccarat']) assert.ok(!kindsOf(n).has(kind), `el piso ${n} no tiene ${kind}`);
+  for (let n = 4; n <= 12; n++) {
+    for (const kind of ['bj', 'slots', 'wheel', 'roulette', 'duck', 'craps', 'crash', 'penguin', 'keno', 'plinko', 'mwheel', 'baccarat']) assert.ok(kindsOf(n).has(kind), `el piso ${n} tiene ${kind}`);
+  }
+});

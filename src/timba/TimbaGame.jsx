@@ -10,11 +10,15 @@ import { backgroundInterval, everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { SCENES, SEAT_FACE, TABLE_BY_ID, doorFor, nearby, sceneKey, spawnPoint, standAt, stepSide, stepTop } from './scenes.js';
 import { Q, drawScene } from './render.js';
+import BaccaratPanel from './BaccaratPanel.jsx';
 import BjPanel from './BjPanel.jsx';
 import CrapsPanel from './CrapsPanel.jsx';
 import CrashPanel from './CrashPanel.jsx';
 import DuckPanel from './DuckPanel.jsx';
+import KenoPanel from './KenoPanel.jsx';
+import MoneyWheelPanel from './MoneyWheelPanel.jsx';
 import PenguinPanel from './PenguinPanel.jsx';
+import PlinkoPanel from './PlinkoPanel.jsx';
 import RoulettePanel from './RoulettePanel.jsx';
 import SlotsPanel from './SlotsPanel.jsx';
 import WheelPanel from './WheelPanel.jsx';
@@ -23,7 +27,9 @@ import { casinoById, casinoOfDay, floorOfLoc, floorsOfDay, locOfFloor } from './
 import { TOTAL_DAYS } from './quota.js';
 import { DAY_MS, allAt, dayLeftMs, findPlayer, fmtClock, fmtMoney, tableOfPlayer } from './game.js';
 
-const PANELS = { bj: BjPanel, slots: SlotsPanel, wheel: WheelPanel, roulette: RoulettePanel, duck: DuckPanel, craps: CrapsPanel, crash: CrashPanel, penguin: PenguinPanel };
+const PANELS = { bj: BjPanel, slots: SlotsPanel, wheel: WheelPanel, roulette: RoulettePanel, duck: DuckPanel, craps: CrapsPanel, crash: CrashPanel, penguin: PenguinPanel,
+  keno: KenoPanel, plinko: PlinkoPanel, mwheel: MoneyWheelPanel, baccarat: BaccaratPanel,
+};
 const ABOARD = ['limo', 'back']; // arriba de la limusina (de ida o de vuelta)
 
 const SEND_EVERY = 1 / 15;
