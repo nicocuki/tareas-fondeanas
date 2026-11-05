@@ -258,3 +258,6 @@
 .tbg-die { image-rendering: pixelated; filter: drop-shadow(0 8px 0 rgba(0, 0, 0, 0.35)); }
 .tbg-die.is-rolling { animation: tbg-die-hop 0.3s steps(3) infinite; animation-delay: calc(var(--n) * 0.1s); }
 @keyframes tbg-die-hop { 0% { transform: translateY(0) rotate(0); } 33% { transform: translateY(-34px) rotate(14deg); } 66% { transform: translateY(-12px) rotate(-12deg); } 100% { transform: translateY(0) rotate(0); } }
+
+/* Los números (plata, apuestas, relojes, teclado, ruleta y rueda) van en una fuente normal: en la de pixeles el 5 se confunde con la S. */
+.tbg-cash-amount, .tbg-delta, .tbg-day-time, .tbg-quota span, .tbg-net b, .tbg-tickets b, .tbg-amount, .tbg-limits, .tbg-maxbet, .tbg-bank, .tbg-key, .tbg-chip, .tbg-total, .tbg-spot, .tbg-wheel-text, .tbg-rtext, .tbg-rcenter, .tbg-stamp span, .tbg-result, .tbg-pickline, .tbg-rule, .tbg-legend, .tbg-day-n { font-family: Inter, system-ui, 'Segoe UI', sans-serif; font-weight: 800; font-variant-numeric: lining-nums; }

@@ -849,5 +849,10 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.38.1 = La Timba: dados de pixel art en el craps
+1.38.1 = La Timba: dados de pixel art en el craps
 - Los dados del craps ahora son de pixel art con una animación simple (saltan y cambian de cara), en lugar del 3D, para que ande bien en compus lentas. Las reglas son las mismas.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.38.1.5 = Fix: números más legibles en La Timba
+- La plata, las apuestas, el teclado, los relojes, la ruleta y la rueda usan una fuente normal en lugar de la de pixeles, para que los números se entiendan (el 5 se confundía con la S).
