@@ -194,7 +194,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/pixel/` | Pixel Royale: mapa y tormenta (`map.js`), armas, botín y balas (`sim.js`), reducer (`game.js`), dibujo pixelado (`render.js`), la partida en vivo (`PixelGame.jsx`) (ver *Pixel Royale*) |
 | `src/timba/` | La Timba (Gamble With Your Friends en 2D): blackjack y mazo (`bj.js`), reducer de la sala (`game.js`), lugares, movimiento y qué se toca (`scenes.js`), dibujo (`render.js`), la partida en vivo (`TimbaGame.jsx`), la ventana del blackjack (`BjPanel.jsx`) y los estilos del HUD (`tbgame.css`) (ver *La Timba*) |
 | `src/cohetes/` | Cohete Royale (Rocket Bot Royale): mapa (`terrain.js`), tanque pegajoso, nave y armas (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`CohetesGame.jsx`) (ver *Cohete Royale*) |
-| `src/generala/` | Generala: la física de los dados (`dice.js`, con Rapier), reducer (`game.js`), la mesa en 3D (`table.js`, con Three.js), sonido (`sound.js`), la partida y la planilla (`GeneralaGame.jsx`) (ver *Generala*) |
+| `src/generala/` | Generala: la física de los dados (`dice.js`, con Rapier), el Web Worker que la corre (`simWorker.js`), reducer (`game.js`), la mesa en 3D (`table.js`, con Three.js), sonido (`sound.js`), la partida y la planilla (`GeneralaGame.jsx`) (ver *Generala*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
@@ -1006,8 +1006,16 @@ raíz `generala/` en `ROOTS`, efímera, solo para la mano del que tira).
   lo que se ve** (`reconcile`): cada dado va al cubilete, al paño (donde cayó) o al estante (si está guardado); si la sala trae una tirada que
   todavía no mostró (`rollN` mayor que `shown`), la reproduce desde el gesto. El que tira ve su tirada al soltar, sin esperar a la sala
   (`local`). Usa `everyFrame` y un reloj propio (`this.time`): con la pestaña de fondo la tirada avanza igual, sin dibujar.
-- **`table.js` (Three.js + Rapier, ~1,8 MB comprimidos) se carga con `import()` recién al entrar a una partida**: no lo importes desde
+- **`table.js` (con Three.js, ~145 KB comprimidos) se carga con `import()` recién al entrar a una partida**: no lo importes desde
   `game.js`, `GeneralaApp.jsx` ni nada que cargue la portada. `dice.js` sí se puede importar de cualquier lado (no importa nada).
+- **La física corre en un Web Worker** (`simWorker.js`, que es el que carga Rapier, ~1,7 MB comprimidos). Simular una tirada lleva ~45 ms
+  (y la primera, con el motor frío, más de 150): hecha en la página, **la pantalla se quedaba clavada justo al volcar el cubilete** (Feli:
+  «se ve muy trabado»). El dibujo nunca fue el problema (menos de 1 ms por cuadro en una placa común). Por eso `Physics.simulate` devuelve
+  una promesa: el cubilete se vuelca ya y los dados salen cuando llega la trayectoria (antes de que termine de inclinarse); mientras tanto
+  `waiting` cuenta como `busy()`. El Worker hace una tirada de práctica al arrancar. Si el Worker no se puede crear, la calcula la página.
+  **No vuelvas a llamar a `simulate` de `dice.js` desde la página.**
+- **Se aliviana sola** (`pace`): si mientras algo se mueve hay 40 cuadros de más de 28 ms, baja una vez la resolución (`pixelRatio` 1) y las
+  sombras (1024). No vuelve a subir. Los dados adentro del cubilete se mueven de a poco hacia su lugar nuevo (`jitterTo`), no de golpe.
 - **El gesto**: mantener apretado (mouse o dedo sobre la mesa, el botón, o Espacio) levanta el cubilete con los dados adentro y lo sacude;
   al soltar se vuelca. Dónde estaba, para dónde se movía y cuánto se sacudió arman el `throw`. Mientras tanto la posición va por
   `generala/{sala}/mano` (`{ n, r, x, z }`, efímero): los demás ven el cubilete en la mano del que tira.
@@ -1017,7 +1025,7 @@ raíz `generala/` en `ROOTS`, efímera, solo para la mano del que tira).
   Web Audio. **Apagado por defecto** (`tf:generala:sonido`), como en el Monopoly.
 - **Cuidado al probar en local**: `vite build` vacía `dist/` y `wrangler dev` deja de servir la página (404). Reiniciá wrangler, o compilá con
   `npx vite build --emptyOutDir=false`.
-- `window.__generala` (la mesa: `debug()`, y `slow = 30` para verla en cámara lenta) y `data-generala-canvas`, `data-stage`, `data-rolls`,
+- `window.__generala` (la mesa: `debug()`, con `light` si ya se alivianó, y `slow = 30` para verla en cámara lenta) y `data-generala-canvas`, `data-stage`, `data-rolls`,
   `data-die` (con `data-value` y `data-held`), `data-act`, `data-cat` (con `data-points`), `data-cell`, `data-total`, `data-kick`,
   `data-sheet`, `data-final` existen para manejar el juego desde un navegador automatizado. No los saques.
 - **Todavía no tiene**: reloj de turno, bots, ni entrar a mitad de partida.

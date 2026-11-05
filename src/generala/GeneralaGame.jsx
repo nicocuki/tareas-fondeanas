@@ -274,7 +274,7 @@ export default function GeneralaGame({ room, me, code, onDispatch }) {
               onPointerDown={buttonDown} onPointerUp={buttonUp} onPointerCancel={buttonUp} onPointerLeave={buttonUp} onClick={buttonClick}
               onKeyDown={(e) => { if (e.code === 'Space') e.preventDefault(); }}
             >
-              🎲 {turn?.cocked ? 'Tirar de nuevo' : rolls === 0 ? 'Tirar' : `Tirar (${MAX_ROLLS - rolls})`}
+              🎲 {turn?.cocked ? 'Tirar de nuevo' : rolls === 0 ? 'Tirar' : rolls >= MAX_ROLLS ? 'Sin tiradas' : `Tirar (${MAX_ROLLS - rolls})`}
             </button>
           </div>
         </div>

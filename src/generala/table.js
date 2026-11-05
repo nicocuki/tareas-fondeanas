@@ -2,14 +2,14 @@
 // con la trayectoria que calcula la física (`simulate` de dice.js). No decide nada del juego: recibe el turno
 // de la sala (`sync`) y acomoda lo que se ve; cuando el jugador tira, calcula la tirada y avisa (`onThrow`).
 //
-// Este archivo y sus dependencias (Three.js y Rapier, ~1,8 MB comprimidos) se cargan recién al entrar a una
-// partida (`import('./table.js')` en GeneralaGame.jsx): no pesan en la portada ni en los otros juegos.
+// Este archivo y Three.js se cargan recién al entrar a una partida (`import('./table.js')` en
+// GeneralaGame.jsx): no pesan en la portada ni en los otros juegos. La física (Rapier) corre aparte, en un
+// Web Worker (`simWorker.js`): calcular una tirada lleva decenas de milisegundos y en la página la trababa.
 //
 // Los colores son fijos (madera, paño verde, cuero): la mesa se ve igual en los dos temas.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import RAPIER from '@dimforge/rapier3d-deterministic-compat';
 import { everyFrame } from '../ticker.js';
 import {
   CUP, DIE, FACES, HALF, HAND, SHELF, SHELF_Z, TRAY, cleanThrow, mulberry32, shelfSlot, simulate,
@@ -145,8 +145,52 @@ function faceBump(value) {
 const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - ((-2 * k + 2) ** 2) / 2);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+// La física, fuera de la página. `simulate` devuelve una promesa con lo mismo que `simulate` de dice.js.
+// Si el navegador no deja crear el Worker (o se rompe), la calcula la página, como antes.
+class Physics {
+  constructor() {
+    this.jobs = new Map();
+    this.next = 1;
+    this.main = null;
+    try {
+      this.worker = new Worker(new URL('./simWorker.js', import.meta.url), { type: 'module' });
+      this.worker.onmessage = ({ data }) => {
+        const job = this.jobs.get(data.id);
+        if (!job) return;
+        this.jobs.delete(data.id);
+        if (data.error) job.reject(new Error(data.error)); else job.resolve(data.result);
+      };
+      this.worker.onerror = () => {
+        this.worker = null;
+        for (const job of this.jobs.values()) job.reject(new Error('El Worker de la física no arrancó.'));
+        this.jobs.clear();
+      };
+    } catch {
+      this.worker = null;
+    }
+  }
+
+  async onPage(gesture, thrown) {
+    this.main ||= import('@dimforge/rapier3d-deterministic-compat').then(async (m) => { await m.default.init(); return m.default; });
+    return simulate(await this.main, gesture, thrown);
+  }
+
+  simulate(gesture, thrown) {
+    if (!this.worker) return this.onPage(gesture, thrown);
+    return new Promise((resolve, reject) => {
+      const id = this.next++;
+      this.jobs.set(id, { resolve, reject });
+      this.worker.postMessage({ id, gesture, thrown });
+    }).catch(() => this.onPage(gesture, thrown));
+  }
+
+  dispose() {
+    this.worker?.terminate();
+    this.jobs.clear();
+  }
+}
+
 export async function createTable(canvas, handlers) {
-  await RAPIER.init();
   return new Table(canvas, handlers);
 }
 
@@ -161,6 +205,8 @@ class Table {
     this.hand = null;        // el cubilete en la mano: { x, z, t0, remote, samples }
     this.local = null;       // tirada propia que la sala todavía no confirmó: { rollN, until }
     this.timers = [];
+    this.waiting = 0;        // tiradas que la física todavía está calculando
+    this.physics = new Physics();
     this.dirty = true;
     this.pick = null;
     this.slow = 1;           // para capturas: con 20 todo va veinte veces más lento
@@ -206,6 +252,7 @@ class Table {
     lamp.shadow.bias = -0.0006;
     lamp.shadow.normalBias = 0.03;
     lamp.shadow.radius = 5;
+    this.lamp = lamp;
     scene.add(lamp, lamp.target, new THREE.HemisphereLight('#ffe9cf', '#20140c', 0.32));
 
     const { hx, hz, wall, front, thick } = TRAY;
@@ -261,7 +308,7 @@ class Table {
     this.dice = [0, 1, 2, 3, 4].map((i) => {
       const mesh = add(new THREE.Mesh(dieGeo, dieMats));
       mesh.userData.die = i;
-      return { i, mesh, place: 'cup', pose: null, anim: null, jitter: new THREE.Vector3(), spin: new THREE.Quaternion() };
+      return { i, mesh, place: 'cup', pose: null, anim: null, jitter: new THREE.Vector3(), spin: new THREE.Quaternion(), jitterTo: new THREE.Vector3(), spinTo: new THREE.Quaternion() };
     });
     // Aro rojo debajo de un dado montado.
     const ringGeo = new THREE.RingGeometry(1.35, 1.7, 40);
@@ -307,7 +354,7 @@ class Table {
       q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.floor(rnd() * 4) * Math.PI / 2, rnd() * 6.28, Math.floor(rnd() * 4) * Math.PI / 2)),
     }));
     this.ray = new THREE.Raycaster();
-    this.tmp = { p: new THREE.Vector3(), q: new THREE.Quaternion(), v: new THREE.Vector3(), m: new THREE.Matrix4() };
+    this.tmp = { p: new THREE.Vector3(), q: new THREE.Quaternion(), e: new THREE.Euler() };
   }
 
   // La cámara mira de arriba y de adelante, y se aleja lo justo para que entren la bandeja y el cubilete.
@@ -350,7 +397,7 @@ class Table {
   handPose(hand, now) {
     const t = (now - hand.t0) / 1000;
     const shake = Math.min(1, t / 0.15);
-    const p = new THREE.Vector3(hand.cx + Math.sin(t * 47) * 0.6 * shake, 7 + Math.abs(Math.sin(t * 47 + 1)) * 0.7 * shake, hand.cz + 5 + Math.cos(t * 38) * 0.4 * shake);
+    const p = new THREE.Vector3(hand.cx + Math.sin(t * 47) * 0.6 * shake, 7 + 0.35 * (1 - Math.cos(t * 94 + 1)) * shake, hand.cz + 5 + Math.cos(t * 38) * 0.4 * shake);
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.3 + Math.sin(t * 47) * 0.07 * shake, 0, Math.sin(t * 38) * 0.13 * shake));
     return { p, q };
   }
@@ -437,7 +484,7 @@ class Table {
   }
 
   busy() {
-    return Boolean(this.play || this.timers.length);
+    return Boolean(this.play || this.timers.length || this.waiting);
   }
 
   // Lo que manda la sala en cada cambio.
@@ -539,16 +586,31 @@ class Table {
     (window.crypto || window.msCrypto).getRandomValues(seed);
     const gesture = cleanThrow({ s: seed[0], x: h.x * 10, z: h.z * 10, a: (ax / len) * 1000, b: (az / len) * 1000, p: power });
     const thrown = diceToThrow({ turn });
-    const sim = simulate(RAPIER, gesture, thrown);
     const rollN = turn.rollN + 1;
+    const seen = turn.rollN;
     this.hand = null;
     this.local = { rollN, until: now + LOCAL_WAIT_MS };
-    this.startPlay(sim, gesture, rollN, now);
-    Promise.resolve(this.handlers.onThrow?.({ throw: gesture, values: sim.values, poses: sim.poses, seen: turn.rollN })).then((ok) => {
-      // La sala no la tomó (se cortó la conexión): la mesa vuelve a lo que dice la sala.
-      if (ok !== false || this.local?.rollN !== rollN) return;
-      this.local.until = 0;
-      if (!this.busy()) this.reconcile();
+    // El cubilete se vuelca ya; la física calcula la tirada aparte y los dados salen cuando está lista
+    // (llega antes de que el cubilete termine de inclinarse).
+    this.moveCup(this.pourPose(gesture), 110, 'pour', now);
+    this.waiting += 1;
+    this.physics.simulate(gesture, thrown).then((sim) => {
+      this.waiting -= 1;
+      if (this.dead) return;
+      this.startPlay(sim, gesture, rollN, Math.max(this.time, now + POUR_LEAD));
+      Promise.resolve(this.handlers.onThrow?.({ throw: gesture, values: sim.values, poses: sim.poses, seen })).then((ok) => {
+        // La sala no la tomó (se cortó la conexión): la mesa vuelve a lo que dice la sala.
+        if (ok !== false || this.local?.rollN !== rollN) return;
+        this.local.until = 0;
+        if (!this.busy()) this.reconcile();
+      });
+    }, (err) => {
+      console.error(err);
+      this.waiting -= 1;
+      if (this.dead) return;
+      this.local = null;
+      this.moveCup(this.restPose(), 420, 'rest');
+      this.reconcile();
     });
   }
 
@@ -556,22 +618,39 @@ class Table {
   playRemote(turn) {
     const now = this.time;
     const thrown = [...turn.thrown];
-    const sim = simulate(RAPIER, turn.throw, thrown);
+    const gesture = turn.throw;
     const rollN = turn.rollN;
     const expected = thrown.map((i) => turn.dice[i]);
-    if (sim.values.some((v, k) => v !== expected[k])) console.warn('Generala: la tirada no dio igual que en la pantalla del que tiró', sim.values, expected);
+    // La física la va calculando mientras se ve sacudir el cubilete.
+    const ready = this.physics.simulate(gesture, thrown);
+    this.waiting += 1;
     const wait = this.hand ? 0 : SCOOP_MS + SHAKE_MS;
     if (!this.hand) {
-      this.raise({ x: turn.throw.x / 10, z: turn.throw.z / 10 }, true);
+      this.raise({ x: gesture.x / 10, z: gesture.z / 10 }, true);
       this.hand.t0 = now + SCOOP_MS * 0.6;
     }
-    this.after(wait, () => { this.hand = null; this.startPlay(sim, turn.throw, rollN, this.time); });
+    this.after(wait, () => ready.then((sim) => {
+      this.waiting -= 1;
+      if (this.dead) return;
+      if (sim.values.some((v, k) => v !== expected[k])) console.warn('Generala: la tirada no dio igual que en la pantalla del que tiró', sim.values, expected);
+      this.hand = null;
+      this.startPlay(sim, gesture, rollN, this.time + POUR_LEAD);
+    }, (err) => {
+      console.error(err);
+      this.waiting -= 1;
+      if (this.dead) return;
+      this.hand = null;
+      this.moveCup(this.restPose(), 420, 'rest');
+      this.setShown(rollN);
+      this.reconcile();
+    }));
   }
 
-  startPlay(sim, gesture, rollN, now) {
-    this.moveCup(this.pourPose(gesture), 110, 'pour', now);
-    this.play = { sim, rollN, t0: now + POUR_LEAD, next: 0, out: sim.thrown.map(() => false) };
-    this.after(POUR_LEAD + sim.release[sim.release.length - 1] * 1000 + 380, () => this.moveCup(this.restPose(), 520, 'rest'));
+  // `t0`: en qué momento (del reloj de la mesa) sale el primer dado.
+  startPlay(sim, gesture, rollN, t0) {
+    if (this.cup.mode !== 'pour') this.moveCup(this.pourPose(gesture), 110, 'pour');
+    this.play = { sim, rollN, t0, next: 0, out: sim.thrown.map(() => false) };
+    this.after(t0 - this.time + sim.release[sim.release.length - 1] * 1000 + 380, () => this.moveCup(this.restPose(), 520, 'rest'));
   }
 
   endPlay() {
@@ -598,7 +677,9 @@ class Table {
     this.time += (real - this.real) / this.slow;
     this.real = real;
     const now = this.time;
-    let moving = this.dirty;
+    const dt = Math.min(100, now - (this.last ?? now));
+    this.last = now;
+    let moving = this.dirty || this.waiting > 0;
     while (this.timers.length && this.timers[0].at <= now) { this.timers.shift().fn(); moving = true; }
     if (this.timers.length) moving = true;
 
@@ -618,10 +699,13 @@ class Table {
         rattle(h.cx);
         for (const die of this.dice) {
           if (die.place !== 'cup' || die.anim) continue;
-          die.jitter.set((Math.random() - 0.5) * 0.7, Math.random() * 0.9, (Math.random() - 0.5) * 0.7);
-          die.spin.setFromEuler(new THREE.Euler((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2));
+          die.jitterTo.set((Math.random() - 0.5) * 0.7, Math.random() * 0.9, (Math.random() - 0.5) * 0.7);
+          die.spinTo.setFromEuler(this.tmp.e.set((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2));
         }
       }
+      // Los dados de adentro van hacia su lugar nuevo de a poco: saltando de golpe se veía trabado.
+      const follow = 1 - Math.exp(-dt / 28);
+      for (const die of this.dice) { die.jitter.lerp(die.jitterTo, follow); die.spin.slerp(die.spinTo, follow); }
       if (h.remote && !this.busy() && this.remote && now - this.remote.at > 5000) this.lower();
       moving = true;
     } else if (cup.anim) {
@@ -632,7 +716,7 @@ class Table {
       if (k >= 1) cup.anim = null;
       moving = true;
     }
-    if (!this.hand && cup.mode === 'rest' && !cup.anim) for (const die of this.dice) { die.jitter.set(0, 0, 0); die.spin.identity(); }
+    if (!this.hand && cup.mode === 'rest' && !cup.anim) for (const die of this.dice) { die.jitter.set(0, 0, 0); die.spin.identity(); die.jitterTo.set(0, 0, 0); die.spinTo.identity(); }
 
     // La tirada: cada dado sigue la trayectoria que calculó la física.
     const play = this.play;
@@ -680,7 +764,27 @@ class Table {
 
     // Si no se está viendo (pestaña de fondo) no se dibuja, pero queda pendiente para cuando vuelva.
     this.dirty = moving && hidden;
-    if (moving && !hidden) this.renderer.render(this.scene, this.camera);
+    if (moving && !hidden) {
+      this.renderer.render(this.scene, this.camera);
+      this.pace(real);
+    } else this.drawnAt = 0;
+  }
+
+  // Si la compu o el celu no llega a dibujar parejo (menos de ~35 cuadros por segundo sostenidos mientras algo
+  // se mueve), la mesa se aliviana sola una vez: menos resolución y sombras más chicas. No vuelve a subir.
+  pace(real) {
+    if (this.light) return;
+    const gap = this.drawnAt ? real - this.drawnAt : 0;
+    this.drawnAt = real;
+    if (gap <= 0 || gap > 250) return; // el primer cuadro, o una pausa: no cuenta
+    this.slowFrames = gap > 28 ? (this.slowFrames || 0) + 1 : Math.max(0, (this.slowFrames || 0) - 2);
+    if (this.slowFrames < 40) return;
+    this.light = true;
+    this.renderer.setPixelRatio(1);
+    this.lamp.shadow.mapSize.set(1024, 1024);
+    this.lamp.shadow.map?.dispose();
+    this.lamp.shadow.map = null;
+    this.fit();
   }
 
   // ─── Mouse y dedo ──────────────────────────────────────────────────────────
@@ -742,10 +846,12 @@ class Table {
 
   // Para manejar la mesa desde un navegador automatizado (window.__generala).
   debug() {
-    return { shown: this.shown, busy: this.busy(), hand: Boolean(this.hand), places: this.dice.map((d) => d.place), cup: this.cup.mode };
+    return { shown: this.shown, busy: this.busy(), hand: Boolean(this.hand), places: this.dice.map((d) => d.place), cup: this.cup.mode, light: Boolean(this.light) };
   }
 
   dispose() {
+    this.dead = true;
+    this.physics.dispose();
     this.stop();
     this.unlisten();
     this.resizer.disconnect();

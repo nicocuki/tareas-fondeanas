@@ -807,7 +807,7 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.37.0 = Juego nuevo: Generala, con dados de verdad 🎲
+1.37.0 = Juego nuevo: Generala, con dados de verdad 🎲
 - La Generala de siempre, de 1 a 8 jugadores, en cualquier pantalla: hasta tres tiradas por turno, se apartan los dados que se guardan y se anota en la planilla (o se tacha).
 - Los dados son en 3D y se tiran con física real, a escala (dados de 16 mm, bandeja de paño con paredes de madera): mantenés apretado para sacudir el cubilete, lo soltás y salen de a uno, ruedan, rebotan contra las paredes y chocan entre ellos.
 - Nadie decide qué sale ni se «acomoda» nada al final: lo que queda en la mesa es lo que dio la física. Si un dado queda montado (inclinado contra una pared o arriba de otro), esa tirada no vale y se repite sin gastar intento.
@@ -815,3 +815,11 @@ LATEST 1.37.0 = Juego nuevo: Generala, con dados de verdad 🎲
 - Los dados que guardás se apartan en un estante de la bandeja; los demás vuelven al cubilete.
 - Planilla en papel con los puntos que te daría cada casilla; servido (en la primera tirada) vale 5 más. Opciones de la sala: generala servida gana la partida y generala doble.
 - Sonido de los golpes (dado contra dado, contra la madera y contra el paño) y del cubilete: viene apagado y se prende con el botón de la mesa.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.37.0.5 = Fix: la Generala ya no se traba al tirar
+- Al soltar el cubilete la pantalla se quedaba clavada un instante (más la primera tirada): la física de los dados ahora se calcula aparte y la mesa nunca deja de moverse.
+- La mesa carga mucho más rápido al entrar a la partida.
+- Los dados adentro del cubilete se sacuden de corrido, no a los saltos.
+- En compus o celulares lentos la mesa se aliviana sola (menos resolución y sombras más simples).
