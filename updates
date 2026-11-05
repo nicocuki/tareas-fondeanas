@@ -798,9 +798,20 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.36.0 = La Timba: pixel art, animaciones y un HUD más claro 🎰
+1.36.0 = La Timba: pixel art, animaciones y un HUD más claro 🎰
 - Todo el juego se redibujó en pixel art: la casita, la tienda, la limusina, la puerta del casino de noche, el ascensor, el piso del casino con sus tragamonedas, la mesa y los personajes. El HUD y las ventanas usan una fuente de pixeles y bordes gruesos.
 - Animaciones: palmeras que se mecen, ventanas y neón que parpadean, humo y ruedas que giran, tragamonedas con rodillos, puertas del ascensor y una E que se balancea arriba de lo que podés tocar.
 - En el blackjack las cartas salen volando del zapato de a una (jugador, croupier, jugador, croupier), la tapada del croupier se da vuelta, las fichas caen sobre la mesa y el resultado aparece como un sello, con monedas y estrellitas cuando ganás.
 - HUD más claro: la caja muestra una barra de cuánto falta para la cuota, la plata sube y baja contando y suelta un «+$100» que flota, el día tiene reloj y barra, hay una línea amarilla que dice qué hacer ahora y un cartelito con las teclas.
 - La limusina ya no queda lejísimos: la sala de espera y la puerta del casino son mucho más cortas y se camina más rápido.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.37.0 = Juego nuevo: Generala, con dados de verdad 🎲
+- La Generala de siempre, de 1 a 8 jugadores, en cualquier pantalla: hasta tres tiradas por turno, se apartan los dados que se guardan y se anota en la planilla (o se tacha).
+- Los dados son en 3D y se tiran con física real, a escala (dados de 16 mm, bandeja de paño con paredes de madera): mantenés apretado para sacudir el cubilete, lo soltás y salen de a uno, ruedan, rebotan contra las paredes y chocan entre ellos.
+- Nadie decide qué sale ni se «acomoda» nada al final: lo que queda en la mesa es lo que dio la física. Si un dado queda montado (inclinado contra una pared o arriba de otro), esa tirada no vale y se repite sin gastar intento.
+- Todos ven exactamente la misma tirada, y ven al que tiene el turno sacudir el cubilete en vivo.
+- Los dados que guardás se apartan en un estante de la bandeja; los demás vuelven al cubilete.
+- Planilla en papel con los puntos que te daría cada casilla; servido (en la primera tirada) vale 5 más. Opciones de la sala: generala servida gana la partida y generala doble.
+- Sonido de los golpes (dado contra dado, contra la madera y contra el paño) y del cubilete: viene apagado y se prende con el botón de la mesa.

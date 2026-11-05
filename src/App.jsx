@@ -22,8 +22,10 @@ import MonopolyApp from './monopoly/MonopolyApp.jsx';
 import TegApp from './teg/TegApp.jsx';
 import ArenaApp from './arena/ArenaApp.jsx';
 import TimbaApp from './timba/TimbaApp.jsx';
+import GeneralaApp from './generala/GeneralaApp.jsx';
 
 const SCREENS = {
+  generala: GeneralaApp,
   timba: TimbaApp,
   arena: ArenaApp,
   teg: TegApp,

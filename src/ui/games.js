@@ -2,6 +2,30 @@
 // Para sumar un juego nuevo: agregalo acá, en el enrutador de App.jsx y en ROOTS (worker/rules.js).
 export const GAMES = [
   {
+    id: 'generala',
+    title: 'Generala',
+    emoji: '🎲',
+    color: 'var(--game-generala)',
+    onColor: '#ffffff',
+    tagline: 'Cubilete, cinco dados y física de verdad',
+    description: 'La Generala de siempre, con dados en 3D que se tiran de verdad: sacudís el cubilete, lo volcás y los dados ruedan, chocan y quedan como caigan. Nadie decide qué sale: lo decide la física.',
+    players: '1 a 8',
+    min: 1,
+    max: 8,
+    duration: '10–25 min',
+    input: 'Cualquier pantalla',
+    badge: 'Nuevo',
+    howTo: [
+      'En tu turno tenés hasta tres tiradas. Mantené apretado sobre la mesa (o el botón, o Espacio) para sacudir el cubilete y soltá para tirar: según dónde y cómo lo sueltes salen los dados.',
+      'Después de cada tirada tocá los dados que querés guardar: se apartan en el estante de adelante. Los demás vuelven al cubilete para la tirada siguiente.',
+      'Cuando quieras (o después de la tercera) anotá en una casilla libre de tu planilla. Si no tenés nada que te sirva, hay que tachar una: vale cero.',
+      'Los números valen lo que sumen los dados de ese número. Escalera 20, full 30, póker 40, generala 50 y generala doble 100.',
+      'Si el juego sale servido (en la primera tirada) vale 5 más. La generala servida gana la partida ahí mismo.',
+      'Los dados quedan como caen: si uno queda montado (inclinado contra la pared o arriba de otro), esa tirada no vale y se tira de nuevo sin gastar intento.',
+      'Cuando todos llenaron la planilla, gana el que más suma.',
+    ],
+  },
+  {
     id: 'mine',
     title: 'Cubolandia',
     emoji: '⛏️',

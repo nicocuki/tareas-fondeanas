@@ -194,10 +194,11 @@ por una versión anterior siga abriéndose sin romper.
 | `src/pixel/` | Pixel Royale: mapa y tormenta (`map.js`), armas, botín y balas (`sim.js`), reducer (`game.js`), dibujo pixelado (`render.js`), la partida en vivo (`PixelGame.jsx`) (ver *Pixel Royale*) |
 | `src/timba/` | La Timba (Gamble With Your Friends en 2D): blackjack y mazo (`bj.js`), reducer de la sala (`game.js`), lugares, movimiento y qué se toca (`scenes.js`), dibujo (`render.js`), la partida en vivo (`TimbaGame.jsx`), la ventana del blackjack (`BjPanel.jsx`) y los estilos del HUD (`tbgame.css`) (ver *La Timba*) |
 | `src/cohetes/` | Cohete Royale (Rocket Bot Royale): mapa (`terrain.js`), tanque pegajoso, nave y armas (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`CohetesGame.jsx`) (ver *Cohete Royale*) |
+| `src/generala/` | Generala: la física de los dados (`dice.js`, con Rapier), reducer (`game.js`), la mesa en 3D (`table.js`, con Three.js), sonido (`sound.js`), la partida y la planilla (`GeneralaGame.jsx`) (ver *Generala*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
-| `src/storage.js` | Salas (`rooms/`) y canales en tiempo real del fútbol y de A los Tiros sobre el servidor de salas |
+| `src/storage.js` | Salas (`rooms/`) y canales en tiempo real del fútbol, de A los Tiros y de los demás sobre el servidor de salas |
 | `src/realtime.js` | Cliente del servidor de salas, con la misma forma que Firebase Realtime Database |
 | `src/ticker.js` | Relojes que siguen andando con la pestaña de fondo (ver *Pestañas de fondo*) |
 | `worker/index.js` | Worker de Cloudflare: `/api/hora`, `/api/sala/ABCD` (WebSocket) y la página |
@@ -228,7 +229,7 @@ Todo pasa por **variables CSS** en `src/ui/tokens.css`: tema oscuro (pizarrón c
 claro (hoja con birome roja), elegidos en Ajustes y guardados en `tf:preferencias`. `theme.js`
 traduce `COLORS` a esas variables, así los estilos en línea viejos cambian de tema solos.
 **No escribas colores fijos en un componente**: usá `COLORS` o `var(--…)`. Las excepciones son los
-colores de equipo, las casillas de Código Secreto, el tablero de Monopoly (papel y verde, igual en los dos temas), el mapa del T.E.G. (mar, continentes y ejércitos fijos), la cancha del fútbol, la partida de Cohete Royale, la de Entre Nosotros (la nave,
+colores de equipo, las casillas de Código Secreto, el tablero de Monopoly (papel y verde, igual en los dos temas), el mapa del T.E.G. (mar, continentes y ejércitos fijos), la cancha del fútbol, la partida de Cohete Royale, la mesa de la Generala (madera, paño y cuero), la de Entre Nosotros (la nave,
 el HUD y la reunión, oscuros como el original) y Trazo Loco (copia el look
 de Gartic Phone, con sus variables `--gp-*` en `src/gartic/gartic.css`), que son iguales en los dos temas.
 
@@ -972,6 +973,54 @@ Réplica en 2D de Gamble With Your Friends, pedido de Nico (con el prompt y capt
 - **Las distancias son cortas a propósito** (pedido de Nico: la limusina estaba muy lejos): la sala de espera mide 1.500 y la puerta del casino, 1.400 (`SCENES` en `scenes.js`); la velocidad de costado es 190.
 - `window.__timba` (posición propia, `input`, `near`, lugar) y `data-bj`, `data-act`, `data-key`, `data-quick`, `data-amount`, `data-floor`, `data-elevator` existen para manejar el juego desde un navegador automatizado. Para probarlo con dos jugadores hace falta una pestaña por jugador; las pestañas en segundo plano igual mandan fotos (usa `everyFrame`).
 - Es una imitación entre amigos: si llegara un pedido de bajarlo, se saca la entrada de `games.js`.
+
+## Generala
+
+Pedido de Feli: la Generala, con todo el esfuerzo puesto en tirar los dados: «hiperrealista, con físicas reales, que quede lo que se tiró
+sin que se corrija si queda en el intermedio». De 1 a 8, cualquier pantalla. `id`: `generala` (`?juego=generala`, `gameType: 'generala'`,
+raíz `generala/` en `ROOTS`, efímera, solo para la mano del que tira).
+
+- **Nadie decide qué sale: lo decide la física** (`dice.js`). Una tirada es una función pura `simulate(RAPIER, throw, thrown)`: con el mismo
+  gesto (`throw = { s semilla, x, z dónde estaba el cubilete en mm, a, b dirección, p fuerza }`, todo en enteros) y los mismos dados da la
+  misma trayectoria, bit a bit. El motor es **Rapier determinista** (`@dimforge/rapier3d-deterministic-compat`, WebAssembly) y **en `dice.js`
+  no hay `Math.random`, `Date.now` ni trigonometría** (como `arena/sim.js`): solo sumas, productos, divisiones y raíces. Por la red viaja el
+  gesto, no la trayectoria: cada pantalla repite la misma simulación y ve lo mismo (hay un test, y se probó con dos pantallas).
+- **A escala real**: centímetros, gramos y segundos; dados de 1,6 cm, gravedad 981, paso de 1/600 s, `world.lengthUnit = 100` (sin eso Rapier
+  cree que el dado mide 1,6 m y lo hunde en el paño). A esa escala todo es rápido de verdad: una tirada dura ~0,5 s más 0,3 s quieta. **No la
+  «alargues» bajando la gravedad o agrandando los dados**: deja de parecer real. Los materiales (`ACRYLIC`, `FELT`, `WOOD`) y el gesto
+  (`throwSetup`) se calibraron simulando miles de tiradas: caras parejas, ~2 % de tiradas con dado montado, ~2 % que tocan el vidrio.
+- **Los dados salen del cubilete de a uno** (`POUR_GAP`, 50 ms), desde adentro de la bandeja. Arriba de las paredes hay un **vidrio invisible**
+  por si un dado quisiera irse (con tiradas normales casi no se toca). La pared de adelante (`TRAY.front`) es más baja para no tapar los dados.
+- **Nada se corrige al final**: los dados quedan donde los dejó la simulación (`poses`, que van a la sala para el que entra o recarga).
+  `readDie` lee qué cara quedó arriba; si el dado no quedó de plano sobre el paño (inclinado contra una pared o **arriba de otro**) vale 0:
+  está **montado**. Con un dado montado la tirada no vale (`turn.cocked`): no gasta intento y se tiran de nuevo los mismos dados (`turn.thrown`).
+- **El reducer no tira dados** (`game.js`, mismo patrón que los demás, todo en `rooms/{código}`): la acción `roll` trae `throw`, `values` y
+  `poses`, calculados en la pantalla del que tira. Se confía en esa pantalla, como con `died` o `finish` en otros juegos: entre amigos alcanza.
+  `seen` (= `turn.rollN`, que no vuelve a 0 en toda la partida) evita la doble tirada; `hold` aparta o devuelve un dado; `score` anota
+  (`turn` = `turn.n`). `rollProblem`, `holdProblem` y `scoreProblem` son las mismas funciones para el reducer y los botones.
+- **Reglas**: 3 tiradas, 11 casillas (10 sin la doble). Escalera 20 (1-2-3-4-5, 2-3-4-5-6 y 3-4-5-6-1), full 30, póker 40 (cinco iguales
+  también), generala 50, doble 100 (solo con la generala ya anotada con puntos). Servido (primera tirada) da 5 más en escalera, full y póker.
+  Opciones: `servida` (la generala servida gana la partida) y `doble`. El que se va queda en la planilla con `left` y se saltea; nadie entra
+  con la partida empezada; el anfitrión puede sacar a un ausente desde la planilla (`data-kick`).
+- **La mesa** (`table.js`): Three.js, todo hecho con código (texturas con canvas, sin imágenes). Recibe el turno con `sync` y **acomoda sola
+  lo que se ve** (`reconcile`): cada dado va al cubilete, al paño (donde cayó) o al estante (si está guardado); si la sala trae una tirada que
+  todavía no mostró (`rollN` mayor que `shown`), la reproduce desde el gesto. El que tira ve su tirada al soltar, sin esperar a la sala
+  (`local`). Usa `everyFrame` y un reloj propio (`this.time`): con la pestaña de fondo la tirada avanza igual, sin dibujar.
+- **`table.js` (Three.js + Rapier, ~1,8 MB comprimidos) se carga con `import()` recién al entrar a una partida**: no lo importes desde
+  `game.js`, `GeneralaApp.jsx` ni nada que cargue la portada. `dice.js` sí se puede importar de cualquier lado (no importa nada).
+- **El gesto**: mantener apretado (mouse o dedo sobre la mesa, el botón, o Espacio) levanta el cubilete con los dados adentro y lo sacude;
+  al soltar se vuelca. Dónde estaba, para dónde se movía y cuánto se sacudió arman el `throw`. Mientras tanto la posición va por
+  `generala/{sala}/mano` (`{ n, r, x, z }`, efímero): los demás ven el cubilete en la mano del que tira.
+- **La planilla espera a los dados** (`GeneralaGame.jsx`): mientras la mesa muestra una tirada (`room.turn.rollN !== shown`), la planilla y
+  los botones siguen con la sala de antes (como `useStagedRoom` del Monopoly), así nadie ve el resultado antes de que los dados se queden quietos.
+- **Sonido** (`sound.js`): cada golpe que anota la física (`events`: contra el paño, la madera u otro dado, con su fuerza) se sintetiza con
+  Web Audio. **Apagado por defecto** (`tf:generala:sonido`), como en el Monopoly.
+- **Cuidado al probar en local**: `vite build` vacía `dist/` y `wrangler dev` deja de servir la página (404). Reiniciá wrangler, o compilá con
+  `npx vite build --emptyOutDir=false`.
+- `window.__generala` (la mesa: `debug()`, y `slow = 30` para verla en cámara lenta) y `data-generala-canvas`, `data-stage`, `data-rolls`,
+  `data-die` (con `data-value` y `data-held`), `data-act`, `data-cat` (con `data-points`), `data-cell`, `data-total`, `data-kick`,
+  `data-sheet`, `data-final` existen para manejar el juego desde un navegador automatizado. No los saques.
+- **Todavía no tiene**: reloj de turno, bots, ni entrar a mitad de partida.
 
 ## Mario vs Luigi
 

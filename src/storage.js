@@ -154,11 +154,21 @@ const mineChannel = (code) => peerChannel('mine', code);
 // La Timba, igual: jugadores directo entre navegadores y respaldo en timba/{sala}/p/{id}.
 const timbaChannel = (code) => peerChannel('timba', code);
 
+// Generala: dónde tiene el cubilete el que está por tirar, para que los demás lo vean sacudirlo. No se guarda.
+//   generala/{sala}/mano   { n: turno, r: tirada, x, z }
+function generalaChannel(code) {
+  const at = ref(`generala/${code}/mano`);
+  return {
+    publishHand: (hand) => set(at, hand),
+    subscribeHand: (cb) => onValue(at, (snap) => cb(snap.val())),
+  };
+}
+
 // Diferencia entre este reloj y el del servidor: con eso todas las pantallas comparten la misma hora.
 function subscribeServerOffset(onOffset) {
   return onValue(ref('.info/serverTimeOffset'), (snap) => onOffset(Number(snap.val()) || 0));
 }
 
 export const backend = {
-  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, subscribeServerOffset,
+  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, generalaChannel, subscribeServerOffset,
 };
