@@ -19,6 +19,7 @@ import { RESHUFFLE_UNDER, dealerPlay, freshDeck, handValue, isNatural, payoutFor
 import {
   DUCK_PAY, SPIN_KINDS, WHEEL, betLimits, crapsStep, isSpot, raceDucks, roulettePays, slotsEval, spinRoulette, spinSlots, spinWheel, validDice,
 } from './games.js';
+import { TOTAL_DAYS, quotaFor } from './quota.js';
 import { TABLE_BY_ID } from './scenes.js';
 
 export const GAME_TYPE = 'timba';
@@ -27,8 +28,7 @@ export const MIN_PLAYERS = 1;
 
 export const START_MONEY = 1000;
 export const START_TICKETS = 15;
-export const START_QUOTA = 1200;
-export const DEMO_DAYS = 3;        // la demo llega hasta el día 3
+export const START_QUOTA = quotaFor(1, START_MONEY); // $1.200 (ver quota.js)
 export const DAY_MS = 5 * 60 * 1000; // lo que dura cada día en el casino
 export const LIMO_MS = 5200;         // la limusina cierra la puerta y se va
 export const ELEV_MS = 2600;         // el ascensor sube o baja
@@ -44,7 +44,6 @@ export const COLORS = ['#e0525a', '#4a9be8', '#5ec46b', '#f0c33c', '#b46bf0', '#
 export const cleanName = (name) => String(name || '').trim().slice(0, 16);
 export const makeId = () => Math.random().toString(36).slice(2, 10);
 export const findPlayer = (room, id) => room?.players.find((p) => p.id === id) || null;
-export const nextQuota = (q) => Math.round((q * 1.5) / 50) * 50;
 export const locOfFloor = (n) => (n === 0 ? 'outside' : `f${n}`);
 export const floorOfLoc = (loc) => (/^f(\d+)$/.exec(loc) ? Number(/^f(\d+)$/.exec(loc)[1]) : null);
 
@@ -277,13 +276,14 @@ export function applyAction(room, action, ctx = {}) {
         } else if (t.kind === 'elev') {
           next.elev.floor = t.to;
         } else {
-          // De vuelta en casa: si juntaron la cuota, sigue otro día con una cuota más alta; si no, se terminó (game over).
+          // De vuelta en casa: si juntaron la cuota, sigue otro día (la cuota nueva sale de la plata que hay ahora en la
+          // caja); si era el último día, ganaron; si no la juntaron, se terminó (game over).
           const { money, day } = next;
-          if (money >= day.quota && day.n >= DEMO_DAYS) {
-            next.day.last = { n: day.n, money, quota: day.quota, demo: true };
+          if (money >= day.quota && day.n >= TOTAL_DAYS) {
+            next.day.last = { n: day.n, money, quota: day.quota, won: true };
             next.phase = 'ended';
           } else if (money >= day.quota) {
-            const quota = nextQuota(day.quota);
+            const quota = quotaFor(day.n + 1, money);
             next.day = { n: day.n + 1, quota, endsAt: 0, over: false, last: { n: day.n, money, quota: day.quota, next: quota } };
             next.elev.floor = 0;
             for (const p of next.players) p.loc = 'wait';

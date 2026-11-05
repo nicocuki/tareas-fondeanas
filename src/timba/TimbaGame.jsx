@@ -17,7 +17,8 @@ import RoulettePanel from './RoulettePanel.jsx';
 import SlotsPanel from './SlotsPanel.jsx';
 import WheelPanel from './WheelPanel.jsx';
 import './tbgame.css';
-import { DAY_MS, DEMO_DAYS, allAt, dayLeftMs, findPlayer, fmtClock, fmtMoney, locOfFloor, tableOfPlayer } from './game.js';
+import { TOTAL_DAYS } from './quota.js';
+import { DAY_MS, allAt, dayLeftMs, findPlayer, fmtClock, fmtMoney, locOfFloor, tableOfPlayer } from './game.js';
 
 const PANELS = { bj: BjPanel, slots: SlotsPanel, wheel: WheelPanel, roulette: RoulettePanel, duck: DuckPanel, craps: CrapsPanel };
 const ABOARD = ['limo', 'back']; // arriba de la limusina (de ida o de vuelta)
@@ -350,7 +351,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       <canvas ref={canvasRef} className="tbg-canvas" data-timba-canvas />
 
       <div className="tbg-cash tbg-panel" data-money>
-        <span className="tbg-label">Caja de todos · Día {room.day.n}/{DEMO_DAYS}</span>
+        <span className="tbg-label">Caja de todos · Día {room.day.n}/{TOTAL_DAYS}</span>
         <div className="tbg-cash-row">
           <strong key={cash.k} className={`tbg-cash-amount${cash.dir ? ` is-${cash.dir}` : ''}`}>{fmtMoney(cash.shown)}</strong>
         </div>

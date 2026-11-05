@@ -5,8 +5,9 @@ import {
   DUCKS, LIMITS, NAMES, ROULETTE_WHEEL, WHEEL, betLimits, crapsStep, isSpot, quickBet, raceDucks, roulettePays, slotsEval, spinWheel, validDice,
 } from '../src/timba/games.js';
 import {
-  DAY_MS, ELEV_MS, HOME_MS, LIMO_MS, RESULT_MS, ROULETTE_MS, START_MONEY, WHEEL_SPIN_MS, applyAction, findPlayer, fmtMoney, newRoom, nextQuota,
+  DAY_MS, ELEV_MS, HOME_MS, LIMO_MS, RESULT_MS, ROULETTE_MS, START_MONEY, WHEEL_SPIN_MS, applyAction, findPlayer, fmtMoney, newRoom,
 } from '../src/timba/game.js';
+import { QUOTA_MULTIPLIERS, TOTAL_DAYS, quotaFor } from '../src/timba/quota.js';
 import { SCENES, TABLES, canStand, doorFor, nearby, spawnPoint, standAt, stepSide, stepTop } from '../src/timba/scenes.js';
 
 const rand = () => 0.3;
@@ -84,7 +85,6 @@ test('timba: apuestas de $36 a $360 en blackjack, sin pasarse de la plata, y los
 
 test('timba: el dinero se muestra como en el original', () => {
   assert.deepEqual([75, 1000, 1200, 1250, 10000, 360].map(fmtMoney), ['$75', '$1K', '$1.2K', '$1.25K', '$10K', '$360']);
-  assert.equal(nextQuota(1200), 1800);
 });
 
 // ─── De la casita al piso 1 ──────────────────────────────────────────────────
@@ -502,24 +502,48 @@ test('timba: de vuelta a casa en la limusina: con la cuota sigue otro día con u
   room = act(room, 'b', { type: 'tick' }, room.trip.at + HOME_MS);
   assert.equal(room.phase, 'playing');
   assert.equal(room.day.n, 2);
-  assert.equal(room.day.quota, 1800);
+  assert.equal(room.day.quota, 1725, 'cuota del día 2: la caja al empezar ($1.500) por 1,15');
   assert.equal(room.day.endsAt, 0);
   assert.equal(room.day.over, false);
   assert.ok(room.players.every((p) => p.loc === 'wait'));
   assert.equal(room.money, 1500, 'la plata sigue siendo de todos');
 });
 
-test('timba: después del día 3 la demo termina', () => {
+// Termina el día `n` con la caja en `money` y vuelve a casa en la limusina.
+function finishDay(n, money) {
   let room = atFloor1(1);
-  room.day.n = 3;
-  room.money = 5000;
+  room.day.n = n;
+  room.money = money;
   room = act(room, 'a', { type: 'tick' }, room.day.endsAt);
   clock = room.day.endsAt + 1;
   room = backOutside(room);
   room = act(room, 'a', { type: 'loc', to: 'back' });
-  room = act(room, 'a', { type: 'tick' }, room.trip.at + HOME_MS);
+  return act(room, 'a', { type: 'tick' }, room.trip.at + HOME_MS);
+}
+
+test('timba: pasado el día 3 la partida sigue (ya no es una demo)', () => {
+  const room = finishDay(3, 5000);
+  assert.equal(room.phase, 'playing');
+  assert.equal(room.day.n, 4);
+  assert.equal(room.day.quota, 6850, 'día 4: $5.000 × 1,37');
+});
+
+test('timba: al superar el día 12 se gana la partida', () => {
+  const room = finishDay(TOTAL_DAYS, 5000);
   assert.equal(room.phase, 'ended');
-  assert.equal(room.day.last.demo, true);
+  assert.equal(room.day.last.won, true);
+});
+
+test('timba: la cuota es la caja al empezar el día por el multiplicador, redondeada', () => {
+  assert.equal(TOTAL_DAYS, 12);
+  assert.deepEqual(QUOTA_MULTIPLIERS, [1.2, 1.15, 1.4, 1.37, 1.85, 2.13, 2.18, 2.52, 2.85, 3.19, 3.43, 3.7]);
+  assert.equal(quotaFor(1, 1000), 1200, 'el día 1 arranca con $1.000 y pide $1.200');
+  assert.equal(quotaFor(2, 1250), 1438, '1.437,5 redondea para arriba');
+  assert.equal(quotaFor(12, 10000), 37000);
+  assert.ok(Number.isInteger(quotaFor(4, 1234)), 'siempre un entero');
+  assert.equal(quotaFor(13, 1000), null, 'no hay día 13');
+  assert.equal(quotaFor(1, -5), null);
+  for (let d = 1; d <= TOTAL_DAYS; d++) assert.equal(quotaFor(d, 2000), Math.round(2000 * QUOTA_MULTIPLIERS[d - 1]));
 });
 
 test('timba: si vuelven con menos de la cuota es game over y el anfitrión puede empezar otra', () => {

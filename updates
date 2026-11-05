@@ -859,6 +859,13 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.38.2 = La Timba: cuota 1K/1,3K y demo de 3 días
+1.38.2 = La Timba: cuota 1K/1,3K y demo de 3 días
 - La cuota se ve como lo que tienen sobre lo que necesitan (por ejemplo 1K/1.3K), con la barra de progreso.
 - Hay un contador de días (Día 1/3). Después del día 3 el juego termina con el cartel «Fin de la demo».
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.38.3 = La Timba: cuotas por día con multiplicadores y partida de 12 días
+- La cuota de cada día es la plata que hay en la caja al empezarlo por un multiplicador (día 1 ×1,20 hasta día 12 ×3,70), redondeada a un entero. Lo que sobra de un día ya está en la caja, así que no se suma de nuevo.
+- La partida dura 12 días (ya no hay demo de 3). Si superan el día 12 ganan, y si no llegan a la cuota es game over.
+- Los multiplicadores están juntos en un solo archivo (quota.js), listos para cambiarlos cuando haya más datos del juego original.
