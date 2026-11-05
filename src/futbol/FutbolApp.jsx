@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { backend } from '../storage.js';
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
+import WaitingRoom from '../ui/WaitingRoom.jsx';
+import { useSpectatorJoin } from '../ui/spectate.js';
 import { useAutoCreate } from '../ui/mudanza.js';
 import { useRegisterRoom } from '../ui/store.js';
 import GameChat from '../ui/GameChat.jsx';
@@ -112,6 +114,20 @@ export default function FutbolApp({ onBackToMenu }) {
 
   const me = findPlayer(room, session?.playerId);
 
+  // Entra a esperar en una partida en curso (este juego no se puede mirar): no es jugador. Cuando la sala vuelve a la sala de
+  // espera, se une solo (`useSpectatorJoin`).
+  function handleWait(target) {
+    enterRoom({ code: target, playerId: makeId(), name: cleanName(name) || 'Espectador', spectator: true });
+  }
+  async function joinAs(target, who) {
+    try {
+      const playerId = makeId();
+      const result = await backend.updateRoom(target, (current) => applyAction(current, { type: 'join', playerId, name: cleanName(who) }));
+      if (result.room) enterRoom({ code: target, playerId, name: cleanName(who) });
+    } catch { setError('No se pudo conectar con la sala.'); }
+  }
+  useSpectatorJoin(session, room, joinAs);
+
   function enterRoom(next) {
     saveSession({ ...next, game: 'futbol' });
     if (!next.isLocalGame) setUrlCode(next.code);
@@ -120,7 +136,7 @@ export default function FutbolApp({ onBackToMenu }) {
   }
 
   async function dispatch(action) {
-    if (!session) return null;
+    if (!session || session.spectator) return null; // el que espera no manda jugadas
 
     // Modo local: muta directamente el estado local sin red
     if (session.isLocalGame) {
@@ -205,7 +221,7 @@ export default function FutbolApp({ onBackToMenu }) {
     setJoinCode('');
     setError('');
     setGameEnded(false);
-    if (leaving && !leaving.isLocalGame && leaving.code) {
+    if (leaving && !leaving.spectator && !leaving.isLocalGame && leaving.code) {
       backend.updateRoom(leaving.code, (current) => applyAction(current, { type: 'leave', playerId: leaving.playerId })).catch(() => {});
     }
   }
@@ -241,6 +257,7 @@ export default function FutbolApp({ onBackToMenu }) {
   }
 
   // ─── Pantalla de inicio (sin sesión) ──────────────────────────────────
+  if (session?.spectator) return <WaitingRoom room={room} onLeave={handleLeave} />;
   if (!session) {
     if (invite) {
       return (
@@ -250,6 +267,7 @@ export default function FutbolApp({ onBackToMenu }) {
               gameId="futbol" code={joinCode} name={name} onName={setName} maxName={16}
               busy={busy} error={error} onBack={onBackToMenu}
               onJoin={() => handleJoin({ preventDefault() {} })}
+              onSpectate={() => handleWait(joinCode.trim().toUpperCase())}
               onCancel={() => { setInvite(false); setJoinCode(''); setUrlCode(''); setError(''); }}
             />
           </div>

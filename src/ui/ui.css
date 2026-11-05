@@ -445,3 +445,5 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-invite-people { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .tf-invite-people li { padding: 5px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-weight: 600; }
 .tf-spectator { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 40; padding: 6px 16px; border-radius: 999px; background: rgba(20, 16, 28, 0.88); color: #fff; font: 600 13px Inter, sans-serif; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
+.tf-waiting { max-width: 520px; margin: 0 auto; padding: 48px 16px; text-align: center; }
+.tf-waiting h1 { margin: 0 0 16px; font-size: 24px; }

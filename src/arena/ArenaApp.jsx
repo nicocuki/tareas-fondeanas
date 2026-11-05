@@ -8,7 +8,8 @@ import { isKicked } from '../lobby/kick.js';
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
 import SpectatorBadge from '../ui/SpectatorBadge.jsx';
-import { ghostMe, useSpectatorJoin } from '../ui/spectate.js';
+import WaitingRoom from '../ui/WaitingRoom.jsx';
+import { canSpectate, ghostMe, useSpectatorJoin } from '../ui/spectate.js';
 import GameChat from '../ui/GameChat.jsx';
 import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
@@ -569,6 +570,7 @@ export default function ArenaApp({ onBackToMenu }) {
   const banner = error && <p className="ar-error ar-banner" role="alert">{error}</p>;
 
   if (!session) return <>{banner}<Entry onCreate={handleCreate} onJoin={handleJoin} onSpectate={handleSpectate} busy={busy} error={error} onBack={onBackToMenu} /></>;
+  if (spectating && !canSpectate(GAME)) return <WaitingRoom room={room} onLeave={handleLeave} />; // no se puede mirar: espera
   if (!room) return <div className="cs-root ar-page"><p className="ar-hint ar-msg">Entrando a la sala…</p></div>;
   if (!me || me.left) {
     return (

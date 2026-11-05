@@ -6,7 +6,8 @@ import { LobbyLayout, LobbyOptions, OptionField, Segmented } from '../lobby/inde
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
 import SpectatorBadge from '../ui/SpectatorBadge.jsx';
-import { ghostMe, useSpectatorJoin } from '../ui/spectate.js';
+import WaitingRoom from '../ui/WaitingRoom.jsx';
+import { canSpectate, ghostMe, useSpectatorJoin } from '../ui/spectate.js';
 import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
 import GameChat from '../ui/GameChat.jsx';
@@ -266,6 +267,7 @@ export default function PixelApp({ onBackToMenu }) {
 
   const banner = error && <p className="px-error px-banner" role="alert">{error}</p>;
   if (!session) return <Entry onCreate={handleCreate} onJoin={handleJoin} onSpectate={handleSpectate} busy={busy} error={error} onBack={onBackToMenu} />;
+  if (spectating && !canSpectate(GAME)) return <WaitingRoom room={room} onLeave={handleLeave} />; // no se puede mirar: espera
   if (!room) return <div className="cs-root px-page"><p className="px-hint px-center">Entrando a la sala…</p></div>;
   if (!me) {
     return (

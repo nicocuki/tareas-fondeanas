@@ -8,6 +8,8 @@ import CafeOTeSecretWord from './CafeOTeSecretWord.jsx';
 import CafeOTeBoard from './CafeOTeBoard.jsx';
 import GameHero from '../ui/GameHero.jsx';
 import JoinInvite from '../ui/JoinInvite.jsx';
+import WaitingRoom from '../ui/WaitingRoom.jsx';
+import { useSpectatorJoin } from '../ui/spectate.js';
 import { useAutoCreate } from '../ui/mudanza.js';
 import { useRegisterRoom } from '../ui/store.js';
 import { isKicked } from '../lobby/kick.js';
@@ -69,6 +71,20 @@ export default function CafeOTeApp({ onBackToMenu }) {
 
   const me = findPlayer(room, session?.playerId);
 
+  // Entra a esperar en una partida en curso (este juego no se puede mirar): no es jugador. Cuando la sala vuelve a la sala de
+  // espera, se une solo (`useSpectatorJoin`).
+  function handleWait(target) {
+    enterRoom({ code: target, playerId: makeId(), name: cleanName(name) || 'Espectador', spectator: true });
+  }
+  async function joinAs(target, who) {
+    try {
+      const playerId = makeId();
+      const result = await backend.updateRoom(target, (current) => applyAction(current, { type: 'join', playerId, name: cleanName(who) }));
+      if (result.room) enterRoom({ code: target, playerId, name: cleanName(who) });
+    } catch { setError('No se pudo conectar con la sala.'); }
+  }
+  useSpectatorJoin(session, room, joinAs);
+
   function enterRoom(next) {
     saveSession({ ...next, game: 'cafe-o-te' });
     setUrlCode(next.code);
@@ -77,7 +93,7 @@ export default function CafeOTeApp({ onBackToMenu }) {
   }
 
   async function dispatch(action) {
-    if (!session) return null;
+    if (!session || session.spectator) return null; // el que espera no manda jugadas
     const { code: roomCode, playerId } = session;
     try {
       return await backend.updateRoom(roomCode, (current) => applyAction(current, { ...action, playerId }));
@@ -134,7 +150,7 @@ export default function CafeOTeApp({ onBackToMenu }) {
     setRoom(null);
     setJoinCode('');
     setError('');
-    if (leaving) {
+    if (leaving && !leaving.spectator) {
       backend.updateRoom(leaving.code, (current) => applyAction(current, { type: 'leave', playerId: leaving.playerId })).catch(() => {});
     }
   }
@@ -161,6 +177,7 @@ export default function CafeOTeApp({ onBackToMenu }) {
   }
 
   // Home de Café o Té (sin sesión)
+  if (session?.spectator) return <WaitingRoom room={room} onLeave={handleLeave} />;
   if (!session) {
     if (invite) {
       return (
@@ -170,6 +187,7 @@ export default function CafeOTeApp({ onBackToMenu }) {
               gameId="cafe-o-te" code={joinCode} name={name} onName={setName} maxName={16}
               busy={busy} error={error} onBack={onBackToMenu}
               onJoin={() => handleJoin({ preventDefault() {} })}
+              onSpectate={() => handleWait(joinCode.trim().toUpperCase())}
               onCancel={() => { setInvite(false); setJoinCode(''); setUrlCode(''); setError(''); }}
             />
           </div>

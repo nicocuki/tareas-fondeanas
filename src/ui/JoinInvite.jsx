@@ -61,8 +61,8 @@ export default function JoinInvite({
           <ul className="tf-invite-people">
             {(info.people || []).map((p, i) => <li key={i}><span>{p.avatar || '🙂'}</span> {p.name}{p.bot ? ' (bot)' : ''}</li>)}
           </ul>
-          <button type="button" className="tf-btn tf-btn-primary tf-btn-block tf-invite-join" disabled={!onSpectate || !canSpectate(gameId)} onClick={onSpectate} data-act="watch">Mirar</button>
-          <p className="tf-invite-status">{canSpectate(gameId) ? 'Cuando termine la partida, podés jugar con los demás.' : 'Todavía no se puede mirar este juego. Cuando termine la partida, podés jugar con los demás.'}</p>
+          <button type="button" className="tf-btn tf-btn-primary tf-btn-block tf-invite-join" disabled={!onSpectate} onClick={onSpectate} data-act="watch">{canSpectate(gameId) ? 'Mirar' : 'Esperar en la sala'}</button>
+          <p className="tf-invite-status">{canSpectate(gameId) ? 'Cuando termine la partida, podés jugar con los demás.' : 'En este juego no se puede mirar: esperás en la sala y, cuando termine la partida, entrás a jugar con los demás.'}</p>
         </div>
       )}
       {!watching && <form className="tf-invite-card" onSubmit={(e) => { e.preventDefault(); if (canJoin) onJoin(); }}>
