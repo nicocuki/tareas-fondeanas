@@ -9,7 +9,7 @@ import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
 import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
-import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, fmtMoney, makeId, newRoom } from './game.js';
+import { DEMO_DAYS, GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, fmtMoney, makeId, newRoom } from './game.js';
 import TimbaGame from './TimbaGame.jsx';
 import './timba.css';
 import { isKicked } from '../lobby/kick.js';
@@ -111,8 +111,8 @@ function Final({ room, me, onDispatch, onLeave }) {
   const net = room.players.map((p) => ({ ...p, net: room.net[p.id] || 0 })).sort((a, b) => b.net - a.net);
   return (
     <div className="tb-final">
-      <div className="tb-wins is-lost">GAME OVER</div>
-      <p className="tb-eyebrow">Llegaron hasta el día {last.n}, pero juntaron {fmtMoney(last.money)} y la cuota era {fmtMoney(last.quota)}.</p>
+      <div className={`tb-wins${last.demo ? '' : ' is-lost'}`}>{last.demo ? 'FIN DE LA DEMO' : 'GAME OVER'}</div>
+      <p className="tb-eyebrow">{last.demo ? `¡Superaron los ${DEMO_DAYS} días! Hasta acá llega la demo: gracias por jugar.` : `Llegaron hasta el día ${last.n}, pero juntaron ${fmtMoney(last.money)} y la cuota era ${fmtMoney(last.quota)}.`}</p>
       <table className="tb-table">
         <thead><tr><th>#</th><th>Jugador</th><th>Ganó / perdió</th></tr></thead>
         <tbody>

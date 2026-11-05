@@ -28,6 +28,7 @@ export const MIN_PLAYERS = 1;
 export const START_MONEY = 1000;
 export const START_TICKETS = 15;
 export const START_QUOTA = 1200;
+export const DEMO_DAYS = 3;        // la demo llega hasta el día 3
 export const DAY_MS = 5 * 60 * 1000; // lo que dura cada día en el casino
 export const LIMO_MS = 5200;         // la limusina cierra la puerta y se va
 export const ELEV_MS = 2600;         // el ascensor sube o baja
@@ -278,7 +279,10 @@ export function applyAction(room, action, ctx = {}) {
         } else {
           // De vuelta en casa: si juntaron la cuota, sigue otro día con una cuota más alta; si no, se terminó (game over).
           const { money, day } = next;
-          if (money >= day.quota) {
+          if (money >= day.quota && day.n >= DEMO_DAYS) {
+            next.day.last = { n: day.n, money, quota: day.quota, demo: true };
+            next.phase = 'ended';
+          } else if (money >= day.quota) {
             const quota = nextQuota(day.quota);
             next.day = { n: day.n + 1, quota, endsAt: 0, over: false, last: { n: day.n, money, quota: day.quota, next: quota } };
             next.elev.floor = 0;

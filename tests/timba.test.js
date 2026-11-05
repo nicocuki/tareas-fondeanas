@@ -509,6 +509,19 @@ test('timba: de vuelta a casa en la limusina: con la cuota sigue otro día con u
   assert.equal(room.money, 1500, 'la plata sigue siendo de todos');
 });
 
+test('timba: después del día 3 la demo termina', () => {
+  let room = atFloor1(1);
+  room.day.n = 3;
+  room.money = 5000;
+  room = act(room, 'a', { type: 'tick' }, room.day.endsAt);
+  clock = room.day.endsAt + 1;
+  room = backOutside(room);
+  room = act(room, 'a', { type: 'loc', to: 'back' });
+  room = act(room, 'a', { type: 'tick' }, room.trip.at + HOME_MS);
+  assert.equal(room.phase, 'ended');
+  assert.equal(room.day.last.demo, true);
+});
+
 test('timba: si vuelven con menos de la cuota es game over y el anfitrión puede empezar otra', () => {
   let room = atFloor1(2);
   room.money = 900;

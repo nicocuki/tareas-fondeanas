@@ -854,5 +854,11 @@ OCULTA 1.29.3.5 = Ajuste interno
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.38.1.5 = Fix: números más legibles en La Timba
+1.38.1.5 = Fix: números más legibles en La Timba
 - La plata, las apuestas, el teclado, los relojes, la ruleta y la rueda usan una fuente normal en lugar de la de pixeles, para que los números se entiendan (el 5 se confundía con la S).
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.38.2 = La Timba: cuota 1K/1,3K y demo de 3 días
+- La cuota se ve como lo que tienen sobre lo que necesitan (por ejemplo 1K/1.3K), con la barra de progreso.
+- Hay un contador de días (Día 1/3). Después del día 3 el juego termina con el cartel «Fin de la demo».
