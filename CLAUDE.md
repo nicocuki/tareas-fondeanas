@@ -507,7 +507,7 @@ tiempo real. Las reglas son las del Monopoly clásico; los barrios (Buenos Aires
   dos dispositivos desincronizaban el cierre. Los bots juegan en vivo (`botMove`: cualquier bot en carrera que no vaya ganando). `auction.resume` es el paso al que se vuelve.
 - **Fichas** (`TOKENS` en `board.js`, los mismos 16 emojis de los avatares): **no se repiten en una sala** (`tokenTaken`/`freeToken`: al entrar con una
   ocupada, o sin pedir ninguna, o un bot, toca una libre al azar). En la sala de espera cada uno elige la suya con `setAvatar`. En el tablero la tuya
-  (`meId` → `Token mine`) es más grande, con aro que late y «▼ VOS».
+  (`meId` → `Token mine`) se marca solo con un aro chico que late: **del mismo tamaño que las demás y sin cartel** (pedido de Feli).
 - **Las cartas que te mandan a otro lado no teletransportan**: `useStagedRoom` mira en la bitácora (`firstLanding`) dónde cayó primero la ficha;
   camina hasta ahí y se queda `CARD_MS` (fase `card`, mientras se lee la carta) antes de irse al casillero final.
 - **Tratos** (`room.trade`, uno a la vez): `give` es lo que da quien propone y `take` lo que recibe. Se revalida entero al aceptar.

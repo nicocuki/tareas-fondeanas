@@ -947,9 +947,14 @@ OCULTA 1.44.2 = Avisos para todos
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.47.0 = Monopoly: subasta en vivo, fichas que no se repiten y movimientos más claros 🔨
+1.47.0 = Monopoly: subasta en vivo, fichas que no se repiten y movimientos más claros 🔨
 - Subasta en vivo: ya no es por turnos. Todos ofrecen cuando quieran, de a $50 como mínimo (botones +50, +100 y +200, o el monto que quieras), y cada oferta vuelve a poner el reloj en 10 segundos. Cuando se acaba, se la lleva la oferta más alta. Si nadie ofrece, queda sin dueño.
 - La ventana de la subasta muestra el reloj, quién va ganando con el monto bien grande, quién sigue en carrera y las últimas ofertas. El que va ganando no se puede bajar; si se bajan todos los demás, se cierra al instante.
 - Fichas: en una sala ya no puede haber dos iguales. En la sala de espera elegís la tuya (las que tiene otro aparecen apagadas); si entrás con una ocupada te toca una libre al azar. Los bots también eligen distinto.
 - Tu ficha se distingue en el tablero: más grande, con un aro que late y el cartelito «VOS», y tu casillero se marca.
 - Cuando una carta (o «Andá a la cárcel») te manda a otro lado, la ficha se queda donde caíste mientras se lee la carta y recién después se va. Antes saltaba de inmediato y no se entendía qué había pasado.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.47.1 = Monopoly: tu ficha más discreta
+- Tu ficha vuelve a tener el mismo tamaño que las demás y se marca solo con un aro chico que late. Se sacó el cartelito «VOS».
