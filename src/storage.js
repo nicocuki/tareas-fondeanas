@@ -153,6 +153,8 @@ const pixelChannel = (code) => peerChannel('pixel', code);
 const mineChannel = (code) => peerChannel('mine', code);
 // La Timba, igual: jugadores directo entre navegadores y respaldo en timba/{sala}/p/{id}.
 const timbaChannel = (code) => peerChannel('timba', code);
+// Bombardero, igual: jugadores y bombas directo entre navegadores y respaldo en bomber/{sala}/p/{id}.
+const bomberChannel = (code) => peerChannel('bomber', code);
 
 // Generala: dónde tiene el cubilete el que está por tirar, para que los demás lo vean sacudirlo. No se guarda.
 //   generala/{sala}/mano   { n: turno, r: tirada, x, z }
@@ -170,5 +172,5 @@ function subscribeServerOffset(onOffset) {
 }
 
 export const backend = {
-  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, generalaChannel, subscribeServerOffset,
+  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, generalaChannel, bomberChannel, subscribeServerOffset,
 };

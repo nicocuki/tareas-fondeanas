@@ -23,8 +23,10 @@ import TegApp from './teg/TegApp.jsx';
 import ArenaApp from './arena/ArenaApp.jsx';
 import TimbaApp from './timba/TimbaApp.jsx';
 import GeneralaApp from './generala/GeneralaApp.jsx';
+import BomberApp from './bomber/BomberApp.jsx';
 
 const SCREENS = {
+  bomber: BomberApp,
   generala: GeneralaApp,
   timba: TimbaApp,
   arena: ArenaApp,

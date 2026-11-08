@@ -961,5 +961,14 @@ OCULTA 1.44.2 = Avisos para todos
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.47.2 = Monopoly: Edesur y AySA
+1.47.2 = Monopoly: Edesur y AySA
 - Las dos compañías del tablero ahora se llaman Edesur (luz) y AySA (agua).
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.49.0 = Bombardero: el Bomberman clásico, de 2 a 8 💣
+- Juego nuevo: el Bomberman de siempre. Pasillos con pilares de piedra, ladrillos que se rompen, bombas que explotan en cruz y cada uno en su esquina. Se mueve con W A S D y se deja la bomba con Espacio.
+- Los ítems de toda la vida debajo de los ladrillos: más fuego, más bombas, patines, patada (caminá contra una bomba y sale deslizándose), control remoto (E detona), bomba perforante, chaleco a prueba de fuego, fuego máximo y la calavera.
+- La calavera da una enfermedad al azar por 12 segundos (controles al revés, sin bombas, bombas que se ponen solas, mecha corta, fuego chiquito, lentitud o taquicardia) y se contagia al tocar a otro. El anfitrión puede sacarlas.
+- Partida a rondas: gana la ronda el último que queda (si caen dos en el mismo fuego, empate) y la partida el primero que llega a 1, 2, 3 o 5 rondas. Cada ronda dura 2, 3 o 5 minutos y en los últimos 45 segundos caen bloques desde los bordes hacia el centro.
+- Hasta 4 se juega en el tablero clásico de 13 × 11; de 5 a 8, en uno más grande con lugares también en el medio de cada lado. El que entra con la partida empezada mira y juega la ronda que viene.

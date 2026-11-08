@@ -195,6 +195,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/timba/` | La Timba (Gamble With Your Friends en 2D): blackjack y mazo (`bj.js`), límites y reglas de los demás juegos (`games.js`), el casino de 4 pisos y cuándo se abre cada uno (`casinos.js`), la cuota por día y cuánto crecen las apuestas (`quota.js`), los juegos del piso 2 en adelante (`newgames.js` las reglas puras, `newtables.js` sus acciones en la sala), reducer de la sala (`game.js`), lugares, mesas, movimiento y qué se toca (`scenes.js`), dibujo (`render.js`), la partida en vivo (`TimbaGame.jsx`), una ventana por juego (`BjPanel`, `SlotsPanel`, `WheelPanel`, `RoulettePanel`, `DuckPanel`, `CrapsPanel`, `CrashPanel`, `PenguinPanel`, `KenoPanel`, `PlinkoPanel`, `MoneyWheelPanel`, `BaccaratPanel`, `HiLoPanel`, `MinesPanel`, con el teclado de apuesta compartido en `BetPad.jsx` y los dibujos de pixel art de las ventanas en `Pixels.jsx`) y los estilos del HUD (`tbgame.css`) (ver *La Timba*) |
 | `src/cohetes/` | Cohete Royale (Rocket Bot Royale): mapa (`terrain.js`), tanque pegajoso, nave y armas (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`CohetesGame.jsx`) (ver *Cohete Royale*) |
 | `src/generala/` | Generala: la física de los dados (`dice.js`, con Rapier), el Web Worker que la corre (`simWorker.js`), reducer (`game.js`), la mesa en 3D (`table.js`, con Three.js), sonido (`sound.js`), la partida y la planilla (`GeneralaGame.jsx`) (ver *Generala*) |
+| `src/bomber/` | Bombardero (Bomberman): tablero e ítems por semilla (`map.js`), movimiento, bombas, fuego y calaveras (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`BomberGame.jsx`), pantallas (ver *Bombardero*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
@@ -1078,6 +1079,51 @@ raíz `generala/` en `ROOTS`, efímera, solo para la mano del que tira).
   `data-die` (con `data-value` y `data-held`), `data-act`, `data-cat` (con `data-points`), `data-cell`, `data-total`, `data-kick`,
   `data-sheet`, `data-final` (con `data-step`), `data-podium` (con `data-place` y `data-open`) existen para manejar el juego desde un navegador automatizado. No los saques.
 - **Todavía no tiene**: reloj de turno, bots, ni entrar a mitad de partida.
+
+## Bombardero
+
+Pedido de Feli: «el famoso y clásico Bomberman», con una captura del Super Bomberman de SNES como referencia del tablero. De 2 a 8, solo compu
+(teclado). `id`: `bomber` (`?juego=bomber`, `gameType: 'bomber'`, raíz `bomber/` en `ROOTS`, efímera: fotos y señalización). Los dibujos son nuestros,
+pero el juego copia a Bomberman (de Konami/Hudson): entre amigos está bien; si llegara un pedido de bajarlo, se saca la entrada de `games.js`.
+
+- **Mismo esquema que Pixel Royale**: lo de a una vez va en la sala (`game.js`, reducer puro con `{ now, rand }`: la semilla de cada ronda, quién murió y
+  por quién, qué ítem agarró cada uno, las rondas ganadas) y todo lo demás en tiempo real, directo entre navegadores (`futbol/p2p.js`) con respaldo en
+  `bomber/{sala}/p/{id}` (`bomberChannel`). **Cada pantalla es dueña de su jugador**: lo mueve, decide si el fuego lo alcanzó y manda `died` (con `by`, el
+  dueño de la bomba, que puede ser uno mismo: `w: 'self'`; o `w: 'press'` si lo aplastó un bloque). El anfitrión da por muerto al que no manda fotos en 12 s.
+- **Rondas**: `lobby` → `playing` ⇄ `roundEnd` → `final`. `match = { n, round, seed, startsAt, size, order, deaths, took, endsAt, winner, champion }`; cada
+  ronda nueva (`newRound`) cambia la semilla y suma a **todos los que están en la sala** (el que entró en medio de una ronda mira y juega la que viene: por eso
+  está en `JOIN_IN_PROGRESS`). Gana la ronda el último vivo; cuando queda uno (o ninguno) `endsAt = now + GRACE_MS` (700 ms) por si el último cae en el mismo
+  fuego, y recién ahí `tick` cierra la ronda (empate si no quedó nadie). Con el tiempo cumplido (`options.minutes`) también es empate. `tick` lo manda cualquier
+  pantalla cuando ve algo que cerrar (es idempotente: devuelve null si no hay nada) y, pasado `ROUND_END_MS`, arranca la ronda siguiente o, si alguien llegó a
+  `options.wins`, pasa a `final` con `champion`. Las acciones de jugada llevan `match` y `round`.
+- **El tablero** (`map.js`) sale entero de la semilla: borde y pilares de piedra en las casillas pares (`isPillar`), ladrillos en el 80 % del resto, menos la casilla
+  de cada jugador y dos más en cada dirección (`makeBoard`). Dos tamaños (`BOARDS`): 15 × 13 hasta 4 (el clásico, 13 × 11 por dentro) y 19 × 15 de 5 a 8, con los
+  lugares en las esquinas y en el medio de cada lado (`spawnCells`). **Debajo del 40 % de los ladrillos hay un ítem** (`itemAt(seed, casilla, skulls)`, por pesos):
+  fuego, bomba, patines, patada, perforante, control remoto, chaleco, fuego máximo y calavera. `pressOrder` es el espiral de los bloques del final.
+- **Lo que tiene cada uno no viaja: sale de la sala** (`statsFor(seed, took, id)`): cada `take` anota casilla → jugador y las pantallas suman. Un ítem se lo lleva
+  el primero que pisa la casilla (la transacción deja pasar a uno; la pantalla lo pide con `pending` y recién con la respuesta aplica lo que no se deduce de la sala:
+  la enfermedad al azar de la calavera y la hora del chaleco). `effective(stats, p, now)` aplica la enfermedad (`SKULLS`: lentitud, taquicardia, controles al
+  revés, sin bombas, bombas sueltas, mecha corta, fuego chiquito; 12 s), que **se contagia** al tocar a otro (viaja como `sk` en la foto; cada pantalla decide la suya).
+- **Las bombas son eventos de la foto**: `bm` (puse una: casilla, alcance, perforante, remota, mecha), `kk` (la pateé: dirección y casilla) y `ex` (explotó). **Cuándo y
+  hasta dónde explota cada bomba lo decide la pantalla de su dueño** (`blastArms`: para cada dirección cuántas casillas; frena en la piedra, rompe el primer ladrillo
+  y frena, con la perforante sigue, frena en un ítem a la vista y lo quema, frena en otra bomba) y lo manda en `ex = { k, c, t, a: [4 brazos], br: [ladrillos rotos] }`:
+  todas pintan el mismo fuego (`blastCells`) y rompen lo mismo. Si el fuego de otro alcanza una bomba mía, mi pantalla la hace explotar al toque (cadena). Los
+  ladrillos rotos y los ítems quemados viajan además enteros en cada foto como tira de bits (`bk`, `bi`; `packCells`), así una foto perdida no deja tableros distintos.
+  Una bomba ajena que nunca explotó (su dueño se fue) se saca sola pasada la mecha. Con control remoto la mecha es infinita y E (o Shift) detona la más vieja.
+- **Movimiento** (`stepPlayer`): caja de 0,72 casillas, una dirección a la vez (si aprieta dos, la última que empezó), y **se acomoda al centro del pasillo mientras
+  camina** (`align`): eso es lo que hace fácil doblar (apretás un poco antes de la esquina y pasa). La bomba que acabás de poner no te frena hasta que salís de su
+  casilla (`p.onBomb`). Empujar una bomba de frente (`pushing`) con la patada la hace deslizar (`kickBomb`/`slideBomb`, 7 casillas/s) hasta la casilla anterior a
+  lo que la frena; la patada la decide quien patea y las demás pantallas la siguen (determinista sobre el mismo tablero).
+- **El final de la ronda** (`HURRY_S` 45 s antes de que se acabe el tiempo): los bloques caen parejo en espiral desde la esquina de arriba a la izquierda
+  (`pressedCount`/`pressTime`), determinísticos por hora de servidor: cada pantalla los aplica sola (`pressCell`: tapa la casilla, saca la bomba y el ítem, y aplasta al
+  que esté parado ahí). El próximo parpadea y se ve caer.
+- **Dibujo** (`render.js`): 16 px por casilla, canvas del tamaño del tablero a escala entera (`image-rendering: pixelated`). El tablero se pinta en un canvas aparte y se
+  repinta solo cuando cambia (`dirty`). El bombardero es el clásico (casco blanco con visera, antena con bolita, cuerpo del color de cada uno: `COLORS` del reducer, uno
+  distinto por jugador); el fuego es una cruz con núcleo amarillo, medio naranja y borde rojo que crece y se apaga. Los ítems son tarjetas con el ícono dibujado
+  (`drawItem`, también en el HUD con `itemIcon`).
+- `window.__bomber` (el estado de la pantalla: `local`, `remotes`, `bombs`, `fires`, `board`) y `data-bomber-canvas`, `data-players`, `data-player`, `data-clock`,
+  `data-stats`, `data-eliminated`, `data-roundend` existen para manejar el juego desde un navegador automatizado. No los saques.
+- **Todavía no tiene**: guante para levantar y tirar bombas, bots, equipos, los carritos de venganza del borde ni mapas con temas distintos.
 
 ## Mario vs Luigi
 

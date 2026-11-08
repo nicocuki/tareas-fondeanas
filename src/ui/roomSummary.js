@@ -14,11 +14,12 @@ import { MAX_PLAYERS as MAX_TEG } from '../teg/game.js';
 import { MAX_PLAYERS as MAX_ARENA } from '../arena/game.js';
 import { MAX_PLAYERS as MAX_TIMBA } from '../timba/game.js';
 import { MAX_PLAYERS as MAX_GENERALA } from '../generala/game.js';
+import { MAX_PLAYERS as MAX_BOMBER } from '../bomber/game.js';
 import { roomSettings } from '../gartic/game.js';
 
 // Topes de cada juego. Fútbol no tiene tope.
-const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA, generala: MAX_GENERALA };
-const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena', 'timba', 'generala'];
+const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA, generala: MAX_GENERALA, bomber: MAX_BOMBER };
+const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena', 'timba', 'generala', 'bomber'];
 
 // `gartic`: lo que hay en garticRooms/{código} (objeto); `raw`: lo que hay en rooms/{código} (texto JSON).
 // Devuelve { code, game, host, hostAvatar, players, max, phase, local } o null si no existe.
@@ -49,7 +50,8 @@ export function summarizeRoom(code, gartic, raw) {
 
 // Juegos en los que se puede entrar con la partida empezada: entrás mirando y jugás en la próxima.
 // Fútbol y Café o Té no (sus reducers rechazan el `join` fuera de la sala de espera).
-export const JOIN_IN_PROGRESS = ['codigo-secreto', 'gartic', 'la-mecha', 'meme', 'tiros'];
+// Bombardero también: entrás mirando y jugás la ronda que viene.
+export const JOIN_IN_PROGRESS = ['codigo-secreto', 'gartic', 'la-mecha', 'meme', 'tiros', 'bomber'];
 
 // ¿La partida está en juego? (ni en la sala de espera ni terminada.) Las salas así se listan «En curso» y se pueden mirar.
 const NOT_PLAYING = ['lobby', 'resume', 'ended', 'final', 'finished', 'results'];

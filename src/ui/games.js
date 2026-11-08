@@ -3,6 +3,30 @@
 // enrutador de App.jsx y en ROOTS (worker/rules.js). Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
 export const GAMES = [
   {
+    id: 'bomber',
+    image: '/juegos/bomber.jpg',
+    title: 'Bombardero',
+    emoji: '💣',
+    color: 'var(--game-bomber)',
+    onColor: '#ffffff',
+    tagline: 'El Bomberman de siempre, de 2 a 8',
+    description: 'El clásico: pasillos, ladrillos que se rompen, bombas que explotan en cruz y los ítems de toda la vida (más fuego, más bombas, patines, patada, control remoto, bomba perforante, chaleco y la calavera que te enferma). Gana la ronda el último que queda; al final caen bloques desde los bordes.',
+    players: '2 a 8',
+    min: 2,
+    max: 8,
+    duration: '5–15 min',
+    input: 'Teclado',
+    badge: 'Nuevo',
+    howTo: [
+      'Cada uno aparece en una esquina del tablero. Te movés con W A S D (o las flechas) y dejás una bomba con Espacio, en la casilla donde estás parado.',
+      'La bomba explota a los 2,4 segundos en cruz. El fuego frena en los pilares de piedra, rompe el primer ladrillo que toca y hace explotar en cadena cualquier bomba que alcanza.',
+      'Debajo de los ladrillos hay ítems: pisalos para agarrarlos. Más fuego, más bombas, patines, patada (caminá contra una bomba para deslizarla), control remoto (E detona), bomba perforante, chaleco (diez segundos a prueba de fuego) y fuego máximo.',
+      'La calavera da una enfermedad al azar por 12 segundos: controles al revés, sin bombas, bombas que se ponen solas, mecha corta, fuego chiquito, lentitud o taquicardia. Se contagia al tocar a otro.',
+      'El fuego te vuela aunque la bomba sea tuya. Gana la ronda el último que queda en pie; si quedan dos en el mismo fuego, empate.',
+      'En los últimos 45 segundos de cada ronda caen bloques desde los bordes hacia el centro: el que queda abajo, afuera. Gana la partida el primero que llega a las rondas que eligió el anfitrión.',
+    ],
+  },
+  {
     id: 'generala',
     image: '/juegos/generala.jpg',
     title: 'Generala',
