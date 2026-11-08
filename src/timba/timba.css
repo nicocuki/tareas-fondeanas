@@ -43,3 +43,11 @@
 .tb-screen:fullscreen .tb-play { height: 100dvh; }
 .tb-screen:fullscreen .tb-screen-exit { display: block; position: fixed; right: 12px; bottom: 12px; z-index: 30; opacity: 0.55; border: 0; border-radius: 4px; padding: 6px 12px; background: rgba(0, 0, 0, 0.6); color: #fff; font: 600 12px Inter, sans-serif; cursor: pointer; }
 .tb-wins.is-lost { background: #e0525a; color: #fff; border-color: #4a0a14; }
+
+/* Partidas guardadas */
+.tb-saves { margin-top: 20px; }
+.tb-saves ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.tb-saves li { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); }
+.tb-saves li strong { display: block; }
+.tb-saves li small { color: var(--text-3); font-size: 12px; }
+.tb-btn-row { display: flex; flex-wrap: wrap; gap: 8px; }

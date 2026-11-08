@@ -984,5 +984,13 @@ OCULTA 1.44.2 = Avisos para todos
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.50.0.5 = Fix: el juez de Abismo comenta con una frase, no con una palabra
+1.50.0.5 = Fix: el juez de Abismo comenta con una frase, no con una palabra
 - El comentario que acompaña cada veredicto ahora es una frase corta con onda (antes el modelo contestaba «buena» o «clásica» y nada más).
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.51.0 = La Timba: guardar y retomar la partida, también como archivo 💾
+- La Timba ahora se guarda sola en tu dispositivo mientras jugás (el día, la caja, la cuota y los tickets) y se borra cuando termina la partida.
+- En la entrada aparece «Partidas guardadas»: «Continuar» abre una sala nueva con el código de siempre y cada uno elige quién era («Quién es quién»); los lugares que nadie toma se van de la partida al retomar.
+- Se puede bajar la partida como archivo («Descargar») y cargarla en otra compu («Cargar desde archivo»), igual que en Monopoly. Si alguien edita el archivo a mano, no se abre.
+- Al retomar, las mesas que estaban en juego se cierran (no se pierde ninguna apuesta) y el reloj del día sigue donde quedó.

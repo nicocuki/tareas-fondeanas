@@ -72,6 +72,29 @@ export function newRoom(hostId, hostName, avatar, now = Date.now()) {
   };
 }
 
+// Una partida guardada vuelve a abrirse en una sala nueva, en la fase `resume`: queda la plata, el día y la cuota como
+// estaban, pero nadie ocupa su lugar hasta que entra y lo toma (`claim`). Lo que estaba en marcha no se retoma: las mesas
+// se cierran (se juega o se devuelve la apuesta, como al levantarse) y el viaje en curso se cancela. `dayLeft` es lo que
+// le quedaba al día (el reloj se guarda como `endsAt`, que es una hora del servidor y ya no vale).
+export function roomFromSave(saved, seatId, dayLeft = 0, now = Date.now(), rand = Math.random) {
+  const room = structuredClone(saved);
+  const seat = room.players.find((p) => p.id === seatId) || room.players[0];
+  room.phase = 'resume';
+  room.hostId = seat.id;
+  closeTables(room, now, rand);
+  room.trip = null;
+  for (const p of room.players) {
+    if (p.loc === 'limo') p.loc = 'wait'; // la limusina que no llegó a salir
+    else if (p.loc === 'back') p.loc = 'outside';
+    p.by = p.id === seat.id ? p.id : null;
+  }
+  room.resumeLeft = Math.max(0, Math.floor(dayLeft));
+  delete room.kicked;
+  room.createdAt = now;
+  room.updatedAt = now;
+  return { room, seatId: seat.id };
+}
+
 const freeColor = (room) => COLORS.find((c) => !room.players.some((p) => p.color === c)) || COLORS[room.players.length % COLORS.length];
 
 function resetRun(next) {
@@ -182,7 +205,7 @@ export function applyAction(room, action, ctx = {}) {
   if (!room || room.gameType !== GAME_TYPE) return null;
   // El anfitrión saca a alguien: es su `leave`, y con esa pantalla no puede volver a entrar.
   if (action.type === 'kick') {
-    const target = kickTarget(room, action, ['lobby', 'playing', 'ended']);
+    const target = kickTarget(room, action, ['lobby', 'playing', 'ended', 'resume']);
     const left = target && applyAction(room, { type: 'leave', playerId: target }, ctx);
     return left && left !== room ? markKicked(left, target) : null;
   }
@@ -201,6 +224,7 @@ export function applyAction(room, action, ctx = {}) {
         if (action.avatar) me.avatar = action.avatar;
         break;
       }
+      if (next.phase === 'resume') break; // entra mirando y después elige su lugar (`claim`)
       if (next.phase !== 'lobby' || next.players.length >= MAX_PLAYERS || !cleanName(action.name)) return null;
       next.players.push(newPlayer(action.playerId, action.name, action.avatar, freeColor(next)));
       break;
@@ -208,7 +232,33 @@ export function applyAction(room, action, ctx = {}) {
 
     case 'leave': {
       if (!me) return null;
+      if (next.phase === 'resume') { // solo suelta su lugar, que lo puede tomar otro
+        me.by = null;
+        if (next.hostId === me.id) next.hostId = next.players.find((p) => p.by && p.id !== me.id)?.id ?? me.id;
+        break;
+      }
       removePlayer(next, me.id, now, rand);
+      break;
+    }
+
+    // ─── Retomar una partida guardada ────────────────────────────────────────
+    // Cada uno que entra a la sala nueva elige quién era (`seat`) y pasa a usar ese lugar. Mientras tanto nadie juega.
+    case 'claim': {
+      const seat = findPlayer(next, action.seat);
+      if (next.phase !== 'resume' || !seat || seat.by || me || next.players.some((p) => p.by === action.playerId)) return null;
+      if (!next.players.some((p) => p.by)) next.hostId = seat.id; // el primero en llegar manda
+      seat.by = action.playerId;
+      break;
+    }
+
+    case 'resumeStart': {
+      if (next.phase !== 'resume' || !host || !next.players.some((p) => p.by)) return null;
+      next.phase = 'playing';
+      // Los lugares que nadie tomó se van, como si hubieran salido de la sala.
+      for (const p of next.players.filter((o) => !o.by)) removePlayer(next, p.id, now, rand);
+      for (const p of next.players) delete p.by;
+      if (next.day.endsAt && !next.day.over) next.day.endsAt = now + (next.resumeLeft || 0); // el reloj del día sigue donde quedó
+      delete next.resumeLeft;
       break;
     }
 
@@ -223,6 +273,7 @@ export function applyAction(room, action, ctx = {}) {
     case 'start': {
       if (!host || !['lobby', 'ended'].includes(next.phase) || next.players.length < MIN_PLAYERS) return null;
       resetRun(next);
+      next.saveId = String(now); // con esto se reconoce la partida en el guardado, aunque cambie de sala
       next.phase = 'playing';
       break;
     }

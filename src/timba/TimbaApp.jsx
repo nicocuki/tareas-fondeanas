@@ -12,7 +12,11 @@ import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
 import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
-import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, fmtMoney, makeId, newRoom } from './game.js';
+import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, fmtMoney, makeId, newRoom, roomFromSave } from './game.js';
+import { addSave, deleteSave, describeSave, listSaves, saveGame } from './saves.js';
+import { exportSave, parseSaveFile, saveFileName } from './saveFile.js';
+import { downloadText } from '../lobby/saveFiles.js';
+import { backgroundInterval } from '../ticker.js';
 import { TOTAL_DAYS } from './quota.js';
 import TimbaGame from './TimbaGame.jsx';
 import './timba.css';
@@ -26,7 +30,7 @@ function codeFromUrl() {
 const setUrlCode = (code) => window.history.replaceState(null, '', gameUrl(GAME, code));
 
 // ─── Entrada ─────────────────────────────────────────────────────────────────
-function Entry({ onCreate, onJoin, onSpectate, busy, error, onBack }) {
+function Entry({ onCreate, onJoin, onSpectate, onResume, busy, error, onBack }) {
   const profile = getProfile();
   const [name, setName] = useState(profile.name);
   const [avatar, setAvatar] = useState(profile.avatar);
@@ -71,6 +75,64 @@ function Entry({ onCreate, onJoin, onSpectate, busy, error, onBack }) {
         </form>
         <p className="tb-hint">Se juega con teclado y mouse, de {MIN_PLAYERS} a {MAX_PLAYERS}.</p>
       </div>
+      <SavedGames onResume={onResume} busy={busy} />
+    </div>
+  );
+}
+
+// Las partidas de este dispositivo que se pueden retomar (ver saves.js).
+function SavedGames({ onResume, busy }) {
+  const [saves, setSaves] = useState(listSaves);
+  const [asking, setAsking] = useState(null);
+  const [fileMsg, setFileMsg] = useState(null);
+  const when = (d) => d.toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  async function upload(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    const result = parseSaveFile(await file.text().catch(() => ''));
+    if (result.error) { setFileMsg({ bad: true, text: result.error }); return; }
+    addSave(result.save);
+    setSaves(listSaves());
+    setFileMsg({ bad: false, text: 'Partida cargada. Ya podés continuarla.' });
+  }
+
+  return (
+    <div className="tb-card tb-entry tb-saves" data-saves>
+      <div className="tb-card-head"><h2>💾 Partidas guardadas</h2></div>
+      <p className="tb-hint">La partida se guarda sola en este dispositivo mientras jugás. Para seguirla se abre una sala nueva y los demás entran con el código. Para llevarla a otra compu, bajala como archivo y cargala allá.</p>
+      <div className="tb-btn-row">
+        <label className="tf-btn tf-btn-soft" style={{ cursor: 'pointer' }}>
+          📂 Cargar desde archivo
+          <input type="file" accept=".json,application/json" data-act="loadFile" style={{ display: 'none' }} onChange={upload} />
+        </label>
+      </div>
+      {fileMsg && <p className="tb-hint" role="status" data-file-msg style={fileMsg.bad ? { color: 'var(--danger, #e5484d)' } : undefined}>{fileMsg.text}</p>}
+      <ul>
+        {saves.map((save) => {
+          const info = describeSave(save);
+          return (
+            <li key={save.id} data-save={save.id}>
+              <div>
+                <strong>{info.names.join(' · ')}</strong>
+                <small>Día {info.day} · {fmtMoney(info.money)} de {fmtMoney(info.quota)} · {when(info.when)}</small>
+              </div>
+              <div className="tb-btn-row">
+                <button type="button" className="tf-btn tf-btn-primary" disabled={busy} data-act="resume" onClick={() => onResume(save)}>Continuar</button>
+                <button type="button" className="tf-btn tf-btn-soft" data-act="downloadSave" onClick={() => downloadText(saveFileName(save), exportSave(save))}>⬇ Descargar</button>
+                {asking !== save.id && <button type="button" className="tf-btn tf-btn-soft" onClick={() => setAsking(save.id)}>Borrar</button>}
+                {asking === save.id && (
+                  <>
+                    <button type="button" className="tf-btn tf-btn-danger" data-act="deleteSave" onClick={() => { deleteSave(save.id); setSaves(listSaves()); setAsking(null); }}>Sí, borrar</button>
+                    <button type="button" className="tf-btn tf-btn-soft" onClick={() => setAsking(null)}>No</button>
+                  </>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
@@ -104,6 +166,44 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
       </div>
       <div className="tb-start">
         {host ? <button type="button" className="tf-btn tf-btn-primary tb-start-btn" disabled={room.players.length < MIN_PLAYERS} onClick={() => onDispatch({ type: 'start' })}>🎰 ¡A la timba!</button> : <p>Esperando que el anfitrión arranque…</p>}
+      </div>
+    </LobbyLayout>
+  );
+}
+
+// ─── Retomar una partida guardada ────────────────────────────────────────────
+// La sala nueva (fase `resume`) tiene a todos los jugadores de la partida guardada, pero nadie sentado: cada uno que
+// entra elige quién era, y el anfitrión retoma cuando están los que van a jugar.
+function Resume({ room, me, code, onDispatch, onLeave, onCopy, copied, onClaim }) {
+  const host = room.hostId === me?.id;
+  const seated = room.players.filter((p) => p.by);
+  const free = room.players.length - seated.length;
+  return (
+    <LobbyLayout
+      code={code} roster={seated} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} host={host} players={seated.length}
+      gameTitle="La Timba · partida guardada"
+      subtitle={me ? (host ? 'Cuando estén todos sentados, retomá la partida.' : 'Esperando que el anfitrión retome la partida.') : 'Elegí quién eras vos en esta partida.'}
+      copied={copied} onCopyInvite={onCopy} onLeave={onLeave}
+    >
+      <div className="tb-card" data-seats>
+        <div className="tb-card-head"><h2>Quién es quién</h2><span>{seated.length} / {room.players.length}</span></div>
+        <p className="tb-hint">Día {room.day.n} de {TOTAL_DAYS} · caja {fmtMoney(room.money)} · cuota {fmtMoney(room.day.quota)}</p>
+        <ul className="tb-players">
+          {room.players.map((p) => (
+            <li key={p.id} className={p.by ? 'is-me' : ''} data-seat={p.name}>
+              <span className="tb-dot" style={{ background: p.color }} />
+              <strong>{p.avatar} {p.name}</strong>
+              {p.by
+                ? <small>{p.id === me?.id ? '✓ vos' : '✓ sentado'}</small>
+                : !me ? <button type="button" className="tf-btn tf-btn-primary" data-act="claim" onClick={() => onClaim(p.id)}>Soy {p.name}</button> : <small>libre</small>}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="tb-start">
+        {host ? <button type="button" className="tf-btn tf-btn-primary tb-start-btn" disabled={!seated.length} data-act="resumeStart" onClick={() => onDispatch({ type: 'resumeStart' })}>▶️ Retomar la partida</button>
+          : me ? <p>Esperando que el anfitrión retome la partida…</p> : null}
+        {host && free > 0 && <p className="tb-hint">Los {free} lugar{free === 1 ? '' : 'es'} que nadie tome se van de la partida al retomar.</p>}
       </div>
     </LobbyLayout>
   );
@@ -171,6 +271,20 @@ export default function PixelApp({ onBackToMenu }) {
     }, () => setError('No se pudo conectar con la sala.'));
   }, [code]);
 
+  // La partida se guarda en este dispositivo en cada cambio (y cada tanto, por el reloj del día) y se borra cuando termina.
+  const saveRef = useRef({});
+  saveRef.current = { room, me, spectating, offset };
+  useEffect(() => {
+    const { room: r, me: m, spectating: sp, offset: off } = saveRef.current;
+    if (!r?.saveId || !m || sp) return;
+    if (r.phase === 'playing') saveGame(r, m.id, Date.now() + off);
+    else if (r.phase === 'ended') deleteSave(r.saveId);
+  }, [room]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => backgroundInterval(() => {
+    const { room: r, me: m, spectating: sp, offset: off } = saveRef.current;
+    if (r?.phase === 'playing' && r.saveId && m && !sp) saveGame(r, m.id, Date.now() + off);
+  }, 10000), []);
+
   function enterRoom(next) {
     saveSession({ ...next, game: GAME });
     setUrlCode(next.code);
@@ -212,12 +326,42 @@ export default function PixelApp({ onBackToMenu }) {
       const playerId = makeId();
       const result = await backend.updateRoom(target, (current) => applyAction(current, { type: 'join', playerId, name: cleanName(name), avatar }));
       if (!result.room || result.room.gameType !== GAME_TYPE) { setError('No encontramos esa sala de La Timba.'); return; }
+      if (result.room.phase === 'resume' && !findPlayer(result.room, playerId)) { // entra mirando y elige su lugar
+        enterRoom({ code: target, playerId, name: cleanName(name) });
+        return;
+      }
       if (!findPlayer(result.room, playerId)) { setError(`La sala está llena (son hasta ${MAX_PLAYERS}).`); return; }
       enterRoom({ code: target, playerId, name: cleanName(name) });
     } catch {
       setError('No se pudo conectar con la sala. Probá de nuevo.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Abre una sala nueva con la partida guardada; este dispositivo retoma el lugar que tenía.
+  async function handleResume(save) {
+    setBusy(true);
+    try {
+      const { room: restored, seatId } = roomFromSave(save.room, save.seat, save.dayLeft, Date.now() + offset);
+      const { code: newCode } = await backend.createRoom(() => restored);
+      enterRoom({ code: newCode, playerId: seatId, name: findPlayer(restored, seatId).name });
+    } catch {
+      setError('No se pudo abrir la partida guardada. Probá de nuevo.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Alguien que entró a una sala de partida guardada elige quién era: desde ahí usa el id de ese jugador.
+  async function handleClaim(seatId) {
+    try {
+      const result = await backend.updateRoom(code, (current) => applyAction(current, { type: 'claim', seat: seatId, playerId: session.playerId }));
+      const seat = result.room && findPlayer(result.room, seatId);
+      if (seat?.by === session.playerId) enterRoom({ code, playerId: seatId, name: seat.name });
+      else setError('Ese lugar ya lo tomó otro. Elegí otro.');
+    } catch {
+      setError('No se pudo tomar el lugar. Revisá tu conexión.');
     }
   }
 
@@ -244,9 +388,10 @@ export default function PixelApp({ onBackToMenu }) {
   useSpectatorJoin(session, room, (target, name) => handleJoin(target, name, getProfile().avatar));
 
   const banner = error && <p className="tb-error tb-banner" role="alert">{error}</p>;
-  if (!session) return <Entry onCreate={handleCreate} onJoin={handleJoin} onSpectate={handleSpectate} busy={busy} error={error} onBack={onBackToMenu} />;
+  if (!session) return <Entry onCreate={handleCreate} onJoin={handleJoin} onSpectate={handleSpectate} onResume={handleResume} busy={busy} error={error} onBack={onBackToMenu} />;
   if (spectating && !canSpectate(GAME)) return <WaitingRoom room={room} onLeave={handleLeave} />; // no se puede mirar: espera
   if (!room) return <div className="cs-root tb-page"><p className="tb-hint tb-center">Entrando a la sala…</p></div>;
+  if (room.phase === 'resume') return <>{banner}<Resume room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} onCopy={copyInvite} copied={copied} onClaim={handleClaim} /></>;
   if (!me) {
     return (
       <div className="cs-root tb-page">

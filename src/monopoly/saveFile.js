@@ -5,26 +5,14 @@
 //  - la validación: rechaza archivos rotos o incoherentes (una propiedad con dos dueños, plata inventada, etc.).
 import { SQUARES } from './board.js';
 import { MAX_PLAYERS } from './game.js';
+import { fileStamp, hash53 } from '../lobby/saveFiles.js';
 
 export const FILE_KIND = 'tareas-fondeanas/monopoly';
 export const FILE_VERSION = 1;
 const MAX_FILE_CHARS = 200_000;
 const SALT = 'tf-monopoly-guardado-1';
 
-// Hash de 53 bits (cyrb53): alcanza para detectar ediciones, no para resistir a alguien que quiera falsificar.
-export function signature(text) {
-  let h1 = 0xdeadbeef;
-  let h2 = 0x41c6ce57;
-  const s = SALT + text;
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i);
-    h1 = Math.imul(h1 ^ c, 2654435761);
-    h2 = Math.imul(h2 ^ c, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
-}
+export const signature = (text) => hash53(SALT, text);
 
 const body = (save) => JSON.stringify({ id: save.id, savedAt: save.savedAt, seat: save.seat, room: save.room });
 
@@ -35,13 +23,7 @@ export function exportSave(save) {
 }
 
 // Nombre sugerido para el archivo: fecha y jugadores.
-export function saveFileName(save) {
-  const d = new Date(save.savedAt);
-  const pad = (n) => String(n).padStart(2, '0');
-  const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const names = save.room.players.filter((p) => !p.out).map((p) => p.name).join('-').replace(/[^\p{L}\p{N}-]+/gu, '').slice(0, 40);
-  return `monopoly-${stamp}${names ? `-${names}` : ''}.json`;
-}
+export const saveFileName = (save) => `monopoly-${fileStamp(save.savedAt, save.room.players.filter((p) => !p.out).map((p) => p.name))}.json`;
 
 const isInt = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
 

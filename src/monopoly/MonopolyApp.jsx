@@ -27,6 +27,7 @@ import { BOT_NAMES, botMove } from './bots.js';
 import { Announcer, DiceRoll, useStagedRoom } from './Stage.jsx';
 import { addSave, deleteSave, describeSave, listSaves, saveGame } from './saves.js';
 import { exportSave, parseSaveFile, saveFileName } from './saveFile.js';
+import { downloadText } from '../lobby/saveFiles.js';
 import { setSound, soundOn } from './sfx.js';
 import './monopoly.css';
 
@@ -110,17 +111,7 @@ function SavedGames({ onResume, busy }) {
   const when = (d) => d.toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   // Baja la partida como archivo, para abrirla en otra compu.
-  function download(save) {
-    const blob = new Blob([exportSave(save)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = saveFileName(save);
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
+  const download = (save) => downloadText(saveFileName(save), exportSave(save));
 
   async function upload(event) {
     const file = event.target.files?.[0];

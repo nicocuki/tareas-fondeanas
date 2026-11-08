@@ -775,3 +775,105 @@ test('timba: al terminar el día los que están en un piso vuelven al ascensor',
   assert.equal(room.day.over, true);
   assert.equal(findPlayer(room, 'a').loc, 'elevator');
 });
+
+// ─── Guardar y retomar (con archivo) ─────────────────────────────────────────
+import { roomFromSave } from '../src/timba/game.js';
+import { exportSave, parseSaveFile, roomProblem, saveFileName, signature } from '../src/timba/saveFile.js';
+
+const savedOf = (room, seat = 'a', dayLeft = 0) => ({ id: room.saveId, savedAt: 5000, seat, dayLeft, room });
+
+test('guardar: al empezar la partida la sala lleva un saveId', () => {
+  assert.equal(started(2).saveId, String(1000));
+});
+
+test('retomar: la sala nueva queda en `resume`, con todos los lugares libres menos el del anfitrión', () => {
+  const room = atFloor1(3);
+  const { room: r, seatId } = roomFromSave(room, 'b', 90_000, 7000, rand);
+  assert.equal(seatId, 'b');
+  assert.equal(r.phase, 'resume');
+  assert.equal(r.hostId, 'b');
+  assert.deepEqual(r.players.map((p) => !!p.by), [false, true, false]);
+  assert.equal(r.money, room.money);
+  assert.equal(r.day.n, room.day.n);
+  assert.equal(r.trip, null);
+  assert.equal(r.resumeLeft, 90_000);
+});
+
+test('retomar: las mesas en marcha se cierran y la apuesta no se pierde', () => {
+  let room = atFloor1(2);
+  room = sit(room, 'a', 'bj1');
+  room = act(room, 'a', { type: 'bjBet', amount: 36 });
+  assert.ok(room.money < START_MONEY, 'la apuesta salió de la caja');
+  const { room: r } = roomFromSave(room, 'a', 0, 9000, rand);
+  assert.deepEqual(r.tb, {});
+  assert.ok(Number.isInteger(r.money) && r.money >= 0);
+});
+
+test('retomar: un viaje a medias se cancela y los de la limusina vuelven a la casita', () => {
+  let room = started(2);
+  room = act(room, 'a', { type: 'loc', to: 'limo' });
+  room = act(room, 'b', { type: 'loc', to: 'limo' });
+  assert.ok(room.trip);
+  const { room: r } = roomFromSave(room, 'a', 0, 9000, rand);
+  assert.equal(r.trip, null);
+  assert.ok(r.players.every((p) => p.loc === 'wait'));
+});
+
+test('claim: cada uno toma un lugar libre y no dos; resumeStart es solo del anfitrión', () => {
+  const { room: base } = roomFromSave(atFloor1(3), 'a', 60_000, 7000, rand);
+  const ctx = { now: 8000, rand };
+  assert.equal(applyAction(base, { type: 'claim', seat: 'a', playerId: 'x' }, ctx), null, 'el lugar del anfitrión ya está tomado');
+  let room = applyAction(base, { type: 'join', playerId: 'x', name: 'Xavi', avatar: '🦊' }, ctx);
+  assert.equal(room.players.length, 3, 'entrar a una sala guardada no suma jugadores');
+  room = applyAction(room, { type: 'claim', seat: 'b', playerId: 'x' }, ctx);
+  assert.equal(findPlayer(room, 'b').by, 'x');
+  assert.equal(applyAction(room, { type: 'claim', seat: 'c', playerId: 'x' }, ctx), null, 'no puede tomar dos');
+  assert.equal(applyAction(room, { type: 'resumeStart', playerId: 'b' }, ctx), null, 'solo el anfitrión retoma');
+  const go = applyAction(room, { type: 'resumeStart', playerId: 'a' }, ctx);
+  assert.equal(go.phase, 'playing');
+  assert.deepEqual(ids(go), ['a', 'b'], 'el lugar que nadie tomó se va');
+  assert.ok(go.players.every((p) => p.by === undefined));
+  assert.equal(go.resumeLeft, undefined);
+});
+
+test('retomar: el reloj del día sigue donde quedó', () => {
+  let room = atFloor1(1); // el día ya arrancó
+  assert.ok(room.day.endsAt > 0);
+  const { room: r } = roomFromSave(room, 'a', 123_000, 7000, rand);
+  const go = applyAction(r, { type: 'resumeStart', playerId: 'a' }, { now: 50_000, rand });
+  assert.equal(go.day.endsAt, 50_000 + 123_000);
+});
+
+test('archivo: se exporta, se lee igual y el nombre sale de la fecha y los jugadores', () => {
+  const room = atFloor1(2);
+  const save = savedOf(room, 'a', 42_000);
+  const { save: back, error } = parseSaveFile(exportSave(save));
+  assert.equal(error, undefined);
+  assert.deepEqual(back, save);
+  assert.match(saveFileName(save), /^timba-\d{4}-\d{2}-\d{2}-.+\.json$/);
+});
+
+test('archivo: se rechaza lo editado a mano, lo roto y lo de otro juego', () => {
+  const room = atFloor1(2);
+  const text = exportSave(savedOf(room));
+  assert.match(parseSaveFile('').error, /vacío/);
+  assert.match(parseSaveFile('no es json').error, /no se puede leer/);
+  assert.match(parseSaveFile(JSON.stringify({ kind: 'tareas-fondeanas/monopoly', data: {} })).error, /no es una partida de La Timba/);
+  const edited = JSON.parse(text);
+  edited.data.room.money = 999_999;
+  assert.match(parseSaveFile(JSON.stringify(edited)).error, /modificado a mano/);
+  // con la firma recalculada, igual lo frena la validación
+  edited.data.room.money = 1.5;
+  edited.sig = signature(JSON.stringify(edited.data));
+  assert.match(parseSaveFile(JSON.stringify(edited)).error, /plata de la caja/);
+  edited.data.room.money = 100;
+  edited.data.room.players[0].loc = 'la luna';
+  edited.sig = signature(JSON.stringify(edited.data));
+  assert.match(parseSaveFile(JSON.stringify(edited)).error, /lugar de/);
+});
+
+test('archivo: una partida que no estaba en juego no sirve', () => {
+  const room = atFloor1(2);
+  assert.match(roomProblem({ ...room, phase: 'ended' }), /no estaba en juego/);
+  assert.equal(roomProblem(room), null);
+});
