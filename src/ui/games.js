@@ -3,6 +3,29 @@
 // enrutador de App.jsx y en ROOTS (worker/rules.js). Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
 export const GAMES = [
   {
+    id: 'abismo',
+    image: '/juegos/abismo.jpg',
+    title: 'Abismo',
+    emoji: '🦐',
+    color: 'var(--game-abismo)',
+    onColor: '#ffffff',
+    tagline: 'Cuanto más nicho, más hondo',
+    description: 'Te dan una consigna («nombrá una fruta») y tenés 25 segundos para decir la respuesta más rara que se te ocurra. Un juez decide si vale y qué tan nicho es: cuanto menos la conozca la gente, más te hundís y más puntos sumás. Solo, para el ranking global, o contra otros a ver quién dice más cosas nicho.',
+    players: '1 a 10',
+    min: 1,
+    max: 10,
+    duration: '5–10 min',
+    input: 'Cualquier pantalla',
+    badge: 'Nuevo',
+    howTo: [
+      'Cada ronda aparece una consigna, la misma para todos, y 25 segundos para escribir una sola respuesta que entre en la categoría.',
+      'Un juez revisa si la respuesta es válida y qué tan nicho es. Si no vale, te lo dice y podés probar otra mientras quede tiempo.',
+      'Seis niveles: Plancton (10), Vivillo (15), Cardumen (30), Raro (60), Abisal (85) y Uno en un millón (100). Cada punto son 10 metros de profundidad.',
+      'Ojo con hacerte el vivo: la respuesta «rara» que dicen todos es Vivillo y vale apenas más que la obvia. Y una rarísima que no entra en la categoría vale cero.',
+      'Después de siete consignas gana el que llegó más hondo. Solo o en grupo, tus partidas se anotan en el ranking global: quién dijo más cosas nicho y quién hizo la mejor inmersión.',
+    ],
+  },
+  {
     id: 'bomber',
     image: '/juegos/bomber.jpg',
     title: 'Bombardero',

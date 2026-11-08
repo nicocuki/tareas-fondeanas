@@ -24,8 +24,10 @@ import ArenaApp from './arena/ArenaApp.jsx';
 import TimbaApp from './timba/TimbaApp.jsx';
 import GeneralaApp from './generala/GeneralaApp.jsx';
 import BomberApp from './bomber/BomberApp.jsx';
+import AbismoApp from './abismo/AbismoApp.jsx';
 
 const SCREENS = {
+  abismo: AbismoApp,
   bomber: BomberApp,
   generala: GeneralaApp,
   timba: TimbaApp,

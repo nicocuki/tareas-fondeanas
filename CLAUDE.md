@@ -36,7 +36,10 @@ npm run build        # genera dist/
 ```
 
 `npm run servidor` corre el Durable Object en la compu, con una base local en `.wrangler/`:
-no toca las salas publicadas.
+no toca las salas publicadas. **Desde que existe el binding `AI` (el juez de Abismo), `wrangler dev` pide estar logueado**
+(`npx wrangler login`), porque Workers AI corre siempre en Cloudflare. En una compu sin login, copiá `wrangler.jsonc` sin la
+línea `"ai"` a otro archivo (afuera del repo, con `main` y `assets.directory` como rutas absolutas) y corré
+`npx wrangler dev -c ese.jsonc --var JUEZ_FALSO:1`: la página y las salas andan igual, y el juez es el de mentira.
 
 Un test solo (el patrón matchea contra el nombre del test, en español):
 
@@ -196,6 +199,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/cohetes/` | Cohete Royale (Rocket Bot Royale): mapa (`terrain.js`), tanque pegajoso, nave y armas (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`CohetesGame.jsx`) (ver *Cohete Royale*) |
 | `src/generala/` | Generala: la física de los dados (`dice.js`, con Rapier), el Web Worker que la corre (`simWorker.js`), reducer (`game.js`), la mesa en 3D (`table.js`, con Three.js), sonido (`sound.js`), la partida y la planilla (`GeneralaGame.jsx`) (ver *Generala*) |
 | `src/bomber/` | Bombardero (Bomberman): tablero e ítems por semilla (`map.js`), movimiento, bombas, fuego y calaveras (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`BomberGame.jsx`), pantallas (ver *Bombardero*) |
+| `src/abismo/` `worker/juez.js` `worker/abismo.js` | Abismo (Krillion): niveles y normalización (`tiers.js`), las consignas (`prompts.js`), reducer (`game.js`), la inmersión (`Dive.jsx`), pixel art (`Art.jsx`), sonidos (`sfx.js`), ranking global (`Ranking.jsx`), pantallas; el juez y el ranking en el Worker (ver *Abismo*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
@@ -1079,6 +1083,56 @@ raíz `generala/` en `ROOTS`, efímera, solo para la mano del que tira).
   `data-die` (con `data-value` y `data-held`), `data-act`, `data-cat` (con `data-points`), `data-cell`, `data-total`, `data-kick`,
   `data-sheet`, `data-final` (con `data-step`), `data-podium` (con `data-place` y `data-open`) existen para manejar el juego desde un navegador automatizado. No los saques.
 - **Todavía no tiene**: reloj de turno, bots, ni entrar a mitad de partida.
+
+## Abismo
+
+Pedido de Feli: «el Krillion tal cual», porque el original cobra para jugar más de una vez por día. Es el juego de la respuesta más
+nicho: una consigna («Nombrá una fruta»), 25 segundos, y cuanto menos gente conozca tu respuesta, más hondo te hundís. De 1 a 10,
+cualquier pantalla. `id`: `abismo` (`?juego=abismo`, `gameType: 'abismo'`). **No tiene raíz propia en `ROOTS`**: todo vive en
+`rooms/{código}`. Tiene su propio Durable Object (`Abismo`, `idFromName('abismo')`) para el juez y el ranking global.
+
+- **Mismo patrón que los demás**: reducer puro `applyAction(room, action, { now, rand })` en `game.js`. Fases `lobby` → `prompt` ⇄ `reveal`
+  → `final`. Todos responden la misma consigna a la vez; `answers[ronda][jugador] = { c, t?, k, p, n?, g? }` (forma correcta, lo escrito si
+  difiere, nivel, puntos, nota del juez y firma). Cuando respondieron todos, o pasó el reloj más `JUDGE_GRACE_MS` (6 s, para que termine de
+  juzgar lo que se mandó sobre la hora), se suman los puntos y se pasa al revelado; con más de un jugador dura `REVEAL_MS` o hasta que el
+  anfitrión toca «Descender» (`next`); jugando solo no hay reloj en el revelado. Opciones: `rounds` (5/7/10) y `seconds` (15/25/40).
+- **Los seis niveles** (`tiers.js`, mismos puntos y colores que Krillion): Plancton 10, Vivillo 15 («too clever»: la rara que dicen todos),
+  Cardumen 30, Raro 60, Abisal 85 y Uno en un millón 100. **Cada punto son 10 metros** (`depthOf`). `tierForRarity` pasa la rareza (0 a 100)
+  que estima el juez al nivel. `answerKey` normaliza (minúsculas, sin tildes ni signos; la ñ se conserva).
+- **Las consignas** (`prompts.js`, más de 200, pedido de Feli: que no sean siempre las mismas): `{ id, text, ex }`; `ex` son las 3 o 4
+  respuestas más obvias, que el juez usa de referencia para calibrar el Plancton. Cada partida elige al azar sin repetir las que ya se jugaron
+  en la sala (`room.used`, tope `MAX_USED`). **Una consigna nueva**: una línea ahí, con un id único (hay un test).
+- **El juez es un modelo de lenguaje en el Worker** (`worker/juez.js` lo puro, `worker/abismo.js` el Durable Object). La pantalla manda
+  `POST /api/abismo/juzgar { promptId, text }` y recibe `{ ok, canonical, tier, pts, note, sig }` o `{ ok: false, reason }` (en naranja, y
+  puede probar otra); después manda la acción `answer` con eso. **Quién juzga, en orden**: `JUEZ_FALSO=1` (solo para probar en local:
+  `npx wrangler dev --var JUEZ_FALSO:1`, la rareza sale de un hash), la API de Claude si está el secreto `ANTHROPIC_API_KEY` (modelo en la
+  variable `ABISMO_MODELO`, por defecto `claude-opus-5-5`; con `claude-haiku-5-5` sale unas 40 veces más barato), y si no **Workers AI**
+  (binding `AI` en `wrangler.jsonc`, gratis hasta la cuota diaria del plan, modelo en `ABISMO_MODELO_AI`). Sin ninguno, 503 «No hay juez».
+  **Cada veredicto se guarda** por consigna y respuesta normalizada (`j:{id}:{clave}`): la misma respuesta vale lo mismo para todos, siempre,
+  y no se vuelve a preguntar; las inválidas también. Límite de `RATE_MAX` (40) veredictos por minuto por hash de IP.
+- **La firma** (`signAnswer`: HMAC con `ABISMO_CLAVE`, o la del admin, o una fija si no hay ninguna) viaja con cada respuesta (`g`) y es lo
+  que el ranking global verifica: así nadie se anota una partida inventada desde la consola. Sin secreto configurado alcanza entre amigos.
+- **El ranking global** (`GET /api/abismo/ranking`, `POST /api/abismo/partida`): por nombre (sin mayúsculas ni tildes), guarda partidas,
+  mejor puntaje, cuántas respuestas nicho (Abisal + Uno en un millón) y cuántas Uno en un millón; dos tablas (más nichos, mejor inmersión) y
+  la vitrina de **perlas** (las últimas respuestas nicho, con quién las dijo). Cada pantalla anota su propia partida al llegar al final, una
+  vez (`postedFor`). Tope de `MAX_KEPT_PLAYERS` jugadores y `MAX_PERLAS` perlas.
+- **La inmersión** (`Dive.jsx`) es toda DOM y CSS: un mundo de 1,3 px por metro (`SCALE`) que se traslada para seguir al jugador (`cam`),
+  con el cielo, el barquito, el mar que se oscurece, peces, burbujas, los carteles de profundidad (`LANDMARKS`) y las seis líneas punteadas de
+  los niveles, que salen de donde estaba el jugador al empezar la ronda y se iluminan al cruzarlas. En el revelado cada krill baja de su
+  profundidad anterior a la nueva con una curva suave (`ease`, ~0,7 s + 1,6 ms por metro) y recién al llegar aparece el cartel del nivel. Pixel
+  art en `Art.jsx` (rectángulos en SVG, `crispEdges`); letra VT323 (en `index.html`) y scanlines (`.ab-crt`). **Colores fijos**, iguales en los dos temas.
+- **Sonidos** (`sfx.js`): Web Audio con las mismas recetas del original (tonos con envolvente, ruido filtrado, arpegios): enviar, rechazo,
+  cada línea de nivel, el hundimiento, el golpe al llegar (chico, grande o el de Uno en un millón), la consigna nueva, el reloj en los últimos
+  5 s y el final. **Prendidos por defecto** (pedido de Feli: los sonidos eran parte del pedido), con el 🔊 del HUD (`tf:abismo:sonido`).
+- **La sala con 10 jugadores × 10 rondas, respuestas y notas al tope, queda en ~20.000 caracteres** (hay un test): por eso los topes son chicos
+  (`MAX_ANSWER` 32, `MAX_NOTE` 60, la firma de 16 hex y sin comillas en las notas). No los subas sin mirar ese test.
+- El que entra con la partida empezada mira la inmersión y juega la próxima (`inGame: false`, está en `JOIN_IN_PROGRESS`).
+- `data-answer`, `data-act`, `data-status`, `data-prompt`, `data-clock`, `data-depth`, `data-score`, `data-reveal`, `data-tier`, `data-results`,
+  `data-diver`, `data-tierline`, `data-sent`, `data-final`, `data-standings`, `data-all-answers`, `data-posted`, `data-ranking` y `data-legend`
+  existen para manejar el juego desde un navegador automatizado. No los saques.
+- Es una recreación de Krillion (krillion.io, de un desarrollador independiente): el diseño y los sonidos imitan al original, las consignas y
+  los textos son nuestros. Si llegara un pedido de bajarlo, se saca la entrada de `games.js`.
+- **Todavía no tiene**: consigna del día compartida por todos (cada partida es al azar), paquetes temáticos ni el «Puffer Party».
 
 ## Bombardero
 

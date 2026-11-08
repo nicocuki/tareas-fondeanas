@@ -15,11 +15,12 @@ import { MAX_PLAYERS as MAX_ARENA } from '../arena/game.js';
 import { MAX_PLAYERS as MAX_TIMBA } from '../timba/game.js';
 import { MAX_PLAYERS as MAX_GENERALA } from '../generala/game.js';
 import { MAX_PLAYERS as MAX_BOMBER } from '../bomber/game.js';
+import { MAX_PLAYERS as MAX_ABISMO } from '../abismo/game.js';
 import { roomSettings } from '../gartic/game.js';
 
 // Topes de cada juego. Fútbol no tiene tope.
-const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA, generala: MAX_GENERALA, bomber: MAX_BOMBER };
-const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena', 'timba', 'generala', 'bomber'];
+const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA, generala: MAX_GENERALA, bomber: MAX_BOMBER, abismo: MAX_ABISMO };
+const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena', 'timba', 'generala', 'bomber', 'abismo'];
 
 // `gartic`: lo que hay en garticRooms/{código} (objeto); `raw`: lo que hay en rooms/{código} (texto JSON).
 // Devuelve { code, game, host, hostAvatar, players, max, phase, local } o null si no existe.
@@ -50,8 +51,8 @@ export function summarizeRoom(code, gartic, raw) {
 
 // Juegos en los que se puede entrar con la partida empezada: entrás mirando y jugás en la próxima.
 // Fútbol y Café o Té no (sus reducers rechazan el `join` fuera de la sala de espera).
-// Bombardero también: entrás mirando y jugás la ronda que viene.
-export const JOIN_IN_PROGRESS = ['codigo-secreto', 'gartic', 'la-mecha', 'meme', 'tiros', 'bomber'];
+// Bombardero también: entrás mirando y jugás la ronda que viene. Abismo: mirás la inmersión y jugás la partida siguiente.
+export const JOIN_IN_PROGRESS = ['codigo-secreto', 'gartic', 'la-mecha', 'meme', 'tiros', 'bomber', 'abismo'];
 
 // ¿La partida está en juego? (ni en la sala de espera ni terminada.) Las salas así se listan «En curso» y se pueden mirar.
 const NOT_PLAYING = ['lobby', 'resume', 'ended', 'final', 'finished', 'results'];

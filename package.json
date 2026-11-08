@@ -12,6 +12,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "@dimforge/rapier3d-deterministic-compat": "^0.21.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

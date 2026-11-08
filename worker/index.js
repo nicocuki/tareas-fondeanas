@@ -6,6 +6,7 @@
 //   /api/aviso         → el aviso del admin para todas las pantallas (WebSocket; ver Notice.jsx)
 //   /api/sugerencias   → buzón de sugerencias de la portada (POST las manda a Discord; ver sugerencias.js)
 //   /api/admin/…      → modo admin, con la clave ADMIN_CLAVE (ver admin.js)
+//   /api/abismo/…      → el juez y el ranking de Abismo (ver abismo.js)
 //   /api/photon-auth   → autenticación de nuestra app de Photon (deja pasar a todos)
 //   /api/mvl/…         → puente al servidor de ipodtouch (autenticación y novedades de Mario vs Luigi)
 //   cualquier otra ruta → los archivos de la página
@@ -15,6 +16,7 @@ import { handleAdmin } from './admin.js';
 export { Sala } from './sala.js';
 export { Directorio } from './directorio.js';
 export { Buzon } from './buzon.js';
+export { Abismo } from './abismo.js';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -39,6 +41,13 @@ export default {
       const headers = new Headers(request.headers);
       headers.set('x-ip', request.headers.get('cf-connecting-ip') || '');
       return env.BUZON.get(env.BUZON.idFromName('buzon')).fetch(new Request(request, { headers }));
+    }
+    if (url.pathname.startsWith('/api/abismo/')) {
+      // El juez y el ranking de Abismo (ver abismo.js). Pedidos chicos: una respuesta, o una partida de hasta 20.
+      if (Number(request.headers.get('content-length') || 0) > 8192) return json({ error: 'Es muy largo.' }, 413);
+      const headers = new Headers(request.headers);
+      headers.set('x-ip', request.headers.get('cf-connecting-ip') || '');
+      return env.ABISMO.get(env.ABISMO.idFromName('abismo')).fetch(new Request(request, { headers }));
     }
     if (url.pathname.startsWith('/api/admin/')) return handleAdmin(request, env, url);
     if (url.pathname === '/api/photon-auth') return photonAuth();

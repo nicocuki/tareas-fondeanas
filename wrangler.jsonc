@@ -15,13 +15,17 @@
     "bindings": [
       { "name": "SALA", "class_name": "Sala" },
       { "name": "DIRECTORIO", "class_name": "Directorio" },
-      { "name": "BUZON", "class_name": "Buzon" }
+      { "name": "BUZON", "class_name": "Buzon" },
+      { "name": "ABISMO", "class_name": "Abismo" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Sala"] },
     { "tag": "v2", "new_sqlite_classes": ["Directorio"] },
-    { "tag": "v3", "new_sqlite_classes": ["Buzon"] }
+    { "tag": "v3", "new_sqlite_classes": ["Buzon"] },
+    { "tag": "v4", "new_sqlite_classes": ["Abismo"] }
   ],
+  // Workers AI: el juez de Abismo cuando no hay ANTHROPIC_API_KEY (gratis hasta la cuota diaria del plan).
+  "ai": { "binding": "AI" },
   "observability": { "enabled": true }
 }

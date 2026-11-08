@@ -966,9 +966,18 @@ OCULTA 1.44.2 = Avisos para todos
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.49.0 = Bombardero: el Bomberman clásico, de 2 a 8 💣
+1.49.0 = Bombardero: el Bomberman clásico, de 2 a 8 💣
 - Juego nuevo: el Bomberman de siempre. Pasillos con pilares de piedra, ladrillos que se rompen, bombas que explotan en cruz y cada uno en su esquina. Se mueve con W A S D y se deja la bomba con Espacio.
 - Los ítems de toda la vida debajo de los ladrillos: más fuego, más bombas, patines, patada (caminá contra una bomba y sale deslizándose), control remoto (E detona), bomba perforante, chaleco a prueba de fuego, fuego máximo y la calavera.
 - La calavera da una enfermedad al azar por 12 segundos (controles al revés, sin bombas, bombas que se ponen solas, mecha corta, fuego chiquito, lentitud o taquicardia) y se contagia al tocar a otro. El anfitrión puede sacarlas.
 - Partida a rondas: gana la ronda el último que queda (si caen dos en el mismo fuego, empate) y la partida el primero que llega a 1, 2, 3 o 5 rondas. Cada ronda dura 2, 3 o 5 minutos y en los últimos 45 segundos caen bloques desde los bordes hacia el centro.
 - Hasta 4 se juega en el tablero clásico de 13 × 11; de 5 a 8, en uno más grande con lugares también en el medio de cada lado. El que entra con la partida empezada mira y juega la ronda que viene.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.50.0 = Abismo: cuanto más nicho tu respuesta, más hondo te hundís 🦐
+- Juego nuevo, una recreación de Krillion: aparece una consigna («nombrá una fruta») y tenés 25 segundos para escribir la respuesta más rara que se te ocurra. Un juez decide si entra en la categoría y qué tan nicho es.
+- Seis niveles, como en el original: Plancton (10), Vivillo (15), Cardumen (30), Raro (60), Abisal (85) y Uno en un millón (100). Cada punto son 10 metros: tu krill se hunde pasando las líneas de cada nivel, con el mar que se oscurece, los peces, los carteles de profundidad y los sonidos.
+- Más de 200 consignas distintas (comida, animales, geografía, deportes, cultura pop, historia, objetos de todos los días) que se eligen al azar sin repetir en la misma sala.
+- Se juega solo («Sumergirme solo»: siete consignas y a ver hasta dónde llegás) o en sala de hasta 10: todos responden la misma consigna a la vez y después se ven las respuestas de todos, de la más nicho a la más obvia. Gana el que llega más hondo.
+- Ranking global: quién dijo más cosas nicho (Abisal y Uno en un millón acumulados), la mejor inmersión y la vitrina de perlas con las respuestas más raras que dijo alguien.
