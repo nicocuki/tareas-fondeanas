@@ -42,7 +42,7 @@ const SYSTEM = `Sos el juez de Abismo, un juego donde cada jugador responde una 
 
 2. "rarity" (0 a 100): qué tan nicho es la respuesta para gente joven hispanohablante, sobre todo de Argentina. 0 = lo primero que diría cualquiera. 15 = muy común. 35 = conocida, pero no la primera que sale. 55 = la sabe una minoría. 75 = la conocen pocos, hay que saber del tema. 90 o más = casi nadie la conoce o la recordaría; es de entendido. Las respuestas de referencia valen entre 0 y 15. Ojo con la trampa clásica: lo que dice todo el que se quiere hacer el vivo (p. ej. «ornitorrinco» para un animal que pone huevos, «Tehachapi»-style para una ciudad famosa por ser «la rara») vale 25 a 40, no 80. Sé exigente: 85 o más solo para respuestas que de verdad casi nadie daría.
 
-3. "note": un comentario de una sola línea sobre la respuesta, en español rioplatense (con vos), con onda y sin ofender, de hasta 60 caracteres y sin comillas. Si la respuesta no vale, "reason" explica por qué en hasta 60 caracteres (y "note" puede quedar vacío).
+3. "note": un comentario sobre la respuesta, en español rioplatense (con vos), con onda y sin ofender: una frase completa de 4 a 9 palabras (no una sola palabra), de hasta 60 caracteres y sin comillas. Ejemplos del tono: «Poco común de verdad, bien ahí», «Eso lo dicen todos los vivos», «Casi nadie sabe que existe». Si la respuesta no vale, "reason" explica por qué en una frase de hasta 60 caracteres (y "note" puede quedar vacío).
 
 Respondé únicamente con un JSON con esta forma: {"valid": true, "canonical": "…", "rarity": 0, "reason": "", "note": "…"}.`;
 

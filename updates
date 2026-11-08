@@ -975,9 +975,14 @@ OCULTA 1.44.2 = Avisos para todos
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.50.0 = Abismo: cuanto más nicho tu respuesta, más hondo te hundís 🦐
+1.50.0 = Abismo: cuanto más nicho tu respuesta, más hondo te hundís 🦐
 - Juego nuevo, una recreación de Krillion: aparece una consigna («nombrá una fruta») y tenés 25 segundos para escribir la respuesta más rara que se te ocurra. Un juez decide si entra en la categoría y qué tan nicho es.
 - Seis niveles, como en el original: Plancton (10), Vivillo (15), Cardumen (30), Raro (60), Abisal (85) y Uno en un millón (100). Cada punto son 10 metros: tu krill se hunde pasando las líneas de cada nivel, con el mar que se oscurece, los peces, los carteles de profundidad y los sonidos.
 - Más de 200 consignas distintas (comida, animales, geografía, deportes, cultura pop, historia, objetos de todos los días) que se eligen al azar sin repetir en la misma sala.
 - Se juega solo («Sumergirme solo»: siete consignas y a ver hasta dónde llegás) o en sala de hasta 10: todos responden la misma consigna a la vez y después se ven las respuestas de todos, de la más nicho a la más obvia. Gana el que llega más hondo.
 - Ranking global: quién dijo más cosas nicho (Abisal y Uno en un millón acumulados), la mejor inmersión y la vitrina de perlas con las respuestas más raras que dijo alguien.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.50.0.5 = Fix: el juez de Abismo comenta con una frase, no con una palabra
+- El comentario que acompaña cada veredicto ahora es una frase corta con onda (antes el modelo contestaba «buena» o «clásica» y nada más).
