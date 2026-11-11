@@ -12,7 +12,7 @@ import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
 import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
-import { COLORS, COLOR_NAMES, GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, makeId, newRoom, ranking, startProblem } from './game.js';
+import { COLORS, COLOR_NAMES, GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, makeId, newRoom, ranking, score, startProblem } from './game.js';
 import Royale3DGame from './Royale3DGame.jsx';
 import { isKicked } from '../lobby/kick.js';
 import './royale3d.css';
@@ -92,19 +92,20 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         </ul>
       </div>
       <LobbyOptions canEdit={host}>
-        <OptionField title="Tormenta" hint="Qué tan rápido se cierra el círculo. En «rápida» la partida dura menos.">
+        <OptionField title="Velocidad de la tormenta" hint="Qué tan rápido se cierra el círculo. En «rápida» la partida dura menos; en «lenta», hay más tiempo para saquear.">
           <Segmented name="storm" value={room.options.storm} disabled={!host} onChange={(v) => onDispatch({ type: 'setOptions', options: { storm: v } })}
-            choices={[{ value: 'normal', label: 'Normal' }, { value: 'rapida', label: 'Rápida' }]} />
+            choices={[{ value: 'lenta', label: 'Lenta' }, { value: 'normal', label: 'Normal' }, { value: 'rapida', label: 'Rápida' }]} />
         </OptionField>
       </LobbyOptions>
       <div className="r3-card r3-howto">
         <h2>Cómo se juega</h2>
         <ul>
-          <li>Aparecés en una isla low poly junto a los demás. Gana el último que queda en pie.</li>
-          <li><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> para moverte, <kbd>Espacio</kbd> para saltar, <kbd>Shift</kbd> para correr. Hacé clic en la pantalla para capturar el mouse y apuntar; <kbd>Esc</kbd> lo suelta.</li>
-          <li>Clic izquierdo dispara (mantené apretado para ráfaga) y <kbd>R</kbd> recarga. Un tiro a la cabeza pega el doble: cuesta unos 7 tiros al cuerpo sacarle la vida a alguien.</li>
-          <li>Los árboles, las rocas y las cabañas frenan las balas: usalos de cobertura.</li>
-          <li>Una tormenta violeta se va cerrando sobre la isla: mirá el mapa de la esquina (círculo blanco = próxima zona) y quedate adentro, porque afuera te saca vida y cada vez más rápido.</li>
+          <li>Primero esperás en una isla chica (podés probar la pistola: ahí no duele). Después subís al <b>bus de batalla</b>, saltás con <kbd>Espacio</kbd> cuando quieras, caés en picada (<kbd>W</kbd>) y el planeador se abre solo cerca del piso (o antes con <kbd>Espacio</kbd>).</li>
+          <li>En la isla vas a encontrar <b>cofres</b> (mantené <kbd>E</kbd>), armas en el piso y <b>cofres del cielo</b> con lo mejor. Cada arma puede ser <span style={{ color: '#c9ccd6' }}>común</span>, <span style={{ color: '#5ed36b' }}>poco común</span>, <span style={{ color: '#4aa0ff' }}>rara</span>, <span style={{ color: '#c46bff' }}>épica</span> o <span style={{ color: '#ffb83d' }}>legendaria</span>: cuanto más rara, más daño, ritmo y cargador. Agarrás con <kbd>E</kbd>.</li>
+          <li>11 armas: pistola, revólver, metralleta, escopeta, fusil de asalto, fusil de ráfaga, francotirador (clic derecho para mirar por la mira), bazooka, lanzagranadas y minigun. Un tiro a la cabeza pega más.</li>
+          <li>Vendas <kbd>Q</kbd>, botiquín <kbd>F</kbd>, escudo chico <kbd>H</kbd> y grande <kbd>J</kbd> (si te pegan, se corta), y granadas <kbd>G</kbd>.</li>
+          <li>El pico (<kbd>1</kbd>) rompe árboles, cajas y paredes y te da <b>madera</b>. Con madera construís: <kbd>Z</kbd> pared, <kbd>X</kbd> piso, <kbd>C</kbd> rampa y <kbd>V</kbd> sube un piso; clic para poner. Todo se rompe a tiros.</li>
+          <li>Una tormenta violeta se cierra sobre la isla en cinco fases: mirá el mapa (<kbd>M</kbd> lo agranda; círculo blanco = próxima zona). Gana el último en pie.</li>
         </ul>
       </div>
       <div className="r3-start">
@@ -128,13 +129,15 @@ function Final({ room, me, onDispatch, onLeave }) {
       </div>
       {champ?.id === me.id && <p className="r3-eyebrow">¡Ganaste! 🏆</p>}
       <table className="r3-table">
-        <thead><tr><th>#</th><th>Jugador</th><th>🎯 Eliminados</th></tr></thead>
+        <thead><tr><th>#</th><th>Jugador</th><th>🎯 Bajas</th><th>📦 Cofres</th><th>Puntos</th></tr></thead>
         <tbody>
           {rank.map((p, i) => (
             <tr key={p.id} className={p.id === me.id ? 'is-me' : ''}>
               <td>{medals[i] || i + 1}</td>
               <td><span className="r3-chip" style={{ background: COLORS[p.color] }} /> {p.name}</td>
               <td><strong>{p.kills}</strong></td>
+              <td>{p.loot}</td>
+              <td><strong>{score(p, rank.length)}</strong></td>
             </tr>
           ))}
         </tbody>

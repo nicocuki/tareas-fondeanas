@@ -1,19 +1,19 @@
-// Royale 3D (beta): reducer de la sala, mismo patrón que Pixel Royale y Bombardero. Corre en la
-// transacción de `rooms/{código}` con `ctx = { now, rand }` y devuelve null si la acción no vale.
+// Royale 3D (beta): reducer de la sala, mismo patrón que Pixel Royale. Corre en la transacción de
+// `rooms/{código}` con `ctx = { now, rand }` y devuelve null si la acción no vale.
 //
-// Acá va lo de a una vez: quién juega, la semilla de la isla, quién murió (y por quién) y quién ganó.
-// El movimiento y los tiros van en tiempo real por otro lado (Royale3DGame.jsx): cada pantalla es
-// dueña de su jugador y avisa acá cuando muere.
-import { COUNTDOWN_MS } from './sim.js';
-import { STORM_SPEEDS } from './map.js';
+// Acá va lo de a una vez: quién juega, la semilla de la isla, quién murió (y por quién), qué cofres ya se
+// abrieron, quién agarró cada cosa del piso y el ranking. El movimiento, los tiros y las explosiones van en
+// tiempo real por otro lado (Royale3DGame.jsx): cada pantalla es dueña de su jugador y avisa acá cuando muere.
+import { COUNTDOWN_MS, MAX_PILES, MAX_TOOK, WEAPONS } from './sim.js';
+import { LOOT_LIMIT, STORM_SPEEDS } from './map.js';
 import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
 export const GAME_TYPE = 'royale3d';
-export const MAX_PLAYERS = 8;
+export const MAX_PLAYERS = 10;
 export const MIN_PLAYERS = 2;
 
-export const COLORS = ['#e23b3b', '#3b7be2', '#3fb850', '#f2c230', '#b04ae0', '#ff8c2a', '#2cc4c4', '#f0f0f0'];
-export const COLOR_NAMES = ['Rojo', 'Azul', 'Verde', 'Amarillo', 'Violeta', 'Naranja', 'Turquesa', 'Blanco'];
+export const COLORS = ['#ff5a5f', '#4aa0ff', '#5ed36b', '#ffd23f', '#c46bff', '#ff9a3c', '#3fe0d0', '#ff7ac8', '#a5e04a', '#e9edf2'];
+export const COLOR_NAMES = ['Rojo', 'Azul', 'Verde', 'Amarillo', 'Violeta', 'Naranja', 'Turquesa', 'Rosa', 'Lima', 'Blanco'];
 
 export const DEFAULT_OPTIONS = { storm: 'normal' };
 export const OPTION_VALUES = { storm: Object.keys(STORM_SPEEDS) };
@@ -39,7 +39,7 @@ export function newRoom(hostId, hostName, avatar, now = Date.now()) {
 }
 
 function newPlayer(id, name, avatar, color) {
-  return { id, name: cleanName(name), avatar: avatar || '🐸', color, inGame: false, alive: false, kills: 0 };
+  return { id, name: cleanName(name), avatar: avatar || '🐸', color, inGame: false, alive: false, kills: 0, loot: 0, place: 0 };
 }
 
 const freeColor = (room) => { for (let c = 0; c < COLORS.length; c++) if (!room.players.some((p) => p.color === c)) return c; return room.players.length % COLORS.length; };
@@ -59,42 +59,48 @@ export function startProblem(room) {
   return null;
 }
 
+// Puntos del ranking: cuenta el puesto, las bajas y el botín.
+export const score = (p, total) => (p.place ? (total - p.place) * 10 : 0) + p.kills * 25 + p.loot;
+
+export function ranking(room) {
+  const total = inGame(room).length;
+  return [...inGame(room)].sort((a, b) => (a.place || 99) - (b.place || 99) || score(b, total) - score(a, total));
+}
+
 function newMatch(next, now, rand) {
-  for (const p of next.players) Object.assign(p, { inGame: true, alive: true, kills: 0 });
+  for (const p of next.players) Object.assign(p, { inGame: true, alive: true, kills: 0, loot: 0, place: 0 });
   next.match = {
     n: (next.match?.n || 0) + 1,
     seed: Math.floor(rand() * 2 ** 31),
     storm: next.options.storm,
     startsAt: now + COUNTDOWN_MS,
-    order: shuffle(next.players.map((p) => p.id), rand), // en qué lugar de la isla aparece cada uno
+    order: shuffle(next.players.map((p) => p.id), rand), // dónde arranca cada uno en la isla de espera
     size: next.players.length,
     deaths: [],   // { id, by, w } en el orden en que fueron cayendo
+    loot: {},     // cofre -> quién lo abrió
+    took: {},     // cosa del piso -> quién la agarró
     winner: null,
   };
   next.phase = 'playing';
 }
 
-function kill(room, target, byId, how) {
-  target.alive = false;
-  const killer = byId && byId !== target.id ? findPlayer(room, byId) : null;
-  room.match.deaths.push({ id: target.id, by: killer?.inGame ? killer.id : null, w: how === 'storm' ? 'storm' : killer?.inGame ? 'player' : 'other' });
-  if (killer?.inGame) killer.kills += 1;
-}
-
-// Si queda uno (o ninguno) en pie, se terminó.
+// Si queda uno solo en pie (o ninguno), se terminó: el que queda sale primero.
 function checkEnd(room) {
-  if (room.phase !== 'playing' || alive(room).length > 1) return;
-  const left = alive(room)[0];
-  room.match.winner = left?.id || room.match.deaths.at(-1)?.id || null; // si caen juntos, gana el último en caer
+  if (room.phase !== 'playing') return;
+  const left = alive(room);
+  if (left.length > 1) return;
+  if (left[0]) { left[0].place = 1; left[0].alive = false; }
+  room.match.winner = left[0]?.id || room.match.deaths.at(-1)?.id || null;
   room.phase = 'final';
 }
 
-// Puestos: el ganador primero y después los demás, del último en caer al primero.
-export function ranking(room) {
-  const order = [...(room.match?.deaths || [])].reverse().map((d) => d.id);
-  const ids = [room.match?.winner, ...order].filter((id, i, a) => id && a.indexOf(id) === i);
-  const rest = room.players.filter((p) => !ids.includes(p.id)).map((p) => p.id);
-  return [...ids, ...rest].map((id) => findPlayer(room, id)).filter(Boolean);
+function kill(room, target, byId, weapon) {
+  target.alive = false;
+  target.place = alive(room).length + 1; // los que siguen vivos van adelante
+  const valid = byId && byId !== target.id;
+  room.match.deaths.push({ id: target.id, by: valid ? byId : null, w: valid && (WEAPONS[weapon] || weapon === 'grenade') ? weapon : weapon === 'storm' ? 'storm' : null });
+  const by = valid ? findPlayer(room, byId) : null;
+  if (by?.inGame) by.kills += 1;
 }
 
 export function applyAction(room, action, ctx = {}) {
@@ -120,6 +126,7 @@ export function applyAction(room, action, ctx = {}) {
         break;
       }
       if (next.players.length >= MAX_PLAYERS || !cleanName(action.name)) return null;
+      // El que entra con la partida empezada espera en la sala hasta la próxima (inGame: false).
       next.players.push(newPlayer(action.playerId, action.name, action.avatar, freeColor(next)));
       break;
     }
@@ -149,12 +156,39 @@ export function applyAction(room, action, ctx = {}) {
       break;
     }
 
-    // Lo manda cada pantalla por su jugador (`by`: quién lo mató; `w: 'storm'` si lo mató la tormenta); el anfitrión, por alguien que dejó de mandar fotos.
+    // Lo manda cada pantalla por su jugador (`by`: quién lo mató; `w`: con qué, o 'storm'); el anfitrión, por alguien que dejó de mandar fotos.
     case 'died': {
       const target = action.target ? (host ? findPlayer(next, action.target) : null) : me;
       if (next.phase !== 'playing' || !sameMatch || !target?.inGame || !target.alive || now < next.match.startsAt) return null;
-      kill(next, target, action.by, action.w);
+      const by = action.by && findPlayer(next, action.by)?.inGame ? action.by : null;
+      kill(next, target, by, action.w);
       checkEnd(next);
+      break;
+    }
+
+    // Cofre: lo abre el primero que llega (la transacción deja pasar a uno). El contenido sale de la semilla y queda en el piso (ver `take`).
+    case 'loot': {
+      const i = action.i;
+      if (next.phase !== 'playing' || !sameMatch || !me?.alive || !Number.isInteger(i) || i < 0 || i >= LOOT_LIMIT || next.match.loot[i]) return null;
+      next.match.loot[i] = me.id;
+      me.loot += 1;
+      break;
+    }
+
+    // Lo que quedó en el piso al abrir un cofre (o un arma que alguien cambió): lo agarra el primero que llega.
+    // Las claves son «cofre:número» (el cofre tiene que estar abierto) o «w{n}.{lugar}» (un arma tirada).
+    case 'take': {
+      const key = action.key;
+      if (next.phase !== 'playing' || !sameMatch || !me?.alive || typeof key !== 'string') return null;
+      const took = (next.match.took ||= {});
+      const chest = /^(\d{1,3}):(\d)$/.exec(key);
+      if (chest) {
+        if (Number(chest[1]) >= LOOT_LIMIT || Number(chest[2]) >= MAX_PILES || !next.match.loot[chest[1]]) return null;
+      } else if (!/^w\d{1,5}\.\d{1,2}$/.test(key)) return null;
+      if (took[key]) return null;
+      const keys = Object.keys(took);
+      if (keys.length >= MAX_TOOK) delete took[keys[0]];
+      took[key] = me.id;
       break;
     }
 

@@ -200,7 +200,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/generala/` | Generala: la física de los dados (`dice.js`, con Rapier), el Web Worker que la corre (`simWorker.js`), reducer (`game.js`), la mesa en 3D (`table.js`, con Three.js), sonido (`sound.js`), la partida y la planilla (`GeneralaGame.jsx`) (ver *Generala*) |
 | `src/bomber/` | Bombardero (Bomberman): tablero e ítems por semilla (`map.js`), movimiento, bombas, fuego y calaveras (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`BomberGame.jsx`), pantallas (ver *Bombardero*) |
 | `src/abismo/` `worker/juez.js` `worker/abismo.js` | Abismo (Krillion): niveles y normalización (`tiers.js`), las consignas (`prompts.js`), reducer (`game.js`), la inmersión (`Dive.jsx`), pixel art (`Art.jsx`), sonidos (`sfx.js`), ranking global (`Ranking.jsx`), pantallas; el juez y el ranking en el Worker (ver *Abismo*) |
-| `src/royale3d/` | Royale 3D (beta, primer «Juego 3D»): isla, tormenta y fases (`map.js`), movimiento y tiros (`sim.js`), reducer (`game.js`), dibujo con Three.js (`render.js`), la partida en vivo (`Royale3DGame.jsx`), pantallas (ver *Royale 3D*) |
+| `src/royale3d/` | Royale 3D (beta, primer «Juego 3D»): isla, lugares, cofres, bus y tormenta (`map.js`), armas, movimiento, tiros y construcción (`sim.js`), reducer (`game.js`), modelos (`models.js`), dibujo con Three.js (`render.js`), sonidos (`sfx.js`), la partida en vivo (`Royale3DGame.jsx`), pantallas (ver *Royale 3D*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
@@ -1183,23 +1183,42 @@ pero el juego copia a Bomberman (de Konami/Hudson): entre amigos está bien; si 
 
 ## Royale 3D
 
-Pedido de Nico: «un juego 3D tipo Fortnite», dentro de una sección nueva de la portada, **«Juegos 3D BETA»**, de la que este es el primero.
-De 2 a 8, solo compu (teclado y mouse). `id`: `royale3d` (`?juego=royale3d`, `gameType: 'royale3d'`, raíz `royale3d/` en `ROOTS`, efímera: fotos y señalización).
+Pedido de Nico: «un Fortnite 3D en su máxima expresión» con todo lo de Pixel Royale y más armas y rarezas; primer juego de la sección **«Juegos 3D BETA»** de la portada.
+De 2 a 10, solo compu (teclado y mouse). `id`: `royale3d` (`?juego=royale3d`, `gameType: 'royale3d'`, raíz `royale3d/` en `ROOTS`, efímera: fotos y señalización).
 
 - **La sección «Juegos 3D»**: un juego con `section: '3d'` en `games.js` sale en su propia sección de la portada (`GAMES_3D`, con la etiqueta BETA) y no en «Elegí un juego» (`CLASSIC_GAMES`).
   El menú lateral lo sigue listando con los demás. **Un juego 3D nuevo** lleva `section: '3d'` y `badge: 'Beta'`.
-- **Mismo esquema que Pixel Royale y Bombardero**: lo de a una vez va en la sala (`game.js`: semilla, orden de aparición, quién murió y por quién, ganador) y todo lo demás en vivo,
-  directo entre navegadores (`futbol/p2p.js`) con respaldo en `royale3d/{sala}/p/{id}` (`royale3dChannel`). Fases `lobby` → `playing` → `final` (una sola ronda). Cada pantalla es dueña de su
-  jugador: lo mueve, lleva su vida y avisa `died`. El anfitrión da por muerto al que no manda fotos en 12 s.
-- **La isla sale de la semilla** (`map.js`, sin `Math.random()` ni trigonometría en el terreno): `heightAt` (ruido de valores), `makeWorld` (árboles y rocas son cilindros, las cabañas, cajas), `spawnPoint`
-  (anillo sobre tierra firme, esquiva objetos) y la **tormenta** (`stormCenters`/`stormAt`, cinco fases con círculos que caben uno dentro del otro). Todas las pantallas arman lo mismo sin mandarse nada.
-- **Los tiros los juzga la pantalla de quien tira** (a diferencia de Pixel Royale): con lo que ve en su pantalla (`hitscan` contra la posición dibujada del otro), así pegar se siente justo. El tiro viaja en la foto
-  (`sh: { k, t, o, d, l, h?: [id, cabeza] }`) y la pantalla de quien lo recibe se resta la vida (`damageFor`). Entre amigos alcanza; no es a prueba de trampas. Los rayos frenan en terreno, árboles, rocas y cabañas (`solidAt`, `rayLength`).
-- **Cámara por encima del hombro** (`cameraFor`): el tiro sale del ojo hacia donde apunta la mira de la cámara (`aimShot`), así la mira no miente aunque el personaje tape el centro. **Adelante es `(-sin yaw, -cos yaw)`**, igual que una cámara de Three.js con `rotation.y = yaw`.
-- **`render.js` (Three.js) se carga con `import()`** al entrar a la partida: no lo importes desde nada que cargue la portada. Todo es low poly con colores lisos y se arma con código (sin modelos ni imágenes).
-- `window.__royale3d` (el estado de la pantalla: `local`, `remotes`, `fire`, `hits`) y `data-royale3d-canvas`, `data-alive`, `data-storm`, `data-hp`, `data-ammo`, `data-count`, `data-dead`, `data-final` existen para manejar el juego desde un navegador automatizado. En un navegador sin GPU
-  hace falta `--use-angle=swiftshader --enable-unsafe-swiftshader`; sin pointer lock, se apunta y dispara escribiendo `yaw`, `pitch` y `fire` en `window.__royale3d`.
-- **Todavía no tiene**: botín ni cofres (se juega con una sola arma, 30 balas), botiquines, construcción, bus ni caída inicial, vehículos, sonido, ni mapa más grande. Ideas para la próxima vuelta.
+- **Mismo esquema que Pixel Royale**: lo de a una vez va en la sala (`game.js`: semilla, orden de aparición, quién murió y por quién, cofres abiertos `match.loot`, cosas agarradas `match.took`, ranking)
+  y todo lo demás en vivo, directo entre navegadores (`futbol/p2p.js`) con respaldo en `royale3d/{sala}/p/{id}` (`royale3dChannel`). Fases `lobby` → `playing` → `final` (una sola ronda). Cada pantalla es
+  dueña de su jugador: lo mueve, lleva su vida y avisa `died`. El anfitrión da por muerto al que no manda fotos en 12 s (si esta pantalla se trabó más de 1,5 s, antes se da una prórroga: no dar por muerto a nadie por fotos que no pudo leer).
+- **Archivos**: `map.js` (terreno, mundo, lugares, cofres, bus, tormenta, cofres del cielo), `sim.js` (armas, rarezas, movimiento, tiros, explosiones, botín, construcción), `game.js` (reducer), `models.js` (armas, personaje, cofres, bus: todo con código),
+  `render.js` (Three.js: terreno, agua, cielo, árboles, efectos, mapa), `sfx.js` (sonidos con Web Audio, prendidos por defecto, `tf:royale3d:sonido`), `Royale3DGame.jsx` (la partida y el HUD) y `Royale3DApp.jsx` (entrada, sala de espera y final).
+  **`render.js` y `models.js` (con Three.js) se cargan con `import()`**: no los importes desde nada que cargue la portada.
+- **El mundo sale de la semilla** (`makeWorld(seed, 'island' | 'lobby')`, sin `Math.random()` ni trigonometría en el terreno): `world.height(x, z)` (ruido de valores más los `flats` de cada lugar), los **sólidos** (cajas, cilindros y rampas, en una
+  grilla de celdas de 8 m: `world.near`, `world.damage`, `world.byId`) y las listas `trees`, `chests`, `props` y `places`. **Los nueve lugares de Pixel Royale** (Villa Vermut, Pibes Polvorín Polvoriento, Peñasco Pelado, Cover, Arboleada Alianza, Juvenil Judía,
+  Frontera del Fondo, Puente Pollín —con río— y Muelle Mojito) se estampan con `PLACES`/`stampIsland`; las casas son **huecas, con puerta, piso, techo y cofres adentro** (`house`). Las `places` se eligen sin pisarse (los grandes primero): un lugar nuevo
+  va en `PLACES` con su radio (`r`, y `flat` si el plano es más chico que lo que ocupa) y su anillo de la isla. El río del puente corta el terreno con un `flat` rectangular bajo el agua.
+- **Todo es lo mismo para todos**: no viaja el mapa, viaja lo que cambia. Árboles, cajas, paredes y lo construido se rompen (`hp`); el que tira decide qué rompe y lo manda (`s` en el disparo, `dg` en la explosión) para que todas rompan lo mismo.
+  Lo roto y lo construido **no se guardan** (como en Pixel Royale): quien recarga la página no lo ve.
+- **Moverse** (`stepGround`): sin colisión por casillas sino contra sólidos. `floorAt` da lo más alto que se pueda pisar desde los pies (un escalón de `STEP_H` = 0,6 m) y `blockedAt` frena contra lo que no se sube (y deja salir de algo que apareció encima).
+  Rampas: `rampY`. Adelante es `(-sin yaw, -cos yaw)`, como una cámara de Three.js con `rotation.y = yaw`.
+- **Bus → caída → planeador** (`busRoute`/`busAt` salen de la semilla; `boardBus`, `jumpOff`, `openGlider`, `stepAir`): la isla de espera (`COUNTDOWN_MS`, 15 s, mundo `'lobby'`: se prueba la pistola con balas infinitas y sin daño) pasa sola a la isla de verdad cuando se cumple
+  `match.startsAt` (cada pantalla mira su reloj: `enterScene`). En el aire y en el bus nadie te lastima ni disparás. La tormenta cuenta desde `PREGAME` segundos después de subir al bus. Las fotos llevan `ph` (0 espera, 1 isla): se ignoran las de otra fase.
+- **Armas y rarezas** (`WEAPONS`, `RARITIES`, `statsOf`): once armas (pistola, revólver, metralleta, escopeta de 9 perdigones, fusil de asalto, fusil de ráfaga, francotirador con mira, bazooka, lanzagranadas, minigun y el pico) y cinco rarezas (común, poco común, rara, épica,
+  legendaria) que mejoran daño, ritmo, cargador y recarga (`minR`: el francotirador, el bazooka y la minigun no salen comunes). Los cofres (`chestContents`, de la semilla y del número del cofre) traen armas con su rareza más vendas, botiquines, escudos chicos y grandes y granadas;
+  los de tier 3 y los del cielo (`dropInfo`, caen con paracaídas adentro de la zona de su momento, `DROP_BASE` + n) traen dos armas y lo mejor. Se abren manteniendo **E** (`OPEN_TIME`); lo de adentro **queda en el piso** con un rayo de luz del color de la rareza y se agarra con E
+  (`take`: la transacción deja pasar al primero). Con el inventario lleno se cambia el arma de la mano y la vieja queda en el piso (`dw`). Al morir se sueltan las armas.
+- **Quién decide cada cosa**: **los tiros los juzga la pantalla de quien tira** (con lo que ve, así pegar se siente justo; `resolveShot` con rayos analíticos contra sólidos y jugadores) y la de quien los recibe se resta la vida; el tiro viaja en la foto
+  (`sh: { k, t, w, r, o, d, sd, l, pl, sp, h: [[id, daño, cabeza]], s: [[sólido, daño]] }`, y los perdigones salen de `pelletDirs(d, n, spread, sd)` iguales en todas). Cohetes (`rk`), granadas (`gr`, también las del lanzagranadas) y explosiones (`ex`) igual: **cada
+  una la simula todas las pantallas y la del dueño decide dónde explota** y lo manda; cada pantalla calcula el daño de su jugador (`blastOn`, el dueño se hace el 55 %). Entre amigos alcanza; no es a prueba de trampas.
+- **Construcción** (`pieceFor`/`pieceAt`/`buildProblem`/`placePiece`): **Z** pared, **X** piso, **C** rampa, **V** sube un piso (y si estás parado en algo alto, ya cuenta solo); clic para poner, con la pieza fantasma en verde o rojo. Cuestan madera (se junta picando
+  árboles, cajas y paredes). Las piezas de un mismo lugar **comparten la base** (`anchor`, la de la pieza más cercana), así lo que armás arriba empalma aunque el terreno suba; por eso el evento `bd` lleva `a`. El piso queda a ras de la punta de la rampa (si no, el escalón pasaba de 0,6 m).
+- **La tormenta** (`stormAt`, cinco fases, círculos que caben uno dentro del otro) tiene tres velocidades (`STORM_SPEEDS`: lenta, normal, rápida). **Mapa**: el minimapa redondo sigue al jugador y **M** abre el grande con los nombres (`drawWorldMap`, se pinta una vez por isla); marca la zona, la próxima y los cofres del cielo.
+- **Dibujo** (`render.js`): terreno plano con colores por altura y por lugar, agua con ondas (shader), cielo con sol, nubes, sombras (se apagan solas si la compu no da abasto), árboles instanciados, partículas (`Particles`, normales y aditivas), estelas, explosiones, pared de tormenta y rayos de las rarezas.
+  `models.js` arma los modelos y las texturas de madera, piedra y tablones en un canvas. **Colores fijos**, iguales en los dos temas. El personaje camina, apunta, se cura, cae en picada y planea con paracaídas.
+- `window.__royale3d` (el estado de la pantalla: `local`, `remotes`, `world`, `lootCache`, `input`, `edges`, `scene`, `frames`, `SIM` con las funciones de `sim.js`) y `data-royale3d-canvas`, `data-alive`, `data-storm`, `data-hp`, `data-slot`, `data-items`, `data-prompt`, `data-feed`, `data-dead`, `data-final`
+  existen para manejar el juego desde un navegador automatizado. En un navegador sin GPU hace falta `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`; sin pointer lock, se apunta y dispara escribiendo `yaw`, `pitch`, `input.fire` y `edges.fire` en `window.__royale3d.local` y `window.__royale3d`.
+- **Todavía no tiene**: derribados y revivir, dúos y escuadras, vehículos, municiones por tipo, editar lo construido, bots, ni que lo construido o roto se guarde para quien entra tarde.
 
 ## Mario vs Luigi
 
