@@ -53,12 +53,16 @@ export function adminListing(tree, code, connections) {
 
 export const NOTICE_MAX = 140;
 export const NOTICE_SECONDS = [3, 60]; // cuánto puede durar a la vista
-// El aviso que mandó el admin: el texto sin espacios de más (hasta 140 letras) y los segundos que dura (10 si no dice).
+// El aviso que mandó el admin: el texto sin espacios de más (hasta 140 letras), los segundos que dura (10 si no dice) y a quién va.
 export function cleanNotice(input) {
   const text = String(input?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, NOTICE_MAX);
   const secs = Number(input?.seconds);
   const seconds = Number.isFinite(secs) && input?.seconds != null ? Math.max(NOTICE_SECONDS[0], Math.min(NOTICE_SECONDS[1], Math.round(secs))) : 10;
-  return { text, seconds };
+  // A quién va: a todos (sin `room`), a una sala (`room`) o a un jugador de esa sala (`room` y `name`).
+  const room = String(input?.room ?? '').toUpperCase();
+  const name = String(input?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 24);
+  const to = /^[A-Z]{4}$/.test(room) ? { room, ...(name ? { name } : {}) } : null;
+  return { text, seconds, to };
 }
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -84,11 +88,13 @@ export async function handleAdmin(request, env, url) {
     await buzon().borrar(id);
     return json({ ok: true });
   }
-  // Un aviso para todas las pantallas (sin texto, saca el que esté a la vista).
+  // Un aviso para todas las pantallas, para una sala o para un jugador (sin texto, saca los que estén a la vista).
   if (route === 'POST /aviso') {
-    const { text, seconds } = cleanNotice(await body(request));
-    await directorio().avisar(text, seconds * 1000);
-    return json({ ok: true, text, seconds });
+    const raw = await body(request);
+    const { text, seconds, to } = cleanNotice(raw);
+    if (raw?.room && !to) return json({ error: 'El código tiene 4 letras.' }, 400);
+    await directorio().avisar(text, seconds * 1000, to);
+    return json({ ok: true, text, seconds, ...(to ? { to } : {}) });
   }
   if (route === 'GET /salas') return json(await directorio().todas());
   if (route === 'POST /salas/cerrar') {

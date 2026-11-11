@@ -989,8 +989,14 @@ OCULTA 1.44.2 = Avisos para todos
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.51.0 = La Timba: guardar y retomar la partida, también como archivo 💾
+1.51.0 = La Timba: guardar y retomar la partida, también como archivo 💾
 - La Timba ahora se guarda sola en tu dispositivo mientras jugás (el día, la caja, la cuota y los tickets) y se borra cuando termina la partida.
 - En la entrada aparece «Partidas guardadas»: «Continuar» abre una sala nueva con el código de siempre y cada uno elige quién era («Quién es quién»); los lugares que nadie toma se van de la partida al retomar.
 - Se puede bajar la partida como archivo («Descargar») y cargarla en otra compu («Cargar desde archivo»), igual que en Monopoly. Si alguien edita el archivo a mano, no se abre.
 - Al retomar, las mesas que estaban en juego se cierran (no se pierde ninguna apuesta) y el reloj del día sigue donde quedó.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
+- Al mandar un aviso se elige el destino: todos, una sala o un jugador de esa sala (el nombre sale de la lista de la sala).
+- Pueden estar a la vista varios avisos a la vez, y quien se conecta ve los que le tocan y siguen vigentes.

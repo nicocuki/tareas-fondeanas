@@ -95,6 +95,7 @@ const room = createStore(null); // { game, code, onLeave }: la del juego que est
 const lastRoom = createStore(null); // { game, code }: la última abierta, para «Volver» desde el inicio
 export const useCurrentRoom = () => useStore(room);
 export const useLastRoom = () => useStore(lastRoom);
+export const getCurrentRoom = () => room.get();
 
 // Cada juego llama a esto con su sala actual (o '' si no está en ninguna). El header muestra el
 // código y el menú ofrece salir con `onLeave`.

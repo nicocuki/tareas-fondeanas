@@ -131,29 +131,54 @@ function Suggestions({ list, onReload }) {
   );
 }
 
-// Un aviso que aparece arriba en el medio en la pantalla de todos, por unos segundos.
-function Announce() {
+// Un aviso que aparece arriba en el medio, por unos segundos: en la pantalla de todos, de una sala o de un jugador.
+function Announce({ rooms }) {
   const [text, setText] = useState('');
   const [seconds, setSeconds] = useState(10);
   const [busy, setBusy] = useState(false);
+  const [dest, setDest] = useState('all'); // 'all' | 'room' | 'player'
+  const [roomCode, setRoomCode] = useState('');
+  const [playerName, setPlayerName] = useState('');
+  const room = rooms.find((r) => r.code === roomCode) || rooms[0];
+  const names = (room?.who || []).filter((p) => p.n && !p.b && !p.x).map((p) => p.n);
+  const name = names.includes(playerName) ? playerName : names[0] || '';
+  const to = dest === 'all' || !room ? null : dest === 'room' ? { room: room.code } : { room: room.code, name };
+  const noTarget = dest !== 'all' && (!room || (dest === 'player' && !name));
   async function send(e, clear = false) {
     e?.preventDefault();
-    if (!clear && !text.trim()) return;
+    if (!clear && (!text.trim() || noTarget)) return;
     setBusy(true);
     try {
-      await sendNotice(clear ? '' : text, seconds);
-      showToast(clear ? 'Aviso sacado' : 'Aviso enviado a todos 📣');
+      await sendNotice(clear ? '' : text, seconds, clear ? null : to);
+      showToast(clear ? 'Avisos sacados' : `Aviso enviado ${!to ? 'a todos' : to.name ? `a ${to.name}` : `a la sala ${to.room}`} 📣`);
       if (!clear) setText('');
     } catch (err) { showToast(err.message); } finally { setBusy(false); }
   }
   return (
     <section className="tf-admin-card" aria-labelledby="tf-admin-aviso">
-      <div className="tf-admin-head"><h2 id="tf-admin-aviso">Avisar a todos 📣</h2></div>
+      <div className="tf-admin-head"><h2 id="tf-admin-aviso">Mandar un aviso 📣</h2></div>
       <form className="tf-admin-notice" onSubmit={send} data-admin-notice>
-        <input className="tf-input" value={text} maxLength={140} placeholder="Un mensaje que aparece arriba en la pantalla de todos" onChange={(e) => setText(e.target.value)} />
+        <input className="tf-input" value={text} maxLength={140} placeholder="Un mensaje que aparece arriba en la pantalla" onChange={(e) => setText(e.target.value)} />
+        <label className="tf-admin-secs">Para <select className="tf-input" value={dest} onChange={(e) => setDest(e.target.value)} data-notice-dest>
+          <option value="all">Todos</option>
+          <option value="room">Una sala</option>
+          <option value="player">Un jugador</option>
+        </select></label>
+        {dest !== 'all' && (
+          <select className="tf-input" value={room?.code || ''} onChange={(e) => setRoomCode(e.target.value)} aria-label="Sala" data-notice-room>
+            {!rooms.length && <option value="">No hay salas</option>}
+            {rooms.map((r) => <option key={r.code} value={r.code}>{gameById(r.game)?.emoji || '🎲'} {r.code}{r.host ? ` · ${r.host}` : ''}</option>)}
+          </select>
+        )}
+        {dest === 'player' && (
+          <select className="tf-input" value={name} onChange={(e) => setPlayerName(e.target.value)} aria-label="Jugador" data-notice-player>
+            {!names.length && <option value="">Sin jugadores</option>}
+            {names.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        )}
         <label className="tf-admin-secs">Dura <select className="tf-input" value={seconds} onChange={(e) => setSeconds(Number(e.target.value))}>{[5, 10, 20, 30, 60].map((s) => <option key={s} value={s}>{s} s</option>)}</select></label>
-        <button type="submit" className="tf-btn tf-btn-primary" disabled={busy || !text.trim()}>Enviar</button>
-        <button type="button" className="tf-btn tf-btn-soft" disabled={busy} onClick={(e) => send(e, true)}>Sacar el aviso</button>
+        <button type="submit" className="tf-btn tf-btn-primary" disabled={busy || !text.trim() || noTarget}>Enviar</button>
+        <button type="button" className="tf-btn tf-btn-soft" disabled={busy} onClick={(e) => send(e, true)}>Sacar los avisos</button>
       </form>
     </section>
   );
@@ -216,7 +241,7 @@ export default function AdminPanel({ onNavigate }) {
             <li><strong>{data.suggestions.length}</strong> sugerencias</li>
           </ul>
           {data.error && <p className="tf-join-error" role="alert">{data.error}</p>}
-          <Announce />
+          <Announce rooms={data.rooms} />
           <Rooms rooms={data.rooms} onReload={reload} onNavigate={onNavigate} />
           <Suggestions list={data.suggestions} onReload={reload} />
         </>

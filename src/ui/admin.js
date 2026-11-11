@@ -36,6 +36,15 @@ export async function adminFetch(path, { body, clave = key } = {}) {
   return data;
 }
 
-// Manda un aviso que aparece arriba en el medio en todas las pantallas (sin texto, saca el que esté).
-export const sendNotice = (text, seconds) => adminFetch('/aviso', { body: { text, seconds } });
+// Manda un aviso arriba en el medio: a todas las pantallas, a una sala (`to.room`) o a un jugador de esa sala (`to.room` y `to.name`).
+// Sin texto, saca los avisos que estén a la vista.
+export const sendNotice = (text, seconds, to) => adminFetch('/aviso', { body: { text, seconds, ...(to || {}) } });
+
+const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+// ¿Este aviso es para mí? Sin `to` va a todos; con sala, a los que están en esa sala; con nombre, solo a ese jugador (el servidor corta los nombres en 24).
+export function noticeIsForMe(to, { room, name }) {
+  if (!to) return true;
+  if (!room || room !== to.room) return false;
+  return !to.name || sameName(String(name || '').slice(0, 24), to.name);
+}
 export const closeRoom = (code) => adminFetch('/salas/cerrar', { body: { code } });

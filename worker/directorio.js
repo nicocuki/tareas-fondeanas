@@ -4,17 +4,20 @@
 import { DurableObject } from 'cloudflare:workers';
 import { LISTING_TTL_MS, visibleListings } from './publicas.js';
 
+const MAX_NOTICES = 10; // avisos a la vista a la vez
+
 export class Directorio extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.entries = new Map();
-    this.notice = null; // el último aviso del admin: { id, text, until }
+    this.notices = []; // los avisos del admin que siguen a la vista: { id, text, until, to? } (to = { room, name? }; sin to, van a todos)
     this.all = new Map(); // todas las salas con gente, para el modo admin (`a:` en disco)
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     ctx.blockConcurrencyWhile(async () => {
       for (const [key, value] of await ctx.storage.list({ prefix: 's:' })) this.entries.set(key.slice(2), value);
       for (const [key, value] of await ctx.storage.list({ prefix: 'a:' })) this.all.set(key.slice(2), value);
-      this.notice = (await ctx.storage.get('aviso')) || null;
+      const saved = await ctx.storage.get('avisos');
+      this.notices = Array.isArray(saved) ? saved : [];
     });
   }
 
@@ -44,16 +47,24 @@ export class Directorio extends DurableObject {
     }
   }
 
-  // El aviso que ven todos (`/api/aviso`): `left` es lo que le queda a la vista, así cada pantalla lo cuenta con su reloj.
-  noticeMessage() {
-    const left = this.notice ? this.notice.until - Date.now() : 0;
-    return JSON.stringify({ t: 'aviso', m: this.notice && left > 0 ? { id: this.notice.id, text: this.notice.text, left } : null });
+  // Los avisos que están a la vista (`/api/aviso`): `left` es lo que le queda, así cada pantalla lo cuenta con su reloj.
+  // Cada pantalla se queda solo con los que van a ella (a todos, a su sala o a ella): el filtro es de la interfaz, como el chat de equipo.
+  live() {
+    const now = Date.now();
+    this.notices = this.notices.filter((n) => n.until > now);
+    return this.notices.map((n) => ({ id: n.id, text: n.text, left: n.until - now, ...(n.to ? { to: n.to } : {}) }));
   }
 
-  async avisar(text, ms) {
-    this.notice = text ? { id: crypto.randomUUID(), text, until: Date.now() + ms } : null;
-    await this.ctx.storage.put('aviso', this.notice);
-    const message = this.noticeMessage();
+  noticeMessage() {
+    return JSON.stringify({ t: 'aviso', l: this.live() });
+  }
+
+  async avisar(text, ms, to = null) {
+    this.live();
+    if (!text) this.notices = [];
+    else this.notices = [...this.notices, { id: crypto.randomUUID(), text, until: Date.now() + ms, ...(to ? { to } : {}) }].slice(-MAX_NOTICES);
+    await this.ctx.storage.put('avisos', this.notices);
+    const message = text ? JSON.stringify({ t: 'aviso', m: this.live().at(-1) }) : JSON.stringify({ t: 'aviso', m: null });
     for (const ws of this.ctx.getWebSockets('aviso')) {
       try { ws.send(message); } catch {}
     }
