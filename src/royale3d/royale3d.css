@@ -1,0 +1,72 @@
+/* Royale 3D (beta). Entrada, sala de espera y final con los colores del tema (src/ui/tokens.css); la partida
+   (el canvas pixelado y el HUD encima) tiene sus colores fijos, iguales en los dos temas. */
+.r3-page { padding: 22px 16px 40px; max-width: 1180px; margin: 0 auto; }
+.r3-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow); padding: 22px; margin-bottom: 20px; }
+.r3-card h2 { margin: 0 0 12px; font-size: 20px; }
+.r3-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.r3-card-head h2 { margin: 0; }
+.r3-card-head span { color: var(--text-2); font-size: 14px; }
+.r3-entry { max-width: 460px; margin: 0 auto; }
+.r3-or { display: flex; align-items: center; gap: 10px; margin: 18px 0 12px; color: var(--text-3); font-size: 13px; }
+.r3-or::before, .r3-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.r3-error { margin: 10px 0; padding: 10px 14px; border-radius: var(--radius); background: var(--danger-soft); color: var(--danger); font-size: 14px; }
+.r3-banner { max-width: 1180px; margin: 12px auto; }
+.r3-hint { color: var(--text-2); font-size: 14px; margin: 8px 0 0; }
+.r3-center { text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 520px; margin: 30px auto; }
+.r3-chip { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #23222b; flex: none; vertical-align: -2px; }
+.r3-roster { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.r3-roster li { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-lg); background: var(--surface-2); border: 1px solid var(--border); }
+.r3-roster li.is-me { border-color: color-mix(in srgb, var(--game-royale3d) 60%, var(--border)); }
+.r3-roster strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r3-roster small { color: var(--text-3); }
+.r3-howto ul { margin: 0; padding-left: 18px; color: var(--text-2); line-height: 1.8; }
+.r3-start { text-align: center; margin: 10px 0 20px; }
+.r3-start-btn { min-height: 54px; padding: 0 34px; font-size: 18px; background: var(--game-royale3d); color: #fff; }
+
+/* Partida: el canvas 3D ocupa todo y el HUD va encima, con colores fijos (iguales en los dos temas). */
+.r3-screen { position: relative; }
+.r3-play { position: relative; height: calc(100dvh - 72px); min-height: 440px; overflow: hidden; background: #9fd4f5; }
+.r3-stage { position: absolute; inset: 0; color: #fff; font-family: Inter, sans-serif; user-select: none; }
+.r3-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.r3-crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); pointer-events: none; }
+.r3-crosshair::before, .r3-crosshair::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6); }
+.r3-crosshair::before { left: 10px; top: 0; width: 2px; height: 22px; clip-path: polygon(0 0, 100% 0, 100% 36%, 0 36%, 0 64%, 100% 64%, 100% 100%, 0 100%); }
+.r3-crosshair::after { top: 10px; left: 0; height: 2px; width: 22px; clip-path: polygon(0 0, 36% 0, 36% 100%, 0 100%, 64% 0, 100% 0, 100% 100%, 64% 100%); }
+.r3-hitmark { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; transform: translate(-50%, -50%) rotate(45deg); pointer-events: none; animation: r3-hit 0.25s ease-out forwards; }
+.r3-hitmark::before, .r3-hitmark::after { content: ''; position: absolute; background: #ff3b4f; }
+.r3-hitmark::before { left: 12px; top: 0; width: 3px; height: 26px; }
+.r3-hitmark::after { top: 12px; left: 0; height: 3px; width: 26px; }
+@keyframes r3-hit { from { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(0.7); } to { opacity: 0; transform: translate(-50%, -50%) rotate(45deg) scale(1.4); } }
+.r3-top { position: absolute; left: 12px; top: 12px; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
+.r3-pill { padding: 5px 12px; border-radius: 999px; background: rgba(15, 20, 35, 0.72); font: 700 13px Inter, sans-serif; }
+.r3-storm { background: rgba(88, 40, 160, 0.78); }
+.r3-feed { position: absolute; right: 12px; top: 12px; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; pointer-events: none; }
+.r3-feed p { margin: 0; padding: 4px 10px; border-radius: 6px; background: rgba(15, 20, 35, 0.72); font: 600 13px Inter, sans-serif; }
+.r3-mini { position: absolute; right: 12px; bottom: 12px; width: 150px; height: 150px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.8); pointer-events: none; }
+.r3-bottom { position: absolute; left: 12px; bottom: 58px; display: flex; flex-direction: column; gap: 6px; width: min(300px, 60vw); pointer-events: none; }
+.r3-hp { position: relative; height: 26px; border-radius: 6px; background: rgba(15, 20, 35, 0.72); overflow: hidden; }
+.r3-hp i { position: absolute; inset: 0 auto 0 0; background: #4ade80; transition: width 0.1s linear; }
+.r3-hp span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 800 14px Inter, sans-serif; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); }
+.r3-ammo { font: 800 16px ui-monospace, 'Courier New', monospace; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
+.r3-warn { position: absolute; left: 50%; top: 56px; transform: translateX(-50%); padding: 6px 16px; border-radius: 8px; background: rgba(140, 40, 220, 0.88); font: 800 14px Inter, sans-serif; pointer-events: none; animation: r3-blink 0.8s steps(2) infinite; }
+@keyframes r3-blink { 50% { opacity: 0.55; } }
+.r3-center { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 26px; border-radius: 14px; background: rgba(15, 20, 35, 0.8); font: 800 22px Inter, sans-serif; text-align: center; border: 0; color: #fff; pointer-events: none; }
+.r3-center small { font: 600 13px Inter, sans-serif; color: #c9d2e6; max-width: 420px; }
+.r3-count { font: 900 clamp(48px, 9vw, 96px)/1 Inter, sans-serif; background: transparent; text-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); }
+.r3-lock { pointer-events: auto; cursor: pointer; }
+.r3-dead strong, .r3-dead { color: #ff6b7a; }
+.r3-screen-exit { display: none; }
+.r3-screen:fullscreen { background: #000; }
+.r3-screen:fullscreen .r3-play { height: 100dvh; }
+.r3-screen:fullscreen .r3-screen-exit { display: block; position: fixed; right: 12px; bottom: 170px; z-index: 30; opacity: 0.55; border: 0; border-radius: 4px; padding: 6px 12px; background: rgba(0, 0, 0, 0.6); color: #fff; font: 600 12px Inter, sans-serif; cursor: pointer; }
+
+/* Final */
+.r3-final { max-width: 760px; margin: 0 auto; padding: 30px 16px 40px; text-align: center; }
+.r3-eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; font-weight: 800; color: var(--game-royale3d); }
+.r3-wins { display: inline-flex; align-items: center; gap: 10px; margin: 6px 0 20px; padding: 10px 28px; background: #ffd23f; color: #1b1530; border: 4px solid #1b1530; font: 900 clamp(26px, 6vw, 48px) Inter, sans-serif; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35); }
+.r3-wins .r3-chip { width: 22px; height: 22px; }
+.r3-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.r3-table th, .r3-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+.r3-table th { color: var(--text-2); font-size: 13px; }
+.r3-table tr.is-me td { background: color-mix(in srgb, var(--game-royale3d) 14%, transparent); }
+.r3-final-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; margin-top: 20px; }

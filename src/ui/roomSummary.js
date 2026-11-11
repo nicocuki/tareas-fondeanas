@@ -16,11 +16,12 @@ import { MAX_PLAYERS as MAX_TIMBA } from '../timba/game.js';
 import { MAX_PLAYERS as MAX_GENERALA } from '../generala/game.js';
 import { MAX_PLAYERS as MAX_BOMBER } from '../bomber/game.js';
 import { MAX_PLAYERS as MAX_ABISMO } from '../abismo/game.js';
+import { MAX_PLAYERS as MAX_ROYALE3D } from '../royale3d/game.js';
 import { roomSettings } from '../gartic/game.js';
 
 // Topes de cada juego. Fútbol no tiene tope.
-const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA, generala: MAX_GENERALA, bomber: MAX_BOMBER, abismo: MAX_ABISMO };
-const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena', 'timba', 'generala', 'bomber', 'abismo'];
+const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA, generala: MAX_GENERALA, bomber: MAX_BOMBER, abismo: MAX_ABISMO, royale3d: MAX_ROYALE3D };
+const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena', 'timba', 'generala', 'bomber', 'abismo', 'royale3d'];
 
 // `gartic`: lo que hay en garticRooms/{código} (objeto); `raw`: lo que hay en rooms/{código} (texto JSON).
 // Devuelve { code, game, host, hostAvatar, players, max, phase, local } o null si no existe.

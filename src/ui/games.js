@@ -1,7 +1,31 @@
 // Catálogo de juegos: lo usan la portada, el menú, el header y «Cómo jugar».
 // Para sumar un juego nuevo: agregalo acá **al principio de la lista** (los nuevos van primero en la portada y el menú), en el
-// enrutador de App.jsx y en ROOTS (worker/rules.js). Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
+// enrutador de App.jsx y en ROOTS (worker/rules.js). Los 3D llevan `section: '3d'` y salen en su propia sección de la portada. Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
 export const GAMES = [
+  {
+    id: 'royale3d',
+    image: '/juegos/royale3d.jpg',
+    section: '3d', // va en «Juegos 3D BETA» de la portada, aparte de los demás
+    title: 'Royale 3D',
+    emoji: '🏝️',
+    color: 'var(--game-royale3d)',
+    onColor: '#ffffff',
+    tagline: 'Battle royale en 3D, de 2 a 8',
+    description: 'Aterrizás en una isla low poly con otros jugadores, disparás en tercera persona y te cubrís detrás de árboles, rocas y cabañas mientras una tormenta violeta se cierra sobre el mapa. Gana el último en pie. Es el primer juego 3D y está en beta: puede tener bugs.',
+    players: '2 a 8',
+    min: 2,
+    max: 8,
+    duration: '5–10 min',
+    input: 'Teclado y mouse',
+    badge: 'Beta',
+    howTo: [
+      'Hacé clic en la pantalla para capturar el mouse y apuntar. Te movés con W A S D, saltás con Espacio y corrés con Shift. Esc suelta el mouse.',
+      'Clic izquierdo dispara (mantené apretado para ráfaga) y R recarga. Los tiros a la cabeza pegan el doble.',
+      'Los árboles, las rocas y las cabañas frenan las balas: usalos de cobertura.',
+      'Una tormenta violeta se cierra sobre la isla en cinco fases. En el mapa de la esquina, el círculo violeta es la zona actual y el blanco, la próxima. Afuera perdés vida, y cada vez más rápido.',
+      'Gana el último que queda en pie. Si te eliminan, mirás a alguien que sigue jugando.',
+    ],
+  },
   {
     id: 'abismo',
     image: '/juegos/abismo.jpg',
@@ -446,6 +470,9 @@ export const GAMES = [
 
 // Los juegos que se muestran en la portada y en el menú (los que tienen `menu: false` quedan ocultos).
 export const MENU_GAMES = GAMES.filter((g) => g.menu !== false);
+// La portada los muestra en dos secciones: los juegos de siempre y «Juegos 3D BETA».
+export const CLASSIC_GAMES = MENU_GAMES.filter((g) => g.section !== '3d');
+export const GAMES_3D = MENU_GAMES.filter((g) => g.section === '3d');
 export const gameById = (id) => GAMES.find((g) => g.id === id) || null;
 
 // Por qué no se puede pasar a ese juego con `count` jugadores (o null si se puede).

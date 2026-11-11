@@ -1,6 +1,6 @@
 // Portada: saludo, unirse con código, las salas públicas, los juegos, cómo funciona y la última novedad.
 import React from 'react';
-import { MENU_GAMES, gameById } from './games.js';
+import { CLASSIC_GAMES, GAMES_3D, MENU_GAMES, gameById } from './games.js';
 import { setPrefs, showToast, useLastRoom, usePrefs, useProfile } from './store.js';
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
@@ -136,6 +136,18 @@ function MenuChat() {
   return <GameChat code={MENU_CHAT_CODE} me={me} side="right" label="chat del menú" />;
 }
 
+function GameList({ games, view, onNavigate }) {
+  return view === 'list' ? (
+    <div className="tf-game-list">
+      {games.map((g) => <GameRow key={g.id} game={g} onPlay={() => onNavigate(g.id)} />)}
+    </div>
+  ) : (
+    <div className="tf-game-grid">
+      {games.map((g) => <GameCard key={g.id} game={g} onPlay={() => onNavigate(g.id)} />)}
+    </div>
+  );
+}
+
 export default function Home({ onNavigate }) {
   const profile = useProfile();
   const view = usePrefs().gameView === 'list' ? 'list' : 'grid';
@@ -189,16 +201,18 @@ export default function Home({ onNavigate }) {
             <p>{MENU_GAMES.length} juegos multijugador, todos online.</p>
           </div>
         </div>
-        {view === 'list' ? (
-          <div className="tf-game-list">
-            {MENU_GAMES.map((g) => <GameRow key={g.id} game={g} onPlay={() => onNavigate(g.id)} />)}
-          </div>
-        ) : (
-          <div className="tf-game-grid">
-            {MENU_GAMES.map((g) => <GameCard key={g.id} game={g} onPlay={() => onNavigate(g.id)} />)}
-          </div>
-        )}
+        <GameList games={CLASSIC_GAMES} view={view} onNavigate={onNavigate} />
       </section>
+
+      {GAMES_3D.length > 0 && (
+        <section className="tf-section" aria-labelledby="tf-juegos-3d" data-section-3d>
+          <div className="tf-section-head">
+            <h2 id="tf-juegos-3d">Juegos 3D <span className="tf-beta-tag">BETA</span></h2>
+            <div className="tf-section-side"><p>Recién salidos del horno: pueden tener bugs. Mejor en compu.</p></div>
+          </div>
+          <GameList games={GAMES_3D} view={view} onNavigate={onNavigate} />
+        </section>
+      )}
 
       <section className="tf-section" aria-labelledby="tf-como">
         <div className="tf-section-head">

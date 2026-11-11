@@ -25,8 +25,10 @@ import TimbaApp from './timba/TimbaApp.jsx';
 import GeneralaApp from './generala/GeneralaApp.jsx';
 import BomberApp from './bomber/BomberApp.jsx';
 import AbismoApp from './abismo/AbismoApp.jsx';
+import Royale3DApp from './royale3d/Royale3DApp.jsx';
 
 const SCREENS = {
+  royale3d: Royale3DApp,
   abismo: AbismoApp,
   bomber: BomberApp,
   generala: GeneralaApp,

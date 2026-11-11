@@ -200,6 +200,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/generala/` | Generala: la física de los dados (`dice.js`, con Rapier), el Web Worker que la corre (`simWorker.js`), reducer (`game.js`), la mesa en 3D (`table.js`, con Three.js), sonido (`sound.js`), la partida y la planilla (`GeneralaGame.jsx`) (ver *Generala*) |
 | `src/bomber/` | Bombardero (Bomberman): tablero e ítems por semilla (`map.js`), movimiento, bombas, fuego y calaveras (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`BomberGame.jsx`), pantallas (ver *Bombardero*) |
 | `src/abismo/` `worker/juez.js` `worker/abismo.js` | Abismo (Krillion): niveles y normalización (`tiers.js`), las consignas (`prompts.js`), reducer (`game.js`), la inmersión (`Dive.jsx`), pixel art (`Art.jsx`), sonidos (`sfx.js`), ranking global (`Ranking.jsx`), pantallas; el juez y el ranking en el Worker (ver *Abismo*) |
+| `src/royale3d/` | Royale 3D (beta, primer «Juego 3D»): isla, tormenta y fases (`map.js`), movimiento y tiros (`sim.js`), reducer (`game.js`), dibujo con Three.js (`render.js`), la partida en vivo (`Royale3DGame.jsx`), pantallas (ver *Royale 3D*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
 | `worker/photon.js` | Puente de Mario vs Luigi a Photon y al servidor de ipodtouch, para redes que los bloquean |
 | `diccionario/` `scripts/armar-diccionario.mjs` | Fuente del diccionario de La Mecha (RLA-ES es_AR) y el script que arma la lista |
@@ -1179,6 +1180,26 @@ pero el juego copia a Bomberman (de Konami/Hudson): entre amigos está bien; si 
 - `window.__bomber` (el estado de la pantalla: `local`, `remotes`, `bombs`, `fires`, `board`) y `data-bomber-canvas`, `data-players`, `data-player`, `data-clock`,
   `data-stats`, `data-eliminated`, `data-roundend` existen para manejar el juego desde un navegador automatizado. No los saques.
 - **Todavía no tiene**: guante para levantar y tirar bombas, bots, equipos, los carritos de venganza del borde ni mapas con temas distintos.
+
+## Royale 3D
+
+Pedido de Nico: «un juego 3D tipo Fortnite», dentro de una sección nueva de la portada, **«Juegos 3D BETA»**, de la que este es el primero.
+De 2 a 8, solo compu (teclado y mouse). `id`: `royale3d` (`?juego=royale3d`, `gameType: 'royale3d'`, raíz `royale3d/` en `ROOTS`, efímera: fotos y señalización).
+
+- **La sección «Juegos 3D»**: un juego con `section: '3d'` en `games.js` sale en su propia sección de la portada (`GAMES_3D`, con la etiqueta BETA) y no en «Elegí un juego» (`CLASSIC_GAMES`).
+  El menú lateral lo sigue listando con los demás. **Un juego 3D nuevo** lleva `section: '3d'` y `badge: 'Beta'`.
+- **Mismo esquema que Pixel Royale y Bombardero**: lo de a una vez va en la sala (`game.js`: semilla, orden de aparición, quién murió y por quién, ganador) y todo lo demás en vivo,
+  directo entre navegadores (`futbol/p2p.js`) con respaldo en `royale3d/{sala}/p/{id}` (`royale3dChannel`). Fases `lobby` → `playing` → `final` (una sola ronda). Cada pantalla es dueña de su
+  jugador: lo mueve, lleva su vida y avisa `died`. El anfitrión da por muerto al que no manda fotos en 12 s.
+- **La isla sale de la semilla** (`map.js`, sin `Math.random()` ni trigonometría en el terreno): `heightAt` (ruido de valores), `makeWorld` (árboles y rocas son cilindros, las cabañas, cajas), `spawnPoint`
+  (anillo sobre tierra firme, esquiva objetos) y la **tormenta** (`stormCenters`/`stormAt`, cinco fases con círculos que caben uno dentro del otro). Todas las pantallas arman lo mismo sin mandarse nada.
+- **Los tiros los juzga la pantalla de quien tira** (a diferencia de Pixel Royale): con lo que ve en su pantalla (`hitscan` contra la posición dibujada del otro), así pegar se siente justo. El tiro viaja en la foto
+  (`sh: { k, t, o, d, l, h?: [id, cabeza] }`) y la pantalla de quien lo recibe se resta la vida (`damageFor`). Entre amigos alcanza; no es a prueba de trampas. Los rayos frenan en terreno, árboles, rocas y cabañas (`solidAt`, `rayLength`).
+- **Cámara por encima del hombro** (`cameraFor`): el tiro sale del ojo hacia donde apunta la mira de la cámara (`aimShot`), así la mira no miente aunque el personaje tape el centro. **Adelante es `(-sin yaw, -cos yaw)`**, igual que una cámara de Three.js con `rotation.y = yaw`.
+- **`render.js` (Three.js) se carga con `import()`** al entrar a la partida: no lo importes desde nada que cargue la portada. Todo es low poly con colores lisos y se arma con código (sin modelos ni imágenes).
+- `window.__royale3d` (el estado de la pantalla: `local`, `remotes`, `fire`, `hits`) y `data-royale3d-canvas`, `data-alive`, `data-storm`, `data-hp`, `data-ammo`, `data-count`, `data-dead`, `data-final` existen para manejar el juego desde un navegador automatizado. En un navegador sin GPU
+  hace falta `--use-angle=swiftshader --enable-unsafe-swiftshader`; sin pointer lock, se apunta y dispara escribiendo `yaw`, `pitch` y `fire` en `window.__royale3d`.
+- **Todavía no tiene**: botín ni cofres (se juega con una sola arma, 30 balas), botiquines, construcción, bus ni caída inicial, vehículos, sonido, ni mapa más grande. Ideas para la próxima vuelta.
 
 ## Mario vs Luigi
 

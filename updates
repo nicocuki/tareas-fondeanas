@@ -997,6 +997,14 @@ OCULTA 1.44.2 = Avisos para todos
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
+OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 - Al mandar un aviso se elige el destino: todos, una sala o un jugador de esa sala (el nombre sale de la lista de la sala).
 - Pueden estar a la vista varios avisos a la vez, y quien se conecta ve los que le tocan y siguen vigentes.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.52.0 = Juegos 3D (BETA): llega Royale 3D 🏝️
+- Nueva sección «Juegos 3D BETA» en la portada, para los juegos en 3D. Están en prueba: pueden tener bugs, y se juegan mejor en compu.
+- El primero es Royale 3D: un battle royale en una isla low poly, de 2 a 8 jugadores, en tercera persona con teclado y mouse.
+- Disparás con ráfaga y recarga, los tiros a la cabeza pegan el doble y los árboles, las rocas y las cabañas frenan las balas.
+- Una tormenta violeta se cierra en cinco fases (normal o rápida, a elección del anfitrión). Gana el último en pie; si te eliminan, mirás a otro jugador.

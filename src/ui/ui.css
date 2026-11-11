@@ -455,3 +455,6 @@ body.tf-no-scroll { overflow: hidden; }
 .tf-admin-notice { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tf-admin-notice > .tf-input:first-child { flex: 1 1 280px; }
 .tf-admin-secs { display: flex; gap: 6px; align-items: center; color: var(--text-2); }
+
+/* Sección «Juegos 3D BETA» de la portada */
+.tf-beta-tag { display: inline-block; vertical-align: middle; margin-left: 8px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; padding: 3px 9px; border-radius: 999px; background: var(--game-royale3d); color: #fff; }
