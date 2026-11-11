@@ -54,7 +54,7 @@ Cloudflare Workers Builds: corre `npm run build` y `npx wrangler deploy` con lo 
 `wrangler.jsonc`. El resultado se ve como check en el commit de GitHub y en el panel de Cloudflare
 (Workers & Pages → tareas-fondeanas → Deployments).
 
-Sitio: https://tareas-fondeanas.nicocukier.workers.dev (a veces también https://tareas-fondeanas.donsatur.workers.dev; la portada avisa con `DomainNotice`) · Cuenta de Cloudflare: la de Nico.
+Sitio: https://tareas-fondeanas.nicocukier.workers.dev (a veces también https://tareas-fondeanas.donsatur.workers.dev) · Cuenta de Cloudflare: la de Nico.
 
 `npm run deploy` publica a mano desde una compu con `npx wrangler login` hecho; normalmente no hace falta.
 

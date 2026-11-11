@@ -1011,10 +1011,15 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.53.0 = Royale 3D, versión final: bus, cofres, rarezas, construcción y una isla enorme 🏝️
+1.53.0 = Royale 3D, versión final: bus, cofres, rarezas, construcción y una isla enorme 🏝️
 - Una isla mucho más grande, con los nueve lugares de Pixel Royale en 3D (Villa Vermut, Pibes Polvorín Polvoriento, Peñasco Pelado, Cover, Arboleada Alianza, Juvenil Judía, Frontera del Fondo, Puente Pollín y Muelle Mojito): casas con puerta y cofres adentro, un río con puente, un muelle en el mar.
 - Empezás en una isla de espera donde podés probar la pistola, subís al bus de batalla, saltás cuando quieras, caés en picada y abrís el planeador.
 - Cofres que se abren manteniendo E, cofres del cielo que caen con paracaídas y armas en el piso con rayos de luz de su rareza: común, poco común, rara, épica y legendaria.
 - Diez armas nuevas además del pico: revólver, metralleta, escopeta, fusil de asalto, fusil de ráfaga, francotirador con mira, bazooka, lanzagranadas y minigun. Vendas, botiquines, escudos chicos y grandes y granadas.
 - Pico para romper árboles, cajas y paredes y juntar madera; con madera se construyen paredes, pisos y rampas.
 - Tormenta en cinco fases (lenta, normal o rápida), mapa grande con M, sonidos, números de daño, efectos de explosión y hasta 10 jugadores.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.53.1 = Sacamos el aviso de las dos direcciones de la portada
+- Ya no aparece el cartel de arriba que decía que la página podía estar en dos direcciones.

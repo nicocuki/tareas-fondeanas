@@ -4,7 +4,6 @@ import { CLASSIC_GAMES, GAMES_3D, MENU_GAMES, gameById } from './games.js';
 import { setPrefs, showToast, useLastRoom, usePrefs, useProfile } from './store.js';
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
-import DomainNotice from './DomainNotice.jsx';
 import GameChat from './GameChat.jsx';
 import Suggestions from './Suggestions.jsx';
 import { MENU_CHAT_CODE } from './chat.js';
@@ -158,7 +157,6 @@ export default function Home({ onNavigate }) {
 
   return (
     <div className="tf-page tf-home">
-      <DomainNotice />
       <MenuChat />
       <SideSuggestions />
       <section className="tf-hero">
