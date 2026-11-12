@@ -179,7 +179,7 @@ export const GAMES = [
     color: 'var(--game-timba)',
     onColor: '#ffffff',
     tagline: 'Apuesten juntos, lleguen a la cuota',
-    description: 'Un casino cooperativo: todos comparten la plata y tienen que juntar una cuota cada día. Salen en limusina, suben en ascensor y juegan al blackjack. Inspirado en Gamble With Your Friends.',
+    description: 'Un casino cooperativo en 3D: todos comparten la plata y tienen que juntar una cuota cada día. Salen en limusina, suben en ascensor y juegan en las mesas apretando los botones con la mano. Inspirado en Gamble With Your Friends.',
     players: '1 a 8',
     min: 1,
     max: 8,
@@ -188,10 +188,10 @@ export const GAMES = [
     badge: 'Nuevo',
     howTo: [
       'Todos comparten la misma plata (arrancan con $1K y 15 tickets dorados) y cada día hay que llegar a una cuota: la primera es de $1,2K.',
-      'Empiezan en una casita. Caminá con A D (o las flechas) y tocá lo que tengas cerca con E. La camioneta va a vender items (por ahora está vacía) y la limusina sale al casino cuando están todos adentro.',
-      'Al llegar entrás por la puerta de la derecha, al ascensor. El panel (E) elige el piso y el ascensor solo viaja con todos a bordo. Desde arriba se camina con W A S D.',
-      'En el piso 1 hay una mesa de blackjack con apuestas de $36 a $360. Podés apostar con los botones rápidos (mínimo, 1/4, 1/2 y todo) o escribiendo la cantidad con el teclado de la pantalla.',
-      'El día dura 5 minutos: al terminar, todos vuelven al ascensor, que se cierra, y la única salida es el lobby. Si juntaron la cuota, sigue otro día con una cuota más alta; si no, se termina.',
+      'Es en primera persona: caminá con W A S D (Shift para correr) y mirá con el mouse (hacé clic para que lo tome). Lo que mirás con el punto del medio se toca con E o con clic.',
+      'Empiezan en la calle de la casita: subí a la limusina por la puerta de atrás. Al llegar, seguí la alfombra roja hasta la puerta giratoria. En el ascensor, la botonera está en la pared de la derecha y solo viaja con todos adentro.',
+      'Los juegos se juegan en la mesa: escribí la apuesta en el teclado (o con los números de la compu), elegí en el paño si hace falta y apretá JUGAR. La mesa es tuya mientras estés ahí; al alejarte se suelta.',
+      'El día dura 5 minutos: al terminar, todos vuelven al ascensor y la única salida es la planta baja. Vuelven a casa en la limusina de la puerta: si juntaron la cuota, sigue otro día; si no, se termina. Cada 3 días se abre un piso más lujoso.',
     ],
   },
   {

@@ -1021,5 +1021,16 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.53.1 = Sacamos el aviso de las dos direcciones de la portada
+1.53.1 = Sacamos el aviso de las dos direcciones de la portada
 - Ya no aparece el cartel de arriba que decía que la página podía estar en dos direcciones.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.54.0 = La Timba ahora es en 3D 🎰
+- Todo el juego pasó a 3D y en primera persona: la calle con la casita, la camioneta y la limusina (por dentro, con sus asientos y luces), la puerta del casino de noche con la marquesina, la alfombra roja y la puerta giratoria, el ascensor con el botones y los cuatro pisos.
+- Los juegos ya no se abren en ventanas: se juegan en la mesa. Mirás un botón, aparece su nombre y lo apretás con la mano (E o clic). Cada mesa tiene su teclado de apuesta como el del original: pantalla, 1 a 9, C, 0, 000 y MÍN, 1/4, 1/2 y TODO. También se puede escribir la apuesta con los números de la compu y jugar con Enter.
+- Las 14 mesas y máquinas están en 3D: blackjack y baccarat con las cartas volando desde el zapato y el croupier del otro lado, la ruleta con su rueda y la bolita, los dados del craps rodando, la tragamonedas de la momia, las dos ruedas en la pared, la carrera de patos, el crash con su pantalla, el plinko con sus clavos, el pingüino saltando por los cubos de hielo, el keno, el buscaminas y mayor o menor.
+- La ruleta, la carrera de patos, la rueda del dinero, el baccarat, el keno y el buscaminas se eligen tocando el paño o los botones de la mesa (la ficha queda arriba de lo que elegiste).
+- Cada mesa tiene un cartel arriba con lo que está pasando, y se ve quién está jugando en cada una. Las mesas se toman al tocarlas y se sueltan al alejarse (en medio de una mano de blackjack no te podés ir).
+- Cada piso tiene su diseño: el clásico con la alfombra de ojos y el techo violeta, el de terciopelo con cortinas y columnas, el de mármol con estatuas, fuentes y araña, y el dorado con su palco VIP.
+- La caja, la cuota, el día y los tickets siguen en la pantalla. W A S D para caminar, Shift para correr y el mouse para mirar.

@@ -1,18 +1,17 @@
 // Los lugares de La Timba: medidas, obstáculos y qué se puede tocar en cada uno. Sin dibujo ni red (lo usan
-// `render.js`, `TimbaGame.jsx` y los tests). Medidas en unidades del mundo.
+// `render3d.js`, `TimbaGame.jsx` y los tests). Medidas en unidades del mundo: una unidad son `UNIT` metros (1,5 cm), así
+// una mesa de blackjack de 248 × 140 mide 3,7 × 2,1 m.
 //
-// Hay dos clases de escena:
-// - `side` (la sala de espera y la puerta del casino): vista de costado, solo se camina de izquierda a derecha.
-// - `top` (el ascensor y los pisos): vista desde arriba, se camina para todos lados.
+// Todo se camina en un plano (`x`, `y`): en los pisos y el ascensor `y` es la profundidad de la sala; en la calle (la sala de
+// espera y la puerta del casino) `x` va a lo largo de la vereda e `y` es para el lado de la casa (negativo) o de la calle
+// (positivo).
 import { FLOOR_COUNT, floorOfLoc, locOfFloor } from './casinos.js';
 import { NAMES } from './games.js';
 
-export const SPEED_SIDE = 190;
-export const SPEED_TOP = 160;
+export const UNIT = 0.015;       // metros por unidad
+export const SPEED = 170;        // caminando…
+export const RUN = 1.7;          // …y corriendo (Shift), por cuánto se multiplica
 export const PLAYER_R = 8;
-
-export const SIDE_H = 360;      // alto que se ve en las escenas de costado
-export const GROUND = 300;      // la línea del piso
 
 // Las mesas y máquinas de cada piso, cada una de a un jugador. `x, y, w, h` es lo que ocupan (nadie lo pisa) y el
 // jugador se para abajo (`standAt`). Las ids del piso 1 son `bj1`, `slots2`…; las de los demás, `f4-bj1`.
@@ -109,31 +108,37 @@ export const TABLE_BY_ID = Object.fromEntries(TABLES.map((t) => [t.id, t]));
 export const FLOOR_OF_TABLE = Object.fromEntries(Object.entries(FLOOR_TABLES).flatMap(([n, list]) => list.map((t) => [t.id, Number(n)])));
 // Dónde se para el que juega: abajo de la mesa, mirando hacia ella.
 export const standAt = (t) => ({ x: t.x + t.w / 2, y: t.y + t.h + 22 });
-export const SEAT_FACE = -Math.PI / 2; // mira hacia arriba, a la mesa
+
+// La vereda de la calle: de `min` a `max` a lo largo y de -90 a 85 de ancho (la casa o el casino atrás, la calle adelante).
+const sidewalk = (min, max) => ({ x: min, y: -90, w: max - min, h: 175 });
 
 export const SCENES = {
   wait: {
-    kind: 'side', w: 1500, min: 40, max: 1460,
+    kind: 'street', w: 1500, min: 40, max: 1460,
     house: { x: 40, w: 400 },
     van: { x: 560, w: 260 },
     limo: { x: 960, w: 520 },        // el frente apunta a la derecha; la parte de atrás (la puerta) es la izquierda
-    spawn: 250,
+    areas: [sidewalk(40, 1460)],
+    blocks: [],
+    spawn: { x: 250, y: 0 },
   },
   outside: {
-    kind: 'side', w: 1400, min: 40, max: 1360,
+    kind: 'street', w: 1400, min: 40, max: 1360,
     limo: { x: 30, w: 520 },
     entrance: { x: 880, w: 440 },
-    doorX: 1100,                     // al pasar esta línea se entra al casino
-    spawn: 70,                       // salen por la parte de atrás de la limusina, a la izquierda
+    doorX: 1100,                     // la puerta giratoria del casino, al fondo de la alfombra roja
+    areas: [sidewalk(40, 1360), { x: 1040, y: -130, w: 120, h: 50 }],
+    blocks: [],
+    spawn: { x: 70, y: 0 },          // salen por la parte de atrás de la limusina, a la izquierda
   },
   elevator: {
-    kind: 'top', w: 300, h: 250,
-    areas: [{ x: 30, y: 30, w: 240, h: 192 }, { x: 128, y: 218, w: 44, h: 30 }],
+    kind: 'room', w: 300, h: 250,
+    areas: [{ x: 30, y: 30, w: 240, h: 192 }, { x: 100, y: 218, w: 100, h: 30 }],
     blocks: [{ x: 46, y: 46, w: 26, h: 26 }],
-    door: { x: 128, y: 232, w: 44 },     // al pisar esto desde adentro se sale al piso
-    panel: { x: 238, y: 44 },
+    door: { x: 100, y: 232, w: 100 },    // al pisar esto desde adentro se sale al piso
+    panel: { x: 262, y: 70 },            // la botonera, en la pared de la derecha
     npc: { x: 59, y: 59 },
-    spawn: { x: 150, y: 190 },
+    spawn: { x: 150, y: 150 },
   },
 };
 
@@ -155,7 +160,7 @@ function floorScene(n) {
   const tables = floorTables(n);
   const decor = decorFor(n, w, h);
   return {
-    kind: 'top', w, h, look: n, floor: n, tables, decor,
+    kind: 'room', w, h, look: n, floor: n, tables, decor,
     areas: [{ x: 60, y: 70, w: w - 120, h: h - 120 }, { x: 20, y: h / 2 - 60, w: 44, h: 120 }],
     blocks: [...tables, ...decor].map(({ x, y, w: bw, h: bh }) => ({ x, y, w: bw, h: bh })),
     door: { x: 20, y: h / 2 - 60, w: 120 },     // el ascensor, en la pared de la izquierda
@@ -164,26 +169,18 @@ function floorScene(n) {
 }
 for (let n = 1; n <= FLOOR_COUNT; n++) SCENES[`f${n}`] = floorScene(n);
 
-// Dentro de la limusina (`limo` en la sala de espera, `back` en la puerta del casino) se ve la escena de afuera.
+// Dentro de la limusina (`limo` en la sala de espera, `back` en la puerta del casino) se está en la escena de afuera.
 export const sceneKey = (loc) => (loc === 'limo' ? 'wait' : loc === 'back' ? 'outside' : loc);
 
 // Dónde aparece un jugador al entrar a una escena (`i` = su número, para que no se amontonen).
 export function spawnPoint(loc, i = 0) {
   const sc = SCENES[sceneKey(loc)];
   if (!sc) return { x: 0, y: 0 };
-  if (sc.kind === 'side') return { x: sc.spawn + (i % 4) * 22, y: GROUND };
+  if (sc.kind === 'street') return { x: sc.spawn.x + (i % 4) * 22, y: ((i % 3) - 1) * 30 };
   return { x: sc.spawn.x + ((i % 4) - 1.5) * 18, y: sc.spawn.y - Math.floor(i / 4) * 18 };
 }
 
 // ─── Movimiento ──────────────────────────────────────────────────────────────
-export function stepSide(p, dir, dt, scene) {
-  const sc = SCENES[scene];
-  p.x = Math.max(sc.min, Math.min(sc.max, p.x + dir * SPEED_SIDE * dt));
-  p.y = GROUND;
-  p.moving = dir !== 0;
-  if (dir) p.face = dir;
-}
-
 const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 const hitsRect = (r, x, y, rad) => x > r.x - rad && x < r.x + r.w + rad && y > r.y - rad && y < r.y + r.h + rad;
 
@@ -198,16 +195,16 @@ export function canStand(scene, x, y) {
   return !sc.blocks.some((b) => hitsRect(b, x, y, r - 1));
 }
 
-// Se mueve primero en x y después en y: así se desliza por las paredes.
-export function stepTop(p, dx, dy, dt, scene) {
+// Camina en la dirección (dx, dy) del plano, a `speed` unidades por segundo. Se mueve primero en x y después en y: así se
+// desliza por las paredes.
+export function stepWalk(p, dx, dy, dt, scene, speed = SPEED) {
   const len = Math.hypot(dx, dy);
   p.moving = len > 0;
   if (!len) return;
-  const vx = (dx / len) * SPEED_TOP * dt;
-  const vy = (dy / len) * SPEED_TOP * dt;
+  const vx = (dx / len) * speed * dt;
+  const vy = (dy / len) * speed * dt;
   if (canStand(scene, p.x + vx, p.y)) p.x += vx;
   if (canStand(scene, p.x, p.y + vy)) p.y += vy;
-  p.face = Math.atan2(dy, dx);
 }
 
 // ─── Qué se puede tocar ──────────────────────────────────────────────────────
@@ -223,26 +220,27 @@ export function nearby(loc, p, ctx = {}) {
     if (p.x > sc.limo.x - 90 && p.x < sc.limo.x + 150) return { key: 'board', label: 'Subir a la limusina' };
   }
   if (loc === 'outside' && ctx.home && p.x < sc.limo.x + sc.limo.w + 40) return { key: 'boardBack', label: 'Subir a la limusina y volver a casa' };
-  if (loc === 'elevator') {
-    if (Math.hypot(p.x - sc.panel.x, p.y - sc.panel.y) < 46) return { key: 'panel', label: 'Usar el panel del ascensor' };
-    if (Math.hypot(p.x - sc.npc.x, p.y - sc.npc.y) < 46) return { key: 'npc', label: 'Hablar con el botones' };
-  }
-  if (floorOfLoc(loc) !== null) {
-    // La mesa o máquina más cercana, a menos de 46 del borde.
-    let best = null;
-    for (const t of sc.tables) {
-      const d = Math.hypot(Math.max(t.x - p.x, 0, p.x - (t.x + t.w)), Math.max(t.y - p.y, 0, p.y - (t.y + t.h)));
-      if (d < 46 && (!best || d < best.d)) best = { d, t };
-    }
-    if (best) return { key: `t:${best.t.id}`, label: `Jugar: ${NAMES[best.t.kind]}` };
-  }
+  if (loc === 'elevator' && Math.hypot(p.x - sc.npc.x, p.y - sc.npc.y) < 50) return { key: 'npc', label: 'Hablar con el botones' };
   return null;
+}
+
+// La mesa o máquina más cercana del piso, a menos de `reach` del borde (o null). Las mesas se juegan tocando sus botones;
+// con esto se sabe en cuál está parado cada uno.
+export function nearTable(loc, p, reach = 46) {
+  const sc = SCENES[loc];
+  if (!sc?.tables) return null;
+  let best = null;
+  for (const t of sc.tables) {
+    const d = Math.hypot(Math.max(t.x - p.x, 0, p.x - (t.x + t.w)), Math.max(t.y - p.y, 0, p.y - (t.y + t.h)));
+    if (d < reach && (!best || d < best.d)) best = { d, t };
+  }
+  return best ? best.t : null;
 }
 
 // ¿Pisó la puerta? (entrar al casino, al ascensor o salir de él.) Devuelve el lugar al que va, o null.
 export function doorFor(loc, p, floor) {
   const sc = SCENES[loc];
-  if (loc === 'outside' && p.x >= sc.doorX) return 'elevator';
+  if (loc === 'outside' && p.y < -100 && Math.abs(p.x - sc.doorX) < 60) return 'elevator';
   if (loc === 'elevator' && p.y > sc.door.y && p.x > sc.door.x && p.x < sc.door.x + sc.door.w) return locOfFloor(floor);
   if (floorOfLoc(loc) !== null && p.x < 52 && p.y > sc.door.y && p.y < sc.door.y + sc.door.w) return 'elevator';
   return null;
