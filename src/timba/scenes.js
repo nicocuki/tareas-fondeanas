@@ -14,89 +14,123 @@ export const RUN = 1.7;          // …y corriendo (Shift), por cuánto se multi
 export const PLAYER_R = 8;
 
 // Las mesas y máquinas de cada piso, cada una de a un jugador. `x, y, w, h` es lo que ocupan (nadie lo pisa) y el
-// jugador se para abajo (`standAt`). Las ids del piso 1 son `bj1`, `slots2`…; las de los demás, `f4-bj1`.
+// jugador se para del lado +y (`standAt`). Las ids del piso 1 son `bj1`, `slots2`…; las de los demás, `f4-bj1`.
 const SIZE = {
-  slots: [70, 60], wheel: [110, 60], mwheel: [110, 60],                                  // contra la pared de arriba
+  slots: [70, 60], wheel: [110, 60], mwheel: [110, 60],                                  // contra la pared del fondo
   bj: [248, 140], roulette: [220, 110], craps: [220, 110], duck: [200, 110], baccarat: [248, 140],
   crash: [160, 110], penguin: [220, 110], keno: [160, 110], plinko: [140, 150], hilo: [170, 110], mines: [150, 110],
 };
 const WALL_KINDS = ['slots', 'wheel', 'mwheel'];
-// Las mesas grandes se reparten de a una por tipo, en este orden, para que cada fila quede mezclada.
+// Las mesas grandes se reparten de a una por tipo, en este orden, para que cada zona quede mezclada.
 const BIG_ORDER = ['bj', 'roulette', 'craps', 'duck', 'baccarat', 'penguin', 'crash', 'keno', 'plinko', 'hilo', 'mines'];
-const ROW0 = 260;                  // la primera fila de mesas grandes…
-const ROW_GAP = 380;               // …y lo que baja cada fila siguiente
-const BIG_X0 = 200;                // las mesas de una fila se reparten, parejas, desde acá…
-const wideOf = (floor) => (floor === 1 ? 1900 : 2500); // el piso 1 es una sala chica; del 2 en adelante son más grandes
-const bigX1 = (w) => w - 140;      // …hasta acá
-export const MAX_BIG_PER_ROW = 6;  // en la sala chica
-const maxPerRow = (w) => (w <= 1900 ? MAX_BIG_PER_ROW : 9);
-const rowY = (r) => ROW0 + r * ROW_GAP;
+// Es un juego en primera persona: las salas son grandes y entre mesa y mesa hay pasillos anchos (6 m entre filas y 5 m
+// entre una mesa y la de al lado). Cada mesa ocupa el centro de una celda de `CELL_W` × `ROW_GAP`.
+const ROW0 = 430;                  // la primera fila de mesas grandes (lejos de las máquinas de la pared del fondo)
+const ROW_GAP = 560;               // lo que baja cada fila siguiente (8,4 m)
+const CELL_W = 640;                // el ancho de cada celda (9,6 m)
+const CELL_X0 = 560;               // el centro de la primera celda (deja libre la entrada del ascensor)
+export const MAX_BIG_PER_ROW = 6;
+const wideOf = (floor) => (floor === 1 ? 3200 : 4000);
+export const STEP_UP = 0.35;       // el escalón más alto que se sube caminando (en metros); más alto hay que buscar la escalera
 
-// El piso 1 es el de siempre, armado a mano. Los demás salen de cuántas hay de cada una (`packFloor`).
-const FLOOR1 = [
-  ...[240, 330, 420, 510].map((x, i) => ({ id: `slots${i + 1}`, kind: 'slots', x, y: 70 })),
-  { id: 'wheel1', kind: 'wheel', x: 880, y: 70 },
-  { id: 'wheel2', kind: 'wheel', x: 1060, y: 70 },
-  { id: 'bj1', kind: 'bj', x: 200, y: 260 },
-  { id: 'bj2', kind: 'bj', x: 480, y: 260 },
-  { id: 'bj3', kind: 'bj', x: 200, y: 640 },
-  { id: 'bj4', kind: 'bj', x: 480, y: 640 },
-  { id: 'roulette1', kind: 'roulette', x: 820, y: 300 },
-  { id: 'roulette2', kind: 'roulette', x: 1220, y: 300 },
-  { id: 'craps1', kind: 'craps', x: 820, y: 640 },
-  { id: 'craps2', kind: 'craps', x: 1220, y: 640 },
-  { id: 'duck1', kind: 'duck', x: 1560, y: 250 },
-  { id: 'duck2', kind: 'duck', x: 1560, y: 640 },
-];
-// Cuántas de cada una en los otros pisos (el 2.º, 3.º y 4.º; el 4.º repite el reparto del 1.º). Del piso 2 en adelante se
-// suman los juegos nuevos (`NEW_MIXES`).
+// Cuántas de cada una hay en cada piso. Del piso 2 en adelante se suman los juegos nuevos (`NEW_MIXES`).
 const MIXES = [
+  { slots: 4, bj: 4, wheel: 2, roulette: 2, craps: 2, duck: 2 },
   { slots: 4, bj: 4, wheel: 2, roulette: 2, craps: 2, duck: 2 },
   { slots: 6, bj: 3, wheel: 3, roulette: 3, craps: 2, duck: 2 },
   { slots: 5, bj: 4, wheel: 2, roulette: 2, craps: 3, duck: 3 },
 ];
 const NEW_MIXES = [
+  {},
   { crash: 1, penguin: 1, keno: 1, plinko: 1, mwheel: 1, baccarat: 1, hilo: 1, mines: 1 },
   { crash: 2, penguin: 1, keno: 1, plinko: 2, mwheel: 1, baccarat: 2, hilo: 2, mines: 1 },
   { crash: 1, penguin: 2, keno: 2, plinko: 1, mwheel: 2, baccarat: 1, hilo: 1, mines: 2 },
 ];
-const mixFor = (n) => ({ ...MIXES[(n - 1) % 3], ...(n > 1 ? NEW_MIXES[(n - 1) % 3] : {}) });
+const mixFor = (n) => ({ ...MIXES[n - 1], ...NEW_MIXES[n - 1] });
 
-// Reparte las máquinas chicas en la pared de arriba y las mesas grandes en filas, parejas y sin pisarse. Devuelve las mesas
-// y el tamaño de la sala (más filas, más alta).
-function packFloor(n, counts) {
-  const w = wideOf(n);
-  const out = [];
-  const add = (kind, i, x, y) => out.push({ id: `f${n}-${kind}${i}`, kind, x, y });
-  let x = 240;
-  for (const kind of WALL_KINDS) {
-    for (let i = 0; i < (counts[kind] || 0); i++) { add(kind, i + 1, x, 70); x += kind === 'slots' ? 90 : 180; }
-    if (kind === 'slots') x = Math.max(880, x + 20);
+const overlaps = (a, b, m = 0) => a.x - m < b.x + b.w && b.x - m < a.x + a.w && a.y - m < b.y + b.h && b.y - m < a.y + a.h;
+const rect = (x, y, w, h) => ({ x, y, w, h });
+
+// Lo del medio de cada piso, en una tarima con escaleras adelante y atrás: la barra (1), el escenario con el piano (2),
+// las dos fuentes (3) y el salón VIP con la fuente grande (4). El piso 4 tiene además el palco VIP, a 2,4 m, contra la
+// pared de enfrente, con una escalera en cada punta.
+const DAIS_W = 820; const DAIS_H = 560; const STAIR_W = 260; const STAIR_D = 130;
+function centerpiece(n, w, h) {
+  const z = { 1: 0.5, 2: 0.9, 3: 0.45, 4: 0.6 }[n];
+  const dx = Math.round(w / 2 - DAIS_W / 2); const dy = Math.round(h / 2 - DAIS_H / 2);
+  const dais = { ...rect(dx, dy, DAIS_W, DAIS_H), z };
+  const sx = Math.round(w / 2 - STAIR_W / 2);
+  const stairs = [
+    { ...rect(sx, dy + DAIS_H, STAIR_W, STAIR_D), z0: 0, z1: z, up: 'n' },
+    { ...rect(sx, dy - STAIR_D, STAIR_W, STAIR_D), z0: 0, z1: z, up: 's' },
+  ];
+  const levels = [dais];
+  const decor = [];
+  const cx = w / 2; const cy = h / 2;
+  if (n === 1) decor.push({ kind: 'bar', ...rect(cx - 220, cy - 110, 440, 220) });
+  if (n === 2) decor.push({ kind: 'piano', ...rect(cx - 90, cy - 170, 180, 120) }, { kind: 'column', ...rect(dx + 40, dy + 40, 40, 40) }, { kind: 'column', ...rect(dx + DAIS_W - 80, dy + 40, 40, 40) });
+  if (n === 3) decor.push({ kind: 'fountain', ...rect(cx - 330, cy - 75, 150, 150) }, { kind: 'fountain', ...rect(cx + 180, cy - 75, 150, 150) }, { kind: 'statue', ...rect(cx - 20, cy - 20, 40, 40) });
+  if (n === 4) {
+    decor.push({ kind: 'fountain', ...rect(cx - 140, cy - 110, 280, 220) });
+    // el palco VIP, contra la pared de enfrente (lo de abajo es macizo)
+    const bw = 1500; const bx = Math.round(w / 2 - bw / 2);
+    levels.push({ ...rect(bx, h - 470, bw, 420), z: 2.4, balcony: true });
+    stairs.push({ ...rect(bx - 520, h - 300, 520, 250), z0: 0, z1: 2.4, up: 'e' }, { ...rect(bx + bw, h - 300, 520, 250), z0: 0, z1: 2.4, up: 'w' });
+    decor.push({ kind: 'sofa', ...rect(bx + 300, h - 200, 260, 90) }, { kind: 'sofa', ...rect(bx + bw - 560, h - 200, 260, 90) }, { kind: 'statue', ...rect(bx + bw / 2 - 30, h - 220, 60, 60) });
   }
-  // las grandes, repartidas de a una por tipo para que cada fila quede mezclada
-  const pending = BIG_ORDER.map((kind) => ({ kind, left: counts[kind] || 0, made: 0 }));
+  return { levels, stairs, decor };
+}
+
+// Los adornos de las esquinas y las paredes: cuanto más alto el piso, más lujo.
+function wallDecor(n, w, h) {
+  const corner = { 1: 'plant', 2: 'column', 3: 'statue', 4: 'statue' }[n];
+  const out = [[90, 120], [w - 130, 120], [90, h - 130], [w - 130, h - 130]].map(([x, y]) => ({ kind: corner, ...rect(x, y, 40, 40) }));
+  const side = { 1: 'plant', 2: 'vase', 3: 'plant', 4: 'vase' }[n];
+  for (const y of [h * 0.25, h * 0.75]) out.push({ kind: side, ...rect(w - 130, Math.round(y), 40, 40) });
+  return out;
+}
+
+// Arma un piso: las máquinas contra la pared del fondo, la tarima del medio y las mesas grandes en celdas con pasillos
+// anchos, sin pisar la tarima, sus escaleras ni el palco. Si no entran, la sala se alarga una fila más.
+function packFloor(n) {
+  const counts = mixFor(n);
+  const w = wideOf(n);
+  const id = (kind, i) => (n === 1 ? `${kind}${i}` : `f${n}-${kind}${i}`);
   const big = [];
+  const pending = BIG_ORDER.map((kind) => ({ kind, left: counts[kind] || 0, made: 0 }));
   while (pending.some((p) => p.left > 0)) {
     for (const p of pending) if (p.left > 0) { p.left -= 1; p.made += 1; big.push({ kind: p.kind, i: p.made }); }
   }
-  const rows = Math.max(2, Math.ceil(big.length / maxPerRow(w)));
-  const perRow = Math.ceil(big.length / rows);
-  for (let r = 0; r < rows; r++) {
-    const row = big.slice(r * perRow, (r + 1) * perRow);
-    if (!row.length) continue;
-    const total = row.reduce((sum, t) => sum + SIZE[t.kind][0], 0);
-    const gap = row.length > 1 ? (bigX1(w) - BIG_X0 - total) / (row.length - 1) : 0;
-    let bx = BIG_X0;
-    for (const t of row) { add(t.kind, t.i, Math.round(bx), rowY(r)); bx += SIZE[t.kind][0] + gap; }
+  for (let h = 2400; ; h += ROW_GAP / 2) {
+    const center = centerpiece(n, w, h);
+    const keepOut = [...center.levels, ...center.stairs];
+    const cells = [];
+    for (let y = ROW0; y + 140 + 22 + 260 < h; y += ROW_GAP) {
+      for (let cx = CELL_X0; cx + 170 < w - 150; cx += CELL_W) {
+        const cell = rect(cx - 170, y - 60, 340, 280); // la mesa más grande, con lugar para el croupier y el jugador
+        if (!keepOut.some((k) => overlaps(cell, k, 140))) cells.push({ cx, y });
+      }
+    }
+    if (cells.length < big.length) continue;
+    // las máquinas van contra la pared del fondo y las mesas en las celdas, fila por fila
+    const out = [];
+    let x = 520;
+    for (const kind of WALL_KINDS) {
+      for (let i = 0; i < (counts[kind] || 0); i++) { out.push({ id: id(kind, i + 1), kind, x, y: 70 }); x += kind === 'slots' ? 150 : 290; }
+    }
+    big.forEach((t, k) => {
+      const c = cells[k];
+      const [tw] = SIZE[t.kind];
+      out.push({ id: id(t.kind, t.i), kind: t.kind, x: Math.round(c.cx - tw / 2), y: c.y });
+    });
+    return { tables: out, w, h, ...center, decor: [...wallDecor(n, w, h), ...center.decor] };
   }
-  return { tables: out, w, h: 1000 + (rows - 2) * ROW_GAP };
 }
 
 const sized = (list) => list.map((t) => ({ ...t, w: SIZE[t.kind][0], h: SIZE[t.kind][1] }));
 const FLOORS = Object.fromEntries(Array.from({ length: FLOOR_COUNT }, (_, i) => {
-  const n = i + 1;
-  const f = n === 1 ? { tables: FLOOR1, w: 1900, h: 1000 } : packFloor(n, mixFor(n));
-  return [n, { tables: sized(f.tables), w: f.w, h: f.h }];
+  const f = packFloor(i + 1);
+  return [i + 1, { ...f, tables: sized(f.tables) }];
 }));
 // Las mesas de cada piso (1 a 4) y cuánto mide cada sala.
 export const FLOOR_TABLES = Object.fromEntries(Object.entries(FLOORS).map(([n, f]) => [n, f.tables]));
@@ -106,65 +140,72 @@ export const TABLES = Object.values(FLOOR_TABLES).flat();
 export const TABLE_BY_ID = Object.fromEntries(TABLES.map((t) => [t.id, t]));
 // En qué piso está cada mesa.
 export const FLOOR_OF_TABLE = Object.fromEntries(Object.entries(FLOOR_TABLES).flatMap(([n, list]) => list.map((t) => [t.id, Number(n)])));
-// Dónde se para el que juega: abajo de la mesa, mirando hacia ella.
+// Dónde se para el que juega: del lado +y, mirando hacia la mesa.
 export const standAt = (t) => ({ x: t.x + t.w / 2, y: t.y + t.h + 22 });
+// Los adornos de cada piso (también son obstáculos).
+export const DECOR = Object.fromEntries(Object.entries(FLOORS).map(([n, f]) => [n, f.decor]));
 
-// La vereda de la calle: de `min` a `max` a lo largo y de -90 a 85 de ancho (la casa o el casino atrás, la calle adelante).
-const sidewalk = (min, max) => ({ x: min, y: -90, w: max - min, h: 175 });
+// ─── La calle de la casita (sala de espera) ──────────────────────────────────
+// Atrás la casa con su porche (con escalones), el jardín, la vereda y la calle, donde están estacionadas la camioneta y
+// la limusina. Se camina por todo: el jardín, la vereda y la calle.
+const WAIT = {
+  kind: 'street', w: 2400,
+  house: rect(200, -760, 600, 360),
+  porch: { ...rect(250, -400, 500, 110), z: 0.45 },
+  van: rect(900, 200, 260, 130),
+  limo: rect(1500, 200, 520, 135),     // el frente apunta a +x; la puerta de atrás está del lado de la vereda
+  areas: [rect(40, -400, 2320, 1040)],
+  spawn: { x: 520, y: -170 },
+};
+WAIT.levels = [WAIT.porch];
+WAIT.stairs = [{ ...rect(420, -290, 160, 70), z0: 0, z1: 0.45, up: 'n' }];
+WAIT.blocks = [WAIT.van, WAIT.limo, rect(150, -330, 30, 30), rect(1300, -40, 24, 24), rect(2200, -40, 24, 24)];
+WAIT.limoDoor = { x: WAIT.limo.x + 90, y: WAIT.limo.y - 20 };
+
+// ─── La puerta del casino ────────────────────────────────────────────────────
+// La limusina deja en la calle de abajo; de ahí una plaza con una fuente, una escalinata de 1,2 m y la terraza con la
+// fachada y la puerta giratoria.
+const OUTSIDE = {
+  kind: 'street', w: 2600,
+  limo: rect(200, 300, 520, 135),
+  fountain: rect(1150, -460, 300, 300),
+  terrace: { ...rect(560, -1300, 1480, 400), z: 1.2 },
+  doorX: 1300,
+  areas: [rect(40, -1290, 2520, 1880)],
+  spawn: { x: 820, y: 240 },
+};
+OUTSIDE.levels = [OUTSIDE.terrace];
+OUTSIDE.stairs = [{ ...rect(1000, -900, 600, 200), z0: 0, z1: 1.2, up: 'n' }];
+OUTSIDE.blocks = [OUTSIDE.limo, OUTSIDE.fountain, rect(560, -905, 440, 10), rect(1600, -905, 440, 10), rect(555, -1300, 10, 400), rect(2035, -1300, 10, 400),
+  ...[300, 700, 1900, 2300].map((x) => rect(x, -40, 24, 24))];
+OUTSIDE.limoDoor = { x: OUTSIDE.limo.x + 90, y: OUTSIDE.limo.y - 20 };
 
 export const SCENES = {
-  wait: {
-    kind: 'street', w: 1500, min: 40, max: 1460,
-    house: { x: 40, w: 400 },
-    van: { x: 560, w: 260 },
-    limo: { x: 960, w: 520 },        // el frente apunta a la derecha; la parte de atrás (la puerta) es la izquierda
-    areas: [sidewalk(40, 1460)],
-    blocks: [],
-    spawn: { x: 250, y: 0 },
-  },
-  outside: {
-    kind: 'street', w: 1400, min: 40, max: 1360,
-    limo: { x: 30, w: 520 },
-    entrance: { x: 880, w: 440 },
-    doorX: 1100,                     // la puerta giratoria del casino, al fondo de la alfombra roja
-    areas: [sidewalk(40, 1360), { x: 1040, y: -130, w: 120, h: 50 }],
-    blocks: [],
-    spawn: { x: 70, y: 0 },          // salen por la parte de atrás de la limusina, a la izquierda
-  },
+  wait: WAIT,
+  outside: OUTSIDE,
   elevator: {
-    kind: 'room', w: 300, h: 250,
-    areas: [{ x: 30, y: 30, w: 240, h: 192 }, { x: 100, y: 218, w: 100, h: 30 }],
-    blocks: [{ x: 46, y: 46, w: 26, h: 26 }],
-    door: { x: 100, y: 232, w: 100 },    // al pisar esto desde adentro se sale al piso
-    panel: { x: 262, y: 70 },            // la botonera, en la pared de la derecha
-    npc: { x: 59, y: 59 },
-    spawn: { x: 150, y: 150 },
+    kind: 'room', w: 420, h: 360,
+    areas: [rect(40, 40, 340, 260), rect(150, 296, 120, 40)],
+    blocks: [rect(64, 64, 32, 32)],
+    door: { x: 150, y: 310, w: 120 },    // al pisar esto desde adentro se sale al piso
+    panel: { x: 380, y: 130 },           // la botonera, en la pared de la derecha
+    npc: { x: 80, y: 80 },
+    spawn: { x: 210, y: 200 },
+    levels: [], stairs: [],
   },
 };
 
-// Lo que adorna cada casino (también son obstáculos): cuanto más avanzás, más lujo. Esquinas, vasos y estatuas de 40 × 40
-// y fuentes más grandes; nada de esto tapa un lugar donde se para un jugador (hay un test que lo revisa).
-const corners = (kind, w, h) => [[70, 80], [w - 110, 80], [70, h - 110], [w - 110, h - 110]].map(([x, y]) => ({ kind, x, y, w: 40, h: 40 }));
-export function decorFor(casino, w, h) {
-  const low = (kind, k) => ({ kind, x: Math.round(w * k), y: h - 110, w: 40, h: 40 }); // contra la pared de abajo
-  if (casino === 2) return [...corners('column', w, h), low('vase', 0.37), low('vase', 0.61)];
-  if (casino === 3) return [...corners('statue', w, h), { kind: 'fountain', x: Math.round(w * 0.26), y: h - 150, w: 120, h: 90 }, { kind: 'fountain', x: Math.round(w * 0.67), y: h - 150, w: 120, h: 90 }];
-  if (casino === 4) return [...corners('statue', w, h), { kind: 'fountain', x: Math.round(w / 2 - 70), y: 450, w: 140, h: 130 }, low('statue', 0.37), low('statue', 0.61)];
-  return corners('plant', w, h);
-}
-export const DECOR = Object.fromEntries([1, 2, 3, 4].map((c) => [c, decorFor(c, wideOf(c), 1000)]));
-
-// Un piso de juego: la sala con el ascensor en la pared de la izquierda, las mesas del piso y la decoración de su casino.
+// Un piso de juego: la sala con el ascensor en la pared de la izquierda, las mesas, la tarima, el palco y los adornos.
 function floorScene(n) {
-  const { w, h } = FLOOR_DIMS[n];
-  const tables = floorTables(n);
-  const decor = decorFor(n, w, h);
+  const f = FLOORS[n];
+  const { w, h } = f;
+  const dy = h / 2 - 90;
   return {
-    kind: 'room', w, h, look: n, floor: n, tables, decor,
-    areas: [{ x: 60, y: 70, w: w - 120, h: h - 120 }, { x: 20, y: h / 2 - 60, w: 44, h: 120 }],
-    blocks: [...tables, ...decor].map(({ x, y, w: bw, h: bh }) => ({ x, y, w: bw, h: bh })),
-    door: { x: 20, y: h / 2 - 60, w: 120 },     // el ascensor, en la pared de la izquierda
-    spawn: { x: 120, y: h / 2 },
+    kind: 'room', w, h, look: n, floor: n, tables: f.tables, decor: f.decor, levels: f.levels, stairs: f.stairs,
+    areas: [rect(60, 70, w - 120, h - 120), rect(20, dy, 44, 180)],
+    blocks: [...f.tables, ...f.decor].map(({ x, y, w: bw, h: bh }) => rect(x, y, bw, bh)),
+    door: { x: 20, y: dy, w: 180 },     // el ascensor, en la pared de la izquierda
+    spawn: { x: 140, y: h / 2 },
   };
 }
 for (let n = 1; n <= FLOOR_COUNT; n++) SCENES[`f${n}`] = floorScene(n);
@@ -176,12 +217,27 @@ export const sceneKey = (loc) => (loc === 'limo' ? 'wait' : loc === 'back' ? 'ou
 export function spawnPoint(loc, i = 0) {
   const sc = SCENES[sceneKey(loc)];
   if (!sc) return { x: 0, y: 0 };
-  if (sc.kind === 'street') return { x: sc.spawn.x + (i % 4) * 22, y: ((i % 3) - 1) * 30 };
-  return { x: sc.spawn.x + ((i % 4) - 1.5) * 18, y: sc.spawn.y - Math.floor(i / 4) * 18 };
+  return { x: sc.spawn.x + ((i % 4) - 1.5) * 26, y: sc.spawn.y - Math.floor(i / 4) * 26 };
+}
+
+// ─── Alturas ─────────────────────────────────────────────────────────────────
+// A qué altura (en metros) está el piso en (x, y): las tarimas, el porche y la terraza son planos y las escaleras suben
+// parejo hacia `up` (n: hacia -y, s: hacia +y, e: hacia +x, w: hacia -x).
+const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+export function heightAt(scene, x, y) {
+  const sc = SCENES[scene];
+  if (!sc) return 0;
+  let z = 0;
+  for (const l of sc.levels || []) if (inRect(l, x, y)) z = Math.max(z, l.z);
+  for (const st of sc.stairs || []) {
+    if (!inRect(st, x, y)) continue;
+    const u = { n: (st.y + st.h - y) / st.h, s: (y - st.y) / st.h, e: (x - st.x) / st.w, w: (st.x + st.w - x) / st.w }[st.up];
+    z = Math.max(z, st.z0 + (st.z1 - st.z0) * Math.max(0, Math.min(1, u)));
+  }
+  return z;
 }
 
 // ─── Movimiento ──────────────────────────────────────────────────────────────
-const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 const hitsRect = (r, x, y, rad) => x > r.x - rad && x < r.x + r.w + rad && y > r.y - rad && y < r.y + r.h + rad;
 
 // ¿Entra el círculo del jugador en ese lugar? Cuatro puntos del borde y el centro tienen que estar en alguna zona
@@ -195,6 +251,10 @@ export function canStand(scene, x, y) {
   return !sc.blocks.some((b) => hitsRect(b, x, y, r - 1));
 }
 
+// ¿Se puede pasar de (x0, y0) a (x1, y1)? Además de entrar, no se puede subir un escalón más alto que `STEP_UP` (el borde de
+// una tarima es una pared desde abajo); bajar sí (se salta).
+export const canStep = (scene, x0, y0, x1, y1) => canStand(scene, x1, y1) && heightAt(scene, x1, y1) - heightAt(scene, x0, y0) <= STEP_UP;
+
 // Camina en la dirección (dx, dy) del plano, a `speed` unidades por segundo. Se mueve primero en x y después en y: así se
 // desliza por las paredes.
 export function stepWalk(p, dx, dy, dt, scene, speed = SPEED) {
@@ -203,24 +263,26 @@ export function stepWalk(p, dx, dy, dt, scene, speed = SPEED) {
   if (!len) return;
   const vx = (dx / len) * speed * dt;
   const vy = (dy / len) * speed * dt;
-  if (canStand(scene, p.x + vx, p.y)) p.x += vx;
-  if (canStand(scene, p.x, p.y + vy)) p.y += vy;
+  if (canStep(scene, p.x, p.y, p.x + vx, p.y)) p.x += vx;
+  if (canStep(scene, p.x, p.y, p.x, p.y + vy)) p.y += vy;
 }
 
 // ─── Qué se puede tocar ──────────────────────────────────────────────────────
-// Devuelve { key, label } de lo más cercano al jugador (o null). `E` lo usa. `ctx.home`: ya se entró al casino, así
-// que desde la puerta se puede subir a la limusina para volver.
+// Lo que se toca por cercanía (las mesas y la botonera se tocan con la mano, mirándolas): subir y bajar de la limusina,
+// la camioneta y el botones. Devuelve { key, label } o null. `ctx.home`: ya arrancó el día, así que desde la puerta del
+// casino se puede subir a la limusina para volver.
+const distRect = (r, p) => Math.hypot(Math.max(r.x - p.x, 0, p.x - (r.x + r.w)), Math.max(r.y - p.y, 0, p.y - (r.y + r.h)));
 export function nearby(loc, p, ctx = {}) {
   if (loc === 'limo') return { key: 'unboard', label: 'Bajar de la limusina' };
   if (loc === 'back') return { key: 'unboardBack', label: 'Bajar de la limusina' };
   const sc = SCENES[loc];
   if (!sc) return null;
   if (loc === 'wait') {
-    if (Math.abs(p.x - (sc.van.x + sc.van.w / 2)) < 170) return { key: 'van', label: 'Mirar la camioneta' };
-    if (p.x > sc.limo.x - 90 && p.x < sc.limo.x + 150) return { key: 'board', label: 'Subir a la limusina' };
+    if (Math.hypot(p.x - sc.limoDoor.x, p.y - sc.limoDoor.y) < 130) return { key: 'board', label: 'Subir a la limusina' };
+    if (distRect(sc.van, p) < 90) return { key: 'van', label: 'Mirar la camioneta' };
   }
-  if (loc === 'outside' && ctx.home && p.x < sc.limo.x + sc.limo.w + 40) return { key: 'boardBack', label: 'Subir a la limusina y volver a casa' };
-  if (loc === 'elevator' && Math.hypot(p.x - sc.npc.x, p.y - sc.npc.y) < 50) return { key: 'npc', label: 'Hablar con el botones' };
+  if (loc === 'outside' && ctx.home && Math.hypot(p.x - sc.limoDoor.x, p.y - sc.limoDoor.y) < 130) return { key: 'boardBack', label: 'Subir a la limusina y volver a casa' };
+  if (loc === 'elevator' && Math.hypot(p.x - sc.npc.x, p.y - sc.npc.y) < 60) return { key: 'npc', label: 'Hablar con el botones' };
   return null;
 }
 
@@ -231,7 +293,7 @@ export function nearTable(loc, p, reach = 46) {
   if (!sc?.tables) return null;
   let best = null;
   for (const t of sc.tables) {
-    const d = Math.hypot(Math.max(t.x - p.x, 0, p.x - (t.x + t.w)), Math.max(t.y - p.y, 0, p.y - (t.y + t.h)));
+    const d = distRect(t, p);
     if (d < reach && (!best || d < best.d)) best = { d, t };
   }
   return best ? best.t : null;
@@ -240,7 +302,7 @@ export function nearTable(loc, p, reach = 46) {
 // ¿Pisó la puerta? (entrar al casino, al ascensor o salir de él.) Devuelve el lugar al que va, o null.
 export function doorFor(loc, p, floor) {
   const sc = SCENES[loc];
-  if (loc === 'outside' && p.y < -100 && Math.abs(p.x - sc.doorX) < 60) return 'elevator';
+  if (loc === 'outside' && p.y < -1220 && Math.abs(p.x - sc.doorX) < 90) return 'elevator';
   if (loc === 'elevator' && p.y > sc.door.y && p.x > sc.door.x && p.x < sc.door.x + sc.door.w) return locOfFloor(floor);
   if (floorOfLoc(loc) !== null && p.x < 52 && p.y > sc.door.y && p.y < sc.door.y + sc.door.w) return 'elevator';
   return null;

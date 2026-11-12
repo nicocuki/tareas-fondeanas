@@ -1026,7 +1026,7 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.54.0 = La Timba ahora es en 3D 🎰
+1.54.0 = La Timba ahora es en 3D 🎰
 - Todo el juego pasó a 3D y en primera persona: la calle con la casita, la camioneta y la limusina (por dentro, con sus asientos y luces), la puerta del casino de noche con la marquesina, la alfombra roja y la puerta giratoria, el ascensor con el botones y los cuatro pisos.
 - Los juegos ya no se abren en ventanas: se juegan en la mesa. Mirás un botón, aparece su nombre y lo apretás con la mano (E o clic). Cada mesa tiene su teclado de apuesta como el del original: pantalla, 1 a 9, C, 0, 000 y MÍN, 1/4, 1/2 y TODO. También se puede escribir la apuesta con los números de la compu y jugar con Enter.
 - Las 14 mesas y máquinas están en 3D: blackjack y baccarat con las cartas volando desde el zapato y el croupier del otro lado, la ruleta con su rueda y la bolita, los dados del craps rodando, la tragamonedas de la momia, las dos ruedas en la pared, la carrera de patos, el crash con su pantalla, el plinko con sus clavos, el pingüino saltando por los cubos de hielo, el keno, el buscaminas y mayor o menor.
@@ -1034,3 +1034,13 @@ LATEST 1.54.0 = La Timba ahora es en 3D 🎰
 - Cada mesa tiene un cartel arriba con lo que está pasando, y se ve quién está jugando en cada una. Las mesas se toman al tocarlas y se sueltan al alejarse (en medio de una mano de blackjack no te podés ir).
 - Cada piso tiene su diseño: el clásico con la alfombra de ojos y el techo violeta, el de terciopelo con cortinas y columnas, el de mármol con estatuas, fuentes y araña, y el dorado con su palco VIP.
 - La caja, la cuota, el día y los tickets siguen en la pantalla. W A S D para caminar, Shift para correr y el mouse para mirar.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.55.0 = La Timba: mapas grandes y con alturas 🏛️
+- Los mapas se rehicieron pensados para primera persona: los pisos del casino ahora miden entre 48 y 60 metros, con techos de 7 m y pasillos anchos entre las mesas (antes estaban pegadas una al lado de la otra).
+- Hay alturas de verdad: escaleras que se suben caminando y bordes que no se trepan (de arriba se puede saltar).
+- En el medio de cada piso hay una tarima con escaleras: la barra con su barman en el piso 1, el escenario con el piano y el pianista en el 2, dos fuentes en el 3 y el salón VIP con la fuente grande en el 4. El piso 4 tiene además un palco VIP a 2,4 m, con escaleras en las dos puntas, desde donde se ve todo el casino.
+- La calle de la casita ahora tiene jardín, la casa con porche y escalones, vereda y la calle entera para caminar.
+- La puerta del casino es una plaza con una fuente, una escalinata hasta la terraza y la fachada enorme con la puerta giratoria arriba.
+- El ascensor es más grande, y por los pisos pasea gente del casino con un trago en la mano.

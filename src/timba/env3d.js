@@ -3,9 +3,9 @@
 // `{ group, buttons, update(t, st), seats, limo }`; `buttons` son las cosas que se tocan con la mano (la botonera del
 // ascensor) y `update` anima lo que se mueve (neones, fuentes, la limusina, las puertas del ascensor).
 import * as THREE from 'three';
-import { SCENES, UNIT } from './scenes.js';
+import { SCENES, UNIT, canStand, heightAt } from './scenes.js';
 import {
-  FONT, Screen, ball, blob, box, canvasTexture, cyl, fitText, group, labelMaterial, plane, roundRect, toon,
+  FONT, Screen, animateBlob, ball, blob, box, canvasTexture, cyl, fitText, group, labelMaterial, plane, roundRect, toon,
 } from './models3d.js';
 
 const U = UNIT;
@@ -268,175 +268,232 @@ function van() {
 }
 
 // La casita de la sala de espera.
-function house() {
+// La casita de la sala de espera (9 × 5,4 m, la puerta mira a +z).
+function house(W = 9, D = 5.4) {
   const g = new THREE.Group();
-  const W = 5.8; const D = 4.5;
-  g.add(box(W, 3, D, toon(0x8fc4e8), 0, 1.5, 0));
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(4.6, 1.9, 4), toon(0xc8503a));
-  roof.position.y = 3.9; roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 0.8);
+  g.add(box(W, 3.4, D, toon(0x8fc4e8), 0, 1.7, 0));
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(W * 0.78, 2.4, 4), toon(0xc8503a));
+  roof.position.y = 4.6; roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, D / W + 0.1);
   g.add(roof);
-  g.add(box(1.1, 2.1, 0.1, toon(0x7a4a2a), 0.6, 1.05, D / 2 + 0.03));
-  g.add(ball(0.06, toon(0xf0c33c), 1.0, 1.05, D / 2 + 0.1, 8));
-  for (const x of [-1.7, 2.1]) g.add(box(1.1, 0.9, 0.08, toon(0xffe6a0, { glow: 0.6 }), x, 1.7, D / 2 + 0.03), box(1.25, 0.08, 0.12, toon(0xffffff), x, 1.22, D / 2 + 0.05));
-  g.add(box(W + 0.3, 0.2, 1.4, toon(0xa88a6a), 0, 0.1, D / 2 + 0.7));
-  g.add(cyl(0.05, 0.05, 1.1, toon(0x6a4a2a), -2.6, 0.55, D / 2 + 1.6, 6), box(0.4, 0.3, 0.25, toon(0x4a7ae8), -2.6, 1.2, D / 2 + 1.6));
+  g.add(box(1.2, 2.3, 0.1, toon(0x7a4a2a), 0, 1.15 + 0.45, D / 2 + 0.03), ball(0.06, toon(0xf0c33c), 0.42, 1.6, D / 2 + 0.1, 8));
+  for (const x of [-2.8, 2.8]) g.add(box(1.4, 1.1, 0.08, toon(0xffe6a0, { glow: 0.6 }), x, 1.9, D / 2 + 0.03), box(1.55, 0.08, 0.14, toon(0xffffff), x, 1.32, D / 2 + 0.05));
+  // el alero del porche con sus postes
+  g.add(box(7.6, 0.12, 1.9, toon(0xa8503a), 0, 3.0, D / 2 + 0.9));
+  for (const x of [-3.6, 3.6]) g.add(cyl(0.08, 0.08, 2.6, toon(0xf4f0e6), x, 1.75, D / 2 + 1.7, 8));
   return g;
 }
 
-function ground(len, { night }) {
+// Un rectángulo del plano (en unidades) como piso, a la altura `h`.
+function floorRect(r, material, h = 0) {
+  const m = plane(r.w * U, r.h * U, material, (r.x + r.w / 2) * U, h, (r.y + r.h / 2) * U);
+  m.rotation.x = -R90;
+  return m;
+}
+
+// Las tarimas, el porche, la terraza y el palco (macizos hasta el piso) y sus escaleras, escalón por escalón. La altura
+// por la que se camina sale de `heightAt` (las escaleras son rampas parejas: los escalones son solo dibujo).
+function buildLevels(sc, { top, side, step, edge }) {
   const g = new THREE.Group();
-  const road = repeating('road', 256, (c, s) => {
-    c.fillStyle = night ? '#2a2a34' : '#3a3a44'; c.fillRect(0, 0, s, s);
-    c.fillStyle = 'rgba(255,255,255,0.05)'; for (let i = 0; i < 200; i++) c.fillRect(Math.random() * s, Math.random() * s, 2, 2);
-    c.fillStyle = '#f0d04a'; c.fillRect(0, s / 2 - 5, s / 2, 10);
-  }, len / 4, 1);
-  const r = plane(len + 80, 8, toon(0xffffff, { map: road }), len / 2, 0, 5.3);
-  r.rotation.x = -R90;
-  const walk = repeating('walk', 128, (c, s) => {
-    c.fillStyle = '#bcb4a8'; c.fillRect(0, 0, s, s);
-    c.strokeStyle = '#9a9488'; c.lineWidth = 4; c.strokeRect(0, 0, s, s);
-  }, (len + 80) / 1.5, 3.2 / 1.5);
-  const w = plane(len + 80, 3.2, toon(0xffffff, { map: walk }), len / 2, 0.08, -0.1);
-  w.rotation.x = -R90;
-  const curb = box(len + 80, 0.16, 0.25, toon(0x8a8478), len / 2, 0.08, 1.4);
-  const grass = plane(len + 80, 40, toon(night ? 0x2a4a3a : 0x5aa84a), len / 2, -0.01, -21.5);
-  grass.rotation.x = -R90;
-  const far = plane(len + 120, 60, toon(night ? 0x1c1c26 : 0x4a8a3a), len / 2, -0.02, 38);
-  far.rotation.x = -R90;
-  g.add(r, w, curb, grass, far);
+  for (const l of sc.levels || []) {
+    g.add(box(l.w * U, l.z, l.h * U, side, (l.x + l.w / 2) * U, l.z / 2, (l.y + l.h / 2) * U));
+    g.add(floorRect(l, top, l.z + 0.003));
+    if (edge) g.add(box(l.w * U + 0.06, 0.06, l.h * U + 0.06, edge, (l.x + l.w / 2) * U, l.z - 0.035, (l.y + l.h / 2) * U)); // un borde dorado, apenas abajo del piso
+  }
+  for (const st of sc.stairs || []) {
+    const n = Math.max(3, Math.round((st.z1 - st.z0) / 0.16));
+    for (let i = 0; i < n; i++) {
+      const h = st.z0 + ((i + 1) * (st.z1 - st.z0)) / n;
+      let r;
+      if (st.up === 'n') r = { x: st.x, y: st.y + st.h - ((i + 1) * st.h) / n, w: st.w, h: st.h / n };
+      else if (st.up === 's') r = { x: st.x, y: st.y + (i * st.h) / n, w: st.w, h: st.h / n };
+      else if (st.up === 'e') r = { x: st.x + (i * st.w) / n, y: st.y, w: st.w / n, h: st.h };
+      else r = { x: st.x + st.w - ((i + 1) * st.w) / n, y: st.y, w: st.w / n, h: st.h };
+      g.add(box(r.w * U, h, r.h * U, i % 2 ? side : step, (r.x + r.w / 2) * U, h / 2, (r.y + r.h / 2) * U));
+    }
+  }
   return g;
 }
+
+// Una baranda dorada de (x0, z0) a (x1, z1) en metros, a la altura `h`.
+function railing(x0, z0, x1, z1, h, material) {
+  const g = new THREE.Group();
+  const len = Math.hypot(x1 - x0, z1 - z0);
+  const n = Math.max(2, Math.round(len / 0.9));
+  for (let i = 0; i <= n; i++) g.add(cyl(0.03, 0.03, 0.95, material, x0 + ((x1 - x0) * i) / n, h + 0.47, z0 + ((z1 - z0) * i) / n, 6));
+  const bar = box(len, 0.06, 0.06, material, (x0 + x1) / 2, h + 0.95, (z0 + z1) / 2);
+  bar.rotation.y = -Math.atan2(z1 - z0, x1 - x0);
+  g.add(bar);
+  return g;
+}
+
+const asphalt = (night) => repeating(night ? 'roadN' : 'road', 256, (c, s) => {
+  c.fillStyle = night ? '#2a2a34' : '#3a3a44'; c.fillRect(0, 0, s, s);
+  c.fillStyle = 'rgba(255,255,255,0.05)'; for (let i = 0; i < 200; i++) c.fillRect((i * 97) % s, (i * 61) % s, 2, 2);
+}, 6, 2);
+const paving = (key, a, b) => repeating(key, 128, (c, s) => {
+  c.fillStyle = a; c.fillRect(0, 0, s, s);
+  c.fillStyle = b; c.fillRect(0, 0, s / 2, s / 2); c.fillRect(s / 2, s / 2, s / 2, s / 2);
+  c.strokeStyle = 'rgba(0,0,0,0.15)'; c.lineWidth = 3; c.strokeRect(0, 0, s, s);
+}, 20, 20);
 
 // ─── La calle de la casita (sala de espera) ──────────────────────────────────
 function buildWait() {
   const sc = SCENES.wait;
   const g = new THREE.Group();
-  const len = sc.w * U;
+  const L = sc.w * U;
   g.add(sky('#2a1b6e', '#c8507a', '#ffc078'));
-  g.add(ground(len, { night: false }));
+  // el jardín, la vereda, el cordón, la calle con su línea amarilla y la vereda de enfrente
+  g.add(floorRect({ x: -2000, y: -2000, w: sc.w + 4000, h: 1900 }, toon(0x5aa84a), -0.01));
+  g.add(floorRect({ x: -2000, y: -100, w: sc.w + 4000, h: 180 }, toon(0xffffff, { map: paving('walk', '#c8c0b4', '#bcb4a8') }), 0.005));
+  g.add(box(L + 60, 0.16, 0.25, toon(0x8a8478), L / 2, 0.08, 80 * U));
+  g.add(floorRect({ x: -2000, y: 80, w: sc.w + 4000, h: 900 }, toon(0xffffff, { map: asphalt(false) }), 0.002));
+  for (let x = -1800; x < sc.w + 1800; x += 300) g.add(floorRect({ x, y: 520, w: 150, h: 14 }, toon(0xf0d04a), 0.006));
+  g.add(floorRect({ x: -2000, y: 980, w: sc.w + 4000, h: 200 }, toon(0xbcb4a8), 0.01));
+  // la casa con su porche y escalones, el buzón, la cerca
   const h = house();
-  h.position.set((sc.house.x + sc.house.w / 2) * U, 0, -4.1);
-  g.add(h);
+  h.position.set((sc.house.x + sc.house.w / 2) * U, 0, (sc.house.y + sc.house.h / 2) * U);
+  g.add(h, buildLevels(sc, { top: toon(0xb8906a), side: toon(0x8a6a4a), step: toon(0xa8805a) }));
+  g.add(cyl(0.05, 0.05, 1.1, toon(0x6a4a2a), 165 * U, 0.55, -315 * U, 6), box(0.45, 0.32, 0.28, toon(0x4a7ae8), 165 * U, 1.2, -315 * U));
+  for (let x = -600; x < sc.w + 600; x += 70) if (x < 200 || x > 800) g.add(box(0.08, 0.9, 0.08, toon(0xf4f0e6), x * U, 0.45, -405 * U));
+  g.add(box((sc.w + 1200) * U, 0.06, 0.05, toon(0xf4f0e6), (sc.w / 2) * U, 0.75, -405 * U));
+  // la camioneta y la limusina, estacionadas
   const v = van();
-  v.position.set((sc.van.x + sc.van.w / 2) * U, 0, 2.7);
+  v.position.set((sc.van.x + sc.van.w / 2) * U, 0, (sc.van.y + sc.van.h / 2) * U);
   v.rotation.y = Math.PI;
   g.add(v);
   const l = limo();
   const limoX = (sc.limo.x + sc.limo.w / 2) * U - 0.6;
-  l.position.set(limoX, 0, 2.7);
+  l.position.set(limoX, 0, (sc.limo.y + sc.limo.h / 2) * U);
   g.add(l);
-  // casas y árboles atrás, palmeras y faroles
+  // palmeras, faroles y el barrio
   const palms = [];
-  for (const [x, z, hh] of [[-1, -3, 6], [8, -2.4, 7], [13.5, -2.6, 6.5], [21.5, -2.8, 7.2], [24, 4.8, 6]]) { const p = palm(hh, x); p.position.set(x, 0, z); g.add(p); palms.push(p); }
-  for (const x of [4, 11, 18]) { const s = streetLamp(); s.position.set(x, 0, 1.25); s.rotation.y = -R90; g.add(s); }
+  for (const [x, z, hh] of [[60, -250, 7], [1000, -250, 6.5], [1700, -250, 7.5], [2300, -250, 6.8], [600, 1100, 7], [1500, 1100, 6.5]]) { const p = palm(hh, x); p.position.set(x * U, 0, z * U); g.add(p); palms.push(p); }
+  for (const x of [1300, 2200]) { const s = streetLamp(); s.position.set(x * U + 0.18, 0, -28 * U); s.rotation.y = -R90; g.add(s); }
   const tints = [0xe8a0b0, 0xa0e0b0, 0xf0d890, 0xb0a0e8];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 8; i++) {
     const hb = house();
-    hb.scale.setScalar(0.9);
-    hb.position.set(-14 + i * 7.5, 0, -14 - (i % 2) * 3);
+    hb.position.set((-900 + i * 600) * U, 0, (i % 2 ? 1500 : 1450) * U);
+    hb.rotation.y = Math.PI;
     hb.children[0].material = toon(tints[i % 4]);
     g.add(hb);
   }
-  for (let i = 0; i < 9; i++) g.add(box(6 + (i % 3) * 3, 10 + (i * 7) % 14, 5, toon(0x6a4a8a), -20 + i * 7, 6, 30 + (i % 2) * 6));
-  const lights = [
-    new THREE.HemisphereLight(0xffd0e0, 0x6a5a8a, 1.6),
-    new THREE.DirectionalLight(0xffc89a, 1.6),
-  ];
+  for (let i = 0; i < 6; i++) {
+    if (i === 2) continue;
+    const hb = house(); hb.position.set((-1300 + i * 900) * U, 0, -1000 * U); hb.children[0].material = toon(tints[(i + 1) % 4]); g.add(hb);
+  }
+  for (let i = 0; i < 9; i++) g.add(box(9, 12 + (i * 7) % 16, 7, toon(0x6a4a8a), -30 + i * 14, 7, 45 + (i % 2) * 8));
+  const lights = [new THREE.HemisphereLight(0xffd0e0, 0x6a5a8a, 1.6), new THREE.DirectionalLight(0xffc89a, 1.6)];
   lights[1].position.set(-20, 18, 14);
   return {
-    group: g, lights, fog: [0xc8709a, 30, 110], buttons: [], limo: l,
+    group: g, lights, fog: [0xc8709a, 40, 130], buttons: [], limo: l,
     update(t, st) {
       for (const p of palms) p.userData.top.rotation.z = Math.sin(t * 0.8 + p.userData.sway) * 0.05;
-      l.position.x = limoX + (st.limoGo ** 2) * 40;
-      l.userData.door.position.z = -1.03 - (st.limoDoor > 0.5 ? 0.0 : 0);
+      l.position.x = limoX + (st.limoGo ** 2) * 45;
       l.userData.door.rotation.y = st.limoDoor * 1.1;
     },
   };
 }
 
 // ─── La puerta del casino (de noche) ─────────────────────────────────────────
+// La calle donde deja la limusina, la plaza con la fuente, la escalinata y la terraza con la fachada.
 function buildOutside() {
   const sc = SCENES.outside;
   const g = new THREE.Group();
-  const len = sc.w * U;
-  g.add(sky('#06081c', '#1a1450', '#3a2a6a', true));
-  g.add(ground(len, { night: true }));
-  const e0 = sc.entrance.x * U; const e1 = (sc.entrance.x + sc.entrance.w) * U;
+  const L = sc.w * U;
   const door = sc.doorX * U;
-  // el edificio: una pared enorme con ventanas, columnas doradas, la marquesina y el cartel
-  const facade = toon(0x6a2c7a);
-  g.add(box(30, 18, 1, facade, door, 9, -3.2));
+  const fz = sc.terrace.y * U; // la fachada
+  const tz = sc.terrace.z;
+  g.add(sky('#06081c', '#1a1450', '#3a2a6a', true));
+  g.add(floorRect({ x: -3000, y: 200, w: sc.w + 6000, h: 1400 }, toon(0xffffff, { map: asphalt(true) }), 0));
+  g.add(box(L + 100, 0.16, 0.25, toon(0x6a6478), L / 2, 0.08, 200 * U));
+  g.add(floorRect({ x: -3000, y: -1400, w: sc.w + 6000, h: 1600 }, toon(0xffffff, { map: paving('plaza', '#8a7a9a', '#7a6a8a') }), 0.004));
+  g.add(floorRect({ x: 1200, y: -700, w: 200, h: 900 }, toon(0xa8242e), 0.008));
+  // la escalinata y la terraza de mármol, con barandas doradas
+  const gold = toon(0xe8b04a);
+  g.add(buildLevels(sc, { top: toon(0xd8d0e4), side: toon(0xb8b0c8), step: toon(0xe8e0f0) }));
+  g.add(floorRect({ x: 1200, y: -1300, w: 200, h: 400 }, toon(0xa8242e), tz + 0.01));
+  const tx0 = sc.terrace.x * U; const tx1 = (sc.terrace.x + sc.terrace.w) * U; const tf = (sc.terrace.y + sc.terrace.h) * U;
+  const s0 = sc.stairs[0].x * U; const s1 = (sc.stairs[0].x + sc.stairs[0].w) * U;
+  g.add(railing(tx0, tf, s0, tf, tz, gold), railing(s1, tf, tx1, tf, tz, gold), railing(tx0, fz, tx0, tf, tz, gold), railing(tx1, fz, tx1, tf, tz, gold));
+  // la fuente de la plaza
+  const fc = { x: (sc.fountain.x + sc.fountain.w / 2) * U, z: (sc.fountain.y + sc.fountain.h / 2) * U };
+  const fr = (sc.fountain.w / 2) * U;
+  g.add(cyl(fr, fr + 0.1, 0.6, toon(0xd8d0e4), fc.x, 0.3, fc.z, 32), cyl(fr - 0.15, fr - 0.15, 0.02, toon(0x4ab8e8, { glow: 0.5, opacity: 0.85 }), fc.x, 0.58, fc.z, 32));
+  g.add(cyl(0.25, 0.35, 1.8, toon(0xd8d0e4), fc.x, 1.2, fc.z, 14), cyl(1.1, 0.6, 0.2, toon(0xd8d0e4), fc.x, 2.1, fc.z, 24));
+  const fig = blob(0xe8b04a, { hat: 'top', scale: 0.9 });
+  fig.traverse((o) => { if (o.isMesh) o.material = gold; });
+  fig.position.set(fc.x, 2.2, fc.z);
+  g.add(fig);
+  const jets = [];
+  for (let i = 0; i < 16; i++) { const j = ball(0.07, toon(0x9ae4ff, { glow: 0.7, opacity: 0.8 }), fc.x, 2.2, fc.z, 6); jets.push(j); g.add(j); }
+  // la fachada: una pared enorme con ventanas, columnas doradas, la marquesina y el cartel
+  g.add(box(L + 20, 26, 1, toon(0x6a2c7a), door, 13, fz - 0.5));
   const lit = [];
-  for (let row = 0; row < 5; row++) for (let col = 0; col < 14; col++) {
-    const x = door - 13 + col * 2; const y = 6 + row * 2.4;
-    if (Math.abs(x - door) < 4 && y < 9) continue;
-    const w = box(1.1, 1.4, 0.06, toon((row + col) % 3 ? 0xffd27a : 0xff9ac8, { glow: 0.9 }), x, y, -2.68);
+  for (let row = 0; row < 7; row++) for (let col = 0; col < 18; col++) {
+    const x = door - 17 + col * 2; const y = tz + 7 + row * 2.6;
+    if (Math.abs(x - door) < 8.5 && y < tz + 13) continue; // ahí van los carteles
+    const w = box(1.1, 1.5, 0.06, toon((row + col) % 3 ? 0xffd27a : 0xff9ac8, { glow: 0.9 }), x, y, fz + 0.02);
     lit.push(w);
     g.add(w);
   }
-  for (const x of [e0 + 0.6, e0 + 2.1, e1 - 2.1, e1 - 0.6]) g.add(cyl(0.25, 0.3, 4.6, toon(0xe8b04a), x, 2.3, -2.2, 14), box(0.8, 0.3, 0.8, toon(0xc8923a), x, 4.7, -2.2));
-  const marquee = box(e1 - e0 + 1.2, 0.5, 2.2, toon(0xa8242e), door, 4.9, -1.5);
-  g.add(marquee);
+  for (const x of [-6, -3.4, 3.4, 6]) g.add(cyl(0.35, 0.42, 5.4, gold, door + x, tz + 2.7, fz + 1.3, 14), box(1.1, 0.4, 1.1, toon(0xc8923a), door + x, tz + 5.5, fz + 1.3));
+  g.add(box(14, 0.6, 3.4, toon(0xa8242e), door, tz + 5.9, fz + 1.6));
   const bulbs = [];
-  for (let i = 0; i < 26; i++) { const b = ball(0.07, toon(0xffe6a0, { glow: 1.4 }), e0 - 0.4 + i * ((e1 - e0 + 0.8) / 25), 4.62, -0.42, 6); bulbs.push(b); g.add(b); }
-  const sign = neonText('LA TIMBA', '#ff3a8a', 8, 2.4, 150);
-  sign.position.set(door, 7.2, -2.6);
-  const sub = neonText('CASINO', '#ffd23a', 3.6, 1, 120);
-  sub.position.set(door, 5.7, -2.6);
+  for (let i = 0; i < 40; i++) { const b = ball(0.08, toon(0xffe6a0, { glow: 1.4 }), door - 7 + i * (14 / 39), tz + 5.55, fz + 3.32, 6); bulbs.push(b); g.add(b); }
+  const sign = neonText('LA TIMBA', '#ff3a8a', 14, 4, 150);
+  sign.position.set(door, tz + 10, fz + 0.05);
+  const sub = neonText('CASINO', '#ffd23a', 6, 1.6, 120);
+  sub.position.set(door, tz + 7.4, fz + 0.05);
   g.add(sign, sub);
   // la puerta giratoria de vidrio
   const rev = new THREE.Group();
   for (let i = 0; i < 4; i++) {
-    const wing = box(1.2, 2.6, 0.04, toon(0x9adcf0, { opacity: 0.45 }), 0.6, 1.3, 0);
     const holder = new THREE.Group();
     holder.rotation.y = (i / 4) * Math.PI * 2;
-    holder.add(wing);
+    holder.add(box(1.3, 2.8, 0.04, toon(0x9adcf0, { opacity: 0.45 }), 0.65, 1.4, 0));
     rev.add(holder);
   }
-  rev.add(cyl(0.06, 0.06, 2.6, toon(0xe8b04a), 0, 1.3, 0, 8), cyl(1.35, 1.35, 0.2, toon(0xe8b04a), 0, 2.7, 0, 24));
-  rev.position.set(door, 0, -2.25);
+  rev.add(cyl(0.06, 0.06, 2.8, gold, 0, 1.4, 0, 8), cyl(1.45, 1.45, 0.24, gold, 0, 2.9, 0, 24));
+  rev.position.set(door, tz, fz + 0.4);
   g.add(rev);
-  // la alfombra roja con sus postes y cordones
-  const rug = plane(1.8, 3.4, toon(0xb8242e), door, 0.1, -0.9);
-  rug.rotation.x = -R90;
-  g.add(rug);
-  for (const s of [-1, 1]) for (let i = 0; i < 3; i++) g.add(cyl(0.05, 0.08, 0.95, toon(0xe8b04a), door + s * 1.1, 0.5, 0.4 - i * 1.0, 8), ball(0.08, toon(0xe8b04a), door + s * 1.1, 1.0, 0.4 - i * 1.0, 8));
-  for (const s of [-1, 1]) for (let i = 0; i < 2; i++) { const rope = cyl(0.025, 0.025, 1.0, toon(0x8a1d2a), door + s * 1.1, 0.85, -0.1 - i, 6); rope.rotation.x = R90; g.add(rope); }
   // la limusina de vuelta, palmeras y reflectores
   const l = limo();
   const limoX = (sc.limo.x + sc.limo.w / 2) * U - 0.6;
-  l.position.set(limoX, 0, 2.7);
+  l.position.set(limoX, 0, (sc.limo.y + sc.limo.h / 2) * U);
   g.add(l);
   const palms = [];
-  for (const [x, z, hh] of [[0.5, -2.2, 6.5], [10.5, -2.2, 7], [20.8, -2.2, 6.8], [9, 9, 6]]) { const p = palm(hh, x); p.position.set(x, 0, z); g.add(p); palms.push(p); }
-  for (const x of [3, 9]) { const s = streetLamp(); s.position.set(x, 0, 1.25); s.rotation.y = -R90; g.add(s); }
+  for (const [x, z, hh] of [[312, -28, 7], [712, -28, 6.5], [1912, -28, 7.2], [2312, -28, 6.8], [300, -1000, 8], [2300, -1000, 8], [-400, 800, 7], [3000, 800, 7]]) { const p = palm(hh, x); p.position.set(x * U, 0, z * U); g.add(p); palms.push(p); }
   const beams = [];
-  for (const s of [-1, 1]) {
-    const beam = new THREE.Mesh(new THREE.ConeGeometry(1.4, 30, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xbfa8ff, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
-    beam.geometry.translate(0, -15, 0);
-    const holder = new THREE.Group();
-    holder.position.set(door + s * 9, 0.5, -4);
+  for (const sx of [-14, 14]) {
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(1.6, 40, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xbfa8ff, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+    beam.geometry.translate(0, -20, 0);
     beam.rotation.x = Math.PI;
+    const holder = new THREE.Group();
+    holder.position.set(door + sx, tz, fz + 1);
     holder.add(beam);
     g.add(holder);
     beams.push(holder);
   }
-  for (let i = 0; i < 10; i++) g.add(box(7, 14 + (i * 5) % 16, 6, toon(0x1a1438), -18 + i * 8, 8, 28 + (i % 2) * 5));
-  const lights = [new THREE.HemisphereLight(0x9a8aff, 0x3a2a4a, 1.8), new THREE.DirectionalLight(0xffb0d8, 1.1), new THREE.PointLight(0xffc06a, 40, 16, 2), new THREE.PointLight(0xff6ab8, 25, 14, 2)];
-  lights[1].position.set(10, 14, 10);
-  lights[2].position.set(door, 4, 0);
-  lights[3].position.set(e0 - 3, 4, 0);
+  for (let i = 0; i < 12; i++) g.add(box(9, 18 + (i * 5) % 18, 8, toon(0x1a1438), -30 + i * 10, 10, 40 + (i % 2) * 6));
+  const lights = [new THREE.HemisphereLight(0x9a8aff, 0x3a2a4a, 1.8), new THREE.DirectionalLight(0xffb0d8, 1.1), new THREE.PointLight(0xffc06a, 60, 22, 2), new THREE.PointLight(0x6ab8ff, 30, 14, 2)];
+  lights[1].position.set(10, 20, 10);
+  lights[2].position.set(door, tz + 5, fz + 4);
+  lights[3].position.set(fc.x, 3, fc.z);
   return {
-    group: g, lights, fog: [0x140c30, 25, 90], buttons: [], limo: l,
+    group: g, lights, fog: [0x140c30, 35, 120], buttons: [], limo: l,
     update(t, st) {
       for (const p of palms) p.userData.top.rotation.z = Math.sin(t * 0.7 + p.userData.sway) * 0.04;
       bulbs.forEach((b, i) => { b.visible = (Math.floor(t * 4) + i) % 3 !== 0; });
       sign.material.opacity = 0.85 + Math.sin(t * 13) * 0.08 + (Math.sin(t * 1.3) > 0.97 ? -0.5 : 0);
       rev.rotation.y = t * 0.6;
       beams.forEach((b, i) => { b.rotation.z = Math.sin(t * 0.5 + i * 2) * 0.5; b.rotation.x = Math.cos(t * 0.4 + i) * 0.2; });
-      l.position.x = limoX + (st.limoGo ** 2) * 40;
+      jets.forEach((j, i) => {
+        const u = (t * 0.7 + i / 16) % 1; const a = (i / 16) * Math.PI * 2;
+        j.position.set(fc.x + Math.cos(a) * u * 1.6, 2.4 + u * 1.2 - u * u * 2.0, fc.z + Math.sin(a) * u * 1.6);
+      });
+      l.position.x = limoX + (st.limoGo ** 2) * 45;
       l.userData.door.rotation.y = st.limoDoor * 1.1;
-      lit.forEach((w, i) => { if ((i * 7 + Math.floor(t * 0.5)) % 23 === 0) w.visible = !w.visible; });
+      lit.forEach((w, i) => { if ((i * 7 + Math.floor(t * 0.5)) % 29 === 0) w.visible = !w.visible; });
     },
   };
 }
@@ -446,34 +503,31 @@ function buildOutside() {
 function buildElevator(st0) {
   const sc = SCENES.elevator;
   const g = new THREE.Group();
-  const x0 = 30 * U; const x1 = 270 * U; const z0 = 30 * U; const z1 = 222 * U; const H = 2.9;
+  const a0 = sc.areas[0];
+  const x0 = a0.x * U; const x1 = (a0.x + a0.w) * U; const z0 = a0.y * U; const z1 = (a0.y + a0.h) * U; const H = 3.3;
   const cx = (x0 + x1) / 2; const cz = (z0 + z1) / 2;
   const wood = toon(0x6a3a22);
+  const panelW = toon(0x7a4a2a);
   const brass = toon(0xd8a83a);
-  const rug = plane(x1 - x0, z1 - z0, toon(0x9a1a2a), cx, 0.001, cz);
-  rug.rotation.x = -R90;
+  g.add(floorRect({ x: a0.x, y: a0.y, w: a0.w, h: a0.h }, toon(0x9a1a2a), 0.001));
   const ceil = plane(x1 - x0, z1 - z0, toon(0x2a1a14), cx, H, cz);
   ceil.rotation.x = R90;
-  g.add(rug, ceil);
-  // paredes (por dentro) con paneles
+  g.add(ceil);
   const wall = (w, x, z, ry) => { const p = plane(w, H, wood, x, H / 2, z); p.rotation.y = ry; g.add(p); return p; };
   wall(x1 - x0, cx, z0, 0);
   wall(z1 - z0, x0, cz, R90);
   wall(z1 - z0, x1, cz, -R90);
   const doorL = sc.door.x * U; const doorR = (sc.door.x + sc.door.w) * U;
   for (const [a, b] of [[x0, doorL], [doorR, x1]]) { const p = plane(b - a, H, wood, (a + b) / 2, H / 2, z1); p.rotation.y = Math.PI; g.add(p); }
-  const top = plane(doorR - doorL, H - 2.3, wood, (doorL + doorR) / 2, 2.3 + (H - 2.3) / 2, z1);
+  const top = plane(doorR - doorL, H - 2.5, wood, (doorL + doorR) / 2, 2.5 + (H - 2.5) / 2, z1);
   top.rotation.y = Math.PI;
   g.add(top);
-  // pasamanos y espejo
-  g.add(box(x1 - x0 - 0.2, 0.05, 0.05, brass, cx, 0.95, z0 + 0.08));
-  g.add(box(0.05, 0.05, z1 - z0 - 0.2, brass, x0 + 0.08, 0.95, cz));
-  const mirror = plane(1.8, 1.4, toon(0x9ab4c8, { glow: 0.25 }), cx, 1.6, z0 + 0.025);
-  g.add(mirror, box(1.9, 1.5, 0.02, brass, cx, 1.6, z0 + 0.005));
-  for (let i = 0; i < 3; i++) g.add(ball(0.12, toon(0xfff0c0, { glow: 1.2 }), cx - 1 + i, H - 0.08, cz, 10));
-  // las puertas (de afuera hacia el piso), que se abren hacia los costados
-  const doors = [];
-  for (const s of [-1, 1]) { const d = box((doorR - doorL) / 2, 2.3, 0.06, brass, (doorL + doorR) / 2 + s * (doorR - doorL) / 4, 1.15, z1 + 0.04); doors.push({ m: d, s, base: d.position.x }); g.add(d); }
+  // paneles de madera más clara y pasamanos
+  for (let i = 0; i < 4; i++) g.add(box((x1 - x0) / 4 - 0.25, 1.6, 0.02, panelW, x0 + (i + 0.5) * ((x1 - x0) / 4), 1.4, z0 + 0.02));
+  g.add(box(x1 - x0 - 0.2, 0.05, 0.05, brass, cx, 0.95, z0 + 0.1), box(0.05, 0.05, z1 - z0 - 0.2, brass, x0 + 0.1, 0.95, cz));
+  const mirror = plane(2.2, 1.5, toon(0x9ab4c8, { glow: 0.25 }), cx, 1.7, z0 + 0.04);
+  g.add(box(2.3, 1.6, 0.02, brass, cx, 1.7, z0 + 0.02), mirror);
+  for (let i = 0; i < 3; i++) g.add(ball(0.13, toon(0xfff0c0, { glow: 1.2 }), x0 + (i + 1) * ((x1 - x0) / 4), H - 0.08, cz, 10));
   // del otro lado de la puerta: el pasillo del piso donde está parado el ascensor, con su cartel
   const hall = new THREE.Group();
   const hz = z1 + 0.1; const hd = 3;
@@ -488,17 +542,17 @@ function buildElevator(st0) {
   hallSign.mesh.rotation.y = Math.PI;
   hall.add(hallSign.mesh, ball(0.15, toon(0xffe6a0, { glow: 1.2 }), (doorL + doorR) / 2, H - 0.3, hz + hd / 2, 10));
   g.add(hall);
-  // el número del piso arriba de la puerta
+  const doors = [];
+  for (const s of [-1, 1]) { const d = box((doorR - doorL) / 2, 2.5, 0.06, brass, (doorL + doorR) / 2 + s * (doorR - doorL) / 4, 1.25, z1 + 0.04); doors.push({ m: d, s, base: d.position.x }); g.add(d); }
   const display = new Screen(0.7, 0.3, 256, 110);
-  display.mesh.position.set((doorL + doorR) / 2, 2.55, z1 - 0.02);
+  display.mesh.position.set((doorL + doorR) / 2, 2.8, z1 - 0.02);
   display.mesh.rotation.y = Math.PI;
   g.add(display.mesh);
-  // el botones
   const npc = blob(0x8a4ae8, { hat: 'cap' });
   npc.position.set(sc.npc.x * U, 0, sc.npc.y * U);
   npc.rotation.y = Math.atan2(cx - npc.position.x, cz + 0.6 - npc.position.z);
   g.add(npc);
-  // la botonera: una placa de bronce con los botones de los pisos (L abajo) en la pared de la derecha
+  // la botonera
   const panel = new THREE.Group();
   panel.position.set(x1 - 0.02, 1.4, sc.panel.y * U);
   panel.rotation.y = -R90;
@@ -516,11 +570,11 @@ function buildElevator(st0) {
   help.mesh.position.set(0, 0.6, 0.02);
   panel.add(help.mesh);
   g.add(panel);
-  const lights = [new THREE.HemisphereLight(0xffe6c0, 0x5a2a1a, 1.4), new THREE.PointLight(0xffd8a0, 8, 6, 2), new THREE.DirectionalLight(0xfff0d0, 0.6)];
+  const lights = [new THREE.HemisphereLight(0xffe6c0, 0x5a2a1a, 1.4), new THREE.PointLight(0xffd8a0, 10, 8, 2), new THREE.DirectionalLight(0xfff0d0, 0.6)];
   lights[1].position.set(cx, H - 0.3, cz);
   lights[2].position.set(cx + 1, H, cz + 2);
   return {
-    group: g, lights, fog: null, buttons, npc,
+    group: g, lights, fog: null, buttons, npc, initial: st0,
     update(t, st) {
       for (const d of doors) d.m.position.x = d.base + d.s * (doorR - doorL) * 0.48 * st.doorOpen;
       hallSign.draw(`${st.elevFloor}`, (c, w, h) => {
@@ -544,59 +598,99 @@ function buildElevator(st0) {
       }
       npc.rotation.z = Math.sin(t * 1.5) * 0.02;
     },
-    initial: st0,
   };
 }
 
 // ─── Un piso del casino ──────────────────────────────────────────────────────
 const THEME = {
-  1: { ceil: 0x2a1650, glow: 0x6a5aff, glow2: 0xb46bf0, light: 0xb8a8ff, trim: 0xc8923a, neon: ['#ffd23a', '#ff3a8a', '#3ad8ff'] },
-  2: { ceil: 0x2a0a18, glow: 0xc8306a, glow2: 0x9a3a8a, light: 0xffb0c0, trim: 0xd8a83a, neon: ['#ff4a6a', '#ffd23a', '#ff8a3a'] },
-  3: { ceil: 0xe8e0d0, glow: 0xfff0c8, glow2: 0x9adcff, light: 0xfff4e0, trim: 0xb8a070, neon: ['#3ad8ff', '#ffd23a', '#ffffff'] },
-  4: { ceil: 0x14100a, glow: 0x8a6a1a, glow2: 0x3a2a12, light: 0xffe0a0, trim: 0xe8b84a, neon: ['#ffd23a', '#ffe8a0', '#ff6a3a'] },
+  1: { ceil: 0x2a1650, glow: 0x6a5aff, glow2: 0xb46bf0, light: 0xb8a8ff, trim: 0xc8923a, dais: 0x6a3a22, daisTop: 0x8a1a2a, neon: ['#ffd23a', '#ff3a8a', '#3ad8ff'] },
+  2: { ceil: 0x2a0a18, glow: 0xc8306a, glow2: 0x9a3a8a, light: 0xffb0c0, trim: 0xd8a83a, dais: 0x3a1a12, daisTop: 0x5a2a1a, neon: ['#ff4a6a', '#ffd23a', '#ff8a3a'] },
+  3: { ceil: 0xe8e0d0, glow: 0xfff0c8, glow2: 0x9adcff, light: 0xfff4e0, trim: 0xb8a070, dais: 0xd8d0c4, daisTop: 0xf0ece4, neon: ['#3ad8ff', '#ffd23a', '#ffffff'] },
+  4: { ceil: 0x14100a, glow: 0x8a6a1a, glow2: 0x3a2a12, light: 0xffe0a0, trim: 0xe8b84a, dais: 0x1a1414, daisTop: 0x2a2220, neon: ['#ffd23a', '#ffe8a0', '#ff6a3a'] },
 };
 
-function decorModel(d, n) {
+function decorModel(d, n, sceneKey) {
   const g = new THREE.Group();
   const cx = (d.x + d.w / 2) * U; const cz = (d.y + d.h / 2) * U;
-  g.position.set(cx, 0, cz);
+  g.position.set(cx, heightAt(sceneKey, d.x + d.w / 2, d.y + d.h / 2), cz);
   const gold = toon(0xe8b84a);
   if (d.kind === 'plant') {
-    g.add(cyl(0.28, 0.22, 0.5, toon(0xc8603a), 0, 0.25, 0, 12));
-    for (let i = 0; i < 6; i++) { const l = ball(0.22, toon(i % 2 ? 0x2f9a4a : 0x3fba5a), Math.cos(i) * 0.15, 0.7 + (i % 3) * 0.25, Math.sin(i) * 0.15, 8); l.scale.set(0.8, 1.5, 0.8); g.add(l); }
+    g.add(cyl(0.3, 0.24, 0.55, toon(0xc8603a), 0, 0.27, 0, 12));
+    for (let i = 0; i < 7; i++) { const l = ball(0.26, toon(i % 2 ? 0x2f9a4a : 0x3fba5a), Math.cos(i) * 0.18, 0.8 + (i % 3) * 0.3, Math.sin(i) * 0.18, 8); l.scale.set(0.8, 1.5, 0.8); g.add(l); }
   } else if (d.kind === 'column') {
-    g.add(cyl(0.28, 0.32, 4.2, toon(0x8a1a2e), 0, 2.1, 0, 16), box(0.8, 0.25, 0.8, gold, 0, 0.12, 0), box(0.8, 0.3, 0.8, gold, 0, 4.05, 0));
-    for (let i = 0; i < 3; i++) g.add(cyl(0.34, 0.34, 0.06, gold, 0, 1 + i * 1.1, 0, 16));
+    g.add(cyl(0.3, 0.34, 6.6, toon(0x8a1a2e), 0, 3.3, 0, 16), box(0.85, 0.3, 0.85, gold, 0, 0.15, 0), box(0.85, 0.35, 0.85, gold, 0, 6.6, 0));
+    for (let i = 0; i < 4; i++) g.add(cyl(0.36, 0.36, 0.06, gold, 0, 1.2 + i * 1.4, 0, 16));
   } else if (d.kind === 'vase') {
     g.add(cyl(0.18, 0.28, 0.3, toon(0x2a5aa8), 0, 0.15, 0, 14), cyl(0.32, 0.18, 0.6, toon(0x2a5aa8), 0, 0.6, 0, 14), cyl(0.15, 0.32, 0.3, toon(0x2a5aa8), 0, 1.05, 0, 14), cyl(0.2, 0.15, 0.12, gold, 0, 1.26, 0, 14));
     for (let i = 0; i < 5; i++) g.add(ball(0.09, toon([0xff4a6a, 0xffd23a, 0xff9ac8][i % 3]), Math.cos(i * 1.3) * 0.18, 1.45 + (i % 2) * 0.1, Math.sin(i * 1.3) * 0.18, 8));
   } else if (d.kind === 'statue') {
     const stone = n === 4 ? gold : toon(0xf0ece4);
-    g.add(box(0.6, 0.9, 0.6, toon(n === 4 ? 0x1a1414 : 0xd8d0c4), 0, 0.45, 0));
-    const fig = blob(0xf0ece4, { hat: n === 4 ? 'top' : '', scale: 0.85 });
+    const s = Math.min(d.w, d.h) / 40;
+    g.add(box(0.6 * s, 0.9, 0.6 * s, toon(n === 4 ? 0x1a1414 : 0xd8d0c4), 0, 0.45, 0));
+    const fig = blob(0xf0ece4, { hat: n === 4 ? 'top' : '', scale: 0.85 * s });
     fig.traverse((o) => { if (o.isMesh) o.material = stone; });
     fig.position.y = 0.9;
     g.add(fig);
   } else if (d.kind === 'fountain') {
-    const w = d.w * U; const dd = d.h * U;
+    const w = d.w * U; const dd = d.h * U; const m = Math.min(w, dd);
     const rim = toon(n === 4 ? 0xe8b84a : 0xe8e4dc);
-    const basin = cyl(Math.min(w, dd) / 2, Math.min(w, dd) / 2 + 0.05, 0.55, rim, 0, 0.27, 0, 28);
-    basin.scale.set(w / Math.min(w, dd), 1, dd / Math.min(w, dd));
-    const water = cyl(Math.min(w, dd) / 2 - 0.08, Math.min(w, dd) / 2 - 0.08, 0.02, toon(0x4ab8e8, { glow: 0.35, opacity: 0.85 }), 0, 0.5, 0, 28);
+    const basin = cyl(m / 2, m / 2 + 0.05, 0.6, rim, 0, 0.3, 0, 32);
+    basin.scale.set(w / m, 1, dd / m);
+    const water = cyl(m / 2 - 0.1, m / 2 - 0.1, 0.02, toon(0x4ab8e8, { glow: 0.35, opacity: 0.85 }), 0, 0.56, 0, 32);
     water.scale.copy(basin.scale);
-    g.add(basin, water, cyl(0.12, 0.16, 1.4, rim, 0, 0.9, 0, 12), cyl(0.5, 0.3, 0.12, rim, 0, 1.6, 0, 18));
+    g.add(basin, water, cyl(0.14, 0.2, 1.6, rim, 0, 1.0, 0, 12), cyl(0.7, 0.35, 0.14, rim, 0, 1.8, 0, 20), cyl(0.1, 0.14, 0.7, rim, 0, 2.2, 0, 10));
     const jets = [];
-    for (let i = 0; i < 8; i++) { const j = ball(0.05, toon(0x9ae4ff, { glow: 0.6, opacity: 0.8 }), 0, 1.7, 0, 6); jets.push(j); g.add(j); }
+    for (let i = 0; i < 10; i++) { const j = ball(0.06, toon(0x9ae4ff, { glow: 0.6, opacity: 0.8 }), 0, 1.9, 0, 6); jets.push(j); g.add(j); }
     g.userData.jets = jets;
+    g.userData.spread = m * 0.45;
+  } else if (d.kind === 'bar') {
+    // una barra con forma de pastilla, el barman en el medio, botellas y banquetas alrededor
+    const w = d.w * U; const dd = d.h * U;
+    const wood = toon(0x5a2a1a);
+    g.add(box(w - dd, 1.1, dd, wood, 0, 0.55, 0), cyl(dd / 2, dd / 2, 1.1, wood, -(w - dd) / 2, 0.55, 0, 20), cyl(dd / 2, dd / 2, 1.1, wood, (w - dd) / 2, 0.55, 0, 20));
+    g.add(box(w - dd, 0.06, dd + 0.12, gold, 0, 1.13, 0), cyl(dd / 2 + 0.06, dd / 2 + 0.06, 0.06, gold, -(w - dd) / 2, 1.13, 0, 20), cyl(dd / 2 + 0.06, dd / 2 + 0.06, 0.06, gold, (w - dd) / 2, 1.13, 0, 20));
+    g.add(box(w * 0.5, 1.3, 0.35, toon(0x2a1a14), 0, 1.75, 0));
+    for (let i = 0; i < 14; i++) g.add(cyl(0.04, 0.05, 0.28, toon([0x3ec85a, 0xc8303a, 0xf0c33c, 0x6ab4ff][i % 4], { glow: 0.3, opacity: 0.9 }), -w * 0.22 + i * (w * 0.44 / 13), 2.0 + (i % 2) * 0.35, 0.2, 8));
+    const barman = blob(0x3a8a6a, { bow: true });
+    barman.position.set(0.9, 0, 0);
+    barman.rotation.y = 0.4;
+    g.add(barman);
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const sx = Math.cos(a) * (w / 2 + 0.55); const sz = Math.sin(a) * (dd / 2 + 0.55);
+      g.add(cyl(0.2, 0.2, 0.08, toon(0xc8303a), sx, 0.75, sz, 14), cyl(0.04, 0.06, 0.72, toon(0x8a8a9a), sx, 0.36, sz, 8));
+    }
+    const sign = neonText('BAR', '#3ad8ff', 2.4, 0.9, 140);
+    sign.position.set(0, 3.0, 0.2);
+    g.add(sign);
+  } else if (d.kind === 'piano') {
+    // un piano de cola con su pianista y un reflector
+    const black = toon(0x14101c);
+    g.add(box(1.6, 0.35, 1.1, black, 0, 0.9, 0), box(1.6, 0.04, 1.1, black, 0, 1.4, -0.35));
+    g.children[g.children.length - 1].rotation.x = 0.5;
+    for (const [x, z] of [[-0.7, -0.45], [0.7, -0.45], [0, 0.45]]) g.add(cyl(0.05, 0.05, 0.75, black, x, 0.37, z, 8));
+    g.add(box(1.4, 0.05, 0.18, toon(0xf4f0e6), 0, 1.0, 0.6));
+    const pianist = blob(0xf08ab8, { hat: 'top', bow: true });
+    pianist.position.set(0, 0, 1.2);
+    pianist.rotation.y = Math.PI;
+    g.add(pianist);
+    const spot = new THREE.Mesh(new THREE.ConeGeometry(1.6, 5, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+    spot.position.set(0, 3.0, 0.4);
+    g.add(spot);
+  } else if (d.kind === 'sofa') {
+    const velvet = toon(0x6a1a5a);
+    const w = d.w * U; const dd = d.h * U;
+    g.add(box(w, 0.45, dd, velvet, 0, 0.22, 0), box(w, 0.6, 0.25, velvet, 0, 0.6, dd / 2 - 0.12), box(0.25, 0.4, dd, velvet, -w / 2 + 0.12, 0.5, 0), box(0.25, 0.4, dd, velvet, w / 2 - 0.12, 0.5, 0));
   }
   return g;
 }
 
 function buildFloor(n) {
-  const sc = SCENES[`f${n}`];
+  const key = `f${n}`;
+  const sc = SCENES[key];
   const th = THEME[n];
   const g = new THREE.Group();
-  const W = sc.w * U; const D = sc.h * U; const H = 4.4;
+  const H = 7;
   const x0 = 56 * U; const x1 = (sc.w - 56) * U; const z0 = 66 * U; const z1 = (sc.h - 46) * U;
   const cx = (x0 + x1) / 2; const cz = (z0 + z1) / 2;
   // piso, techo y paredes
@@ -606,106 +700,123 @@ function buildFloor(n) {
   const ce = plane(x1 - x0, z1 - z0, toon(th.ceil), cx, H, cz);
   ce.rotation.x = R90;
   g.add(fl, ce);
-  const wallTex = (len) => repeating(`wall${n}`, 256, wallpaper(n), len / 2.2, H / 2.2);
-  const doorZ0 = (sc.h / 2 - 60) * U; const doorZ1 = (sc.h / 2 + 60) * U;
+  const wallTex = (len) => repeating(`wall${n}`, 256, wallpaper(n), len / 2.4, H / 2.4);
+  const dz0 = sc.door.y * U; const dz1 = (sc.door.y + sc.door.w) * U;
   const wall = (len, x, z, ry) => { const p = plane(len, H, toon(0xffffff, { map: wallTex(len) }), x, H / 2, z); p.rotation.y = ry; g.add(p); return p; };
   wall(x1 - x0, cx, z0, 0);
-  const back = wall(x1 - x0, cx, z1, Math.PI);
+  wall(x1 - x0, cx, z1, Math.PI);
   wall(z1 - z0, x1, cz, -R90);
-  wall(doorZ0 - z0, x0, (z0 + doorZ0) / 2, R90);
-  wall(z1 - doorZ1, x0, (doorZ1 + z1) / 2, R90);
-  const lintel = plane(doorZ1 - doorZ0, H - 2.5, toon(0xffffff, { map: wallTex(doorZ1 - doorZ0) }), x0, 2.5 + (H - 2.5) / 2, (doorZ0 + doorZ1) / 2);
+  wall(dz0 - z0, x0, (z0 + dz0) / 2, R90);
+  wall(z1 - dz1, x0, (dz1 + z1) / 2, R90);
+  const lintel = plane(dz1 - dz0, H - 2.8, toon(0xffffff, { map: wallTex(dz1 - dz0) }), x0, 2.8 + (H - 2.8) / 2, (dz0 + dz1) / 2);
   lintel.rotation.y = R90;
   g.add(lintel);
-  // zócalo y moldura
+  // zócalo de madera hasta 1,2 m, moldura y pilastras cada tanto
   const trim = toon(th.trim);
+  const wains = toon(n === 3 ? 0xc8b48a : 0x3a1a14);
   for (const [len, x, z, ry] of [[x1 - x0, cx, z0 + 0.03, 0], [x1 - x0, cx, z1 - 0.03, 0], [z1 - z0, x0 + 0.03, cz, R90], [z1 - z0, x1 - 0.03, cz, R90]]) {
-    const b = box(len, 0.22, 0.06, toon(0x2a1a14), x, 0.11, z); b.rotation.y = ry; g.add(b);
-    const m = box(len, 0.14, 0.08, trim, x, H - 0.3, z); m.rotation.y = ry; g.add(m);
+    const b = box(len, 1.2, 0.05, wains, x, 0.6, z); b.rotation.y = ry; g.add(b);
+    const t1 = box(len, 0.08, 0.08, trim, x, 1.22, z); t1.rotation.y = ry; g.add(t1);
+    const m = box(len, 0.2, 0.1, trim, x, H - 0.4, z); m.rotation.y = ry; g.add(m);
   }
+  for (let x = x0 + 4; x < x1 - 2; x += 6) for (const z of [z0 + 0.1, z1 - 0.1]) g.add(box(0.5, H - 0.6, 0.15, trim, x, (H - 0.6) / 2, z));
   // el ascensor: un nicho en la pared de la izquierda con puertas doradas y el número del piso arriba
-  const niche = toon(0x2a1a14);
   const nx0 = 20 * U;
-  const nf = plane(x0 - nx0, doorZ1 - doorZ0, toon(0x9a1a2a), (x0 + nx0) / 2, 0.005, (doorZ0 + doorZ1) / 2);
+  const nf = plane(x0 - nx0, dz1 - dz0, toon(0x9a1a2a), (x0 + nx0) / 2, 0.005, (dz0 + dz1) / 2);
   nf.rotation.x = -R90;
   g.add(nf);
-  for (const z of [doorZ0, doorZ1]) { const s = plane(x0 - nx0, 2.5, niche, (x0 + nx0) / 2, 1.25, z); s.rotation.y = z === doorZ0 ? 0 : Math.PI; g.add(s); }
-  for (const s of [-1, 1]) g.add(box(0.06, 2.3, (doorZ1 - doorZ0) / 2 - 0.05, toon(0xd8a83a), nx0, 1.15, (doorZ0 + doorZ1) / 2 + s * (doorZ1 - doorZ0) / 4));
-  g.add(box(0.1, 0.25, doorZ1 - doorZ0 + 0.3, toon(th.trim), x0 + 0.02, 2.6, (doorZ0 + doorZ1) / 2));
-  const lbl = plane(0.8, 0.34, labelMaterial(`PISO ${n}`, '#1a0a08', '#ffb03a', { w: 256, h: 110, size: 60, font: '"Pixelify Sans", monospace' }), x0 + 0.08, 3.0, (doorZ0 + doorZ1) / 2);
+  for (const z of [dz0, dz1]) { const s = plane(x0 - nx0, 2.8, toon(0x2a1a14), (x0 + nx0) / 2, 1.4, z); s.rotation.y = z === dz0 ? 0 : Math.PI; g.add(s); }
+  for (const s of [-1, 1]) g.add(box(0.06, 2.6, (dz1 - dz0) / 2 - 0.05, toon(0xd8a83a), nx0, 1.3, (dz0 + dz1) / 2 + s * (dz1 - dz0) / 4));
+  g.add(box(0.12, 0.3, dz1 - dz0 + 0.4, trim, x0 + 0.02, 2.95, (dz0 + dz1) / 2));
+  const lbl = plane(0.9, 0.38, labelMaterial(`PISO ${n}`, '#1a0a08', '#ffb03a', { w: 256, h: 110, size: 60, font: '"Pixelify Sans", monospace' }), x0 + 0.09, 3.45, (dz0 + dz1) / 2);
   lbl.rotation.y = R90;
-  g.add(lbl, plane(0.5, 0.3, labelMaterial('ASCENSOR', '#2a1a14', '#ffe6a0', { w: 256, h: 128, size: 54 }), x0 + 0.08, 2.0, doorZ1 + 0.45));
-  g.children[g.children.length - 1].rotation.y = R90;
-  // el techo: paneles que brillan (azul y violeta, como en el original) y lámparas
+  const asc = plane(0.6, 0.32, labelMaterial('ASCENSOR', '#2a1a14', '#ffe6a0', { w: 256, h: 128, size: 54 }), x0 + 0.09, 2.0, dz1 + 0.5);
+  asc.rotation.y = R90;
+  g.add(lbl, asc);
+  // el techo: paneles que brillan (azul y violeta, como en el original), una cúpula sobre la tarima y lámparas
   const glowA = toon(th.glow, { glow: 1 });
   const glowB = toon(th.glow2, { glow: 1 });
-  const cols = Math.max(2, Math.round((x1 - x0) / 6));
-  const rows = Math.max(2, Math.round((z1 - z0) / 5));
+  const cols = Math.max(3, Math.round((x1 - x0) / 7));
+  const rows = Math.max(3, Math.round((z1 - z0) / 7));
   for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
-    const p = plane((x1 - x0) / cols - 0.9, (z1 - z0) / rows - 0.9, (i + j) % 2 ? glowA : glowB, x0 + (i + 0.5) * (x1 - x0) / cols, H - 0.02, z0 + (j + 0.5) * (z1 - z0) / rows);
+    const p = plane((x1 - x0) / cols - 1.4, (z1 - z0) / rows - 1.4, (i + j) % 2 ? glowA : glowB, x0 + (i + 0.5) * (x1 - x0) / cols, H - 0.02, z0 + (j + 0.5) * (z1 - z0) / rows);
     p.rotation.x = R90;
     g.add(p);
   }
-  // decoración del casino (también son obstáculos en `scenes.js`)
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(6, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: th.glow2, side: THREE.BackSide }));
+  dome.scale.set(1, 0.4, 0.8);
+  dome.position.set(cx, H - 0.05, cz);
+  g.add(dome);
+  const chandelier = new THREE.Group();
+  chandelier.position.set(cx, H - 0.2, cz);
+  const big = n >= 3 ? 1.8 : 1.3;
+  chandelier.add(cyl(0.05, 0.05, 1.2, toon(0xe8b84a), 0, -0.6, 0, 8), cyl(big, big * 0.6, 0.35, toon(0xe8b84a, { glow: 0.3 }), 0, -1.3, 0, 28));
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2;
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.6, 6), toon(0xfff2c0, { glow: 1.1 }));
+    c.position.set(Math.cos(a) * big * 0.85, -1.75, Math.sin(a) * big * 0.85);
+    c.rotation.x = Math.PI;
+    chandelier.add(c);
+  }
+  g.add(chandelier);
+  // la tarima del medio (y el palco del piso 4), con escaleras
+  g.add(buildLevels(sc, { top: toon(th.daisTop), side: toon(th.dais), step: toon(new THREE.Color(th.dais).multiplyScalar(1.25).getHex()), edge: trim }));
+  for (const l of sc.levels) if (l.balcony) g.add(railing(l.x * U, l.y * U, (l.x + l.w) * U, l.y * U, l.z, toon(0xe8b84a)));
+  // decoración (también son obstáculos en `scenes.js`)
   const fountains = [];
-  for (const d of sc.decor) { const m = decorModel(d, n); g.add(m); if (m.userData.jets) fountains.push(m); }
+  for (const d of sc.decor) { const m = decorModel(d, n, key); g.add(m); if (m.userData.jets) fountains.push(m); }
+  // gente del casino paseando por los pasillos (solo dibujo: no son obstáculos)
+  const crowd = [];
+  const tints = [0xe0525a, 0x4a9be8, 0x5ec46b, 0xf0c33c, 0xb46bf0, 0xf08a3c, 0x3fd0c4, 0xf07ab8];
+  let seed = n * 97;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  for (let i = 0; i < 60 && crowd.length < 10 + n * 2; i++) {
+    const x = 300 + rnd() * (sc.w - 500); const y = 300 + rnd() * (sc.h - 500);
+    if (heightAt(key, x, y) > 0 || !canStand(key, x, y) || sc.tables.some((t) => x > t.x - 90 && x < t.x + t.w + 90 && y > t.y - 90 && y < t.y + t.h + 90)) continue;
+    const npc = blob(tints[Math.floor(rnd() * tints.length)], { hat: ['', 'top', 'fez', ''][Math.floor(rnd() * 4)] });
+    npc.add(cyl(0.05, 0.04, 0.14, toon([0xff6a9a, 0x6ad4ff, 0xffe27a][i % 3], { glow: 0.4, opacity: 0.85 }), 0.36, 0.75, 0.15, 8));
+    npc.position.set(x * U, 0, y * U);
+    npc.rotation.y = rnd() * Math.PI * 2;
+    npc.userData.phase = rnd() * 6;
+    npc.userData.walk = { x0: x, y0: y, a: rnd() * Math.PI * 2, r: 60 + rnd() * 120 };
+    g.add(npc);
+    crowd.push(npc);
+  }
   // carteles de neón y cuadros en las paredes
   const neons = [];
-  const crown = neonCrown(th.neon[0], 2.6);
-  crown.position.set(x1 - 0.05, 3.1, cz - 2);
+  const crown = neonCrown(th.neon[0], 4);
+  crown.position.set(x1 - 0.22, 4.6, cz - 6);
   crown.rotation.y = -R90;
-  const word = neonText(['LA TIMBA', 'TERCIOPELO', 'MÁRMOL', 'DORADO'][n - 1], th.neon[1], 4.2, 1.2, 130);
-  word.position.set(cx, 3.35, z1 - 0.05);
+  const word = neonText(['LA TIMBA', 'TERCIOPELO', 'MÁRMOL', 'DORADO'][n - 1], th.neon[1], 7, 2, 130);
+  word.position.set(cx, 4.9, z1 - 0.22);
   word.rotation.y = Math.PI;
-  const lucky = neonText(['¡SUERTE!', '$$$', '★ VIP ★', '♛ VIP ♛'][n - 1], th.neon[2], 2.6, 0.9, 120);
-  lucky.position.set(x1 - 0.05, 3.2, cz + 3);
+  const lucky = neonText(['¡SUERTE!', '$$$', '★ VIP ★', '♛ VIP ♛'][n - 1], th.neon[2], 4.4, 1.5, 120);
+  lucky.position.set(x1 - 0.22, 4.6, cz + 6);
   lucky.rotation.y = -R90;
-  g.add(crown, word, lucky);
-  neons.push(crown, word, lucky);
-  for (const [x, z, ry] of [[cx - (x1 - x0) * 0.3, z1 - 0.04, Math.PI], [cx + (x1 - x0) * 0.3, z1 - 0.04, Math.PI], [x0 + 0.04, z0 + 2.2, R90]]) {
-    const p = portrait(1.2, 1.5, ['#2a3a8a', '#4a0a1a', '#8a7a5a', '#1a1414'][n - 1], ['#e0525a', '#4a9be8', '#5ec46b', '#f0c33c'][n - 1]);
-    p.position.set(x, 2.3, z);
+  const welcome = neonText('BIENVENIDOS', th.neon[0], 6, 1.6, 120);
+  welcome.position.set(cx, 5.0, z0 + 0.22);
+  g.add(crown, word, lucky, welcome);
+  neons.push(crown, word, lucky, welcome);
+  for (const [x, z, ry] of [[cx - (x1 - x0) * 0.32, z1 - 0.06, Math.PI], [cx + (x1 - x0) * 0.32, z1 - 0.06, Math.PI], [x0 + 0.06, z0 + 4, R90], [x0 + 0.06, z1 - 4, R90]]) {
+    const p = portrait(1.6, 2, ['#2a3a8a', '#4a0a1a', '#8a7a5a', '#1a1414'][n - 1], ['#e0525a', '#4a9be8', '#5ec46b', '#f0c33c'][n - 1]);
+    p.position.set(x, 3, z);
     p.rotation.y = ry;
     g.add(p);
   }
-  // cortinas en el piso de terciopelo, araña dorada en el piso 4 y el palco VIP
   if (n === 2) {
-    for (let i = 0; i < 6; i++) {
-      const x = x0 + 2 + i * (x1 - x0 - 4) / 5;
-      for (const s of [-1, 1]) { const c = box(0.5, H - 0.4, 0.12, toon(0x8a0a24), x + s * 0.4, (H - 0.4) / 2, z1 - 0.12); g.add(c); }
-      g.add(box(1.5, 0.2, 0.2, toon(0xd8a83a), x, H - 0.35, z1 - 0.15));
-    }
-  }
-  let chandelier = null;
-  if (n === 3 || n === 4) {
-    chandelier = new THREE.Group();
-    chandelier.position.set(cx, H - 0.2, cz);
-    chandelier.add(cyl(0.05, 0.05, 0.6, toon(0xe8b84a), 0, -0.3, 0, 8), cyl(1.4, 0.9, 0.3, toon(0xe8b84a, { glow: 0.3 }), 0, -0.7, 0, 24));
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2;
-      chandelier.add(new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 6), toon(0xfff2c0, { glow: 1.1 })));
-      chandelier.children[chandelier.children.length - 1].position.set(Math.cos(a) * 1.2, -1.05, Math.sin(a) * 1.2);
-      chandelier.children[chandelier.children.length - 1].rotation.x = Math.PI;
-    }
-    g.add(chandelier);
-  }
-  if (n === 4) {
-    const vip = new THREE.Group();
-    vip.position.set(cx, 0, z0 + 0.6);
-    vip.add(box(8, 0.2, 1.1, toon(0x1a1414), 0, 2.6, 0), box(8, 0.08, 0.08, toon(0xe8b84a), 0, 3.5, 0.55));
-    for (let i = 0; i <= 10; i++) vip.add(cyl(0.03, 0.03, 0.9, toon(0xe8b84a), -4 + i * 0.8, 3.05, 0.55, 6));
-    vip.add(plane(2, 0.6, labelMaterial('PALCO VIP', '#1a1414', '#ffd23a', { w: 256, h: 80, size: 54 }), 0, 4.0, 0.2));
-    g.add(vip);
+    for (let x = x0 + 4; x < x1 - 4; x += 6) for (const s of [-1, 1]) g.add(box(0.7, H - 0.6, 0.14, toon(0x8a0a24), x + 3 + s * 0.5, (H - 0.6) / 2, z1 - 0.2));
   }
   // luces: una general, una que marca el sombreado de dibujito y unas pocas lámparas (cada luz cuesta)
-  const lights = [new THREE.HemisphereLight(th.light, 0x2a1a2a, n === 3 ? 1.3 : 1.15), new THREE.DirectionalLight(0xffffff, 0.9)];
-  lights[1].position.set(cx + 6, H + 6, cz + 10);
+  const lights = [new THREE.HemisphereLight(th.light, 0x2a1a2a, n === 3 ? 1.3 : 1.2), new THREE.DirectionalLight(0xffffff, 0.9)];
+  lights[1].position.set(cx + 8, H + 8, cz + 14);
   lights[1].target.position.set(cx, 0, cz);
   lights.push(lights[1].target);
-  const spots = Math.min(4, Math.max(2, Math.round((x1 - x0) / 10)));
-  for (let i = 0; i < spots; i++) {
-    const l = new THREE.PointLight(th.glow2, 14, 16, 2);
-    l.position.set(x0 + (i + 0.5) * (x1 - x0) / spots, H - 0.6, cz);
+  const chand = new THREE.PointLight(0xffe6b0, 40, 22, 2);
+  chand.position.set(cx, H - 2.2, cz);
+  lights.push(chand);
+  for (const [fx, fz] of [[0.2, 0.25], [0.8, 0.25], [0.5, 0.85]]) {
+    const l = new THREE.PointLight(th.glow2, 20, 22, 2);
+    l.position.set(x0 + (x1 - x0) * fx, H - 1, z0 + (z1 - z0) * fz);
     lights.push(l);
   }
   return {
@@ -713,12 +824,21 @@ function buildFloor(n) {
     update(t) {
       neons.forEach((m, i) => { m.material.opacity = 0.85 + Math.sin(t * (9 + i * 3)) * 0.07 + (Math.sin(t * 0.9 + i * 2) > 0.985 ? -0.6 : 0); });
       for (const f of fountains) f.userData.jets.forEach((j, i) => {
-        const u = ((t * 0.9 + i / 8) % 1);
-        const a = (i / 8) * Math.PI * 2;
-        j.position.set(Math.cos(a) * u * 0.55, 1.7 + u * 0.7 - u * u * 1.2, Math.sin(a) * u * 0.55);
+        const u = ((t * 0.9 + i / 10) % 1);
+        const a = (i / 10) * Math.PI * 2;
+        const r = f.userData.spread;
+        j.position.set(Math.cos(a) * u * r, 2.0 + u * 0.8 - u * u * 1.6, Math.sin(a) * u * r);
       });
-      if (chandelier) chandelier.rotation.y = Math.sin(t * 0.3) * 0.05;
-      back.visible = true;
+      chandelier.rotation.y = Math.sin(t * 0.3) * 0.05;
+      // la gente da vueltas despacito alrededor de su lugar (si se choca algo, se queda quieta mirando)
+      for (const p of crowd) {
+        const w = p.userData.walk;
+        const a = w.a + t * 0.12;
+        const x = w.x0 + Math.cos(a) * w.r; const y = w.y0 + Math.sin(a) * w.r;
+        const free = canStand(key, x, y) && heightAt(key, x, y) === 0;
+        if (free) { p.position.set(x * U, 0, y * U); p.rotation.y = -a; }
+        animateBlob(p, t, free, p.userData.phase);
+      }
     },
   };
 }
@@ -728,6 +848,5 @@ export function buildPlace(key, st) {
   if (key === 'wait') return buildWait();
   if (key === 'outside') return buildOutside();
   if (key === 'elevator') return buildElevator(st);
-  const n = Number(key.slice(1));
-  return buildFloor(n);
+  return buildFloor(Number(key.slice(1)));
 }

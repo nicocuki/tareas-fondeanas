@@ -10,7 +10,7 @@ import {
 import { QUOTA_MULTIPLIERS, TOTAL_DAYS, quotaFor } from '../src/timba/quota.js';
 import { FLOOR_COUNT, FLOOR_LOOKS, floorOfLoc, floorsOfDay, locOfFloor, lookOfFloor, topFloor } from '../src/timba/casinos.js';
 import {
-  DECOR, FLOOR_OF_TABLE, MAX_BIG_PER_ROW, SCENES, TABLES, canStand, doorFor, floorTables, nearTable, nearby, spawnPoint, standAt, stepWalk,
+  DECOR, FLOOR_OF_TABLE, MAX_BIG_PER_ROW, SCENES, STEP_UP, TABLES, canStand, canStep, doorFor, floorTables, heightAt, nearTable, nearby, spawnPoint, standAt, stepWalk,
 } from '../src/timba/scenes.js';
 
 const rand = () => 0.3;
@@ -610,60 +610,83 @@ test('timba: nadie entra con la partida empezada, y la plata nunca queda negativ
 });
 
 // ─── Los lugares ─────────────────────────────────────────────────────────────
-test('timba: en la calle se camina por la vereda y se para en los bordes', () => {
-  const p = { x: 300, y: 0 };
+test('timba: en la calle se camina por el jardín, la vereda y la calle, y se para en los bordes', () => {
+  const p = { x: 520, y: -170 };
   stepWalk(p, 1, 0, 1, 'wait');
-  assert.ok(p.x > 300 && p.moving);
-  for (let i = 0; i < 200; i++) stepWalk(p, -1, 0, 0.1, 'wait');
-  assert.ok(p.x < SCENES.wait.min + 30 && p.x >= SCENES.wait.min);
-  for (let i = 0; i < 100; i++) stepWalk(p, 0, 1, 0.1, 'wait');
-  assert.ok(p.y < 90, 'no se baja a la calle');
-  for (let i = 0; i < 100; i++) stepWalk(p, 0, -1, 0.1, 'wait');
-  assert.ok(p.y > -95, 'no se mete en la casa');
-  const q = { x: 300, y: 0 };
-  for (let i = 0; i < 400; i++) stepWalk(q, 1, 0, 0.1, 'outside');
-  assert.ok(q.x <= SCENES.outside.max && q.x > SCENES.outside.max - 30);
-  for (const scene of ['wait', 'outside']) { const sp = spawnPoint(scene, 3); assert.ok(canStand(scene, sp.x, sp.y), `${scene}: se aparece en la vereda`); }
+  assert.ok(p.x > 520 && p.moving);
+  for (let i = 0; i < 300; i++) stepWalk(p, -1, 0, 0.1, 'wait');
+  assert.ok(p.x < 70 && p.x >= 40, 'para en el borde');
+  for (let i = 0; i < 300; i++) stepWalk(p, 0, 1, 0.1, 'wait');
+  assert.ok(p.y > 500 && p.y < 640, 'se cruza la calle');
+  const { van, limo } = SCENES.wait;
+  assert.ok(!canStand('wait', van.x + 50, van.y + 50) && !canStand('wait', limo.x + 100, limo.y + 50), 'la camioneta y la limusina son obstáculos');
+  for (const scene of ['wait', 'outside']) for (let i = 0; i < 8; i++) { const sp = spawnPoint(scene, i); assert.ok(canStand(scene, sp.x, sp.y), `${scene}: se aparece en un lugar libre`); }
 });
 
-test('timba: desde arriba se choca con las paredes y con las mesas, y el ascensor tiene su puerta', () => {
+test('timba: hay alturas: las tarimas no se trepan, las escaleras sí, y de arriba se puede bajar saltando', () => {
+  const sc = SCENES.f1;
+  const dais = sc.levels[0];
+  assert.ok(dais.z > STEP_UP, 'la tarima es más alta que un escalón');
+  // de frente a la tarima, por un costado (sin escalera): no se sube
+  const p = { x: dais.x + 60, y: dais.y + dais.h + 60 };
+  for (let i = 0; i < 100; i++) stepWalk(p, 0, -1, 0.05, 'f1');
+  assert.equal(heightAt('f1', p.x, p.y), 0);
+  assert.ok(p.y > dais.y + dais.h - 2, 'el borde de la tarima frena');
+  // por la escalera de adelante sí
+  const st = sc.stairs.find((x) => x.up === 'n');
+  const q = { x: st.x + st.w / 2, y: st.y + st.h + 30 };
+  for (let i = 0; i < 160; i++) stepWalk(q, 0, -1, 0.02, 'f1');
+  assert.equal(heightAt('f1', q.x, q.y), dais.z, 'subió a la tarima');
+  // y se baja por el costado sin escalera
+  for (let i = 0; i < 400; i++) stepWalk(q, 1, 0, 0.02, 'f1');
+  assert.equal(heightAt('f1', q.x, q.y), 0, 'saltó para abajo');
+  // la terraza del casino se sube por la escalinata, y la puerta está arriba
+  const o = { x: SCENES.outside.doorX, y: -600 }; // entre la fuente y la escalinata
+  for (let i = 0; i < 1500; i++) stepWalk(o, 0, -1, 0.02, 'outside');
+  assert.equal(heightAt('outside', o.x, o.y), 1.2);
+  assert.equal(doorFor('outside', o, 0), 'elevator', 'subiendo la escalinata se llega a la puerta giratoria');
+  // el palco VIP del piso 4, a 2,4 m, con sus escaleras
+  assert.ok(SCENES.f4.levels.some((l) => l.balcony && l.z === 2.4));
+  assert.equal(SCENES.f4.stairs.filter((x) => x.z1 === 2.4).length, 2);
+  // el porche de la casita
+  assert.ok(heightAt('wait', 500, -350) > 0.4);
+});
+
+test('timba: en los pisos se choca con las paredes y con las mesas, y el ascensor tiene su puerta', () => {
   const floors = Array.from({ length: FLOOR_COUNT }, (_, i) => `f${i + 1}`);
   for (const scene of ['elevator', ...floors]) {
     const sp = spawnPoint(scene, 0);
     assert.ok(canStand(scene, sp.x, sp.y), `${scene}: el lugar de aparición tiene que ser libre`);
   }
-  assert.ok(!canStand('f1', 910, 695), 'adentro de una mesa no se puede');
+  const bj = floorTables(1).find((t) => t.kind === 'bj');
+  assert.ok(!canStand('f1', bj.x + 100, bj.y + 60), 'adentro de una mesa no se puede');
   assert.ok(!canStand('f1', 10, 10));
   for (const scene of floors) {
-    const p = { x: 120, y: SCENES[scene].spawn.y };
+    const p = { x: 140, y: SCENES[scene].spawn.y };
     for (let i = 0; i < 300; i++) stepWalk(p, -1, 0, 0.016, scene);
     assert.ok(p.x < 52 && p.x > 20, `${scene}: se puede llegar a la puerta del ascensor`);
     assert.equal(doorFor(scene, p, floorOfLoc(scene)), 'elevator');
   }
-  const q = { x: 150, y: 150 };
+  const q = { x: 210, y: 200 };
   for (let i = 0; i < 400; i++) stepWalk(q, 0, 1, 0.016, 'elevator');
   assert.equal(doorFor('elevator', q, 1), 'f1');
-  assert.equal(doorFor('elevator', q, 7), 'f7', 'el ascensor deja en cualquiera de los 12 pisos');
   assert.equal(doorFor('elevator', q, 0), 'outside');
-  assert.equal(doorFor('outside', { x: SCENES.outside.doorX + 1, y: 0 }, 0), null, 'la puerta giratoria está al fondo de la alfombra');
-  const r = { x: SCENES.outside.doorX, y: 0 };
-  for (let i = 0; i < 200; i++) stepWalk(r, 0, -1, 0.016, 'outside');
-  assert.equal(doorFor('outside', r, 0), 'elevator', 'caminando por la alfombra roja se entra');
+  assert.equal(doorFor('outside', { x: SCENES.outside.doorX, y: 0 }, 0), null, 'la puerta giratoria está arriba de la escalinata');
 });
 
 test('timba: todo lo que se toca está donde corresponde', () => {
-  assert.equal(nearby('wait', { x: SCENES.wait.van.x + 150, y: 30 })?.key, 'van');
-  assert.equal(nearby('wait', { x: SCENES.wait.limo.x + 20, y: 30 })?.key, 'board');
-  assert.equal(nearby('wait', { x: 300, y: 30 }), null);
+  const { wait, outside } = SCENES;
+  assert.equal(nearby('wait', { x: wait.van.x + 100, y: wait.van.y - 40 })?.key, 'van');
+  assert.equal(nearby('wait', { x: wait.limoDoor.x, y: wait.limoDoor.y - 20 })?.key, 'board');
+  assert.equal(nearby('wait', { x: 500, y: -150 }), null);
   assert.equal(nearby('limo', { x: 0, y: 0 })?.key, 'unboard');
   assert.equal(nearby('back', { x: 0, y: 0 })?.key, 'unboardBack');
-  assert.equal(nearby('outside', { x: 100, y: 300 }), null, 'sin haber entrado no se vuelve');
-  assert.equal(nearby('outside', { x: 100, y: 300 }, { home: true })?.key, 'boardBack');
-  assert.equal(nearby('outside', { x: SCENES.outside.doorX, y: 300 }, { home: true }), null);
-  assert.equal(nearby('elevator', { x: 70, y: 85 })?.key, 'npc');
-  assert.equal(nearby('elevator', { x: 220, y: 70 }), null, 'la botonera se toca con la mano, no con la cercanía');
-  assert.equal(nearTable('f1', { x: 120, y: 500 }), null);
-  assert.equal(nearTable('f1', { x: 700, y: 900 }), null);
+  assert.equal(nearby('outside', { x: outside.limoDoor.x, y: outside.limoDoor.y - 20 }), null, 'sin haber entrado no se vuelve');
+  assert.equal(nearby('outside', { x: outside.limoDoor.x, y: outside.limoDoor.y - 20 }, { home: true })?.key, 'boardBack');
+  assert.equal(nearby('outside', { x: outside.doorX, y: -1100 }, { home: true }), null);
+  assert.equal(nearby('elevator', { x: 95, y: 110 })?.key, 'npc');
+  assert.equal(nearby('elevator', { x: 340, y: 130 }), null, 'la botonera se toca con la mano, no con la cercanía');
+  assert.equal(nearTable('f1', { x: 140, y: SCENES.f1.spawn.y }), null);
 });
 
 test('timba: en cada piso, cada mesa tiene su lugar libre abajo, a la vista y al que se llega caminando', () => {
@@ -688,7 +711,7 @@ test('timba: en cada piso, cada mesa tiene su lugar libre abajo, a la vista y al
       const [x, y] = queue.pop();
       for (const [dx, dy] of [[step, 0], [-step, 0], [0, step], [0, -step]]) {
         const nx = x + dx; const ny = y + dy;
-        if (!seen.has(key(nx, ny)) && canStand(scene, nx, ny)) { seen.add(key(nx, ny)); queue.push([nx, ny]); }
+        if (!seen.has(key(nx, ny)) && canStep(scene, x, y, nx, ny)) { seen.add(key(nx, ny)); queue.push([nx, ny]); }
       }
     }
     for (const t of tables) { const sp = standAt(t); assert.ok(seen.has(key(sp.x, sp.y)) || [...seen].some((k) => { const [a, b] = k.split(',').map(Number); return Math.hypot(a * step - sp.x, b * step - sp.y) < step; }), `${scene}/${t.id}: se llega caminando`); }

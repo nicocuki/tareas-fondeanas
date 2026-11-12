@@ -33,18 +33,17 @@ function TicketIcon() {
   return <svg className="tbg-ticket" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 3h14v5a2.2 2.2 0 0 0 0 4.4V21H5v-8.6a2.2 2.2 0 0 0 0-4.4z" fill="#f0c33c" stroke="#8a5a10" strokeWidth="1.6" strokeLinejoin="round" /><path d="M9 8h6M9 12h6" stroke="#8a5a10" strokeWidth="1.6" strokeLinecap="round" /></svg>;
 }
 
-// Dónde aparece cada uno al cambiar de lugar, y para dónde mira (`yaw`: 0 mira a -y; π/2 a -x; -π/2 a +x).
+// Dónde aparece cada uno al cambiar de lugar, y para dónde mira (`yaw`: 0 mira a -y; π a +y; π/2 a -x; -π/2 a +x).
 function landing(loc, prev, index) {
   const base = spawnPoint(loc, index);
   const sc = SCENES[sceneKey(loc)];
-  if (loc === 'outside' && prev === 'back') return { x: sc.limo.x + sc.limo.w + 40, y: 20, yaw: -Math.PI / 2 };
-  if (loc === 'outside' && prev === 'elevator') return { x: sc.doorX - 20 - (index % 3) * 22, y: -40 + (index % 2) * 30, yaw: Math.PI * 0.6 };
-  if (loc === 'outside') return { ...base, yaw: -Math.PI / 2 };
-  if (loc === 'wait' && prev === 'limo') return { x: sc.limo.x - 60 + (index % 3) * 18, y: 30, yaw: Math.PI / 2 };
-  if (loc === 'wait') return { ...base, yaw: -Math.PI / 2 };
-  if (floorOfLoc(loc) !== null && prev === 'elevator') return { x: 112 + (index % 2) * 16, y: sc.spawn.y - 20 + (index % 4) * 14, yaw: -Math.PI / 2 };
-  if (floorOfLoc(loc) !== null) return { ...base, yaw: -Math.PI / 2 };
-  if (loc === 'elevator') return { x: 150 + ((index % 4) - 1.5) * 22, y: floorOfLoc(prev) !== null ? 175 : 190, yaw: 0 };
+  const k = ((index % 4) - 1.5) * 26;
+  if (loc === 'outside' && prev === 'elevator') return { x: sc.doorX + k, y: -1150, yaw: Math.PI };
+  if (loc === 'outside') return { ...base, yaw: 0.25 };                        // recién bajados de la limusina, mirando al casino
+  if (loc === 'wait' && prev === 'limo') return { x: sc.limoDoor.x + k, y: sc.limoDoor.y - 60, yaw: 0 };
+  if (loc === 'wait') return { ...base, yaw: Math.PI * 0.8 };                  // en el jardín, mirando a la calle
+  if (floorOfLoc(loc) !== null) return { x: 120 + (index % 2) * 22, y: sc.spawn.y + k, yaw: -Math.PI / 2 };
+  if (loc === 'elevator') return { x: 210 + k, y: floorOfLoc(prev) !== null || prev === 'outside' ? 250 : 200, yaw: 0 };
   return { ...base, yaw: 0 };
 }
 
@@ -521,8 +520,8 @@ function labelFor(btn) {
 
 // Qué conviene hacer ahora, según dónde estás (la línea amarilla de arriba).
 function goalText(room, loc, aboard, inElev, done) {
-  if (loc === 'wait') return aboard ? `Subí a la limusina con los demás (${aboard}/${room.players.length} a bordo)` : 'Caminá hasta la limusina, a la derecha, y tocá E en la puerta de atrás';
-  if (loc === 'outside') return room.day.endsAt ? 'Entrá al casino por la puerta giratoria, o volvé a casa en la limusina' : 'Seguí la alfombra roja y entrá por la puerta giratoria';
+  if (loc === 'wait') return aboard ? `Subí a la limusina con los demás (${aboard}/${room.players.length} a bordo)` : 'Cruzá a la calle hasta la limusina negra y tocá E en su puerta de atrás';
+  if (loc === 'outside') return room.day.endsAt ? 'Subí la escalinata y entrá al casino, o volvé a casa en la limusina' : 'Cruzá la plaza, subí la escalinata y entrá por la puerta giratoria';
   if (loc === 'elevator') {
     if (room.day.over) return room.elev.floor === 0 ? 'Se acabó el día: salí por la puerta y subí a la limusina' : 'Se acabó el día: tocá la L en la botonera para bajar';
     if (inElev < room.players.length) return `Esperá a que suban todos al ascensor (${inElev}/${room.players.length})`;

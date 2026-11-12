@@ -2,7 +2,7 @@
 // `TimbaGame.jsx`): no lo importes desde nada que cargue la portada. No toca el estado del juego: recibe en cada cuadro
 // dónde está cada uno y la sala, y dice qué botón está mirando el jugador (`target`).
 import * as THREE from 'three';
-import { SCENES, UNIT } from './scenes.js';
+import { SCENES, UNIT, heightAt } from './scenes.js';
 import { buildPlace } from './env3d.js';
 import { buildTable } from './tables3d.js';
 import { phaseOf, statusOf } from './controls.js';
@@ -19,7 +19,7 @@ export function createTimba3D(canvas, { color }) {
   renderer.setPixelRatio(ratio);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(72, 1, 0.04, 260);
+  const camera = new THREE.PerspectiveCamera(72, 1, 0.04, 320);
   scene.add(camera);
   const myHands = hands(color);
   myHands.scale.setScalar(0.85);
@@ -39,6 +39,7 @@ export function createTimba3D(canvas, { color }) {
   let target = null;     // lo que se está mirando: { btn, mesh, point }
   let poke = null;       // la mano yendo a apretar: { at, local }
   let shake = 0;
+  let eyeH = null;       // la altura del piso debajo de la cámara, suavizada
   const lastTone = new Map();
   const slow = { n: 0, light: false };
 
@@ -64,6 +65,7 @@ export function createTimba3D(canvas, { color }) {
   function setPlace(key, st) {
     if (place?.key === key) return;
     clearPlace();
+    eyeH = null;
     const env = buildPlace(key, st);
     const root = new THREE.Group();
     root.add(env.group);
@@ -108,7 +110,10 @@ export function createTimba3D(canvas, { color }) {
       const s = limoObj.userData.seats[f.seat % 8];
       camera.position.set(limoObj.position.x + s.x, limoObj.userData.eyeY, limoObj.position.z + s.z);
     } else {
-      camera.position.copy(world(f.me.x, f.me.y, EYE + (f.me.moving ? Math.abs(Math.sin(f.time * 9)) * 0.035 : 0)));
+      // la altura del piso (tarimas, escaleras, terraza) se sigue con suavidad: subir una escalera no salta
+      const floorH = heightAt(f.key, f.me.x, f.me.y);
+      eyeH = eyeH === null || Math.abs(eyeH - floorH) > 1.5 ? floorH : eyeH + (floorH - eyeH) * Math.min(1, f.dt * 12);
+      camera.position.copy(world(f.me.x, f.me.y, eyeH + EYE + (f.me.moving ? Math.abs(Math.sin(f.time * 9)) * 0.035 : 0)));
     }
     shake = f.env.moving ? 0.012 : shake * 0.9;
     if (shake > 0.001) { camera.position.x += (Math.random() - 0.5) * shake; camera.position.y += (Math.random() - 0.5) * shake; }
@@ -126,7 +131,7 @@ export function createTimba3D(canvas, { color }) {
         p.g.scale.setScalar(0.75);
         p.g.rotation.y = s.yaw;
       } else {
-        p.g.position.copy(world(o.x, o.y));
+        p.g.position.copy(world(o.x, o.y, heightAt(f.key, o.x, o.y)));
         p.g.scale.setScalar(1);
         p.g.rotation.y = o.yaw + Math.PI;
       }
