@@ -25,10 +25,10 @@ test('royale3d: la isla sale de la semilla (igual cada vez) y tiene tierra en el
   assert.ok(world.height(ISLAND_R + 12, 0) < WADE_MIN, 'más allá de la costa es mar abierto');
 });
 
-test('royale3d: están los nueve lugares con nombre, separados, y hay cofres de los tres tipos', () => {
+test('royale3d: están los catorce lugares con nombre, separados, y hay cofres de los tres tipos', () => {
   for (const seed of [1, 42, SEED, 99999]) {
     const w = makeWorld(seed);
-    assert.deepEqual(w.places.map((p) => p.id).sort(), ['arboleada', 'cover', 'frontera', 'judia', 'muelle', 'penasco', 'polvorin', 'puente', 'villa']);
+    assert.deepEqual(w.places.map((p) => p.id).sort(), ['arboleada', 'cover', 'frontera', 'judia', 'muelle', 'penasco', 'polvorin', 'puente', 'villa'].concat(['barrio', 'ciudad', 'estacion', 'fabrica', 'pueblo']).sort());
     for (let i = 0; i < w.places.length; i++) for (let j = i + 1; j < w.places.length; j++) {
       const a = w.places[i], b = w.places[j];
       if (a.id === 'muelle' || b.id === 'muelle') continue;
@@ -516,4 +516,19 @@ test('royale3d: la sala entera pesa poco (10 jugadores, muchos cofres abiertos y
   for (const p of room.players.slice(1)) room = applyAction(room, { type: 'died', playerId: p.id, match: m, by: 'h', w: 'rifle' }, { now: room.match.startsAt + 10 }) || room;
   assert.equal(room.phase, 'final');
   assert.ok(JSON.stringify(room).length < 12000, String(JSON.stringify(room).length));
+});
+
+test('royale3d: Ciudad Cuki tiene calles, edificios de dos pisos con rampa y cofre arriba, y caminos a cada lugar', () => {
+  for (const seed of [3, SEED]) {
+    const w = makeWorld(seed);
+    const c = w.places.find((p) => p.id === 'ciudad');
+    assert.ok(Math.hypot(c.x, c.z) < ISLAND_R * 0.3, 'la ciudad queda cerca del medio');
+    assert.ok(w.streets.length >= 12, `calles: ${w.streets.length}`);
+    assert.equal(w.roads.length, w.places.length - 1);
+    const ramps = w.solids.filter((s) => s.k === 'ramp' && Math.hypot((s.x0 + s.x1) / 2 - c.x, (s.z0 + s.z1) / 2 - c.z) < c.r);
+    for (const r of ramps) {
+      const high = w.chests.find((ch) => ch.y > r.y0 + 3.5 && Math.hypot(ch.x - (r.x0 + r.x1) / 2, ch.z - (r.z0 + r.z1) / 2) < 12);
+      assert.ok(high, 'cada entrepiso tiene su cofre');
+    }
+  }
 });

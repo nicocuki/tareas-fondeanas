@@ -1067,5 +1067,14 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.57.1 = La Timba: el pingüino se cae menos
+1.57.1 = La Timba: el pingüino se cae menos
 - En el Cruce del pingüino ahora cada salto tiene 2 de 3 chances de avanzar (antes era mitad y mitad). Cada salto bien dado sigue multiplicando ×1,5.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.58.0 = Royale 3D: isla más grande, con ciudad y pueblos
+- La isla es mucho más grande (casi tres veces la superficie), con más árboles, rocas, cofres y cajas, y la tormenta y el bus acompañan el tamaño.
+- Ciudad Cuki, en el medio: nueve manzanas con calles asfaltadas, edificios de dos pisos (se sube al entrepiso por una rampa y arriba hay un cofre mejor), casas, autos estacionados y una plaza con fuente.
+- Lugares nuevos: Barrio Bichito (casitas de colores con jardín), Pueblo Polenta (calle principal e iglesia con campanario), Fábrica Fernet (galpón, contenedores y chimenea) y Estación Escabio (la estación de servicio).
+- Caminos de tierra que salen de la ciudad hacia cada lugar, y casas con paredes de ladrillo, revoque o madera y techos de colores.
+- El mapa grande ya no traba la partida al abrirlo.

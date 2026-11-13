@@ -2,7 +2,7 @@
 // Royale3DGame.jsx): no lo importes desde nada que cargue la portada. Estilo «low poly»: caras planas, colores
 // lindos, sombras y efectos, todo armado con código (sin modelos ni imágenes). No toca el estado del juego.
 import * as THREE from 'three';
-import { noise } from './map.js';
+import { noise, segDist } from './map.js';
 import { RARITIES } from './sim.js';
 import {
   TIER_COLORS, animateAvatar, avatarModel, beam, boxGeo, busModel, chestModel, dropModel, drawTag, holdWeapon, itemModel, mat, matFor, rampGeo, ring, texture, weaponModel,
@@ -14,9 +14,11 @@ const SUN_DIR = new THREE.Vector3(-0.45, 0.62, 0.38).normalize();
 const R90 = Math.PI / 2;
 
 // ─── Colores del terreno ─────────────────────────────────────────────────────
-const PLACE_TINT = { polvorin: 0xdcc690, judia: 0x86633a, frontera: 0x9d8d6e, penasco: 0x8d9094, arboleada: 0x3f8f3c, muelle: 0xdcc690, villa: 0x9a8d6d, cover: 0x57b04f, puente: 0x5da545 };
+const PLACE_TINT = { polvorin: 0xdcc690, judia: 0x86633a, frontera: 0x9d8d6e, penasco: 0x8d9094, arboleada: 0x3f8f3c, muelle: 0xdcc690, villa: 0x9a8d6d, cover: 0x57b04f, puente: 0x5da545, ciudad: 0xa9a49a, barrio: 0x7fbf5a, pueblo: 0xb39d76, fabrica: 0x8f8b84, estacion: 0x9c968c };
+const DIRT = new THREE.Color(0xb4925f), ASPHALT = new THREE.Color(0x4a4d52);
 const SAND = new THREE.Color(0xe6d49d), GRASS_A = new THREE.Color(0x73c04c), GRASS_B = new THREE.Color(0x4f9a3a), ROCK = new THREE.Color(0x8b8d85), SNOW = new THREE.Color(0xeef3f5), SEABED = new THREE.Color(0x2f7fa6), SHALLOW = new THREE.Color(0x58b6c8);
 const tint = new THREE.Color();
+const CAR_COLORS = [0xd94141, 0x3f7fd9, 0xf2c94c, 0xf2f2f2, 0x2d9c6a, 0x2b2b2b];
 const DEEP = new THREE.Color(0x1a5a85);
 
 export function terrainColor(w, x, z, h, out) {
@@ -31,6 +33,8 @@ export function terrainColor(w, x, z, h, out) {
       const d = Math.hypot(x - p.x, z - p.z);
       if (d < p.r * 0.95) { tint.set(PLACE_TINT[p.id] || 0xffffff); out.lerp(tint, Math.min(1, (p.r * 0.95 - d) / 5) * 0.85); }
     }
+    for (const r of w.roads || []) { const d = segDist(x, z, r); if (d < r.w) out.lerp(DIRT, Math.min(1, (r.w - d) / 1.2) * 0.8); }
+    for (const st of w.streets || []) if (Math.abs(x - st.x) < st.w / 2 && Math.abs(z - st.z) < st.d / 2) out.copy(ASPHALT);
   }
   return out;
 }
@@ -328,7 +332,7 @@ export function createRenderer(canvas) {
         const g = new THREE.Group();
         g.add(m);
         if (s.gable) {
-          const hip = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 4), mat(s.mat === 'stone' ? 0x6c6f78 : 0xb6492f, { flatShading: true }));
+          const hip = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 4), mat(s.rc ?? (s.mat === 'stone' ? 0x6c6f78 : 0xb6492f), { flatShading: true }));
           hip.rotation.y = Math.PI / 4;
           const rh = 2.3;
           hip.scale.set((s.ww || ww) / Math.SQRT2, rh, (s.dd || dd) / Math.SQRT2);
@@ -349,7 +353,7 @@ export function createRenderer(canvas) {
     meshById.set(s.id, m);
     return m;
   }
-  const buildSolids = (w) => { for (const s of w.solids) if (!s.dead && s.k !== 'cyl') addSolidMesh(s); };
+  const buildSolids = (w) => { for (const s of w.solids) if (!s.dead && s.k !== 'cyl' && !s.hide) addSolidMesh(s); };
 
   function buildTrees(w) {
     const pines = w.trees.filter((t) => !t.palm && t.kind === 'pine'), rounds = w.trees.filter((t) => !t.palm && t.kind !== 'pine'), palms = w.trees.filter((t) => t.palm);
@@ -412,6 +416,21 @@ export function createRenderer(canvas) {
       for (const c of crops) for (let x = 0; x < c.w; x += 1) plants.push({ x: c.x - c.w / 2 + x + 0.5, z: c.z, y: c.y });
       mkI(new THREE.ConeGeometry(0.35, 0.9, 5), plants, mat(0xffffff), (p, i, m) => { dummy.position.set(p.x, p.y + 0.4, p.z); dummy.scale.set(1, 1, 1); dummy.rotation.set(0, i, 0); m.setColorAt(i, col.set(i % 5 === 0 ? 0xe7c840 : 0x4faa3f)); });
     }
+    // Calles: asfalto con la línea del medio punteada.
+    const asphalt = new THREE.MeshLambertMaterial({ color: 0x45484d, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const paint = new THREE.MeshBasicMaterial({ color: 0xf2e6a0, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    for (const st of w.streets || []) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(st.w, st.d), asphalt);
+      m.rotation.x = -R90; m.position.set(st.x, st.y, st.z); m.receiveShadow = true;
+      worldGroup.add(m);
+      const along = st.w > st.d, L = Math.max(st.w, st.d);
+      if (Math.min(st.w, st.d) < 5) continue;
+      for (let t = -L / 2 + 1.5; t < L / 2 - 1; t += 4) {
+        const d = new THREE.Mesh(new THREE.PlaneGeometry(along ? 2 : 0.25, along ? 0.25 : 2), paint);
+        d.rotation.x = -R90; d.position.set(st.x + (along ? t : 0), st.y + 0.01, st.z + (along ? 0 : t));
+        worldGroup.add(d);
+      }
+    }
     for (const p of w.props) {
       if (p.k === 'well') {
         const g = new THREE.Group();
@@ -457,6 +476,39 @@ export function createRenderer(canvas) {
           post.position.set(p.x + sx * (p.w / 2 - 0.4), p.y - 1.4, p.z + sz * (p.d / 2 - 0.3));
           worldGroup.add(post);
         }
+      } else if (p.k === 'car') {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.8, 1.9), mat(CAR_COLORS[p.c % CAR_COLORS.length]));
+        body.position.y = 0.65;
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.65, 1.7), mat(0x9fc7e0));
+        cab.position.set(-0.2, 1.35, 0);
+        g.add(body, cab);
+        for (const sx of [-1.3, 1.3]) for (const sz of [-0.95, 0.95]) { const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.3, 10), mat(0x222222)); wh.rotation.x = R90; wh.position.set(sx, 0.38, sz); g.add(wh); }
+        g.rotation.y = p.rot ? R90 : 0;
+        g.position.set(p.x, p.y, p.z);
+        g.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+        worldGroup.add(g);
+      } else if (p.k === 'fountain') {
+        const g = new THREE.Group();
+        const basin = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.4, 0.6, 20), matFor('stone')); basin.position.y = 0.3;
+        const pool = new THREE.Mesh(new THREE.CircleGeometry(2.9, 20), new THREE.MeshBasicMaterial({ color: 0x3f9ad6 })); pool.rotation.x = -R90; pool.position.y = 0.58;
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 2.6, 10), matFor('stone')); col.position.y = 1.3;
+        const bowl = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 0.6, 0.4, 14), matFor('stone')); bowl.position.y = 2.6;
+        g.add(basin, pool, col, bowl); g.position.set(p.x, p.y, p.z);
+        g.traverse((c) => { if (c.isMesh) c.castShadow = true; });
+        worldGroup.add(g);
+      } else if (p.k === 'spire') {
+        const m = new THREE.Mesh(new THREE.ConeGeometry(2.3, 4.5, 4), mat(0x5c5f66, { flatShading: true }));
+        m.rotation.y = Math.PI / 4; m.position.set(p.x, p.y + 2.25, p.z); m.castShadow = true;
+        worldGroup.add(m);
+      } else if (p.k === 'chimney') {
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, p.h + 0.5, 12), matFor('brick'));
+        m.position.set(p.x, p.y + p.h / 2 - 0.25, p.z); m.castShadow = true;
+        worldGroup.add(m);
+      } else if (p.k === 'pump') {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.6, 0.6), mat(0xd23b3b));
+        m.position.set(p.x, p.y + 0.8, p.z); m.castShadow = true;
+        worldGroup.add(m);
       } else if (p.k === 'sign') {
         const cv = document.createElement('canvas');
         cv.width = 512; cv.height = 256;

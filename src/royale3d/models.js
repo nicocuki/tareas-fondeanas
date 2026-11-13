@@ -66,6 +66,32 @@ export function texture(name) {
       for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#cfa35c' : '#e2ba78'; g.fillRect(0, (i * s) / 4, s, s / 4); g.fillStyle = 'rgba(80,50,15,0.6)'; g.fillRect(0, (i * s) / 4, s, 3); }
       g.strokeStyle = 'rgba(80,50,15,0.8)'; g.lineWidth = 5; g.strokeRect(2, 2, s - 4, s - 4);
     },
+    concrete: (g, s) => {
+      g.fillStyle = '#c9c4ba'; g.fillRect(0, 0, s, s);
+      g.fillStyle = '#4d6b86'; for (let c = 0; c < 2; c++) g.fillRect(c * s / 2 + s / 8, s / 4, s / 4, s / 3);
+      g.fillStyle = 'rgba(255,255,255,0.35)'; for (let c = 0; c < 2; c++) g.fillRect(c * s / 2 + s / 8, s / 4, s / 12, s / 3);
+      g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(0, s - 4, s, 4);
+    },
+    brick: (g, s) => {
+      g.fillStyle = '#d8cfc2'; g.fillRect(0, 0, s, s);
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 4; c++) {
+        g.fillStyle = (r * 3 + c) % 4 ? '#b0553a' : '#9c4a33';
+        g.fillRect(((c * s) / 4 + (r % 2 ? s / 8 : 0)) % s, (r * s) / 8 + 1, s / 4 - 3, s / 8 - 3);
+      }
+    },
+    plaster: (g, s) => {
+      g.fillStyle = '#efe3c4'; g.fillRect(0, 0, s, s);
+      g.fillStyle = 'rgba(150,120,70,0.12)'; for (let i = 0; i < 30; i++) g.fillRect((i * 41) % s, (i * 67) % s, 6, 6);
+      g.fillStyle = '#9a7a52'; g.fillRect(0, s - 10, s, 10);
+    },
+    container: (g, s) => {
+      g.fillStyle = '#d0682f'; g.fillRect(0, 0, s, s);
+      g.fillStyle = 'rgba(0,0,0,0.2)'; for (let i = 0; i < 10; i++) g.fillRect((i * s) / 10, 0, 4, s);
+    },
+    containerB: (g, s) => {
+      g.fillStyle = '#2f6fb0'; g.fillRect(0, 0, s, s);
+      g.fillStyle = 'rgba(0,0,0,0.2)'; for (let i = 0; i < 10; i++) g.fillRect((i * s) / 10, 0, 4, s);
+    },
     stripes: (g, s) => {
       g.fillStyle = '#e63946'; g.fillRect(0, 0, s, s);
       g.fillStyle = '#ffffff'; for (let i = 0; i < 8; i += 2) g.fillRect((i * s) / 8, 0, s / 8, s);
@@ -89,7 +115,7 @@ export function texture(name) {
   texCache[name] = canvasTex(name === 'glow' ? 64 : 128, draw, name !== 'glow');
   return texCache[name];
 }
-const TEX_OF_MAT = { wood: 'wood', floor: 'floor', stone: 'stone', crate: 'crate', sand: 'sand', metal: 'metal', build: 'build' };
+const TEX_OF_MAT = { wood: 'wood', floor: 'floor', stone: 'stone', crate: 'crate', sand: 'sand', metal: 'metal', build: 'build', concrete: 'concrete', brick: 'brick', plaster: 'plaster', container: 'container', containerB: 'containerB' };
 const matFor = (m) => {
   const name = TEX_OF_MAT[m] || 'wood';
   return mat(0xffffff, { map: texture(name), flatShading: false });

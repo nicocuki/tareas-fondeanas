@@ -862,6 +862,8 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
 
 // ─── Mapas ───────────────────────────────────────────────────────────────────
 // El dibujo del terreno se pinta una sola vez por isla (cuesta) y después solo se le pone encima lo que cambia.
+// El minimapa y el mapa grande usan la misma imagen: con dos tamaños se pisaban y se repintaba en cada cuadro.
+const MAP_PX = 420;
 function mapImage(sim, size) {
   const key = `${sim.n}:${size}:${sim.scene}`;
   if (sim.mapImg?.key === key) return sim.mapImg.cv;
@@ -899,14 +901,14 @@ function drawOverlay(g, sim, storm, p, size, R, now, m, named) {
 function drawMini(cv, sim, storm, p, now, m) {
   const g = cv.getContext('2d');
   const size = cv.width;
-  const img = mapImage(sim, 220);
+  const img = mapImage(sim, MAP_PX);
   g.clearRect(0, 0, size, size);
   g.save();
   g.beginPath(); g.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2); g.clip();
   g.fillStyle = '#1d5a85'; g.fillRect(0, 0, size, size);
   if (img) {
     // Centrado en el jugador, con zoom.
-    const R = sim.world.worldR, zoom = 2.1;
+    const R = sim.world.worldR, zoom = 3;
     const s = size * zoom;
     g.translate(size / 2 - ((p.x / R / 2 + 0.5) * s), size / 2 - ((p.z / R / 2 + 0.5) * s));
     g.drawImage(img, 0, 0, s, s);
@@ -922,7 +924,7 @@ function drawBig(cv, sim, storm, p, now, m) {
   if (!sim.world) return;
   const g = cv.getContext('2d');
   const size = cv.width;
-  const img = mapImage(sim, 340);
+  const img = mapImage(sim, MAP_PX);
   g.clearRect(0, 0, size, size);
   if (img) g.drawImage(img, 0, 0, size, size);
   drawOverlay(g, sim, storm, p, size, sim.world.worldR, now, m, true);

@@ -5,8 +5,8 @@
 // El mundo guarda los **sólidos** (cajas, cilindros y rampas) en una grilla de celdas para consultarlos
 // rápido. Cada uno tiene `hp` (los árboles, cajas y lo construido se rompen) y se esconde al romperse.
 
-export const ISLAND_R = 100;     // el terreno se hunde en el mar desde acá
-export const WORLD_R = 128;      // más lejos no se puede ir
+export const ISLAND_R = 165;     // el terreno se hunde en el mar desde acá
+export const WORLD_R = 205;      // más lejos no se puede ir
 export const LOBBY_R = 26;       // la isla de espera
 export const WADE_MIN = -0.9;    // se camina por la orilla hasta esta profundidad; más hondo es mar abierto
 export const CELL = 8;           // lado de las celdas de la grilla de sólidos
@@ -48,7 +48,7 @@ function baseHeight(seed, kind, x, z) {
     return smooth(e) * 2.2 - (1 - smooth(e)) * 3;
   }
   const edge = clamp((ISLAND_R - r) / 32, 0, 1);
-  const hills = noise(seed, x / 30, z / 30) * 10 + noise(seed + 101, x / 11, z / 11) * 3 - 3;
+  const hills = noise(seed, x / 38, z / 38) * 10 + noise(seed + 101, x / 12, z / 12) * 3 - 3;
   const land = 2.2 + Math.max(0, hills) * edge;
   return smooth(edge) * land - (1 - smooth(edge)) * 3.2;
 }
@@ -65,7 +65,7 @@ export function makeWorld(seed, kind = 'island') {
   const R = lobby ? LOBBY_R : ISLAND_R;
   const w = {
     seed, kind, R, worldR: lobby ? LOBBY_R + 14 : WORLD_R,
-    solids: [], byId: new Map(), cells: new Map(), flats: [], places: [], chests: [], props: [], trees: [],
+    solids: [], byId: new Map(), cells: new Map(), flats: [], places: [], roads: [], streets: [], chests: [], props: [], trees: [],
     nextId: 1, stamp: 0, onBreak: null,
   };
 
@@ -202,7 +202,7 @@ function house(w, rand, x, z, ww, dd, door, o = {}) {
     }
   };
   wall(x0, x1, z0, z0 + t, 'n'); wall(x0, x1, z1 - t, z1, 's'); wall(x1 - t, x1, z0 + t, z1 - t, 'e'); wall(x0, x0 + t, z0 + t, z1 - t, 'o');
-  w.addBox(x0 - 0.5, x1 + 0.5, z0 - 0.5, z1 + 0.5, y + h, y + h + 0.3, { mat, hp: 0, roof: true, gable: o.flat ? 0 : 1, ww: ww + 1, dd: dd + 1 });
+  w.addBox(x0 - 0.5, x1 + 0.5, z0 - 0.5, z1 + 0.5, y + h, y + h + 0.3, { mat: o.roofMat || mat, hp: 0, roof: true, gable: o.flat ? 0 : 1, ww: ww + 1, dd: dd + 1, rc: o.rc });
   w.props.push({ k: 'door', x, z, y, door, w: ww, d: dd });
   const [dx, dz] = dirVec(door === 'o' ? 'w' : door);
   const chests = o.chests ?? 0;
@@ -253,16 +253,27 @@ function sandbag(w, x, z, ww, dd) {
 }
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+// Distancia de (x, z) a un tramo de camino { x0, z0, x1, z1 }.
+export function segDist(x, z, r) {
+  const dx = r.x1 - r.x0, dz = r.z1 - r.z0, L = dx * dx + dz * dz || 1;
+  const t = clamp(((x - r.x0) * dx + (z - r.z0) * dz) / L, 0, 1);
+  return Math.hypot(x - (r.x0 + dx * t), z - (r.z0 + dz * t));
+}
 
 // Cada lugar: radio plano `r`, y qué pone. `ring` = en qué anillo de la isla puede caer (fracción de ISLAND_R).
 const PLACES = [
-  { id: 'villa', name: 'Villa Vermut', r: 24, ring: [0.0, 0.3], stamp: villa },
+  { id: 'ciudad', name: 'Ciudad Cuki', r: 40, ring: [0.0, 0.22], stamp: ciudad },
+  { id: 'barrio', name: 'Barrio Bichito', r: 30, ring: [0.3, 0.68], stamp: barrio },
+  { id: 'pueblo', name: 'Pueblo Polenta', r: 27, ring: [0.3, 0.68], stamp: pueblo },
+  { id: 'fabrica', name: 'Fábrica Fernet', r: 22, ring: [0.3, 0.7], stamp: fabrica },
+  { id: 'villa', name: 'Villa Vermut', r: 24, ring: [0.3, 0.66], stamp: villa },
   { id: 'frontera', name: 'Frontera del Fondo', r: 25, ring: [0.25, 0.72], stamp: frontera },
   { id: 'cover', name: 'Cover', r: 20, ring: [0.25, 0.72], stamp: cover },
   { id: 'judia', name: 'Juvenil Judía', r: 20, ring: [0.25, 0.74], stamp: judia },
   { id: 'puente', name: 'Puente Pollín', r: 28, flat: 19, ring: [0.25, 0.7], stamp: puente },
   { id: 'arboleada', name: 'Arboleada Alianza', r: 15, ring: [0.25, 0.74], stamp: arboleada },
   { id: 'polvorin', name: 'Pibes Polvorín Polvoriento', r: 13, ring: [0.45, 0.76], stamp: polvorin },
+  { id: 'estacion', name: 'Estación Escabio', r: 12, ring: [0.3, 0.72], stamp: estacion },
   { id: 'penasco', name: 'Peñasco Pelado', r: 11, ring: [0.3, 0.7], stamp: penasco, lift: 5 },
   { id: 'muelle', name: 'Muelle Mojito', r: 9, ring: [0.8, 0.8], stamp: muelle, coast: true },
 ];
@@ -273,13 +284,13 @@ function stampIsland(w) {
   // 1) Elegir dónde va cada lugar (sin que se pisen) y aplanar el terreno ahí.
   for (const def of PLACES) {
     let spot = null;
-    for (let tries = 0; tries < 200 && !spot; tries++) {
+    for (let tries = 0; tries < 400 && !spot; tries++) {
       const ang = rand() * Math.PI * 2;
       const rr = (def.ring[0] + (def.ring[1] - def.ring[0]) * rand()) * ISLAND_R;
       const x = Math.cos(ang) * rr, z = Math.sin(ang) * rr;
       const y = baseHeight(seed, 'island', x, z);
       if (!def.coast && y < 1.5) continue;
-      if (placed.some((p) => dist(p, { x, z }) < p.r + def.r + 5)) continue;
+      if (placed.some((p) => dist(p, { x, z }) < p.r + def.r + 8)) continue;
       spot = { x, z, y, r: def.r, def };
     }
     if (!spot) { // sin lugar: se pone donde entre (menos cuidado), mejor eso que perderlo
@@ -296,13 +307,18 @@ function stampIsland(w) {
   const pu = placed.find((p) => p.def.id === 'puente');
   if (pu) w.flats.push({ rect: true, x: pu.x, z: pu.z, w: 4, d: 24, blend: 5, y: -2.6 });
 
+  // Caminos de tierra: de la ciudad a cada lugar (solo color del terreno, se camina igual).
+  const hub = placed.find((p) => p.def.id === 'ciudad') || placed[0];
+  for (const p of placed) if (p !== hub) w.roads.push({ x0: hub.x, z0: hub.z, x1: p.x, z1: p.z, w: 2.6 });
+
   // 2) Estampar cada lugar.
   for (const spot of placed) spot.def.stamp(w, rand, spot.x, spot.z, spot.y);
 
   // 3) Árboles, rocas y cajas sueltos: el bosque esquiva los lugares.
-  const free = (x, z, r = 0) => placed.every((p) => dist(p, { x, z }) > p.r + 2 + r) && w.solids.every((s) => !(s.k === 'cyl' && (s.cx - x) ** 2 + (s.cz - z) ** 2 < (s.r + r + 0.8) ** 2));
+  const onRoad = (x, z) => w.roads.some((r) => segDist(x, z, r) < r.w + 1.5);
+  const free = (x, z, r = 0) => !onRoad(x, z) && placed.every((p) => dist(p, { x, z }) > p.r + 2 + r) && w.solids.every((s) => !(s.k === 'cyl' && (s.cx - x) ** 2 + (s.cz - z) ** 2 < (s.r + r + 0.8) ** 2));
   let n = 0;
-  for (let tries = 0; n < 230 && tries < 2200; tries++) {
+  for (let tries = 0; n < 520 && tries < 5000; tries++) {
     const x = (rand() * 2 - 1) * (ISLAND_R - 12), z = (rand() * 2 - 1) * (ISLAND_R - 12);
     if (x * x + z * z > (ISLAND_R - 14) ** 2) continue;
     const dens = noise(seed + 7, x / 24, z / 24); // manchas de bosque
@@ -311,27 +327,27 @@ function stampIsland(w) {
     if (tree(w, rand, x, z)) n++;
   }
   n = 0;
-  for (let tries = 0; n < 36 && tries < 400; tries++) {
+  for (let tries = 0; n < 80 && tries < 900; tries++) {
     const x = (rand() * 2 - 1) * (ISLAND_R - 14), z = (rand() * 2 - 1) * (ISLAND_R - 14);
     if (!free(x, z, 2) || w.height(x, z) < 0.9) continue;
     rock(w, rand, x, z, 1 + rand() * 1.4, 1.5 + rand() * 2);
     n++;
   }
   n = 0;
-  for (let tries = 0; n < 22 && tries < 400; tries++) { // cofres sueltos por el campo
+  for (let tries = 0; n < 40 && tries < 800; tries++) { // cofres sueltos por el campo
     const x = (rand() * 2 - 1) * (ISLAND_R - 18), z = (rand() * 2 - 1) * (ISLAND_R - 18);
     if (!free(x, z, 1.5) || w.height(x, z) < 1.2) continue;
     chest(w, x, z, rand() < 0.2 ? 2 : 1);
     n++;
   }
-  for (let tries = 0, k = 0; k < 28 && tries < 500; tries++) { // cajas de madera sueltas (dan madera)
+  for (let tries = 0, k = 0; k < 60 && tries < 1000; tries++) { // cajas de madera sueltas (dan madera)
     const x = (rand() * 2 - 1) * (ISLAND_R - 14), z = (rand() * 2 - 1) * (ISLAND_R - 14);
     if (!free(x, z, 1.5) || w.height(x, z) < 1) continue;
     crate(w, x, z);
     k++;
   }
   // Decorado que no choca: arbustos y flores.
-  for (let i = 0, tries = 0; i < 260 && tries < 1500; tries++) {
+  for (let i = 0, tries = 0; i < 620 && tries < 3600; tries++) {
     const x = (rand() * 2 - 1) * (ISLAND_R - 10), z = (rand() * 2 - 1) * (ISLAND_R - 10);
     const y = w.height(x, z);
     if (y < 1.1 || !free(x, z, -1)) continue;
@@ -458,6 +474,116 @@ function muelle(w, rand, cx, cz, y) {
 }
 
 // ─── Los cofres del cielo ────────────────────────────────────────────────────
+// ─── Pueblos y ciudad ────────────────────────────────────────────────────────
+const WALLS = ['plaster', 'brick', 'plaster', 'wood'];
+const ROOFS = [0xb6492f, 0x3f6fa8, 0x4f7f3f, 0x8a4f9e, 0x5c5f66, 0xc77b2e];
+const pick = (rand, list) => list[Math.floor(rand() * list.length) % list.length];
+
+// Una calle asfaltada (rectángulo en planta, solo dibujo: se camina igual que el piso).
+function street(w, x, z, ww, dd, y) { w.streets.push({ x, z, w: ww, d: dd, y: y + 0.04 }); }
+
+// Un auto estacionado: choca como una caja de metal y no se rompe. `rot` 0 = a lo largo de x.
+function car(w, rand, x, z, rot) {
+  const y = w.height(x, z), lx = rot ? 1.0 : 2.1, lz = rot ? 2.1 : 1.0;
+  w.addBox(x - lx, x + lx, z - lz, z + lz, y, y + 1.5, { mat: 'metal', hp: 0, hide: true });
+  w.props.push({ k: 'car', x, z, y, rot, c: Math.floor(rand() * 6) });
+}
+
+// Un edificio de dos pisos: planta baja con la puerta y un entrepiso al fondo, al que se sube por una rampa.
+// La puerta solo va al norte o al sur. Arriba hay un cofre mejor.
+function edificio(w, rand, x, z, ww, dd, door, o = {}) {
+  const t = 0.4, h = 8;
+  const b = house(w, rand, x, z, ww, dd, door, { h, flat: true, mat: o.mat || 'concrete', hp: 320, chests: 1, tier: 2, crates: false });
+  const y = b.y, top = y + 4.1, mid = z;
+  const back = door === 's' ? -1 : 1; // del lado del fondo
+  const sz0 = back < 0 ? b.z0 + t : mid, sz1 = back < 0 ? mid : b.z1 - t;
+  w.addBox(b.x0 + t, b.x1 - t, sz0, sz1, top - 0.3, top, { mat: 'floor', hp: 0, kind: 'floor' });
+  const rx0 = b.x1 - t - 2.2, rx1 = b.x1 - t;
+  if (back < 0) w.addRamp(rx0, rx1, mid, mid + 4.4, y + 0.15, top - y - 0.15, 3, { mat: 'wood', hp: 0 });
+  else w.addRamp(rx0, rx1, mid - 4.4, mid, y + 0.15, top - y - 0.15, 1, { mat: 'wood', hp: 0 });
+  chest(w, x - ww / 4, back < 0 ? b.z0 + 1.2 : b.z1 - 1.2, 3, top);
+  if (rand() < 0.6) crate(w, x - ww / 4 + 2, back < 0 ? b.z0 + 1.3 : b.z1 - 1.3, top);
+}
+
+// Ciudad Cuki: una grilla de 3 × 3 manzanas con calles; edificios de dos pisos, casas y una plaza con fuente en el medio.
+function ciudad(w, rand, cx, cz, y) {
+  for (const k of [-12, 12]) { street(w, cx + k, cz, 7, 78, y); street(w, cx, cz + k, 78, 7, y); }
+  street(w, cx, cz - 37.5, 78, 4, y); street(w, cx, cz + 37.5, 78, 4, y); street(w, cx - 37.5, cz, 4, 78, y); street(w, cx + 37.5, cz, 4, 78, y);
+  // La plaza.
+  w.addCyl(cx, cz, 1.6, y, y + 1.2, { mat: 'stone', hp: 0 });
+  w.props.push({ k: 'fountain', x: cx, z: cz, y });
+  chest(w, cx + 4.5, cz + 4.5, 3); chest(w, cx - 4.5, cz - 4.5, 2);
+  for (const [dx, dz] of [[-6, 0], [6, 0], [0, -6], [0, 6]]) w.addBox(cx + dx - (dz ? 1.2 : 0.4), cx + dx + (dz ? 1.2 : 0.4), cz + dz - (dz ? 0.4 : 1.2), cz + dz + (dz ? 0.4 : 1.2), y, y + 0.6, { mat: 'wood', hp: 60 });
+  for (const [dx, dz] of [[-6, -6], [6, 6], [6, -6], [-6, 6]]) tree(w, rand, cx + dx, cz + dz, { kind: 'round' });
+  // Las manzanas.
+  for (const bx of [-24, 0, 24]) for (const bz of [-24, 0, 24]) {
+    if (!bx && !bz) continue;
+    const x = cx + bx, z = cz + bz;
+    const door = bz > 0 ? 'n' : bz < 0 ? 's' : (rand() < 0.5 ? 'n' : 's');
+    if (rand() < 0.55) edificio(w, rand, x, z, 12 + Math.floor(rand() * 3), 12 + Math.floor(rand() * 2), door, { mat: rand() < 0.5 ? 'concrete' : 'brick' });
+    else for (const sx of [-1, 1]) house(w, rand, x + sx * 4.3, z, 7.4, 8, door, { mat: pick(rand, WALLS), rc: pick(rand, ROOFS), chests: rand() < 0.6 ? 1 : 0, tier: 2 });
+  }
+  // Autos en las calles.
+  for (let i = 0; i < 9; i++) {
+    const along = (rand() * 2 - 1) * 30, lane = rand() < 0.5 ? -12 : 12, side = rand() < 0.5 ? -2 : 2;
+    if (Math.abs(along) < 7 || Math.abs(Math.abs(along) - 12) < 5) continue;
+    if (rand() < 0.5) car(w, rand, cx + along, cz + lane + side, 0); else car(w, rand, cx + lane + side, cz + along, 1);
+  }
+}
+
+// Barrio Bichito: dos calles que se cruzan y casitas de colores con su jardín, autos y árboles.
+function barrio(w, rand, cx, cz, y) {
+  street(w, cx, cz, 60, 6, y); street(w, cx, cz, 6, 50, y);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (const k of [9.5, 21]) {
+    const x = cx + sx * k, z = cz + sz * 9.5;
+    house(w, rand, x, z, 8, 7, sz > 0 ? 'n' : 's', { mat: pick(rand, WALLS), rc: pick(rand, ROOFS), chests: rand() < 0.5 ? 1 : 0, tier: rand() < 0.3 ? 2 : 1 });
+    tree(w, rand, x + sx * 3, z + sz * 6.2, { kind: 'round' });
+    if (rand() < 0.45) car(w, rand, x - sx * 3, cz + sz * 4.6, 0);
+  }
+  chest(w, cx + 4.5, cz + 4.5, 2);
+}
+
+// Pueblo Polenta: una calle principal con casitas a los dos lados y la iglesia con su campanario al fondo.
+function pueblo(w, rand, cx, cz, y) {
+  street(w, cx - 2, cz, 44, 6, y);
+  for (const k of [-17, -6, 5]) for (const sz of [-1, 1]) {
+    house(w, rand, cx + k, cz + sz * 8, 7, 6, sz > 0 ? 'n' : 's', { mat: pick(rand, ['plaster', 'brick']), rc: pick(rand, ROOFS), chests: rand() < 0.6 ? 1 : 0, tier: 1 });
+  }
+  house(w, rand, cx + 19, cz, 9, 10, 'o', { mat: 'stone', hp: 450, h: 5.5, chests: 2, tier: 3, crates: false });
+  const yt = w.height(cx + 25, cz);
+  w.addBox(cx + 23.5, cx + 26.5, cz - 1.5, cz + 1.5, yt - 1, yt + 12, { mat: 'stone', hp: 0 });
+  w.props.push({ k: 'spire', x: cx + 25, z: cz, y: yt + 12 });
+  w.props.push({ k: 'well', x: cx - 2, z: cz - 14.5, y: w.height(cx - 2, cz - 14.5) });
+  w.addCyl(cx - 2, cz - 14.5, 1.2, w.height(cx - 2, cz - 14.5), w.height(cx - 2, cz - 14.5) + 1.1, { mat: 'stone', hp: 0 });
+  car(w, rand, cx - 11, cz + 1.8, 0);
+}
+
+// Fábrica Fernet: un galpón grande, contenedores apilados y una chimenea.
+function fabrica(w, rand, cx, cz, y) {
+  house(w, rand, cx - 3, cz - 4, 20, 13, 's', { mat: 'metal', hp: 400, h: 6, flat: true, chests: 2, tier: 2 });
+  const yc = w.height(cx + 13, cz - 9);
+  w.addCyl(cx + 13, cz - 9, 1.3, yc - 0.5, yc + 16, { mat: 'stone', hp: 0 });
+  w.props.push({ k: 'chimney', x: cx + 13, z: cz - 9, y: yc, h: 16 });
+  for (let i = 0; i < 6; i++) {
+    const x = cx - 12 + i * 3.3, z = cz + 9;
+    const yy = w.height(x, z);
+    w.addBox(x - 1.2, x + 1.2, z - 3, z + 3, yy - 0.3, yy + 2.6, { mat: i % 2 ? 'container' : 'containerB', hp: 300 });
+    if (i % 3 === 1) w.addBox(x - 1.2, x + 1.2, z - 3, z + 3, yy + 2.6, yy + 5.2, { mat: 'container', hp: 300 });
+  }
+  chest(w, cx + 9, cz + 9, 3);
+  for (let i = 0; i < 4; i++) crate(w, cx + 10 + (i % 2) * 1.3, cz + 2 + Math.floor(i / 2) * 1.3);
+}
+
+// Estación Escabio: la estación de servicio, con el techito sobre los surtidores y el almacén.
+function estacion(w, rand, cx, cz, y) {
+  street(w, cx, cz + 1, 22, 9, y);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) w.addCyl(cx + sx * 4.5, cz + 1 + sz * 3, 0.25, y, y + 4.5, { mat: 'metal', hp: 0 });
+  w.addBox(cx - 5.5, cx + 5.5, cz - 2.8, cz + 4.8, y + 4.5, y + 4.9, { mat: 'metal', hp: 0, canopy: true });
+  for (const sx of [-1.5, 1.5]) { w.addBox(cx + sx - 0.4, cx + sx + 0.4, cz + 0.7, cz + 1.3, y, y + 1.6, { mat: 'metal', hp: 0, hide: true }); w.props.push({ k: 'pump', x: cx + sx, z: cz + 1, y }); }
+  house(w, rand, cx, cz - 8, 9, 6, 's', { mat: 'plaster', rc: 0xd23b3b, flat: true, chests: 1, tier: 2 });
+  car(w, rand, cx + 7.5, cz + 2, 1);
+}
+
 export const DROP_BASE = 200;  // los números de los cofres del cielo empiezan acá
 export const MAX_DROPS = 8;
 export const LOOT_LIMIT = DROP_BASE + MAX_DROPS;
@@ -486,7 +612,7 @@ export const chestOf = (w, i, speed = 1) => (i >= DROP_BASE ? dropInfo(w, i - DR
 // Cruza la isla en línea recta, a gran altura. Sale de la semilla, así que todas las pantallas lo ven en el
 // mismo lugar. Cada uno decide cuándo saltar; si no, lo tira al llegar al final.
 export const BUS_ALT = 240;
-export const BUS_SPEED = 30;
+export const BUS_SPEED = 40;
 export const PREGAME = 28;     // segundos del bus y la caída antes de que corra la tormenta
 export function busRoute(seed) {
   const rand = rng(seed ^ 0x1b873593);
@@ -505,13 +631,13 @@ export function busAt(route, elapsed) {
 // ─── La tormenta ─────────────────────────────────────────────────────────────
 // Círculos que se achican y se meten uno dentro del otro. Cada fase: espera, achica y deja el círculo nuevo.
 export const STORM_PHASES = [
-  { wait: 55, shrink: 45, r: 68, dps: 1.5 },
-  { wait: 40, shrink: 40, r: 44, dps: 2.5 },
-  { wait: 32, shrink: 34, r: 24, dps: 4 },
-  { wait: 25, shrink: 28, r: 11, dps: 6 },
-  { wait: 18, shrink: 22, r: 2.5, dps: 9 },
+  { wait: 60, shrink: 55, r: 110, dps: 1.5 },
+  { wait: 45, shrink: 45, r: 66, dps: 2.5 },
+  { wait: 35, shrink: 38, r: 36, dps: 4 },
+  { wait: 26, shrink: 30, r: 15, dps: 6 },
+  { wait: 18, shrink: 22, r: 3, dps: 9 },
 ];
-export const STORM_START_R = 150;
+export const STORM_START_R = 245;
 export const STORM_SPEEDS = { lenta: 1.5, normal: 1, rapida: 0.65 };
 
 // Centros de cada fase: cada círculo nuevo cabe adentro del anterior.
