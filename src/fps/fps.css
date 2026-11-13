@@ -1,0 +1,18 @@
+/* Fuego Cruzado: lo que cambia respecto del HUD de Royale 3D (que se reusa con el prefijo r3-). Colores fijos, iguales en los dos temas. */
+.fps-bars { bottom: 18px; width: min(220px, 40vw); }
+.fps-bars .r3-bar { height: 30px; }
+.fps-bars .r3-bar span { font-size: 17px; }
+.fps-ammo { position: absolute; right: 18px; bottom: 16px; display: flex; flex-direction: column; align-items: flex-end; padding: 6px 14px; border-radius: 8px; background: rgba(15, 20, 35, 0.72); font: 600 18px Inter, sans-serif; pointer-events: none; }
+.fps-ammo b { font-size: 34px; line-height: 1; }
+.fps-ammo small { font-size: 12px; opacity: 0.8; }
+.fps-hotbar { bottom: 16px; }
+.fps-safe { background: rgba(60, 140, 220, 0.9); }
+.fps-clock { font-variant-numeric: tabular-nums; }
+.fps-cross { width: 22px; height: 22px; }
+.fps-cross i:nth-child(1) { left: 10px; height: 7px; }
+.fps-cross i:nth-child(2) { left: 10px; height: 7px; }
+.fps-cross i:nth-child(3) { top: 10px; width: 7px; }
+.fps-cross i:nth-child(4) { top: 10px; width: 7px; }
+.fps-board { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); min-width: min(520px, 92vw); padding: 16px 20px; border-radius: 12px; background: rgba(12, 16, 28, 0.9); color: #fff; }
+.fps-board h3 { margin: 0 0 10px; font: 800 18px 'Bricolage Grotesque', Inter, sans-serif; }
+.fps-board .r3-table td, .fps-board .r3-table th { color: #fff; }

@@ -60,17 +60,18 @@ function baseHeight(seed, kind, x, z) {
 //   ramp: x0 x1 z0 z1 y0 (base), rise, dir (0 = sube hacia +x, 1 = +z, 2 = -x, 3 = -z); y1 = y0 + rise
 const key = (ix, iz) => (ix + 512) * 2048 + (iz + 512);
 
-export function makeWorld(seed, kind = 'island') {
+// `custom` (lo usa el FPS): { R, worldR, height(x, z), stamp(w) } arma un mapa propio con los mismos sólidos y choques.
+export function makeWorld(seed, kind = 'island', custom = null) {
   const lobby = kind === 'lobby';
-  const R = lobby ? LOBBY_R : ISLAND_R;
+  const R = custom ? custom.R : lobby ? LOBBY_R : ISLAND_R;
   const w = {
-    seed, kind, R, worldR: lobby ? LOBBY_R + 14 : WORLD_R,
+    seed, kind, R, worldR: custom ? custom.worldR : lobby ? LOBBY_R + 14 : WORLD_R,
     solids: [], byId: new Map(), cells: new Map(), flats: [], places: [], roads: [], streets: [], chests: [], props: [], trees: [],
     nextId: 1, stamp: 0, onBreak: null,
   };
 
   w.height = (x, z) => {
-    let h = baseHeight(seed, kind, x, z);
+    let h = custom ? custom.height(x, z) : baseHeight(seed, kind, x, z);
     for (const f of w.flats) {
       let d;
       if (f.rect) d = Math.hypot(Math.max(0, Math.abs(x - f.x) - f.w), Math.max(0, Math.abs(z - f.z) - f.d));
@@ -137,6 +138,7 @@ export function makeWorld(seed, kind = 'island') {
   };
   w.remove = (id) => { const s = w.byId.get(id); if (s && !s.dead) w.damage(id, s.hp || 1e9); };
 
+  if (custom) { custom.stamp(w); return w; }
   if (lobby) { stampLobby(w); return w; }
   stampIsland(w);
   return w;

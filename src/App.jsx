@@ -26,9 +26,11 @@ import GeneralaApp from './generala/GeneralaApp.jsx';
 import BomberApp from './bomber/BomberApp.jsx';
 import AbismoApp from './abismo/AbismoApp.jsx';
 import Royale3DApp from './royale3d/Royale3DApp.jsx';
+import FpsApp from './fps/FpsApp.jsx';
 
 const SCREENS = {
   royale3d: Royale3DApp,
+  fps: FpsApp,
   abismo: AbismoApp,
   bomber: BomberApp,
   generala: GeneralaApp,

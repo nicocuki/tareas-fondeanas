@@ -14,7 +14,7 @@ const SUN_DIR = new THREE.Vector3(-0.45, 0.62, 0.38).normalize();
 const R90 = Math.PI / 2;
 
 // ─── Colores del terreno ─────────────────────────────────────────────────────
-const PLACE_TINT = { polvorin: 0xdcc690, judia: 0x86633a, frontera: 0x9d8d6e, penasco: 0x8d9094, arboleada: 0x3f8f3c, muelle: 0xdcc690, villa: 0x9a8d6d, cover: 0x57b04f, puente: 0x5da545, ciudad: 0xa9a49a, barrio: 0x7fbf5a, pueblo: 0xb39d76, fabrica: 0x8f8b84, estacion: 0x9c968c };
+const PLACE_TINT = { polvorin: 0xdcc690, judia: 0x86633a, frontera: 0x9d8d6e, penasco: 0x8d9094, arboleada: 0x3f8f3c, muelle: 0xdcc690, villa: 0x9a8d6d, cover: 0x57b04f, puente: 0x5da545, ciudad: 0xa9a49a, 'fps-concrete': 0x8d8c86, 'fps-sand': 0xd8bd84, 'fps-plaza': 0xb9a88a, barrio: 0x7fbf5a, pueblo: 0xb39d76, fabrica: 0x8f8b84, estacion: 0x9c968c };
 const DIRT = new THREE.Color(0xb4925f), ASPHALT = new THREE.Color(0x4a4d52);
 const SAND = new THREE.Color(0xe6d49d), GRASS_A = new THREE.Color(0x73c04c), GRASS_B = new THREE.Color(0x4f9a3a), ROCK = new THREE.Color(0x8b8d85), SNOW = new THREE.Color(0xeef3f5), SEABED = new THREE.Color(0x2f7fa6), SHALLOW = new THREE.Color(0x58b6c8);
 const tint = new THREE.Color();
@@ -476,6 +476,10 @@ export function createRenderer(canvas) {
           post.position.set(p.x + sx * (p.w / 2 - 0.4), p.y - 1.4, p.z + sz * (p.d / 2 - 0.3));
           worldGroup.add(post);
         }
+      } else if (p.k === 'pillar') {
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(p.r, p.r * 1.05, p.h + 0.3, 14), matFor(p.mat));
+        m.position.set(p.x, p.y + p.h / 2 - 0.15, p.z); m.castShadow = true; m.receiveShadow = true;
+        worldGroup.add(m);
       } else if (p.k === 'car') {
         const g = new THREE.Group();
         const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.8, 1.9), mat(CAR_COLORS[p.c % CAR_COLORS.length]));
@@ -746,6 +750,39 @@ export function createRenderer(canvas) {
   }
   resize();
 
+  // ─── El arma en primera persona (la usa el FPS) ─────────────────────────────
+  // Va pegada a la cámara. `st`: { kind, r, recoil (0 a 1), bob (fase), moving, reload (0 a 1, o 0), swing (0 a 1) }.
+  let view = null, viewKey = '';
+  scene.add(camera);
+  function setViewModel(st) {
+    const key = st ? `${st.kind}:${st.r || 0}` : '';
+    if (key !== viewKey) {
+      viewKey = key;
+      if (view) { camera.remove(view); disposeObj(view); view = null; }
+      if (st?.kind) {
+        view = new THREE.Group();
+        const gun = weaponModel(st.kind, st.r || 0);
+        gun.traverse((c) => { if (c.isMesh) { c.castShadow = false; c.renderOrder = 10; } });
+        view.add(gun);
+        view.userData.gun = gun;
+        camera.add(view);
+      }
+    }
+    if (!view || !st) return;
+    const bob = st.moving ? Math.sin(st.bob) * 0.012 : 0;
+    const rec = st.recoil || 0, rel = st.reload || 0, sw = st.swing || 0;
+    view.scale.setScalar(0.55);
+    view.position.set(0.2 + Math.cos(st.bob * 0.5) * (st.moving ? 0.006 : 0), -0.19 + bob - rel * 0.2, -0.4 + rec * 0.05);
+    view.rotation.set(rec * 0.12 - rel * 0.9 - sw * 0.9, 0.1 + sw * 0.5, 0);
+  }
+  const viewMuzzle = () => {
+    const m = view?.userData.gun?.userData.muzzle;
+    if (!m) return null;
+    const v = new THREE.Vector3();
+    m.getWorldPosition(v);
+    return { x: v.x, y: v.y, z: v.z };
+  };
+
   // ─── Un cuadro ─────────────────────────────────────────────────────────────
   // `cam`: { pos, yaw, pitch, fov }; `storm`: { x, z, r } o null; `focus`: adónde sigue la sombra.
   function draw(cam, storm, dt, focus) {
@@ -841,7 +878,7 @@ export function createRenderer(canvas) {
 
   return {
     setWorld, resize, setAvatar, muzzleOf, handOf, syncChests, syncLoot, syncDrops, syncProjectiles, ghost, addSolid: addSolidMesh,
-    tracer, muzzleFlash, impact, explosion, bump, project, setBus, draw,
+    tracer, muzzleFlash, impact, explosion, bump, project, setBus, draw, setViewModel, viewMuzzle,
     particles: { soft, glow },
     get lowQuality() { return lowQuality; },
     dispose() {

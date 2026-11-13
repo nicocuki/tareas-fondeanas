@@ -6,7 +6,7 @@ test('portada: todos los juegos del menú tienen una categoría que existe, y lo
   const ids = new Set(CATEGORIES.map((c) => c.id));
   for (const g of MENU_GAMES) assert.ok(ids.has(categoryOf(g)), g.id);
   assert.equal(CATEGORIES.reduce((n, c) => n + gamesOf(c.id).length, 0), MENU_GAMES.length, 'ninguno queda afuera ni repetido');
-  assert.deepEqual(GAMES_3D.map((g) => g.id).sort(), ['royale3d', 'timba']);
+  assert.deepEqual(GAMES_3D.map((g) => g.id).sort(), ['fps', 'royale3d', 'timba']);
   for (const c of CATEGORIES) assert.ok(gamesOf(c.id).length > 0, `${c.id} tiene juegos`);
 });
 

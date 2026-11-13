@@ -3,6 +3,29 @@
 // enrutador de App.jsx y en ROOTS (worker/rules.js), y ponele categoría en `CATEGORY_OF`. Los 3D llevan `section: '3d'` y salen en la vidriera de «Tareas 3D» de la portada. Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
 export const GAMES = [
   {
+    id: 'fps',
+    image: '/juegos/fps.jpg',
+    section: '3d', // va en la vidriera «Tareas 3D» de la portada
+    title: 'Fuego Cruzado',
+    emoji: '🔫',
+    color: 'var(--game-fps)',
+    onColor: '#ffffff',
+    tagline: 'Shooter en primera persona, todos contra todos',
+    description: 'Un shooter en primera persona, todos contra todos, en arenas chicas: arrancás con una pistola, juntás las armas tiradas por el mapa (metralleta, escopeta, fusiles, francotirador) y volvés a aparecer al morir. Moviéndote las balas se desvían, como en los shooters tácticos. Gana el primero que llega a las bajas o el que tiene más cuando se acaba el tiempo. Está en beta: puede tener bugs.',
+    players: '2 a 10',
+    min: 2,
+    max: 10,
+    duration: '3–10 min',
+    input: 'Teclado y mouse',
+    badge: 'Beta',
+    howTo: [
+      'Hacé clic en la pantalla para capturar el mouse. WASD te mueve, Espacio salta, Shift corre, clic dispara, clic derecho apunta (con el francotirador, mira por la mira) y R recarga. Esc suelta el mouse.',
+      'Arrancás con una pistola y un pico. Las demás armas están tiradas por el mapa: acercate y apretá E. Vuelven a aparecer a los 20 segundos. Cambiás de arma con 1 a 5, Q o la rueda.',
+      'Moviéndote, corriendo o saltando las balas se desvían; quieto y apuntando van derecho. Un tiro a la cabeza pega mucho más.',
+      'Al morir soltás lo que levantaste y volvés a aparecer a los 3 segundos, lejos de los demás. Tab muestra la tabla. Gana el primero que llega a las bajas elegidas, o el que tiene más cuando se acaba el tiempo.',
+    ],
+  },
+  {
     id: 'royale3d',
     image: '/juegos/royale3d.jpg',
     section: '3d', // va en la vidriera «Tareas 3D» de la portada
