@@ -38,7 +38,7 @@ function GameCard({ game, onPlay }) {
   );
 }
 
-// La vidriera de la nueva era: los juegos 3D, grandes, con la captura de fondo y la descripción entera.
+// La vidriera «Tareas 3D»: los juegos 3D, grandes, con la captura de fondo y la descripción entera.
 function Showcase3D({ onNavigate }) {
   const cat = CATEGORIES[0];
   return (

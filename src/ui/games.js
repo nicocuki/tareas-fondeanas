@@ -1,11 +1,11 @@
 // Catálogo de juegos: lo usan la portada, el menú, el header y «Cómo jugar».
 // Para sumar un juego nuevo: agregalo acá **al principio de la lista** (los nuevos van primero en la portada y el menú), en el
-// enrutador de App.jsx y en ROOTS (worker/rules.js), y ponele categoría en `CATEGORY_OF`. Los 3D llevan `section: '3d'` y salen en la vidriera de «La nueva era» de la portada. Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
+// enrutador de App.jsx y en ROOTS (worker/rules.js), y ponele categoría en `CATEGORY_OF`. Los 3D llevan `section: '3d'` y salen en la vidriera de «Tareas 3D» de la portada. Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
 export const GAMES = [
   {
     id: 'royale3d',
     image: '/juegos/royale3d.jpg',
-    section: '3d', // va en la vidriera «La nueva era: 3D» de la portada
+    section: '3d', // va en la vidriera «Tareas 3D» de la portada
     title: 'Royale 3D',
     emoji: '🏝️',
     color: 'var(--game-royale3d)',
@@ -474,9 +474,9 @@ export const GAMES = [
 export const MENU_GAMES = GAMES.filter((g) => g.menu !== false);
 
 // ─── Categorías y buscador de la portada ─────────────────────────────────────
-// Los juegos 3D son «la nueva era» (pedido de Nico): van primero, en una vidriera aparte. Los demás, por categoría.
+// Los juegos 3D son la nueva era (pedido de Nico; la vidriera se llama «Tareas 3D»): van primero, en una vidriera aparte. Los demás, por categoría.
 export const CATEGORIES = [
-  { id: '3d', title: 'La nueva era: 3D', emoji: '🚀', blurb: 'Primera persona, mundos enteros y todo en tiempo real. Lo más nuevo de Tareas Fondeanas.' },
+  { id: '3d', title: 'Tareas 3D', emoji: '🚀', blurb: 'Primera persona, mundos enteros y todo en tiempo real. Lo más nuevo de Tareas Fondeanas.' },
   { id: 'accion', title: 'Acción', emoji: '💥', blurb: 'Tiros, bombas, cohetes y battle royales a toda velocidad.' },
   { id: 'mesa', title: 'Juegos de mesa', emoji: '🎲', blurb: 'Los clásicos de siempre, sin juntar fichas ni perder cartas.' },
   { id: 'grupo', title: 'Para jugar en grupo', emoji: '🎉', blurb: 'Dibujar, votar, mentir y reírse: cuantos más, mejor.' },

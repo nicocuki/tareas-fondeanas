@@ -1054,8 +1054,13 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.57.0 = Portada nueva: juegos por categoría y buscador 🔎
+1.57.0 = Portada nueva: juegos por categoría y buscador 🔎
 - La parte de juegos de la portada se rehízo entera: tarjetas más grandes y llamativas, con la captura del juego, su nombre encima y un brillo del color de cada juego al pasar el mouse.
-- Arriba de todo, «La nueva era: 3D»: una vidriera especial para los juegos en 3D (Royale 3D y La Timba), con fondo animado y tarjetas gigantes.
+- Arriba de todo, «Tareas 3D»: una vidriera especial para los juegos en 3D (Royale 3D y La Timba), con fondo animado y tarjetas gigantes.
 - Los demás juegos están separados por categoría: Acción, Juegos de mesa, Para jugar en grupo y Palabras e ingenio.
 - Buscador: escribí «dados», «tiros» o «casino» y aparecen los juegos que coinciden, sin importar tildes ni mayúsculas. Con la tecla / vas directo al buscador. También se puede filtrar por categoría con un toque.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.57.0.5 = La vidriera de los juegos 3D ahora se llama «Tareas 3D»
+- En la portada, la sección de los juegos en 3D cambió de nombre: ahora es «Tareas 3D».

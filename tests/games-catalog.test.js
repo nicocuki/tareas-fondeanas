@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CATEGORIES, GAMES_3D, MENU_GAMES, categoryOf, gamesOf, searchGames } from '../src/ui/games.js';
 
-test('portada: todos los juegos del menú tienen una categoría que existe, y los 3D van en la nueva era', () => {
+test('portada: todos los juegos del menú tienen una categoría que existe, y los 3D van en Tareas 3D', () => {
   const ids = new Set(CATEGORIES.map((c) => c.id));
   for (const g of MENU_GAMES) assert.ok(ids.has(categoryOf(g)), g.id);
   assert.equal(CATEGORIES.reduce((n, c) => n + gamesOf(c.id).length, 0), MENU_GAMES.length, 'ninguno queda afuera ni repetido');
