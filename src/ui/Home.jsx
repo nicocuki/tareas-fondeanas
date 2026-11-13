@@ -1,6 +1,6 @@
 // Portada: saludo, unirse con código, las salas públicas, los juegos, cómo funciona y la última novedad.
-import React from 'react';
-import { CLASSIC_GAMES, GAMES_3D, MENU_GAMES, gameById } from './games.js';
+import React, { useEffect, useRef, useState } from 'react';
+import { CATEGORIES, GAMES_3D, MENU_GAMES, categoryOf, gameById, gamesOf, searchGames } from './games.js';
 import { setPrefs, showToast, useLastRoom, usePrefs, useProfile } from './store.js';
 import { APP_VERSION, UPDATES } from './updates.js';
 import JoinByCode from './JoinByCode.jsx';
@@ -10,28 +10,131 @@ import { MENU_CHAT_CODE } from './chat.js';
 import { usePublicRooms } from './publicas.js';
 import { closeRoom, useAdminKey } from './admin.js';
 
+// La tarjeta de un juego: la captura grande con el nombre encima, el color del juego como brillo y un botón de jugar.
 function GameCard({ game, onPlay }) {
   return (
-    <article className="tf-game-card" style={{ '--chip-color': game.color, '--chip-on': game.onColor }}>
+    <article className="tf-game-card" style={{ '--chip-color': game.color, '--chip-on': game.onColor }} data-game-card={game.id}>
       <button type="button" className="tf-game-card-hit" onClick={onPlay} aria-label={`Jugar ${game.title}`} />
       <div className="tf-game-card-art" aria-hidden="true">
         <img className="tf-game-card-img" src={game.image} alt="" loading="lazy" decoding="async" />
+        <span className="tf-game-card-shade" />
+        <span className="tf-game-card-emoji">{game.emoji}</span>
         {game.badge && <em className="tf-badge tf-badge-float">{game.badge}</em>}
+        <h3 className="tf-game-card-title">{game.title}</h3>
       </div>
       <div className="tf-game-card-body">
-        <p className="tf-eyebrow">{game.tagline}</p>
-        <h3>{game.title}</h3>
-        <p className="tf-game-card-text">{game.description}</p>
-        <ul className="tf-chips">
-          <li>👥 {game.players}</li>
-          <li>⏱ {game.duration}</li>
-        </ul>
-        <span className="tf-btn tf-btn-primary tf-game-card-cta" aria-hidden="true">
-          Jugar
-          <svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </span>
+        <p className="tf-game-card-tag">{game.tagline}</p>
+        <div className="tf-game-card-foot">
+          <ul className="tf-chips">
+            <li>👥 {game.players}</li>
+            <li>⏱ {game.duration}</li>
+          </ul>
+          <span className="tf-game-card-play" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
+          </span>
+        </div>
       </div>
     </article>
+  );
+}
+
+// La vidriera de la nueva era: los juegos 3D, grandes, con la captura de fondo y la descripción entera.
+function Showcase3D({ onNavigate }) {
+  const cat = CATEGORIES[0];
+  return (
+    <section className="tf-era" aria-labelledby="tf-era-title" data-section-3d>
+      <div className="tf-era-glow" aria-hidden="true" />
+      <div className="tf-era-head">
+        <p className="tf-era-kicker">✦ Nuevo ✦</p>
+        <h2 id="tf-era-title">{cat.title}</h2>
+        <p>{cat.blurb} Mejor en compu, con teclado y mouse.</p>
+      </div>
+      <div className="tf-era-grid">
+        {GAMES_3D.map((g) => (
+          <button key={g.id} type="button" className="tf-era-card" style={{ '--chip-color': g.color }} onClick={() => onNavigate(g.id)} data-game-card={g.id} aria-label={`Jugar ${g.title}`}>
+            <img src={g.image} alt="" loading="lazy" decoding="async" />
+            <span className="tf-era-card-shade" aria-hidden="true" />
+            <span className="tf-era-card-body">
+              <span className="tf-era-card-top">
+                <em className="tf-era-3d">3D</em>
+                {g.badge && <em className="tf-badge">{g.badge}</em>}
+              </span>
+              <strong>{g.emoji} {g.title}</strong>
+              <span className="tf-era-card-tag">{g.tagline}</span>
+              <span className="tf-era-card-text">{g.description}</span>
+              <span className="tf-era-card-cta">Jugar ahora <svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// El buscador y las categorías arriba de los juegos. Con «/» se va al buscador.
+function GameBrowser({ view, onNavigate }) {
+  const [query, setQuery] = useState('');
+  const [cat, setCat] = useState('all');
+  const input = useRef(null);
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === '/' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) { e.preventDefault(); input.current?.focus(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const filtering = query.trim() !== '' || cat !== 'all';
+  const results = searchGames(query).filter((g) => cat === 'all' || categoryOf(g) === cat);
+  return (
+    <>
+      <section className="tf-section tf-browser" aria-labelledby="tf-juegos">
+        <div className="tf-browser-top">
+          <div>
+            <h2 id="tf-juegos">Elegí un juego</h2>
+            <p>{MENU_GAMES.length} juegos multijugador, todos online y gratis.</p>
+          </div>
+          <ViewToggle view={view} onChange={(v) => setPrefs({ gameView: v })} />
+        </div>
+        <label className="tf-search">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2.2" /><path d="m20 20-4-4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
+          <input ref={input} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar un juego: «dados», «tiros», «casino»…" aria-label="Buscar un juego" data-search />
+          {query ? <button type="button" className="tf-search-clear" onClick={() => setQuery('')} aria-label="Borrar la búsqueda">✕</button> : <kbd>/</kbd>}
+        </label>
+        <div className="tf-cats" role="group" aria-label="Categorías">
+          <button type="button" className={cat === 'all' ? 'is-on' : ''} aria-pressed={cat === 'all'} onClick={() => setCat('all')} data-cat="all">Todos <small>{MENU_GAMES.length}</small></button>
+          {CATEGORIES.map((c) => (
+            <button key={c.id} type="button" className={`${cat === c.id ? 'is-on' : ''}${c.id === '3d' ? ' is-3d' : ''}`} aria-pressed={cat === c.id} onClick={() => setCat(cat === c.id ? 'all' : c.id)} data-cat={c.id}>
+              {c.emoji} {c.id === '3d' ? 'Juegos 3D' : c.title} <small>{gamesOf(c.id).length}</small>
+            </button>
+          ))}
+        </div>
+        {filtering && (
+          <div className="tf-results" data-results>
+            <p className="tf-results-count">{results.length ? `${results.length} ${results.length === 1 ? 'juego' : 'juegos'}` : 'Ningún juego coincide con tu búsqueda.'}</p>
+            {results.length ? <GameList games={results} view={view} onNavigate={onNavigate} /> : (
+              <button type="button" className="tf-btn tf-btn-soft" onClick={() => { setQuery(''); setCat('all'); }}>Ver todos los juegos</button>
+            )}
+          </div>
+        )}
+      </section>
+      {!filtering && (
+        <>
+          {GAMES_3D.length > 0 && <Showcase3D onNavigate={onNavigate} />}
+          {CATEGORIES.slice(1).map((c) => (
+            <section key={c.id} className="tf-section tf-cat-section" aria-labelledby={`tf-cat-${c.id}`} data-category={c.id}>
+              <div className="tf-cat-head">
+                <span className="tf-cat-emoji" aria-hidden="true">{c.emoji}</span>
+                <div>
+                  <h2 id={`tf-cat-${c.id}`}>{c.title}</h2>
+                  <p>{c.blurb}</p>
+                </div>
+              </div>
+              <GameList games={gamesOf(c.id)} view={view} onNavigate={onNavigate} />
+            </section>
+          ))}
+        </>
+      )}
+    </>
   );
 }
 
@@ -191,26 +294,7 @@ export default function Home({ onNavigate }) {
 
       <PublicRooms onNavigate={onNavigate} />
 
-      <section className="tf-section" aria-labelledby="tf-juegos">
-        <div className="tf-section-head">
-          <h2 id="tf-juegos">Elegí un juego</h2>
-          <div className="tf-section-side">
-            <ViewToggle view={view} onChange={(v) => setPrefs({ gameView: v })} />
-            <p>{MENU_GAMES.length} juegos multijugador, todos online.</p>
-          </div>
-        </div>
-        <GameList games={CLASSIC_GAMES} view={view} onNavigate={onNavigate} />
-      </section>
-
-      {GAMES_3D.length > 0 && (
-        <section className="tf-section" aria-labelledby="tf-juegos-3d" data-section-3d>
-          <div className="tf-section-head">
-            <h2 id="tf-juegos-3d">Juegos 3D <span className="tf-beta-tag">BETA</span></h2>
-            <div className="tf-section-side"><p>Recién salidos del horno: pueden tener bugs. Mejor en compu.</p></div>
-          </div>
-          <GameList games={GAMES_3D} view={view} onNavigate={onNavigate} />
-        </section>
-      )}
+      <GameBrowser view={view} onNavigate={onNavigate} />
 
       <section className="tf-section" aria-labelledby="tf-como">
         <div className="tf-section-head">

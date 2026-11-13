@@ -1,11 +1,11 @@
 // Catálogo de juegos: lo usan la portada, el menú, el header y «Cómo jugar».
 // Para sumar un juego nuevo: agregalo acá **al principio de la lista** (los nuevos van primero en la portada y el menú), en el
-// enrutador de App.jsx y en ROOTS (worker/rules.js). Los 3D llevan `section: '3d'` y salen en su propia sección de la portada. Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
+// enrutador de App.jsx y en ROOTS (worker/rules.js), y ponele categoría en `CATEGORY_OF`. Los 3D llevan `section: '3d'` y salen en la vidriera de «La nueva era» de la portada. Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
 export const GAMES = [
   {
     id: 'royale3d',
     image: '/juegos/royale3d.jpg',
-    section: '3d', // va en «Juegos 3D BETA» de la portada, aparte de los demás
+    section: '3d', // va en la vidriera «La nueva era: 3D» de la portada
     title: 'Royale 3D',
     emoji: '🏝️',
     color: 'var(--game-royale3d)',
@@ -174,6 +174,7 @@ export const GAMES = [
   {
     id: 'timba',
     image: '/juegos/timba.jpg',
+    section: '3d',
     title: 'La Timba',
     emoji: '🎰',
     color: 'var(--game-timba)',
@@ -471,9 +472,43 @@ export const GAMES = [
 
 // Los juegos que se muestran en la portada y en el menú (los que tienen `menu: false` quedan ocultos).
 export const MENU_GAMES = GAMES.filter((g) => g.menu !== false);
-// La portada los muestra en dos secciones: los juegos de siempre y «Juegos 3D BETA».
-export const CLASSIC_GAMES = MENU_GAMES.filter((g) => g.section !== '3d');
-export const GAMES_3D = MENU_GAMES.filter((g) => g.section === '3d');
+
+// ─── Categorías y buscador de la portada ─────────────────────────────────────
+// Los juegos 3D son «la nueva era» (pedido de Nico): van primero, en una vidriera aparte. Los demás, por categoría.
+export const CATEGORIES = [
+  { id: '3d', title: 'La nueva era: 3D', emoji: '🚀', blurb: 'Primera persona, mundos enteros y todo en tiempo real. Lo más nuevo de Tareas Fondeanas.' },
+  { id: 'accion', title: 'Acción', emoji: '💥', blurb: 'Tiros, bombas, cohetes y battle royales a toda velocidad.' },
+  { id: 'mesa', title: 'Juegos de mesa', emoji: '🎲', blurb: 'Los clásicos de siempre, sin juntar fichas ni perder cartas.' },
+  { id: 'grupo', title: 'Para jugar en grupo', emoji: '🎉', blurb: 'Dibujar, votar, mentir y reírse: cuantos más, mejor.' },
+  { id: 'ingenio', title: 'Palabras e ingenio', emoji: '🧠', blurb: 'Para los que piensan rápido y saben palabras raras.' },
+];
+const CATEGORY_OF = {
+  bomber: 'accion', pixel: 'accion', cohetes: 'accion', tiros: 'accion', futbol: 'accion', arena: 'accion', mine: 'accion', mvl: 'accion',
+  generala: 'mesa', monopoly: 'mesa', teg: 'mesa',
+  nave: 'grupo', gartic: 'grupo', meme: 'grupo', 'cafe-o-te': 'grupo',
+  abismo: 'ingenio', 'la-mecha': 'ingenio', 'codigo-secreto': 'ingenio',
+};
+export const categoryOf = (game) => (game.section === '3d' ? '3d' : CATEGORY_OF[game.id] || 'grupo');
+export const gamesOf = (category) => MENU_GAMES.filter((g) => categoryOf(g) === category);
+export const GAMES_3D = gamesOf('3d');
+
+// Sin mayúsculas, tildes ni signos, para buscar «codigo» y encontrar «Código Secreto».
+const plain = (text) => String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9ñ ]+/g, ' ');
+// El buscador: cada palabra tiene que aparecer en el nombre, la frase, la descripción o la categoría. Primero los que
+// coinciden en el nombre.
+export function searchGames(query, games = MENU_GAMES) {
+  const words = plain(query).split(' ').filter(Boolean);
+  if (!words.length) return games;
+  const scored = [];
+  for (const g of games) {
+    const cat = CATEGORIES.find((c) => c.id === categoryOf(g));
+    const name = plain(`${g.title} ${g.id}`);
+    const text = plain(`${g.title} ${g.id} ${g.tagline} ${g.description} ${cat?.title || ''} ${g.input || ''}`);
+    if (!words.every((w) => text.includes(w))) continue;
+    scored.push({ g, score: words.filter((w) => name.includes(w)).length });
+  }
+  return scored.sort((a, b) => b.score - a.score).map((x) => x.g);
+}
 export const gameById = (id) => GAMES.find((g) => g.id === id) || null;
 
 // Por qué no se puede pasar a ese juego con `count` jugadores (o null si se puede).
