@@ -1062,5 +1062,10 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.57.0.5 = La vidriera de los juegos 3D ahora se llama «Tareas 3D»
+1.57.0.5 = La vidriera de los juegos 3D ahora se llama «Tareas 3D»
 - En la portada, la sección de los juegos en 3D cambió de nombre: ahora es «Tareas 3D».
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.57.1 = La Timba: el pingüino se cae menos
+- En el Cruce del pingüino ahora cada salto tiene 2 de 3 chances de avanzar (antes era mitad y mitad). Cada salto bien dado sigue multiplicando ×1,5.

@@ -103,7 +103,7 @@ export function applyStepAction(next, me, action, { now, rand, playing }) {
       return true;
     }
 
-    // ── Penguin Cross: cada salto tiene 1/2 de caer; cada uno bien dado multiplica por 1,5.
+    // ── Penguin Cross: cada salto tiene 1/3 de caer; cada uno bien dado multiplica por 1,5.
     case 'penguinBet': {
       if (!takeBet(next, t, action.amount)) return null;
       Object.assign(t, { pos: 0, n: 0, at: now, res: '', pay: 0, fell: false });

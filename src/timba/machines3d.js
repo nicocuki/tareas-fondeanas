@@ -474,7 +474,7 @@ function buildPenguin(spot) {
       b.tickFloats(ctx);
       pad.update(ctx);
       refreshButtons(row.buttons, ctx);
-      sign.update(ctx, 'Cada salto: 50 % · ×1,5');
+      sign.update(ctx, 'Cada salto: 1 de 3 de caer · ×1,5');
     },
   };
 }

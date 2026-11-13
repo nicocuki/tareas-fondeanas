@@ -44,10 +44,10 @@ export function crashPoint(rand) {
 export const crashPay = (bet, mult) => Math.floor((bet * mult) / 100);
 
 // ─── Penguin Cross ───────────────────────────────────────────────────────────
-// 9 cubos de hielo contando el primero (donde ya está el pingüino): son 8 saltos y cada uno tiene 1/2 de que el pingüino
+// 9 cubos de hielo contando el primero (donde ya está el pingüino): son 8 saltos y cada uno tiene 1/3 de que el pingüino
 // caiga al agua. Cada salto bien dado multiplica por 1,5 lo apostado.
 export const PENGUIN_CUBES = 9;
-export const PENGUIN_FALL = 0.5;
+export const PENGUIN_FALL = 1 / 3; // pedido de Nico: 1 de 3 de caer (2 de 3 de avanzar)
 export const PENGUIN_STEP = 1.5;
 export const penguinMult = (pos) => PENGUIN_STEP ** pos;
 export const penguinPay = (bet, pos) => Math.floor(bet * penguinMult(pos));

@@ -240,7 +240,7 @@ test('crash: levantarse en pleno vuelo retira lo que llegó; si ya chocó, pierd
   assert.equal(Object.values(instant.tb)[0].res, 'lose', 'choca a 1,00x: se pierde al toque');
 });
 
-test('penguin: cada salto tiene 1/2 de caer, cada acierto multiplica por 1,5 y retirar paga', () => {
+test('penguin: cada salto tiene 1/3 de caer, cada acierto multiplica por 1,5 y retirar paga', () => {
   let room = sitAt(inCasino2(), 'penguin');
   const money0 = room.money;
   assert.equal(act(room, 'a', { type: 'penguinStep' }), null, 'sin apuesta no se salta');
@@ -256,8 +256,9 @@ test('penguin: cada salto tiene 1/2 de caer, cada acierto multiplica por 1,5 y r
   assert.equal(cashed.money, money0 - 100 + 337);
   assert.equal(cashed.net.a, 237);
   // cae
-  const fell = act(room, 'a', { type: 'penguinStep' }, clock, () => 0.1);
-  assert.equal(Object.values(fell.tb)[0].res, 'fall');
+  const fell = act(room, 'a', { type: 'penguinStep' }, clock, () => 0.3);
+  assert.equal(Object.values(fell.tb)[0].res, 'fall', 'con menos de 1/3 cae');
+  assert.equal(Object.values(act(room, 'a', { type: 'penguinStep' }, clock, () => 0.4).tb)[0].res, '', 'con más de 1/3 avanza');
   assert.equal(fell.money, money0 - 100);
   assert.equal(fell.net.a, -100);
   assert.equal(act(fell, 'a', { type: 'penguinStep' }, clock, () => 0.9), null, 'caído, no sigue');
