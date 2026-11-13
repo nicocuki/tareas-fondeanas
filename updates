@@ -1037,10 +1037,17 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.55.0 = La Timba: mapas grandes y con alturas 🏛️
+1.55.0 = La Timba: mapas grandes y con alturas 🏛️
 - Los mapas se rehicieron pensados para primera persona: los pisos del casino ahora miden entre 48 y 60 metros, con techos de 7 m y pasillos anchos entre las mesas (antes estaban pegadas una al lado de la otra).
 - Hay alturas de verdad: escaleras que se suben caminando y bordes que no se trepan (de arriba se puede saltar).
 - En el medio de cada piso hay una tarima con escaleras: la barra con su barman en el piso 1, el escenario con el piano y el pianista en el 2, dos fuentes en el 3 y el salón VIP con la fuente grande en el 4. El piso 4 tiene además un palco VIP a 2,4 m, con escaleras en las dos puntas, desde donde se ve todo el casino.
 - La calle de la casita ahora tiene jardín, la casa con porche y escalones, vereda y la calle entera para caminar.
 - La puerta del casino es una plaza con una fuente, una escalinata hasta la terraza y la fachada enorme con la puerta giratoria arriba.
 - El ascensor es más grande, y por los pisos pasea gente del casino con un trago en la mano.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.56.0 = La Timba: números que flotan en el aire ✨
+- Como en el original, lo importante flota en el aire, grande y fácil de leer: en el blackjack tu mano y la del croupier dentro de un holograma arriba de la mesa, en el baccarat las dos manos, en la ruleta el número que salió, en las ruedas lo que tocó, en los patos el ganador, en el pingüino y el buscaminas el multiplicador, en el plinko el casillero, en el craps la suma de los dados y el punto, y en el keno los aciertos.
+- Al terminar cada ronda flota arriba de la mesa lo que ganaste o perdiste (+$ en verde, −$ en rojo).
+- Los teclados de apuesta ya no se hunden adentro de las máquinas: ahora son un atril apoyado por el borde de adelante, con su soporte, en las mesas, en la tragamonedas y en las ruedas.

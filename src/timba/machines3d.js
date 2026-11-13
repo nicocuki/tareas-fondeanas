@@ -6,18 +6,17 @@ import { ACTIONS, MWHEEL_NAMES, fmtX, phaseOf, statusOf, wheelLabel } from './co
 import { DUCKS, NAMES, SLOT_SYMBOLS, WHEEL, slotsEval } from './games.js';
 import { MWHEEL, MWHEEL_PAYS, MWHEEL_SPOTS, PENGUIN_CUBES, PLINKO_MULTS, PLINKO_ROWS, crashMultAt, crashPay, penguinMult } from './newgames.js';
 import { SLOTS_MS, WHEEL_SPIN_MS, fmtMoney } from './game.js';
-import { Keypad, SURF, Sign, actionRow, bigButton, casinoTable, ease, refreshButtons, smooth } from './tablekit3d.js';
+import { Floater, Keypad, SURF, Sign, TONES, actionRow, bigButton, casinoTable, ease, refreshButtons, refreshResult, smooth } from './tablekit3d.js';
 import { DIGITS, Screen, ball, box, cyl, fitText, labelMaterial, plane, roundRect, toon } from './models3d.js';
 import { UNIT } from './scenes.js';
 
 // Un atril con el teclado y los botones (para las máquinas contra la pared): `x` y `z` relativos a la máquina.
 function podium(spot, group, detail, { w, z, actions, rowX = -0.35, padX = 0.32, h = 1.0 }) {
-  group.add(box(w, h - 0.05, 0.42, toon(0x2a1a2e), 0, (h - 0.05) / 2, z));
-  group.add(box(w + 0.04, 0.05, 0.46, toon(0xd8a83a), 0, h - 0.02, z));
+  // un atril bien hondo, así el teclado entra entero arriba
+  group.add(box(w, h - 0.05, 0.62, toon(0x2a1a2e), 0, (h - 0.05) / 2, z));
+  group.add(box(w + 0.04, 0.05, 0.66, toon(0xd8a83a), 0, h - 0.02, z));
   const pad = new Keypad(spot.id, spot.kind);
-  pad.group.position.set(padX, h + 0.08, z + 0.02);
-  pad.group.rotation.x = 0.5;
-  pad.group.scale.setScalar(1.2);
+  pad.mount({ x: padX, y: h + 0.005, z: z + 0.3, scale: 1.1 });
   detail.add(pad.group);
   const row = actionRow(spot.id, actions, rowX, 0.3);
   row.group.position.set(0, h + 0.03, z + 0.08);
@@ -30,7 +29,13 @@ function base(spot) {
   const group = new THREE.Group();
   const detail = new THREE.Group();
   group.add(detail);
-  return { W, D, group, detail, buttons: [] };
+  // lo que flota en el aire: el resultado de la ronda y lo propio de cada juego (ver `Floater`)
+  const result = new Floater(0.26).at(0, 2.0, 0);
+  detail.add(result.sprite);
+  const floaters = [];
+  const float = (x, y, z, h = 0.2) => { const f = new Floater(h).at(x, y, z); detail.add(f.sprite); floaters.push(f); return f; };
+  const tickFloats = (ctx) => { refreshResult(result, ctx); for (const f of floaters) f.tick(ctx.time); };
+  return { W, D, group, detail, buttons: [], result, float, tickFloats };
 }
 
 // ─── Símbolos de la tragamonedas ─────────────────────────────────────────────
@@ -88,9 +93,7 @@ function buildSlots(spot) {
   strip.mesh.position.set(0, 1.12, -D / 2 + 0.525);
   group.add(strip.mesh);
   const pad = new Keypad(spot.id, 'slots');
-  pad.group.position.set(W / 2 - 0.2, 1.06, D / 2 - 0.22);
-  pad.group.rotation.x = 0.4;
-  pad.group.scale.setScalar(1.1);
+  pad.mount({ x: W / 2 - 0.22, y: 1.032, z: D / 2 - 0.005, tilt: 0.66 });
   detail.add(pad.group);
   const spin = bigButton(spot.id, 'a:play', 'GIRAR', 'green', 0.28, 0.16);
   spin.position.set(-W / 2 + 0.2, 1.05, D / 2 - 0.2);
@@ -124,6 +127,8 @@ function buildSlots(spot) {
         g.fillStyle = '#14101c'; g.fillRect(0, 0, w, h);
         fitText(g, st.text, w / 2, h / 2 + 2, w - 16, 30, { font: DIGITS, color: { win: '#5aff7a', lose: '#ff6a6a', push: '#ffd27a' }[st.tone] || '#ffe6a0' });
       });
+      b.result.at(0, 2.7, -D / 2 + 0.6);
+      b.tickFloats(ctx);
       pad.update(ctx);
       refreshButtons([spin.userData.button], ctx);
     },
@@ -197,6 +202,7 @@ function buildWheel(spot) {
   const w = wallWheel(spot, { values: WHEEL, colors: (v) => WHEEL_COLORS[v], label: wheelLabel, title: 'RUEDA DE LA FORTUNA' });
   const p = podium(spot, w.group, w.detail, { w: w.W - 0.1, z: w.D / 2 - 0.25, actions: ACTIONS.wheel, rowX: -0.38, padX: 0.33 });
   w.buttons.push(...p.pad.buttons, ...p.row.buttons);
+  const wheelF = w.float(0, 2.05, -w.D / 2 + 0.5, 0.3);
   return {
     ...w,
     update(ctx) {
@@ -214,6 +220,11 @@ function buildWheel(spot) {
       }
       w.disc.rotation.z = -(angle * Math.PI) / 180;
       w.bulbs.forEach((bl, i) => { bl.visible = ph.running ? (Math.floor(ctx.time * 8) + i) % 2 === 0 : (Math.floor(ctx.time * 2) + i) % 4 !== 0; });
+      const last = t?.spins && ph.played ? WHEEL[t.spins[t.spins.length - 1]] : null;
+      const spinNo = t?.spins && ph.running ? Math.floor(ph.elapsed / WHEEL_SPIN_MS) : -1;
+      wheelF.set(t?.spins && ph.played && !ph.running ? wheelLabel(last) : spinNo > 0 ? '¡OTRA VEZ!' : '', { color: last === 0 ? TONES.lose : TONES.gold, label: ph.running ? '' : 'SALIÓ' }, ctx.time);
+      w.result.at(0, 1.45, w.D / 2 - 0.55);
+      w.tickFloats(ctx);
       p.pad.update(ctx);
       refreshButtons(p.row.buttons, ctx);
       w.sign.update(ctx, 'Otra vez = gira de nuevo');
@@ -227,12 +238,13 @@ function buildMwheel(spot) {
   const p = podium(spot, w.group, w.detail, { w: w.W - 0.1, z: w.D / 2 - 0.25, actions: ACTIONS.mwheel, rowX: -0.45, padX: 0.36 });
   const spots = MWHEEL_SPOTS.map((s, i) => {
     const bb = bigButton(spot.id, `w:${s}`, `${MWHEEL_NAMES[s]} ×${String(MWHEEL_PAYS[s]).replace('.', ',')}`, 'cream', 0.2, 0.09);
-    bb.position.set(-0.7 + i * 0.215, 1.03, w.D / 2 - 0.25 - 0.13);
+    bb.position.set(-0.7 + i * 0.215, 1.03, w.D / 2 - 0.25 - 0.24);
     bb.userData.button.material[0] = toon(new THREE.Color(MW_COLORS[s]).getHex());
     w.detail.add(bb);
     return bb.userData.button;
   });
   w.buttons.push(...p.pad.buttons, ...p.row.buttons, ...spots);
+  const mwF = w.float(0, 2.05, -w.D / 2 + 0.5, 0.3);
   return {
     ...w,
     update(ctx) {
@@ -247,6 +259,10 @@ function buildMwheel(spot) {
       }
       w.disc.rotation.z = -(angle * Math.PI) / 180;
       w.bulbs.forEach((bl, i) => { bl.visible = ph.running ? (Math.floor(ctx.time * 8) + i) % 2 === 0 : (Math.floor(ctx.time * 2) + i) % 4 !== 0; });
+      const hit = t && ph.played && !ph.running && t.seg !== undefined ? MWHEEL[t.seg] : null;
+      mwF.set(hit ? MWHEEL_NAMES[hit] : '', { color: hit === (t?.spot) ? TONES.win : TONES.lose, label: 'SALIÓ' }, ctx.time);
+      w.result.at(0, 1.45, w.D / 2 - 0.55);
+      w.tickFloats(ctx);
       p.pad.update(ctx);
       refreshButtons([...p.row.buttons, ...spots], ctx);
       w.sign.update(ctx, `Elegido: ${MWHEEL_NAMES[t && ph.busy ? t.spot : ctx.ui.mspot]}`);
@@ -264,9 +280,7 @@ function buildCrash(spot) {
   screen.mesh.position.set(0, 1.75, -D / 2 + 0.2);
   group.add(screen.mesh, box(1.82, 1.07, 0.08, toon(0x14101c), 0, 1.75, -D / 2 + 0.15), box(0.12, 1.3, 0.12, toon(0x2a2a3a), 0, 0.65, -D / 2 + 0.12));
   const pad = new Keypad(spot.id, 'crash');
-  pad.group.position.set(W / 2 - 0.36, SURF + 0.09, D / 2 - 0.3);
-  pad.group.rotation.x = 0.5;
-  pad.group.scale.setScalar(1.3);
+  pad.mount({ x: W / 2 - 0.36, y: SURF + 0.015, z: D / 2 - 0.1, scale: 1.25 });
   const row = actionRow(spot.id, ACTIONS.crash, -0.35, 0.32);
   row.group.position.set(0, SURF + 0.03, D / 2 - 0.15);
   detail.add(pad.group, row.group);
@@ -274,6 +288,7 @@ function buildCrash(spot) {
   sign.group.position.set(0, 2.55, -D / 2 + 0.15);
   group.add(sign.group);
   b.buttons.push(...pad.buttons, ...row.buttons);
+  const cashF = b.float(0, 1.32, -D / 2 + 0.75, 0.22);
   return {
     ...b,
     update(ctx) {
@@ -312,6 +327,9 @@ function buildCrash(spot) {
         if (t?.bet > 0) fitText(g, fmtMoney(money), w / 2, 140, w - 60, 40, { font: DIGITS, color: '#5aff7a' });
         if (lost && t?.bet) fitText(g, '¡CHOCÓ!', w / 2, h / 2 + 40, w - 60, 80, { color: '#ff5a5a' });
       });
+      cashF.set(running && !crashed ? fmtMoney(money) : '', { color: TONES.win, label: 'SI RETIRÁS AHORA' }, ctx.time);
+      b.result.at(0, 1.05 + 0.25, -D / 2 + 0.9);
+      b.tickFloats(ctx);
       pad.update(ctx);
       refreshButtons(row.buttons, ctx);
       sign.update(ctx, running ? `Llevás ${fmtMoney(money)}` : '');
@@ -347,6 +365,7 @@ function buildPlinko(spot) {
   sign.group.position.set(0, by0 + BH + 0.4, bz - 0.05);
   group.add(sign.group);
   b.buttons.push(...p.pad.buttons, ...p.row.buttons);
+  const binF = b.float(0, 1.2, bz + 0.15, 0.2);
   const xAt = (path, r) => (path.slice(0, r).reduce((a, c) => a + c, 0) - r / 2) * DX;
   return {
     ...b,
@@ -366,6 +385,11 @@ function buildPlinko(spot) {
       }
       bl.position.set(x, y, bz + 0.05);
       bins.forEach((m, i) => { m.scale.setScalar(t && !ph.running && ph.played && t.bin === i ? 1 + Math.abs(Math.sin(ctx.time * 6)) * 0.25 : 1); });
+      const landed = t && ph.played && !ph.running;
+      binF.at((landed ? t.bin - PLINKO_ROWS / 2 : 0) * DX, binY + 0.3, bz + 0.15);
+      binF.set(landed ? fmtX(PLINKO_MULTS[t.bin]) : '', { color: PLINKO_MULTS[t?.bin] >= 1 ? TONES.win : TONES.lose }, ctx.time);
+      b.result.at(0, by0 + BH + 0.05, bz + 0.3);
+      b.tickFloats(ctx);
       p.pad.update(ctx);
       refreshButtons(p.row.buttons, ctx);
       sign.update(ctx, 'Las puntas pagan ×9');
@@ -416,9 +440,7 @@ function buildPenguin(spot) {
   const peng = penguinModel();
   group.add(peng);
   const pad = new Keypad(spot.id, 'penguin');
-  pad.group.position.set(W / 2 - 0.36, SURF + 0.09, D / 2 - 0.3);
-  pad.group.rotation.x = 0.5;
-  pad.group.scale.setScalar(1.3);
+  pad.mount({ x: W / 2 - 0.36, y: SURF + 0.015, z: D / 2 - 0.1, scale: 1.25 });
   const row = actionRow(spot.id, ACTIONS.penguin, -0.5, 0.3);
   row.group.position.set(0, SURF + 0.03, D / 2 - 0.15);
   detail.add(pad.group, row.group);
@@ -426,6 +448,7 @@ function buildPenguin(spot) {
   sign.group.position.set(0, 2.2, -D / 2 - 0.05);
   group.add(sign.group);
   b.buttons.push(...pad.buttons, ...row.buttons);
+  const pengF = b.float(0, 1.2, -0.22, 0.2);
   let from = 0; let to = 0; let moveAt = -9; let lastKey = '';
   return {
     ...b,
@@ -444,6 +467,11 @@ function buildPenguin(spot) {
       peng.visible = !(fell && ctx.time - moveAt > 1.4);
       water.material = toon(0x2a8ad8, { glow: 0.25 + Math.sin(ctx.time * 2) * 0.05 });
       cubes.forEach((c, i) => { c.position.y = SURF + 0.06 + (fell && i === to && u >= 1 ? -0.1 : Math.sin(ctx.time * 1.5 + i) * 0.006); });
+      const live = t?.bet > 0;
+      pengF.at(x, SURF + 0.62, -0.22);
+      pengF.set(live && !fell ? fmtX(penguinMult(t.pos)) : fell ? '¡AL AGUA!' : '', { color: fell ? TONES.lose : TONES.gold, label: live && !fell ? `CUBO ${t.pos + 1}/${PENGUIN_CUBES}` : '' }, ctx.time);
+      b.result.at(0, 1.75, -0.2);
+      b.tickFloats(ctx);
       pad.update(ctx);
       refreshButtons(row.buttons, ctx);
       sign.update(ctx, 'Cada salto: 50 % · ×1,5');
@@ -488,9 +516,7 @@ function buildDuck(spot) {
     return bb.userData.button;
   });
   const pad = new Keypad(spot.id, 'duck');
-  pad.group.position.set(W / 2 - 0.36, SURF + 0.09, D / 2 - 0.3);
-  pad.group.rotation.x = 0.5;
-  pad.group.scale.setScalar(1.3);
+  pad.mount({ x: W / 2 - 0.36, y: SURF + 0.015, z: D / 2 - 0.1, scale: 1.25 });
   const row = actionRow(spot.id, ACTIONS.duck, -0.6, 0.3);
   row.group.position.set(0, SURF + 0.03, D / 2 - 0.15);
   detail.add(pad.group, row.group);
@@ -498,6 +524,8 @@ function buildDuck(spot) {
   sign.group.position.set(-0.4, 2.2, -D / 2 - 0.05);
   group.add(sign.group);
   b.buttons.push(...pad.buttons, ...row.buttons, ...picks);
+  const duckF = b.float(-0.1, 1.4, -0.4, 0.24);
+  const pickF = b.float(x0, SURF + 0.3, z0, 0.1);
   return {
     ...b,
     update(ctx) {
@@ -512,6 +540,13 @@ function buildDuck(spot) {
         const won = t && ph.played && !ph.running && t.win === i;
         d.scale.setScalar(won ? 1.25 + Math.abs(Math.sin(ctx.time * 5)) * 0.15 : 1);
       });
+      const over = t && ph.played && !ph.running;
+      const pick = t && (ph.busy || ph.shown) && Number.isInteger(t.pick) ? t.pick : ctx.ui.pick;
+      duckF.set(over ? `¡GANÓ ${DUCKS[t.win].toUpperCase()}!` : ph.running ? '¡LARGARON!' : '', { color: over ? DUCK_COLORS[t.win] : TONES.gold }, ctx.time);
+      pickF.at(x0, SURF + 0.3, z0 + laneW * (pick + 0.5));
+      pickF.set(t && ph.busy ? '' : 'TU PATO ▼', { color: DUCK_COLORS[pick] }, ctx.time);
+      b.result.at(-0.1, 1.85, -0.3);
+      b.tickFloats(ctx);
       pad.update(ctx);
       refreshButtons([...row.buttons, ...picks], ctx);
       sign.update(ctx, `Paga ×3,8 · Elegido: ${DUCKS[t && (ph.busy || ph.shown) && Number.isInteger(t.pick) ? t.pick : ctx.ui.pick]}`);

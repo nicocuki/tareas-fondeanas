@@ -9,10 +9,10 @@ import * as THREE from 'three';
 import { ACTIONS, ROULETTE_OUTSIDE, fmtX, phaseOf } from './controls.js';
 import { NAMES, ROULETTE_WHEEL, colorOf } from './games.js';
 import { handValue, isRed, rankOf, suitOf } from './bj.js';
-import { KENO_DRAW, KENO_N, KENO_PAYS, MINES_OPTIONS, MINES_SIZE, handTotal, hiloOdds, hiloStepMult } from './newgames.js';
+import { KENO_DRAW, KENO_N, KENO_PAYS, MINES_OPTIONS, MINES_SIZE, handTotal, hiloOdds, hiloStepMult, minesMult } from './newgames.js';
 import { ROULETTE_MS } from './game.js';
 import {
-  Keypad, SURF, Sign, actionRow, bigButton, casinoTable, chipStack, croupier, ease, feltText, hitBox, refreshButtons, smooth,
+  Floater, Keypad, SURF, Sign, TONES, actionRow, bigButton, casinoTable, chipStack, croupier, ease, feltText, hitBox, holoPanel, refreshButtons, refreshResult, smooth,
 } from './tablekit3d.js';
 import { Screen, ball, box, cardMaterial, cardMesh, cyl, fitText, roundRect, toon } from './models3d.js';
 import { buildMachine } from './machines3d.js';
@@ -77,9 +77,7 @@ function kit(spot, { felt, rail, draw, dealer = true, actions = ACTIONS[spot.kin
     group.userData.croupier = c;
   }
   const pad = new Keypad(spot.id, spot.kind);
-  pad.group.position.set(W / 2 - 0.36, SURF + 0.09, D / 2 - 0.3);
-  pad.group.rotation.x = 0.5;
-  pad.group.scale.setScalar(1.3);
+  pad.mount({ x: W / 2 - 0.36, y: SURF + 0.015, z: D / 2 - 0.1, scale: 1.25 });
   detail.add(pad.group);
   const row = actionRow(spot.id, actions, rowX, 0.3);
   row.group.position.set(0, SURF + 0.03, D / 2 - 0.15);
@@ -87,11 +85,19 @@ function kit(spot, { felt, rail, draw, dealer = true, actions = ACTIONS[spot.kin
   const sign = new Sign(title, 1.5, 0.5, signColor);
   sign.group.position.set(0, 2.45, -D / 2 - 0.1);
   group.add(sign.group);
-  return { W, D, group, detail, pad, row, sign, top: table.top, buttons: [...pad.buttons, ...row.buttons] };
+  // lo que se ganó o perdió, flotando arriba de la mesa
+  const result = new Floater(0.3).at(0, 2.08, 0.05);
+  detail.add(result.sprite);
+  const floaters = [];
+  // un número que flota en el aire (ver `Floater`)
+  const float = (x, y, z, h = 0.2) => { const f = new Floater(h).at(x, y, z); detail.add(f.sprite); floaters.push(f); return f; };
+  return { W, D, group, detail, pad, row, sign, result, floaters, float, top: table.top, buttons: [...pad.buttons, ...row.buttons] };
 }
 
 // Lo común de cada cuadro: el teclado, los botones y el cartel.
 function refreshKit(k, ctx, extra = '') {
+  refreshResult(k.result, ctx);
+  for (const f of k.floaters) f.tick(ctx.time);
   k.pad.update(ctx);
   refreshButtons(k.row.buttons, ctx);
   k.sign.update(ctx, extra);
@@ -121,6 +127,12 @@ function buildBj(spot) {
   const chips = chipStack();
   chips.position.set(0, SURF, k.D / 2 - 0.42);
   k.detail.add(chips);
+  // el holograma con las dos manos flotando, como en el original
+  const holo = holoPanel(1.2, 0.9);
+  holo.position.set(0, 1.4, -0.2);
+  k.detail.add(holo);
+  const dealerNum = k.float(0, 1.62, -0.18, 0.26);
+  const playerNum = k.float(0, 1.22, -0.16, 0.36);
   let lastN = -1;
   return {
     ...k,
@@ -139,6 +151,13 @@ function buildBj(spot) {
         const dv = t.phase === 'play' ? handValue([dl[0]]).total : handValue(dl).total;
         extra = `Croupier ${dv}  ·  Vos ${handValue(hand).total}  ·  Apuesta ${t.bet ? `$${t.bet}` : '-'}`;
       }
+      holo.visible = hand.length > 0;
+      if (hand.length) {
+        const pv = handValue(hand).total;
+        const dv = t.phase === 'play' ? handValue([dl[0]]).total : handValue(dl).total;
+        playerNum.set(String(pv), { color: pv > 21 ? TONES.lose : pv === 21 ? TONES.gold : '#ffffff', label: 'VOS' }, ctx.time);
+        dealerNum.set(t.phase === 'play' ? `${dv} + ?` : String(dv), { color: dv > 21 ? TONES.lose : TONES.blue, label: 'CROUPIER' }, ctx.time);
+      } else { playerNum.set(''); dealerNum.set(''); }
       refreshKit(k, ctx, extra);
     },
   };
@@ -187,6 +206,11 @@ function buildBaccarat(spot) {
   };
   const chips = chipStack();
   k.detail.add(chips);
+  const holo = holoPanel(2.0, 0.75);
+  holo.position.set(-0.05, 1.4, -0.25);
+  k.detail.add(holo);
+  const pNum = k.float(-0.55, 1.4, -0.22, 0.32);
+  const bNum = k.float(0.5, 1.4, -0.22, 0.32);
   return {
     ...k,
     update(ctx) {
@@ -209,6 +233,11 @@ function buildBaccarat(spot) {
       }
       chips.userData.set(t && ph.busy ? t.bet : 1);
       const extra = seen.p.length ? `Jugador ${handTotal(seen.p)}  ·  Banco ${seen.b.length ? handTotal(seen.b) : '-'}` : 'Jugador ×2 · Banco ×1,95 · Empate ×9';
+      holo.visible = seen.p.length > 0;
+      const done = t && ph.played && !ph.running;
+      const winSide = done ? t.res : '';
+      pNum.set(seen.p.length ? String(handTotal(seen.p)) : '', { color: winSide === 'player' ? TONES.win : '#ffffff', label: 'JUGADOR' }, ctx.time);
+      bNum.set(seen.b.length ? String(handTotal(seen.b)) : '', { color: winSide === 'banker' ? TONES.win : '#ffffff', label: 'BANCO' }, ctx.time);
       refreshKit(k, ctx, extra);
     },
   };
@@ -232,6 +261,11 @@ function buildHilo(spot) {
   prev.position.set(-0.62, SURF + 0.004, -0.15);
   prev.rotation.y = 0.15;
   k.detail.add(big, easel, prev);
+  const holo = holoPanel(1.1, 0.65);
+  holo.position.set(-0.05, 1.55, -0.3);
+  k.detail.add(holo);
+  const mult = k.float(-0.05, 1.66, -0.27, 0.3);
+  const odds = k.float(-0.05, 1.33, -0.27, 0.15);
   let lastKey = '';
   let flipAt = -9;
   return {
@@ -253,6 +287,10 @@ function buildHilo(spot) {
         const hi = hiloOdds(card, 'hi'); const lo = hiloOdds(card, 'lo');
         extra = `MAYOR ${Math.round(hi * 100)}% ${hi > 0 ? fmtX(hiloStepMult(card, 'hi')) : ''}  ·  MENOR ${Math.round(lo * 100)}% ${lo > 0 ? fmtX(hiloStepMult(card, 'lo')) : ''}`;
       }
+      const live = t && t.bet > 0;
+      holo.visible = Boolean(live);
+      mult.set(live ? fmtX(t.m || 1) : '', { color: t?.res === 'lose' ? TONES.lose : TONES.gold, label: t?.res === 'lose' ? 'PERDISTE' : 'LLEVÁS' }, ctx.time);
+      odds.set(t && ph.busy ? `▲ ${Math.round(hiloOdds(card, 'hi') * 100)}%   ▼ ${Math.round(hiloOdds(card, 'lo') * 100)}%` : '', { color: TONES.blue }, ctx.time);
       refreshKit(k, ctx, extra);
     },
   };
@@ -306,6 +344,8 @@ function buildCraps(spot) {
   const chips = chipStack();
   chips.position.set(-0.2, SURF, (0.68 - 0.5) * (k.D - 0.14));
   k.detail.add(chips);
+  const sum = k.float(0.33, SURF + 0.42, -0.14, 0.22);
+  const pointF = k.float(-0.3, 1.45, -0.4, 0.2);
   let anim = null; // { at, dice }
   let lastN = -1;
   const api = {
@@ -340,6 +380,10 @@ function buildCraps(spot) {
       if (point) puck.position.set(-k.W / 2 + 0.07 + (0.2 + [4, 5, 6, 8, 9, 10].indexOf(point) * 0.12) * (k.W - 0.14), SURF + 0.012, -k.D / 2 + 0.07 + 0.26 * (k.D - 0.14) + 0.07);
       chips.userData.set(t && t.bet && !t.res ? t.bet : 0);
       const ph = phaseOf('craps', t, ctx.room, ctx.now);
+      const settled = !anim || (ctx.time - anim.at) * 1000 > ROLL_MS;
+      const dsum = (t?.dice?.length ? t.dice[0] + t.dice[1] : 0);
+      sum.set(settled && dsum ? String(dsum) : '', { color: t?.res === 'win' ? TONES.win : t?.res === 'lose' ? TONES.lose : '#ffffff', label: 'SALIÓ' }, ctx.time);
+      pointF.set(ph.busy && point ? `PUNTO ${point}` : '', { color: TONES.gold }, ctx.time);
       refreshKit(k, ctx, ph.busy ? (point ? `Punto: ${point}` : 'Primera tirada') : '');
     },
   };
@@ -434,6 +478,7 @@ function buildRoulette(spot) {
   const chips = chipStack();
   k.detail.add(chips);
   const N = ROULETTE_WHEEL.length;
+  const numF = k.float(wx, SURF + 0.85, wz, 0.32);
   return {
     ...k,
     update(ctx) {
@@ -458,6 +503,8 @@ function buildRoulette(spot) {
       const cell = RCELLS.find((c) => c.spot === spotNow);
       if (cell) chips.position.set(cell.x + cell.w / 2, SURF + 0.004, cell.z + cell.d / 2);
       chips.userData.set(t && ph.busy ? t.bet : 1);
+      const showN = t && ph.played && !ph.running;
+      numF.set(showN ? String(t.n) : ph.running ? '?' : '', { color: showN ? { red: '#ff5a5a', black: '#ffffff', green: TONES.win }[colorOf(t.n)] : TONES.gold, label: showN ? 'SALIÓ' : '' }, ctx.time);
       refreshKit(k, ctx, ph.busy && t?.spot ? `Apostaste a ${spotNow[0] === 'n' ? `el ${spotNow.slice(1)}` : ROULETTE_OUTSIDE.find((o) => o[0] === spotNow)?.[1]}` : `Elegido: ${spotNow[0] === 'n' ? `el ${spotNow.slice(1)} (×36)` : ROULETTE_OUTSIDE.find((o) => o[0] === spotNow)?.[1]}`);
     },
   };
@@ -484,6 +531,7 @@ function gridBoard(spot, k, { cols, rows, x0, z0, w, d, prefix, label }) {
 function buildKeno(spot) {
   const k = kit(spot, { felt: '#2a1a5a', rowX: -0.4 });
   const screen = gridBoard(spot, k, { cols: 8, rows: 5, x0: -1.05, z0: -0.66, w: 1.6, d: 0.9, prefix: 'n', label: (i) => `NÚMERO ${i + 1}` });
+  const hitsF = k.float(-0.25, 1.45, -0.3, 0.24);
   return {
     ...k,
     update(ctx) {
@@ -508,6 +556,7 @@ function buildKeno(spot) {
       const hits = drawn.filter((n) => picks.includes(n)).length;
       const pays = KENO_PAYS[picks.length] || [];
       const payLine = pays.map((p, h) => (p ? `${h}:${fmtX(p)}` : '')).filter(Boolean).slice(-4).join('  ');
+      hitsF.set(live && revealed ? `${hits} ${hits === 1 ? 'ACIERTO' : 'ACIERTOS'}` : '', { color: hits ? TONES.win : '#ffffff', label: `SALIERON ${drawn.length}/${KENO_DRAW}` }, ctx.time);
       refreshKit(k, ctx, live && revealed ? `Salieron ${drawn.length}/${KENO_DRAW} · ${hits} aciertos` : picks.length ? `Elegiste ${picks.length} · paga ${payLine}` : 'Tocá los números de la pantalla');
     },
   };
@@ -524,6 +573,7 @@ function buildMines(spot) {
     k.buttons.push(b.userData.button);
     return b.userData.button;
   });
+  const multF = k.float(-0.5, 1.45, -0.25, 0.26);
   return {
     ...k,
     update(ctx) {
@@ -546,6 +596,8 @@ function buildMines(spot) {
         }
       });
       for (const b of counts) b.userData.set(!(t && ph.busy) && !ctx.room.day.over, Number(b.userData.btn.id.slice(2)) === (t && (ph.busy || over) ? t.count : ctx.ui.mines));
+      const safe = open.length;
+      multF.set(t && (ph.busy || t.res === 'cash' || t.res === 'win') && safe ? fmtX(minesMult(t.count, safe)) : t?.res === 'lose' ? '¡BOOM!' : '', { color: t?.res === 'lose' ? TONES.lose : TONES.gold, label: t?.res === 'lose' ? '' : `${safe} ${safe === 1 ? 'GEMA' : 'GEMAS'}` }, ctx.time);
       refreshKit(k, ctx, `${t && (ph.busy || over) ? t.count : ctx.ui.mines} minas escondidas`);
     },
   };

@@ -162,7 +162,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
     try {
       if (!t) {
         const [other] = tableOfPlayer(r, me.id);
-        if (other && other !== spot.id) await act({ type: 'stand' });
+        if (other && other !== spot.id && !(await act({ type: 'stand' }))) { flash('Terminá la mano de la otra mesa antes de jugar en esta.'); return; }
         if (!(await act({ type: 'sit', table: spot.id }))) { flash('Esa mesa ya la tomó otro.'); return; }
       }
       if (res.roll) {

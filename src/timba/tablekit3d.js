@@ -4,7 +4,7 @@
 // Cada cosa que se toca es una malla con `userData.btn = { scope: 'table', table, id, label }`: `render3d.js` la encuentra
 // mirando por el centro de la pantalla y `TimbaGame.jsx` le pasa el `id` a `controls.js`.
 import * as THREE from 'three';
-import { KEYPAD, QUICK, isEnabled, isPicked, shownAmount, statusOf } from './controls.js';
+import { KEYPAD, QUICK, isEnabled, isPicked, resultOf, shownAmount, statusOf } from './controls.js';
 import { betLimits, limitsFor } from './games.js';
 import { fmtMoney } from './game.js';
 import { DIGITS, FONT, Screen, blob, box, canvasTexture, cyl, fitText, labelMaterial, roundRect, toon } from './models3d.js';
@@ -39,21 +39,46 @@ const KEY_RECTS = (() => {
   return out;
 })();
 
+// El atril se apoya por el borde de adelante (el del jugador) y sube hacia atrás, con una cuña abajo: así nunca se mete
+// adentro de la mesa ni de la máquina. `mount` lo ubica: (x, y, z) es el medio del borde de adelante, sobre la superficie.
+const BODY_D = PAD_H + 0.06;
 export class Keypad {
   constructor(tableId, kind) {
     this.kind = kind;
-    this.group = new THREE.Group();
-    this.group.add(box(PAD_W + 0.06, 0.05, PAD_H + 0.06, toon(0x2a2236), 0, -0.03, 0));
+    this.group = new THREE.Group();   // el atril entero, apoyado en el piso de la mesa
+    this.panel = new THREE.Group();   // la tapa inclinada, que gira sobre el borde de adelante
+    this.group.add(this.panel);
+    const inner = new THREE.Group();
+    inner.position.set(0, 0.055, -BODY_D / 2);
+    this.panel.add(inner);
+    inner.add(box(PAD_W + 0.06, 0.05, BODY_D, toon(0x2a2236), 0, -0.03, 0));
     this.screen = new Screen(PAD_W, PAD_H, PW, PH, { glow: false });
     this.screen.mesh.rotation.x = -Math.PI / 2;
     this.screen.mesh.position.y = 0.0;
-    this.group.add(this.screen.mesh);
+    inner.add(this.screen.mesh);
     this.buttons = KEY_RECTS.map((r) => {
       const hb = hitBox((r.w / PW) * PAD_W, 0.02, (r.h / PH) * PAD_H, { scope: 'table', table: tableId, id: r.id, label: r.label });
       hb.position.set(((r.x + r.w / 2) / PW - 0.5) * PAD_W, 0.01, ((r.y + r.h / 2) / PH - 0.5) * PAD_H);
-      this.group.add(hb);
+      inner.add(hb);
       return hb;
     });
+    this.mount({ x: 0, y: 0, z: 0 });
+  }
+
+  // Lo apoya con el borde de adelante en (x, y, z) y la tapa inclinada `tilt` (radianes) hacia el jugador.
+  mount({ x, y, z, tilt = 0.55, scale = 1 }) {
+    this.group.position.set(x, y, z);
+    this.group.scale.setScalar(scale);
+    this.panel.rotation.x = tilt;
+    if (this.wedge) this.group.remove(this.wedge);
+    const run = Math.cos(tilt) * BODY_D; const rise = Math.sin(tilt) * BODY_D + 0.01;
+    const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(run, 0), new THREE.Vector2(run, rise)]);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: PAD_W + 0.06, bevelEnabled: false });
+    this.wedge = new THREE.Mesh(geo, toon(0x1a1622));
+    this.wedge.rotation.y = Math.PI / 2;
+    this.wedge.position.x = -(PAD_W + 0.06) / 2;
+    this.group.add(this.wedge);
+    return this;
   }
 
   update(ctx) {
@@ -208,4 +233,81 @@ export function refreshButtons(buttons, ctx) {
 // Dibuja un texto centrado en el paño (para títulos y reglas pintadas en la mesa).
 export function feltText(c, text, x, y, maxW, size, color = 'rgba(255,240,200,0.85)') {
   fitText(c, text, x, y, maxW, size, { color, font: FONT });
+}
+
+// ─── Lo que flota en el aire ─────────────────────────────────────────────────
+// Como en el original, los juegos no son del todo realistas: los números importantes (tu mano, la del croupier, lo que
+// salió, el multiplicador, lo que ganaste) flotan en el aire, grandes y con borde oscuro, mirando siempre a la cámara.
+// Se ven a través de todo (sin profundidad) y viven en el `detail` de la mesa, así de lejos no se dibujan.
+export const TONES = { win: '#5aff7a', lose: '#ff5a5a', push: '#ffd23a', info: '#ffffff', gold: '#ffd23a', blue: '#7ad8ff' };
+export class Floater {
+  constructor(height = 0.2) {
+    this.tex = canvasTexture(512, 200);
+    this.g = this.tex.image.getContext('2d');
+    this.sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex, transparent: true, depthTest: false, depthWrite: false }));
+    this.sprite.renderOrder = 20;
+    this.sprite.userData.screen = this;
+    this.h = height;
+    this.sprite.scale.set((height * 512) / 200, height, 1);
+    this.sprite.visible = false;
+    this.sig = null;
+    this.changedAt = -9;
+    this.base = new THREE.Vector3();
+  }
+
+  at(x, y, z) { this.base.set(x, y, z); this.sprite.position.copy(this.base); return this; }
+
+  // `text` vacío lo esconde. `label`: una palabra chica arriba («VOS», «CROUPIER»).
+  set(text, { color = '#ffffff', label = '' } = {}, time = 0) {
+    this.sprite.visible = Boolean(text);
+    const sig = `${text}|${color}|${label}`;
+    if (sig === this.sig) return;
+    if (text && text !== this.lastText) this.changedAt = time;
+    this.lastText = text;
+    this.sig = sig;
+    const g = this.g;
+    g.clearRect(0, 0, 512, 200);
+    if (!text) { this.tex.needsUpdate = true; return; }
+    if (label) fitText(g, label, 256, 34, 480, 34, { color: '#e8e0ff', stroke: '#14101c', strokeW: 8 });
+    g.shadowColor = color; g.shadowBlur = 18;
+    fitText(g, text, 256, label ? 128 : 104, 490, label ? 120 : 140, { color: '#ffffff', stroke: '#14101c', strokeW: 14 });
+    g.shadowBlur = 0;
+    fitText(g, text, 256, label ? 128 : 104, 490, label ? 120 : 140, { color, stroke: '', strokeW: 0 });
+    this.tex.needsUpdate = true;
+  }
+
+  // Cada cuadro: salta un poco al cambiar y flota subiendo y bajando.
+  tick(time) {
+    if (!this.sprite.visible) return;
+    const k = time - this.changedAt;
+    const pop = k < 0.4 ? 1 + Math.sin((k / 0.4) * Math.PI) * 0.35 : 1;
+    this.sprite.scale.set((this.h * 512 * pop) / 200, this.h * pop, 1);
+    this.sprite.position.set(this.base.x, this.base.y + Math.sin(time * 2.2 + this.base.x * 3) * 0.02, this.base.z);
+  }
+
+  dispose() { this.tex.dispose(); this.sprite.material.dispose(); }
+}
+
+// El resultado de la ronda (+$X verde, −$X rojo) flotando arriba de la mesa.
+export function refreshResult(f, ctx) {
+  const r = resultOf(ctx);
+  f.set(r ? r.text : '', { color: TONES[r?.tone] || '#fff' }, ctx.time);
+  f.tick(ctx.time);
+}
+
+// El holograma de las mesas de cartas: un marco celeste translúcido en el aire, entre el jugador y el croupier, donde
+// flotan las manos (como en el original). Una sola textura para todas las mesas.
+let holoTex = null;
+export function holoPanel(w = 1.3, h = 0.8) {
+  holoTex ||= canvasTexture(256, 160, (g, cw, ch) => {
+    const grd = g.createLinearGradient(0, 0, 0, ch);
+    grd.addColorStop(0, 'rgba(90,230,220,0.30)'); grd.addColorStop(1, 'rgba(60,160,200,0.10)');
+    g.fillStyle = grd; roundRect(g, 4, 4, cw - 8, ch - 8, 22); g.fill();
+    g.strokeStyle = 'rgba(140,255,240,0.85)'; g.lineWidth = 5; roundRect(g, 4, 4, cw - 8, ch - 8, 22); g.stroke();
+    g.strokeStyle = 'rgba(140,255,240,0.25)'; g.lineWidth = 2;
+    for (let y = 14; y < ch; y += 10) { g.beginPath(); g.moveTo(10, y); g.lineTo(cw - 10, y); g.stroke(); }
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: holoTex, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+  m.renderOrder = 5;
+  return m;
 }

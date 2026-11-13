@@ -318,3 +318,15 @@ export function isPicked(btn, ui, { kind, t, room, now }) {
   if (type === 'm') return (live && t.count ? t.count : ui.mines) === Number(val);
   return false;
 }
+
+// Lo que se gana o se pierde en la ronda que terminó, para mostrarlo flotando arriba de la mesa: `{ text, tone }` o null
+// mientras se juega (o si nadie jugó).
+export function resultOf({ kind, t, room, now }) {
+  if (!t || !(t.bet > 0)) return null;
+  const ph = phaseOf(kind, t, room, now);
+  if (!ph.shown || ph.busy) return null;
+  const delta = (t.pay || 0) - t.bet;
+  if (delta > 0) return { text: `+${fmtMoney(delta)}`, tone: 'win' };
+  if (delta < 0) return { text: `−${fmtMoney(-delta)}`, tone: 'lose' };
+  return { text: 'EMPATE', tone: 'push' };
+}
