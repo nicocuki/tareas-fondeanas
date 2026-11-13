@@ -518,7 +518,7 @@ test('royale3d: la sala entera pesa poco (10 jugadores, muchos cofres abiertos y
   assert.ok(JSON.stringify(room).length < 12000, String(JSON.stringify(room).length));
 });
 
-test('royale3d: Ciudad Cuki tiene calles, edificios de dos pisos con rampa y cofre arriba, y caminos a cada lugar', () => {
+test('royale3d: Ciudad Fondo tiene calles, edificios de dos pisos con rampa y cofre arriba, y caminos a cada lugar', () => {
   for (const seed of [3, SEED]) {
     const w = makeWorld(seed);
     const c = w.places.find((p) => p.id === 'ciudad');

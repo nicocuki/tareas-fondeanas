@@ -262,7 +262,7 @@ export function segDist(x, z, r) {
 
 // Cada lugar: radio plano `r`, y qué pone. `ring` = en qué anillo de la isla puede caer (fracción de ISLAND_R).
 const PLACES = [
-  { id: 'ciudad', name: 'Ciudad Cuki', r: 40, ring: [0.0, 0.22], stamp: ciudad },
+  { id: 'ciudad', name: 'Ciudad Fondo', r: 40, ring: [0.0, 0.22], stamp: ciudad },
   { id: 'barrio', name: 'Barrio Bichito', r: 30, ring: [0.3, 0.68], stamp: barrio },
   { id: 'pueblo', name: 'Pueblo Polenta', r: 27, ring: [0.3, 0.68], stamp: pueblo },
   { id: 'fabrica', name: 'Fábrica Fernet', r: 22, ring: [0.3, 0.7], stamp: fabrica },
@@ -505,7 +505,7 @@ function edificio(w, rand, x, z, ww, dd, door, o = {}) {
   if (rand() < 0.6) crate(w, x - ww / 4 + 2, back < 0 ? b.z0 + 1.3 : b.z1 - 1.3, top);
 }
 
-// Ciudad Cuki: una grilla de 3 × 3 manzanas con calles; edificios de dos pisos, casas y una plaza con fuente en el medio.
+// Ciudad Fondo: una grilla de 3 × 3 manzanas con calles; edificios de dos pisos, casas y una plaza con fuente en el medio.
 function ciudad(w, rand, cx, cz, y) {
   for (const k of [-12, 12]) { street(w, cx + k, cz, 7, 78, y); street(w, cx, cz + k, 78, 7, y); }
   street(w, cx, cz - 37.5, 78, 4, y); street(w, cx, cz + 37.5, 78, 4, y); street(w, cx - 37.5, cz, 4, 78, y); street(w, cx + 37.5, cz, 4, 78, y);
