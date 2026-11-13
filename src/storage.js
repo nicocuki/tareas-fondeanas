@@ -159,6 +159,8 @@ const bomberChannel = (code) => peerChannel('bomber', code);
 const royale3dChannel = (code) => peerChannel('royale3d', code);
 // Fuego Cruzado, igual: fotos y tiros directo entre navegadores y respaldo en fps/{sala}/p/{id}.
 const fpsChannel = (code) => peerChannel('fps', code);
+// Pista Loca, igual: robots directo entre navegadores y respaldo en pista/{sala}/p/{id}.
+const pistaChannel = (code) => peerChannel('pista', code);
 
 // Generala: dónde tiene el cubilete el que está por tirar, para que los demás lo vean sacudirlo. No se guarda.
 //   generala/{sala}/mano   { n: turno, r: tirada, x, z }
@@ -176,5 +178,5 @@ function subscribeServerOffset(onOffset) {
 }
 
 export const backend = {
-  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, generalaChannel, bomberChannel, fpsChannel, royale3dChannel, subscribeServerOffset,
+  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, generalaChannel, bomberChannel, fpsChannel, pistaChannel, royale3dChannel, subscribeServerOffset,
 };

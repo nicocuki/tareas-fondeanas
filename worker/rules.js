@@ -9,7 +9,7 @@ import { MAX_DRAWING, MAX_STROKES, MAX_TEXT } from '../src/gartic/game.js';
 import { getAt } from './tree.js';
 import { MAX_CHAT_STRING } from '../src/ui/chat.js';
 
-export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps', 'mecha', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'timba', 'generala', 'bomber', 'royale3d', 'fps', 'publica', 'mudanza', 'chat'];
+export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garticReady', 'garticSteps', 'mecha', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'timba', 'generala', 'bomber', 'royale3d', 'fps', 'pista', 'publica', 'mudanza', 'chat'];
 // `publica/{sala}`: true si el anfitrión la quiere en la lista de la portada (ver publicas.js).
 // `mudanza/{sala}`: «juego/CÓDIGO» cuando el anfitrión se pasó con todos a otro juego (ver src/ui/mudanza.js).
 // `chat/{sala}`: el chat que se abre con T, un string JSON (ver src/ui/chat.js).
@@ -19,13 +19,13 @@ export const ROOTS = ['rooms', 'futbol', 'garticRooms', 'garticPresence', 'garti
 const EPHEMERAL_FUTBOL = new Set(['players', 'ball', 'signal', 'peers']);
 // Lo mismo con lo que se va escribiendo en La Mecha (`mecha/{sala}/typing`).
 // Y todo lo de A los Tiros (`tiros/{sala}`), Entre Nosotros (`nave/{sala}`) y Cohete Royale
-// (`cohetes/{sala}`, `pixel/{sala}`, `mine/{sala}`, `timba/{sala}`, `bomber/{sala}`, `royale3d/{sala}`, `fps/{sala}`): fotos y señalización.
+// (`cohetes/{sala}`, `pixel/{sala}`, `mine/{sala}`, `timba/{sala}`, `bomber/{sala}`, `royale3d/{sala}`, `fps/{sala}`, `pista/{sala}`): fotos y señalización.
 // Y la mano de la Generala (`generala/{sala}/mano`): dónde tiene el cubilete el que está por tirar.
-export const isEphemeral = (segs) => (segs[0] === 'futbol' && EPHEMERAL_FUTBOL.has(segs[2])) || segs[0] === 'mecha' || segs[0] === 'tiros' || segs[0] === 'nave' || segs[0] === 'cohetes' || segs[0] === 'pixel' || segs[0] === 'mine' || segs[0] === 'timba' || segs[0] === 'generala' || segs[0] === 'bomber' || segs[0] === 'royale3d' || segs[0] === 'fps';
+export const isEphemeral = (segs) => (segs[0] === 'futbol' && EPHEMERAL_FUTBOL.has(segs[2])) || segs[0] === 'mecha' || segs[0] === 'tiros' || segs[0] === 'nave' || segs[0] === 'cohetes' || segs[0] === 'pixel' || segs[0] === 'mine' || segs[0] === 'timba' || segs[0] === 'generala' || segs[0] === 'bomber' || segs[0] === 'royale3d' || segs[0] === 'fps' || segs[0] === 'pista';
 
 // Cada cuánto se parte el árbol para guardarlo: cada dibujo de Trazo Loco va aparte, porque
 // pueden pesar cientos de KB y un solo valor guardado no puede pasar de 2 MB.
-export const unitDepth = (root) => (root === 'garticSteps' ? 5 : root === 'futbol' || root === 'tiros' || root === 'nave' || root === 'cohetes' || root === 'pixel' || root === 'mine' || root === 'timba' || root === 'generala' || root === 'bomber' || root === 'royale3d' || root === 'fps' ? 3 : 2);
+export const unitDepth = (root) => (root === 'garticSteps' ? 5 : root === 'futbol' || root === 'tiros' || root === 'nave' || root === 'cohetes' || root === 'pixel' || root === 'mine' || root === 'timba' || root === 'generala' || root === 'bomber' || root === 'royale3d' || root === 'fps' || root === 'pista' ? 3 : 2);
 
 export const MAX_ROOM_STRING = 30000;
 

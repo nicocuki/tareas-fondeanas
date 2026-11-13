@@ -200,6 +200,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/generala/` | Generala: la física de los dados (`dice.js`, con Rapier), el Web Worker que la corre (`simWorker.js`), reducer (`game.js`), la mesa en 3D (`table.js`, con Three.js), sonido (`sound.js`), la partida y la planilla (`GeneralaGame.jsx`) (ver *Generala*) |
 | `src/bomber/` | Bombardero (Bomberman): tablero e ítems por semilla (`map.js`), movimiento, bombas, fuego y calaveras (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`BomberGame.jsx`), pantallas (ver *Bombardero*) |
 | `src/abismo/` `worker/juez.js` `worker/abismo.js` | Abismo (Krillion): niveles y normalización (`tiers.js`), las consignas (`prompts.js`), reducer (`game.js`), la inmersión (`Dive.jsx`), pixel art (`Art.jsx`), sonidos (`sfx.js`), ranking global (`Ranking.jsx`), pantallas; el juez y el ranking en el Worker (ver *Abismo*) |
+| `src/pista/` | Pista Loca (carreras de obstáculos con robotitos): pistas y obstáculos (`courses.js`), física del robot (`sim.js`), reducer (`game.js`), dibujo con Three.js (`render.js`), la partida en vivo (`PistaGame.jsx`), pantallas (`PistaApp.jsx`) (ver *Pista Loca*) |
 | `src/fps/` | Fuego Cruzado (shooter en primera persona): arenas (`maps.js`), reducer (`game.js`), la partida en vivo (`FpsGame.jsx`), pantallas (`FpsApp.jsx`); usa el motor de Royale 3D (ver *Fuego Cruzado*) |
 | `src/royale3d/` | Royale 3D (beta, primer «Juego 3D»): isla, lugares, cofres, bus y tormenta (`map.js`), armas, movimiento, tiros y construcción (`sim.js`), reducer (`game.js`), modelos (`models.js`), dibujo con Three.js (`render.js`), sonidos (`sfx.js`), la partida en vivo (`Royale3DGame.jsx`), pantallas (ver *Royale 3D*) |
 | `src/mvl/` `public/mvl/` | Mario vs Luigi: la pantalla con el iframe y la compilación web de Unity (ver *Mario vs Luigi*) |
@@ -1187,7 +1188,7 @@ pero el juego copia a Bomberman (de Konami/Hudson): entre amigos está bien; si 
 Pedido de Nico: «un Fortnite 3D en su máxima expresión» con todo lo de Pixel Royale y más armas y rarezas; primer juego de la vidriera **«Tareas 3D»** de la portada.
 De 2 a 10, solo compu (teclado y mouse). `id`: `royale3d` (`?juego=royale3d`, `gameType: 'royale3d'`, raíz `royale3d/` en `ROOTS`, efímera: fotos y señalización).
 
-- **La vidriera «Tareas 3D»**: un juego con `section: '3d'` en `games.js` sale en la vidriera de la portada (`GAMES_3D`, ver *Diseño*), hoy Fuego Cruzado, Royale 3D y La Timba.
+- **La vidriera «Tareas 3D»**: un juego con `section: '3d'` en `games.js` sale en la vidriera de la portada (`GAMES_3D`, ver *Diseño*), hoy Pista Loca, Fuego Cruzado, Royale 3D y La Timba.
   El menú lateral lo sigue listando con los demás. **Un juego 3D nuevo** lleva `section: '3d'` (y `badge: 'Beta'` mientras lo sea).
 - **Mismo esquema que Pixel Royale**: lo de a una vez va en la sala (`game.js`: semilla, orden de aparición, quién murió y por quién, cofres abiertos `match.loot`, cosas agarradas `match.took`, ranking)
   y todo lo demás en vivo, directo entre navegadores (`futbol/p2p.js`) con respaldo en `royale3d/{sala}/p/{id}` (`royale3dChannel`). Fases `lobby` → `playing` → `final` (una sola ronda). Cada pantalla es
@@ -1220,6 +1221,19 @@ De 2 a 10, solo compu (teclado y mouse). `id`: `royale3d` (`?juego=royale3d`, `g
 - `window.__royale3d` (el estado de la pantalla: `local`, `remotes`, `world`, `lootCache`, `input`, `edges`, `scene`, `frames`, `SIM` con las funciones de `sim.js`) y `data-royale3d-canvas`, `data-alive`, `data-storm`, `data-hp`, `data-slot`, `data-items`, `data-prompt`, `data-feed`, `data-dead`, `data-final`
   existen para manejar el juego desde un navegador automatizado. En un navegador sin GPU hace falta `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`; sin pointer lock, se apunta y dispara escribiendo `yaw`, `pitch`, `input.fire` y `edges.fire` en `window.__royale3d.local` y `window.__royale3d`.
 - **Todavía no tiene**: derribados y revivir, dúos y escuadras, vehículos, municiones por tipo, editar lo construido, bots, ni que lo construido o roto se guarde para quien entra tarde.
+
+## Pista Loca
+
+Pedido de Nico: «una copia exacta de Stumble Guys». **No se copia** (ni nombre, ni personajes, ni niveles, ni aspecto): es un juego propio del mismo género, carreras de obstáculos para muchos. Nico eligió rondas eliminatorias, barras que giran, pisos que caen, martillos y empujadores, robotitos y hasta 16.
+De 1 a 16 (solo, para practicar), solo compu. `id`: `pista` (`?juego=pista`, `gameType: 'pista'`, raíz `pista/` en `ROOTS`, efímera). Va en la vidriera «Tareas 3D».
+
+- **Tres rondas** (`ROUND_KINDS`): `race` (carrera «Engranajes»: pasan `quotaFor('race', n)` = el 60 %), `survive` (supervivencia «Baldosas»: pasa la mitad; termina cuando quedan esos en pie o se acaba el tiempo) y `final` («Martillazo»: el primero que llega gana la corona, `room.winner`, y suma `wins`). **Con dos o menos se saltea la supervivencia** y con dos o menos no se elimina a nadie en la carrera. Si en una carrera no llega nadie, siguen todos.
+- **La sala** (`game.js`): `lobby` → `playing` ⇄ `roundEnd` (`ROUND_END_MS`, muestra quién pasa) → … → `final`. `room.round = { n, i, kind, players, quota, startsAt, endsAt, done, out, result, nextAt, last }`. Acciones `finish` y `fall` (las manda la pantalla de cada uno, con `round` = `round.n`) y `tick` (cualquier pantalla, al acabarse el tiempo o la pausa). El que entra con la partida empezada mira y juega la próxima.
+- **Las pistas** (`courses.js`, `COURSES`): plataformas como bloques (`plat`), baldosas con `tile` (capa × 100 + número), paredes y obstáculos: `bars` (giran: `barAngle`; `soft` empuja menos), `hammers` (`hammerHead`) y `pushers` (`pusherBox`, salen rápido y vuelven despacio). **Todo sale de la hora de la ronda**: no viajan por la red. Hay un test que recorre cada carrera de punta a punta sin obstáculos (la pista no tiene huecos imposibles: los saltos son de 2,5 m).
+- **La física** (`sim.js`, pura, paso de 1/60 s): `stepRobot` (correr, saltar, tirarse de cabeza, golpes que dejan mareado `STUN_S`), `pushOut` (no empuja de costado al que está aterrizando: usa `r.py`, la altura del paso anterior; sin eso se resbalaba de los bordes), `checkpointFor` (vuelve al último punto seguro en las carreras). Las baldosas pisadas se rompen a los `TILE_FALL_S` (0,9 s) y viajan en la foto (`tb`); **no se rompen durante la cuenta regresiva** (pasó: se caían todos antes de largar y la sala rechazaba la caída).
+- **En vivo** (`PistaGame.jsx`): cada pantalla mueve a su robot y lo manda (WebRTC, respaldo en `pista/{sala}/p/{id}`). La cámara va detrás y se gira con el mouse; los que quedaron afuera miran a otro (clic cambia). El dibujo (`render.js`) se carga con `import()`: no lo importes desde la portada.
+- `window.__pista` (`robot`, `remotes`, `broken`, `breaking`, `course`, `input`, `edges`) y `data-pista-canvas`, `data-round`, `data-clock`, `data-qualified`, `data-count`, `data-results`, `data-final` existen para manejar el juego desde un navegador automatizado. No los saques.
+- **Todavía no tiene**: más pistas por ronda (elegidas al azar), bots, emotes ni ropa para los robots.
 
 ## Fuego Cruzado
 

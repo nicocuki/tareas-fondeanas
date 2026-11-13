@@ -1086,10 +1086,20 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.59.0 = Juego nuevo: Fuego Cruzado (shooter 3D en primera persona)
+1.59.0 = Juego nuevo: Fuego Cruzado (shooter 3D en primera persona)
 - Un shooter en primera persona, todos contra todos, de 2 a 10 jugadores. Está en la vidriera «Tareas 3D» de la portada.
 - Tres mapas chicos: Depósito (contenedores y pasarelas altas), Pueblito (casitas de adobe en el desierto) y Plaza (fuente, columnas y dos torres). El anfitrión elige uno o al azar.
 - Todos arrancan con pistola y pico; las demás armas (metralleta, escopeta, fusil de asalto, fusil de ráfaga, revólver y francotirador) están tiradas en el mapa y vuelven a aparecer a los 20 segundos.
 - Moviéndote o saltando las balas se desvían; quieto y apuntando van derecho. Los tiros a la cabeza pegan más.
 - Al morir soltás lo que levantaste y reaparecés a los 3 segundos, lejos de los demás. Tab muestra la tabla.
 - Gana el primero que llega a las bajas elegidas (10 a 50) o el que tiene más cuando se acaba el tiempo (3 a 10 minutos). Se puede entrar con la partida empezada.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.60.0 = Juego nuevo: Pista Loca (carreras de obstáculos en 3D)
+- Robotitos de colores en tres rondas eliminatorias, de 1 a 16 jugadores. Está en la vidriera «Tareas 3D» de la portada.
+- Ronda 1, carrera «Engranajes»: barras que giran, saltos entre plataformas y pistones que empujan. Clasifican los primeros.
+- Ronda 2, supervivencia «Baldosas»: dos pisos de baldosas que se caen al rato de pisarlas y una barra que barre el de arriba. El que cae al agua queda afuera.
+- Ronda 3, final «Martillazo»: martillos gigantes que se balancean, barras y pistones. El primero que llega gana la corona.
+- Se corre con WASD para donde mira la cámara, Espacio salta y E o Shift te tira de cabeza. En las carreras, si te caés volvés al último punto seguro; si te golpea un obstáculo quedás mareado un ratito.
+- Los que quedan afuera miran a los que siguen. Se puede jugar solo para practicar.

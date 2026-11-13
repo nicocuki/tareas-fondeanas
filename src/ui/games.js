@@ -3,6 +3,29 @@
 // enrutador de App.jsx y en ROOTS (worker/rules.js), y ponele categoría en `CATEGORY_OF`. Los 3D llevan `section: '3d'` y salen en la vidriera de «Tareas 3D» de la portada. Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
 export const GAMES = [
   {
+    id: 'pista',
+    image: '/juegos/pista.jpg',
+    section: '3d', // va en la vidriera «Tareas 3D» de la portada
+    title: 'Pista Loca',
+    emoji: '🤖',
+    color: 'var(--game-pista)',
+    onColor: '#ffffff',
+    tagline: 'Carreras de obstáculos con robotitos, de 1 a 16',
+    description: 'Robotitos en tres rondas eliminatorias: una carrera con barras que giran y pistones, una supervivencia sobre baldosas que desaparecen al pisarlas y una final con martillos gigantes donde el primero que llega gana la corona. Se salta, te tirás de cabeza y te empujás con los demás. Está en beta: puede tener bugs.',
+    players: '1 a 16',
+    min: 1,
+    max: 16,
+    duration: '5–8 min',
+    input: 'Teclado y mouse',
+    badge: 'Beta',
+    howTo: [
+      'Hacé clic en la pantalla para capturar el mouse. WASD corre para donde mira la cámara (mouse), Espacio salta y E o Shift te tira de cabeza para llegar más lejos. Esc suelta el mouse.',
+      'Ronda 1, carrera: esquivá las barras que giran (saltalas), cruzá los saltos y pasá los pistones. Clasifican los primeros; si te caés volvés al último punto seguro.',
+      'Ronda 2, supervivencia: las baldosas se caen al rato de pisarlas y una barra barre el piso de arriba. El que cae al agua queda afuera; pasan los que quedan en pie.',
+      'Ronda 3, la final: martillos gigantes, barras y pistones. El primero que llega a la meta gana la corona.',
+    ],
+  },
+  {
     id: 'fps',
     image: '/juegos/fps.jpg',
     section: '3d', // va en la vidriera «Tareas 3D» de la portada
