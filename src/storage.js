@@ -161,6 +161,8 @@ const royale3dChannel = (code) => peerChannel('royale3d', code);
 const fpsChannel = (code) => peerChannel('fps', code);
 // Pista Loca, igual: robots directo entre navegadores y respaldo en pista/{sala}/p/{id}.
 const pistaChannel = (code) => peerChannel('pista', code);
+// Tenis Movido: los golpes del celular a la compu (y el aviso de vuelta), directo o por tenis/{sala}/p/{id}.
+const tenisChannel = (code) => peerChannel('tenis', code);
 
 // Generala: dónde tiene el cubilete el que está por tirar, para que los demás lo vean sacudirlo. No se guarda.
 //   generala/{sala}/mano   { n: turno, r: tirada, x, z }
@@ -178,5 +180,5 @@ function subscribeServerOffset(onOffset) {
 }
 
 export const backend = {
-  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, generalaChannel, bomberChannel, fpsChannel, pistaChannel, royale3dChannel, subscribeServerOffset,
+  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, generalaChannel, bomberChannel, fpsChannel, pistaChannel, tenisChannel, royale3dChannel, subscribeServerOffset,
 };

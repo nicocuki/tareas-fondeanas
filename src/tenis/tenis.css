@@ -1,0 +1,41 @@
+/* Tenis Movido (prototipo): prefijo tn-. La cancha y el control tienen colores fijos, iguales en los dos temas;
+   la entrada usa las variables del tema. */
+.tn-page { max-width: 560px; margin: 0 auto; padding: 16px; }
+.tn-card { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
+.tn-card h2 { margin: 6px 0 0; font: 800 18px 'Bricolage Grotesque', Inter, sans-serif; }
+.tn-or { text-align: center; color: var(--muted); font-size: 13px; margin: 6px 0; }
+.tn-small { font-size: 13px; color: var(--muted); }
+.tn-error { color: var(--danger); font-weight: 700; }
+.tn-screen { position: relative; height: var(--page-h, calc(100dvh - 60px)); }
+.tn-banner { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 5; background: #fff; padding: 6px 12px; border-radius: 8px; }
+.tn-stage { position: absolute; inset: 0; color: #fff; font-family: Inter, sans-serif; overflow: hidden; }
+.tn-canvas { display: block; width: 100%; height: 100%; }
+.tn-score { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; padding: 8px 18px; border-radius: 999px; background: rgba(15, 25, 50, 0.82); font: 800 16px Inter, sans-serif; }
+.tn-score b { font-size: 22px; }
+.tn-score em { font-style: normal; color: #ffd23f; min-width: 90px; text-align: center; }
+.tn-msg { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); padding: 8px 18px; border-radius: 12px; background: rgba(15, 25, 50, 0.85); font: 800 18px Inter, sans-serif; }
+.tn-hint { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 8px 16px; border-radius: 10px; background: rgba(15, 25, 50, 0.8); font-weight: 700; }
+.tn-corner { position: absolute; right: 12px; top: 12px; }
+.tn-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, 94%); max-height: 94%; overflow: auto; padding: 20px 24px; border-radius: 18px; background: rgba(15, 25, 50, 0.93); }
+.tn-panel h2 { margin: 0 0 12px; font: 900 24px 'Bricolage Grotesque', Inter, sans-serif; }
+.tn-win { color: #ffd23f; }
+.tn-connect { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.tn-qr { width: 200px; height: 200px; border-radius: 12px; background: #fff; }
+.tn-code { margin: 6px 0; font: 900 48px 'Bricolage Grotesque', Inter, sans-serif; letter-spacing: 0.15em; color: #ffd23f; }
+.tn-slots { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tn-slots li { padding: 6px 10px; border-left: 4px solid; border-radius: 6px; background: rgba(255, 255, 255, 0.08); }
+.tn-panel .tn-small { color: #c9d3e6; }
+.tn-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.tn-control { min-height: 100dvh; display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding: 16px; background: #13203a; color: #fff; font-family: Inter, sans-serif; }
+.tn-control header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tn-control header small { color: #b8c4dc; }
+.tn-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--tn-color); }
+.tn-ctrl-score { margin: 0; text-align: center; font-weight: 800; color: #ffd23f; }
+.tn-arm, .tn-swing { flex: 1; min-height: 200px; border: 0; border-radius: 24px; background: var(--tn-color); color: #fff; font: 900 26px 'Bricolage Grotesque', Inter, sans-serif; touch-action: manipulation; }
+.tn-swing:active { transform: scale(0.97); filter: brightness(1.15); }
+.tn-meter { position: relative; height: 54px; border-radius: 14px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.tn-meter i { position: absolute; inset: 0 auto 0 0; background: var(--tn-color); opacity: 0.7; transition: width 0.15s; }
+.tn-meter span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+.tn-meter.is-hit { outline: 3px solid #ffd23f; }
+.tn-control .tn-small { color: #b8c4dc; text-align: center; }
+.tn-leave { align-self: center; }

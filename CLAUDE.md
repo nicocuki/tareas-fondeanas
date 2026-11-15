@@ -200,6 +200,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/generala/` | Generala: la física de los dados (`dice.js`, con Rapier), el Web Worker que la corre (`simWorker.js`), reducer (`game.js`), la mesa en 3D (`table.js`, con Three.js), sonido (`sound.js`), la partida y la planilla (`GeneralaGame.jsx`) (ver *Generala*) |
 | `src/bomber/` | Bombardero (Bomberman): tablero e ítems por semilla (`map.js`), movimiento, bombas, fuego y calaveras (`sim.js`), reducer (`game.js`), dibujo (`render.js`), la partida en vivo (`BomberGame.jsx`), pantallas (ver *Bombardero*) |
 | `src/abismo/` `worker/juez.js` `worker/abismo.js` | Abismo (Krillion): niveles y normalización (`tiers.js`), las consignas (`prompts.js`), reducer (`game.js`), la inmersión (`Dive.jsx`), pixel art (`Art.jsx`), sonidos (`sfx.js`), ranking global (`Ranking.jsx`), pantallas; el juez y el ranking en el Worker (ver *Abismo*) |
+| `src/tenis/` | Tenis Movido (prototipo, el celular como raqueta): reducer y tanteo (`game.js`), pelota y reglas del punto (`sim.js`), la cancha en 3D (`render.js`), la compu (`TenisScreen.jsx`), el control en el celular (`TenisControl.jsx`), pantallas (`TenisApp.jsx`) (ver *Tenis Movido*) |
 | `src/pista/` | Pista Loca (carreras de obstáculos con robotitos): pistas y obstáculos (`courses.js`), física del robot (`sim.js`), reducer (`game.js`), dibujo con Three.js (`render.js`), la partida en vivo (`PistaGame.jsx`), pantallas (`PistaApp.jsx`) (ver *Pista Loca*) |
 | `src/fps/` | Fuego Cruzado (shooter en primera persona): arenas (`maps.js`), reducer (`game.js`), la partida en vivo (`FpsGame.jsx`), pantallas (`FpsApp.jsx`); usa el motor de Royale 3D (ver *Fuego Cruzado*) |
 | `src/royale3d/` | Royale 3D (beta, primer «Juego 3D»): isla, lugares, cofres, bus y tormenta (`map.js`), armas, movimiento, tiros y construcción (`sim.js`), reducer (`game.js`), modelos (`models.js`), dibujo con Three.js (`render.js`), sonidos (`sfx.js`), la partida en vivo (`Royale3DGame.jsx`), pantallas (ver *Royale 3D*) |
@@ -1188,7 +1189,7 @@ pero el juego copia a Bomberman (de Konami/Hudson): entre amigos está bien; si 
 Pedido de Nico: «un Fortnite 3D en su máxima expresión» con todo lo de Pixel Royale y más armas y rarezas; primer juego de la vidriera **«Tareas 3D»** de la portada.
 De 2 a 10, solo compu (teclado y mouse). `id`: `royale3d` (`?juego=royale3d`, `gameType: 'royale3d'`, raíz `royale3d/` en `ROOTS`, efímera: fotos y señalización).
 
-- **La vidriera «Tareas 3D»**: un juego con `section: '3d'` en `games.js` sale en la vidriera de la portada (`GAMES_3D`, ver *Diseño*), hoy Pista Loca, Fuego Cruzado, Royale 3D y La Timba.
+- **La vidriera «Tareas 3D»**: un juego con `section: '3d'` en `games.js` sale en la vidriera de la portada (`GAMES_3D`, ver *Diseño*), hoy Tenis Movido, Pista Loca, Fuego Cruzado, Royale 3D y La Timba.
   El menú lateral lo sigue listando con los demás. **Un juego 3D nuevo** lleva `section: '3d'` (y `badge: 'Beta'` mientras lo sea).
 - **Mismo esquema que Pixel Royale**: lo de a una vez va en la sala (`game.js`: semilla, orden de aparición, quién murió y por quién, cofres abiertos `match.loot`, cosas agarradas `match.took`, ranking)
   y todo lo demás en vivo, directo entre navegadores (`futbol/p2p.js`) con respaldo en `royale3d/{sala}/p/{id}` (`royale3dChannel`). Fases `lobby` → `playing` → `final` (una sola ronda). Cada pantalla es
@@ -1221,6 +1222,19 @@ De 2 a 10, solo compu (teclado y mouse). `id`: `royale3d` (`?juego=royale3d`, `g
 - `window.__royale3d` (el estado de la pantalla: `local`, `remotes`, `world`, `lootCache`, `input`, `edges`, `scene`, `frames`, `SIM` con las funciones de `sim.js`) y `data-royale3d-canvas`, `data-alive`, `data-storm`, `data-hp`, `data-slot`, `data-items`, `data-prompt`, `data-feed`, `data-dead`, `data-final`
   existen para manejar el juego desde un navegador automatizado. En un navegador sin GPU hace falta `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`; sin pointer lock, se apunta y dispara escribiendo `yaw`, `pitch`, `input.fire` y `edges.fire` en `window.__royale3d.local` y `window.__royale3d`.
 - **Todavía no tiene**: derribados y revivir, dúos y escuadras, vehículos, municiones por tipo, editar lo construido, bots, ni que lo construido o roto se guarde para quien entra tarde.
+
+## Tenis Movido
+
+Pedido de Nico: «si hiciéramos un Wii Sports, empezando con el tenis, ¿cómo conectarías la vista de la PC con el celular como control?». Es un **prototipo** para probar eso; los personajes y la cancha son nuestros.
+`id`: `tenis` (`?juego=tenis`, `gameType: 'tenis'`, raíz `tenis/` en `ROOTS`, efímera). 1 o 2 celulares. Va en la vidriera «Tareas 3D» con `badge: 'Prototipo'`.
+
+- **La compu es la cancha y el anfitrión, pero no juega**: `room.hostId` es la pantalla y `room.players` son solo los celulares, cada uno con su `slot` (0 = cerca de la pantalla, 1 = enfrente). Por eso **no está en el test general de `kick`** (ese test supone que el anfitrión es jugador); tiene los suyos en `tests/tenis.test.js`. Con un solo celular, del lado libre juega la máquina (en `TenisScreen.jsx`, falla un 12 %).
+- **Emparejar**: la cancha muestra un QR (librería `qrcode`, se arma en el navegador: el link no sale a ningún servicio) con `?juego=tenis&control=ABCD`; un link `&sala=ABCD` (invitación, sala pública) también entra como control.
+- **El golpe se detecta en el celular** (`TenisControl.jsx`): `devicemotion`, aceleración sin gravedad por encima de `SWING_MIN`, el pico en `PEAK_MS` da la fuerza (`swingPower`) y el giro de la muñeca (`rotationRate`), para dónde va. Se manda **un mensaje por golpe** `{ k, f, a }`, directo por WebRTC (`futbol/p2p.js`) y por `tenis/{sala}/p/{id}` si no hay canal directo; cada mensaje repite los golpes de los últimos `KEEP_MS` y la cancha usa cada `k` una vez. La cancha le contesta `{ hit, to }` y el celular vibra. **Los sensores solo andan en HTTPS y en iPhone piden permiso con un toque** (`DeviceMotionEvent.requestPermission`): por eso el botón «activar». Sin sensores queda el botón GOLPEAR. En la compu, Espacio y K golpean (para probar).
+- **La pelota la simula solo la cancha** (`sim.js`, puro): `hitBall` calcula la velocidad para que pique en la otra mitad y pase la red; `canReach` dice si el jugador llega (los jugadores van solos hacia la pelota a lo ancho, como en el original); un golpe sirve si la pelota entra al alcance hasta `SWING_WINDOW` después. `stepRally` define el punto (red, afuera, pique propio, doble pique). La cancha lo anota con `point` (con `n` del partido y `k`, el número de punto, para no contarlo dos veces). Tanteo de tenis (`addPoint`, `pointText`) y gana el primero a `GAMES_TO_WIN` juegos.
+- **Falta probar con celulares de verdad**: el navegador de pruebas no tiene sensores, así que los umbrales (`SWING_MIN`, `SWING_MAX`, `PEAK_MS`, el divisor del giro) son a ojo. Si un golpe no cuenta o cuenta de más, se tocan ahí.
+- `window.__tenis` (`rally`, `pending`) y `data-tenis-screen`, `data-tenis-canvas`, `data-score`, `data-qr`, `data-code`, `data-slot`, `data-start`, `data-tenis-control`, `data-arm`, `data-swing`, `data-last` existen para manejar el juego desde un navegador automatizado. No los saques.
+- **Todavía no tiene**: puntero con el celular para los menús, efecto según el giro, voleas, dobles, ni partidos entre dos compus.
 
 ## Pista Loca
 

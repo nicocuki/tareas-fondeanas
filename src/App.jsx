@@ -28,11 +28,13 @@ import AbismoApp from './abismo/AbismoApp.jsx';
 import Royale3DApp from './royale3d/Royale3DApp.jsx';
 import FpsApp from './fps/FpsApp.jsx';
 import PistaApp from './pista/PistaApp.jsx';
+import TenisApp from './tenis/TenisApp.jsx';
 
 const SCREENS = {
   royale3d: Royale3DApp,
   fps: FpsApp,
   pista: PistaApp,
+  tenis: TenisApp,
   abismo: AbismoApp,
   bomber: BomberApp,
   generala: GeneralaApp,

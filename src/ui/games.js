@@ -3,6 +3,29 @@
 // enrutador de App.jsx y en ROOTS (worker/rules.js), y ponele categoría en `CATEGORY_OF`. Los 3D llevan `section: '3d'` y salen en la vidriera de «Tareas 3D» de la portada. Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
 export const GAMES = [
   {
+    id: 'tenis',
+    image: '/juegos/tenis.jpg',
+    section: '3d', // va en la vidriera «Tareas 3D» de la portada
+    title: 'Tenis Movido',
+    emoji: '🎾',
+    color: 'var(--game-tenis)',
+    onColor: '#ffffff',
+    tagline: 'El celular es la raqueta: la compu muestra la cancha',
+    description: 'Un tenis donde la compu (o la tele) muestra la cancha y cada celular es la raqueta: lo agarrás, hacés el gesto del golpe y la pelota sale para el otro lado, más fuerte cuanto más rápido movés el brazo. De 1 a 2 celulares; con uno solo, del otro lado juega la máquina. Es un prototipo.',
+    players: '1 a 2',
+    min: 1,
+    max: 2,
+    duration: '5–10 min',
+    input: 'Compu + celular',
+    badge: 'Prototipo',
+    howTo: [
+      'En la compu, abrí la cancha: aparece un QR y un código de 4 letras.',
+      'En el celular, escaneá el QR con la cámara (o entrá a la página y escribí el código) y tocá «activar el control». En iPhone, el navegador pide permiso para usar los sensores.',
+      'Agarrá el celular como una raqueta y hacé el gesto de pegarle cuando la pelota te llega: tu jugador va solo hacia la pelota. Cuanto más rápido el golpe, más fuerte sale. Si le pegaste, el celular vibra.',
+      'Se cuenta como en el tenis (15, 30, 40, juego) y gana el primero a 3 juegos. Si el celular no tiene sensores, está el botón GOLPEAR.',
+    ],
+  },
+  {
     id: 'pista',
     image: '/juegos/pista.jpg',
     section: '3d', // va en la vidriera «Tareas 3D» de la portada
