@@ -130,7 +130,7 @@ test('tenis: la pelota y los jugadores viajan a la otra compu y llegan iguales',
   assert.equal(copy.serving, false);
 });
 
-test('tenis: el saque arranca con la pelota en la mano y cualquier golpe del celular entra', async () => {
+test('tenis: el saque arranca con la pelota en la mano y el golpe del celular depende de cómo le pegaste', async () => {
   const S = await import('../src/tenis/sim.js');
   const r = S.newRally(0, 2, true);
   for (let i = 0; i < 240; i++) S.stepRally(r);
@@ -141,10 +141,24 @@ test('tenis: el saque arranca con la pelota en la mano y cualquier golpe del cel
   assert.ok(up > 2, 'sube');
   for (let i = 0; i < 240; i++) S.stepRally(r);
   assert.ok(r.held, 'si no le pega, la vuelve a agarrar');
-  for (const f of [0, 0.5, 1]) for (const timing of [-1, 0, 1]) {
-    const q = S.newRally(1); q.serving = false; q.lastTeam = 1; q.ball.y = 1.1; q.ball.z = q.players[0].z;
-    const shot = S.swingShot(f, timing); S.hitBall(q, 0, shot.power, shot.aim);
-    let out = null; for (let i = 0; i < 1200 && !out && q.bounces === 0; i++) out = S.stepRally(q);
-    assert.equal(out, null, `fuerza ${f}, momento ${timing}: entra`);
-  }
+  // Sin ayuda, pero tampoco imposible: cuántas entran según cómo le pegaste (con azar fijo).
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const rate = (f, dt) => {
+    let inside = 0;
+    for (let n = 0; n < 200; n++) {
+      const q = S.newRally(1); q.serving = false; q.lastTeam = 1; q.ball.y = 1.1; q.ball.z = q.players[0].z;
+      S.hitSwing(q, 0, f, dt, rnd);
+      let out = null; for (let i = 0; i < 1200 && !out && q.bounces === 0; i++) out = S.stepRally(q);
+      if (!out) inside++;
+    }
+    return inside / 200;
+  };
+  assert.ok(rate(0.5, 0) > 0.9, 'justo y con ganas: entra casi siempre');
+  assert.ok(rate(0.5, 0.25) < 0.5, 'muy temprano: casi siempre se va ancha');
+  assert.ok(rate(0.5, -0.25) < 0.5, 'muy tarde: casi siempre a la red o afuera');
+  assert.ok(rate(1, 0.18) < rate(1, 0), 'fuerte y a destiempo entra menos que fuerte y justo');
+  assert.ok(rate(0.05, 0) < 0.5, 'un golpecito flojo no sirve');
+  assert.equal(S.swingQuality(0.5, 0.5), 'pasó');
+  assert.equal(S.swingQuality(0.05, 0), 'flojo');
+  assert.equal(S.swingQuality(0.5, 0.05), 'justo');
 });

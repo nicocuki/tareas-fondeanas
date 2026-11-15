@@ -48,35 +48,76 @@ export function newRally(server, count = 2, held = false) {
 
 // Le pega el jugador `who` con `power` (0 a 1) y `aim` (-1 a 1: para dónde va a lo ancho). Calcula la velocidad para que pique en la otra mitad.
 export function hitBall(r, who, power, aim) {
+  const hw = halfWidth(r);
+  hitTarget(r, who, Math.max(-hw + 0.6, Math.min(hw - 0.6, aim * (hw - 1))), 5 + power * 5.5, BALL_SPEED + power * BALL_SPEED_PLUS, 0.25);
+}
+// Manda la pelota a picar en (tx, depth del lado de enfrente) a `speed`, pasando la red con `clear` metros de margen
+// (con `clear` negativo, la parábola pasa por debajo de la cinta: va a la red).
+function hitTarget(r, who, tx, depth, speed, clear) {
   const b = r.ball;
   const team = teamOf(who);
-  const dir = team === 0 ? -1 : 1;
-  const hw = halfWidth(r);
-  const depth = 5 + power * 5.5;                        // cuanto más fuerte, más al fondo
-  const tx = Math.max(-hw + 0.6, Math.min(hw - 0.6, aim * (hw - 1)));
-  const tz = dir * depth;
+  const tz = (team === 0 ? -1 : 1) * depth;
   const dx = tx - b.x, dz = tz - b.z, d = Math.hypot(dx, dz);
-  const speed = BALL_SPEED + power * BALL_SPEED_PLUS;
   const T = d / speed;
   b.vx = dx / T; b.vz = dz / T;
   b.vy = (BALL_R - b.y + 0.5 * GRAVITY * T * T) / T;
-  // Que pase la red: si la parábola queda baja en z = 0, se la levanta un poco.
+  // Que pase la red (o no) con el margen pedido.
   const tNet = Math.abs(b.z / b.vz);
   const yNet = b.y + b.vy * tNet - 0.5 * GRAVITY * tNet * tNet;
-  if (yNet < NET_H + 0.25) b.vy += (NET_H + 0.25 - yNet) / tNet;
+  if (clear >= 0 ? yNet < NET_H + clear : yNet > NET_H + clear) b.vy += (NET_H + clear - yNet) / tNet;
   r.last = who; r.lastTeam = team; r.serving = false; r.bounces = 0; r.bounceSide = -1; r.hits += 1;
 }
 
 // ─── El golpe del celular ────────────────────────────────────────────────────
-// Lo importante es hacer el gesto a tiempo: cualquier golpe de tenis le pega bien y la pelota entra. La fuerza del brazo
-// la hace ir más rápido y más al fondo, y el momento elige para dónde va: temprano, cruzada; tarde, paralela.
-export const TOSS_VY = 5.2; // la tirada del saque: sube ~1,4 m
+// Ni imposible ni regalado: hay que pegarle EN EL MOMENTO y con un golpe de verdad.
+//   · Justo (la pelota a la altura del jugador, ±SWEET_S): entra, y el momento elige para dónde (antes cruzada, después paralela).
+//   · Temprano: se abre y, cuanto más temprano, más se va ancha (afuera). Muy temprano: le pasás por al lado (no le pegás).
+//   · Tarde: la tirás paralela y baja: cuanto más tarde, más fácil que vaya a la red.
+//   · Fuerte y a destiempo: además se va larga. Un golpecito flojo (un movimiento cualquiera) queda corto y suele ir a la red.
+export const TOSS_VY = 5.2;     // la tirada del saque: sube ~1,4 m
+export const SWING_LAG = 0.17;  // lo que tarda un golpe en llegar a la compu (la ventana del pico + la red), en segundos
+export const BUTTON_LAG = 0.06; // con el botón no hay ventana del pico: solo la red
+export const SWEET_S = 0.08;    // margen del golpe justo, en segundos antes o después de que la pelota pase por el jugador
+export const EARLY_S = 0.3;     // más temprano que esto, le pasás por al lado
+export const WEAK = 0.15;       // fuerza por debajo de esto: no es un golpe, es un movimiento
 export function tossBall(r) {
   if (!r.serving || !r.held) return false;
   r.held = false; r.ball.vy = TOSS_VY;
   return true;
 }
-export const swingShot = (f, timing) => ({ power: 0.3 + Math.max(0, Math.min(1, f)) * 0.6, aim: Math.max(-0.9, Math.min(0.9, timing * 0.9)) });
+// Cuándo llegó el golpe respecto del momento justo, en segundos (+ temprano, − tarde), contando el retraso del celular.
+// En el saque, el momento justo es cuando la pelota llega arriba y empieza a bajar. null si la pelota no viene para él.
+export function swingTiming(r, who, lag = SWING_LAG) {
+  const b = r.ball, p = r.players[who];
+  if (!p || r.over) return null;
+  if (r.serving) return r.server === who && !r.held ? (b.vy + GRAVITY * lag + 1) / GRAVITY : null;
+  const team = teamOf(who);
+  const coming = team === 0 ? b.vz > 0 : b.vz < 0;
+  if (!coming || r.lastTeam === team) return null;
+  const ahead = team === 0 ? p.z - b.z : b.z - p.z; // metros que le faltan para llegar al jugador
+  return ahead / Math.abs(b.vz) - lag;
+}
+// Cómo salió el golpe: 'justo', 'temprano', 'tarde', 'flojo' o 'pasó' (muy temprano: no le pegó).
+export function swingQuality(f, dt) {
+  if (dt > EARLY_S) return 'pasó';
+  if (f < WEAK) return 'flojo';
+  return Math.abs(dt) <= SWEET_S ? 'justo' : dt > 0 ? 'temprano' : 'tarde';
+}
+// El golpe del celular: f es la fuerza (0 a 1), dt lo que da swingTiming y rnd un azar de 0 a 1 (un poco de error siempre hay).
+export function hitSwing(r, who, f, dt, rnd = Math.random) {
+  const hw = halfWidth(r);
+  const power = Math.max(0, Math.min(1, f));
+  const t = Math.max(-1, Math.min(1, dt / EARLY_S));
+  const miss = Math.max(0, Math.abs(dt) - SWEET_S) / (EARLY_S - SWEET_S); // 0 justo … 1 muy a destiempo
+  const side = r.serving ? 0 : t;
+  let tx = side * 0.9 * (hw - 1) + (dt > 0 ? Math.sign(side || 1) * miss * (2 + rnd() * 8) : 0) + (rnd() - 0.5) * 1.2;
+  let depth = 5 + power * 5.5 + (rnd() - 0.5) * 1.5 + (power > 0.75 ? miss * 3.5 : 0);
+  let clear = 0.3 - (dt < 0 ? miss * (0.4 + rnd() * 0.9) : 0);
+  if (power < WEAK) { depth = 3 + rnd() * 2; clear = -0.3 + power * 3 + rnd() * 0.2; tx *= 0.5; }
+  if (r.serving) tx = (rnd() - 0.5) * 2 + (dt > 0 ? 1 : -1) * miss * 4;
+  hitTarget(r, who, tx, depth, BALL_SPEED + power * BALL_SPEED_PLUS, clear);
+  return swingQuality(power, dt);
+}
 
 // Con el golpe del celular se puede pegar antes o después del punto justo: la zona es más larga y el «timing» sale de dónde estaba la pelota.
 export const REACH_Z_WIDE = 2.4;
@@ -87,13 +128,6 @@ export function canReachWide(r, who) {
   const team = teamOf(who);
   const coming = team === 0 ? b.vz > 0 : b.vz < 0;
   return coming && r.lastTeam !== team && Math.abs(b.z - p.z) < REACH_Z_WIDE && Math.abs(b.x - p.x) < REACH_X + 0.3 && b.y < 2.9;
-}
-// 1 = muy temprano (la pelota todavía adelante del jugador), 0 = justo, -1 = tarde (ya lo pasó). En el saque, siempre justo.
-export function timingOf(r, who) {
-  if (r.serving) return 0;
-  const p = r.players[who], b = r.ball;
-  const ahead = (teamOf(who) === 0 ? p.z - b.z : b.z - p.z);
-  return Math.max(-1, Math.min(1, ahead / REACH_Z_WIDE));
 }
 
 // ¿Puede pegarle el jugador `who` ahora? (la pelota viene hacia su lado y está a su alcance)

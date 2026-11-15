@@ -14,6 +14,8 @@ import { LIFT_MIN, SWING_COOLDOWN, SWING_MIN, TWIST_MIN, swingPower } from './si
 const KEEP_MS = 2500;     // cuánto tiempo sigue viajando un gesto en los mensajes
 const PEAK_MS = 120;      // ventana para medir el pico del golpe
 const PING_MS = 1000;     // aunque no golpee, manda señales de vida
+// Cómo te salió el golpe (lo dice la compu).
+const QUALITY = { justo: '¡Justo! 🎯', temprano: 'Temprano: se te abrió', tarde: 'Tarde: la pelota ya pasaba', flojo: 'Flojo: pegale con ganas', 'pasó': 'Muy temprano: le pasaste por al lado', arriba: '¡Arriba! Pegale cuando baja' };
 
 export default function TenisControl({ room, me, code, onLeave }) {
   const [armed, setArmed] = useState(false);
@@ -35,8 +37,8 @@ export default function TenisControl({ room, me, code, onLeave }) {
       if (typeof m.hold === 'string') { const h = m.hold === me.id; if (h !== s.holding) { s.holding = h; setHolding(h); } }
       if (m.to !== me.id || m.hit == null || s.lastHit === m.hit) return;
       s.lastHit = m.hit;
-      navigator.vibrate?.([40, 30, 80]);
-      setLast((l) => (l ? { ...l, hit: true } : l));
+      if (m.ok) navigator.vibrate?.([40, 30, 80]);
+      setLast((l) => ({ ...(l || { f: 0 }), hit: m.ok !== false && m.q !== 'arriba', q: m.q || '' }));
     };
     const mesh = createMesh({ signaling: chan.signaling, myId: me.id, onMessage: onMsg });
     s.mesh = mesh; s.chan = chan;
@@ -49,16 +51,17 @@ export default function TenisControl({ room, me, code, onLeave }) {
   function send() {
     const now = Date.now();
     s.swings = s.swings.filter((w) => now - w.t < KEEP_MS);
-    const msg = { t: now, sw: s.swings.map(({ k, f }) => ({ k, f })) };
+    const msg = { t: now, sw: s.swings.map(({ k, f, b }) => (b ? { k, f, b } : { k, f })) };
     s.mesh?.broadcast(msg);
     if (!s.mesh || !s.mesh.isOpen(room.hostId)) s.chan?.publish(me.id, JSON.stringify(msg)).catch(() => {});
   }
 
-  function swing(f) {
+  // `button`: vino del botón (sin la ventana del pico del sensor, llega antes).
+  function swing(f, button = false) {
     const now = Date.now();
     if (now < s.coolUntil) return;
     s.coolUntil = now + SWING_COOLDOWN * 1000;
-    const w = { k: ++s.k, f: Math.round(f * 100) / 100, t: now };
+    const w = { k: ++s.k, f: Math.round(f * 100) / 100, t: now, b: button ? 1 : 0 };
     s.swings.push(w);
     navigator.vibrate?.(15);
     setLast({ f: w.f, hit: false, toss: s.holding });
@@ -126,10 +129,10 @@ export default function TenisControl({ room, me, code, onLeave }) {
           {playing && holding && <p className="tn-serve" data-serve>🎾 ¡Sacás vos! Levantá el celular para tirar la pelota y pegale cuando baja.</p>}
           <div className={`tn-meter${last?.hit ? ' is-hit' : ''}`} data-last={last ? last.f : ''}>
             <i style={{ width: `${(last?.f || 0) * 100}%` }} />
-            <span>{last ? (last.hit ? '¡Le pegaste!' : last.toss ? '¡Arriba!' : `Golpe ${Math.round(last.f * 100)} %`) : 'Hacé el gesto de pegarle a la pelota'}</span>
+            <span data-quality={last?.q || ''}>{last ? (QUALITY[last.q] || (last.toss ? '¡Arriba!' : `Golpe ${Math.round(last.f * 100)} %`)) : 'Hacé el gesto de pegarle a la pelota'}</span>
           </div>
-          <button type="button" className="tn-swing" onClick={() => swing(0.5 + Math.random() * 0.2)} data-swing>{playing && holding ? 'TIRAR LA PELOTA' : 'GOLPEAR'}</button>
-          <p className="tn-small">{noSensor ? 'Este aparato no manda movimiento: usá el botón.' : 'Agarrá el celular como una raqueta y hacé el golpe de tenis cuando la pelota te llega: antes la cruzás, más tarde la tirás paralela. Más fuerte, más rápida.'}</p>
+          <button type="button" className="tn-swing" onClick={() => swing(0.5 + Math.random() * 0.2, true)} data-swing>{playing && holding ? 'TIRAR LA PELOTA' : 'GOLPEAR'}</button>
+          <p className="tn-small">{noSensor ? 'Este aparato no manda movimiento: usá el botón.' : 'Agarrá el celular como una raqueta y hacé el golpe de tenis justo cuando la pelota llega a tu jugador. Si te adelantás se te abre, si llegás tarde va a la red, y un golpecito flojo queda corto.'}</p>
         </>
       )}
       {error && <p className="tn-error" role="alert">{error}</p>}

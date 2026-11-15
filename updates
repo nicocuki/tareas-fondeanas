@@ -1131,8 +1131,16 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.64.0 = Tenis Movido: control más simple, con saque de verdad
+1.64.0 = Tenis Movido: control más simple, con saque de verdad
 - Al sacar tenés la pelota en la mano: levantás el celular y la tirás para arriba, y le pegás cuando baja. Si no le pegás, la volvés a agarrar.
 - Cualquier golpe de tenis le pega bien y la pelota entra. Pegarle más fuerte la hace más rápida, y el momento elige para dónde va: antes la cruzás, más tarde la tirás paralela.
 - Se detecta mejor el golpe: cuenta también el giro de la muñeca, no solo el empujón.
 - Ya no hace falta calibrar el celular antes de jugar.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.65.0 = Tenis Movido: hay que pegarle en el momento justo
+- Ya no alcanza con mover el celular cuando llega la pelota: hay que pegarle justo cuando pasa por tu jugador y con un golpe de verdad.
+- Si te adelantás, la pelota se abre y se puede ir afuera; si te adelantás mucho, le pasás por al lado. Si llegás tarde, baja y se puede ir a la red. Un golpecito flojo queda corto. Pegar fuerte a destiempo la manda larga.
+- En el saque, pegale cuando la pelota llega arriba y empieza a bajar.
+- El celular te dice cómo te salió cada golpe: «¡Justo!», «Temprano», «Tarde», «Flojo».

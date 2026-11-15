@@ -10,7 +10,7 @@ import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { COLORS, TEAM_COLORS, findScreen, playerAt, pointText, slotCount, startProblem, teamOf } from './game.js';
-import { STEP, SWING_WINDOW, canReach, canReachWide, hitBall, swingShot, timingOf, tossBall, newRally, packRally, stepRally, unpackRally } from './sim.js';
+import { STEP, SWING_WINDOW, canReach, canReachWide, hitBall, hitSwing, swingQuality, swingTiming, EARLY_S, SWING_LAG, BUTTON_LAG, tossBall, newRally, packRally, stepRally, unpackRally } from './sim.js';
 
 const POINT_PAUSE = 1.6;   // segundos entre que se define el punto y el saque siguiente
 const SWING_ANIM = 0.3;
@@ -83,7 +83,13 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
         const key = `${id}:${sw.k}`;
         if (sim.seen.has(key)) continue;
         sim.seen.add(key);
-        sim.pending[pl.slot] = { at: performance.now() / 1000, f: sw.f, a: 0, real: true, k: sw.k, id };
+        // Cuándo fue el golpe respecto de la pelota se mide al llegar (descontando el retraso del celular).
+        const rally = sim.rally;
+        const held = rally && rally.serving && rally.held && rally.server === pl.slot;
+        const dt = rally && !held ? swingTiming(rally, pl.slot, sw.b ? BUTTON_LAG : SWING_LAG) : 0;
+        if (!held && dt == null) continue; // la pelota no viene para él: es un movimiento cualquiera
+        if (!held && (dt > EARLY_S || dt < -EARLY_S)) { ack(id, sw.k, dt > 0 ? 'pasó' : 'tarde', false); continue; }
+        sim.pending[pl.slot] = { at: performance.now() / 1000, f: sw.f, a: 0, dt, real: true, k: sw.k, id };
         sim.swingAt[pl.slot] = performance.now() / 1000;
       }
     };
@@ -98,8 +104,9 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
     const r = sim.rally, room = roomRef.current;
     return r && r.serving && r.held && room.phase === 'playing' ? playerAt(room, r.server)?.id || '' : '';
   }
-  function ack(id, k) {
-    const msg = { hit: k, to: id, t: Date.now(), hold: holdId() };
+  // Le avisa al celular cómo le salió (q) y si le pegó (ok: vibra).
+  function ack(id, k, q = '', ok = true) {
+    const msg = { hit: k, to: id, q, ok, t: Date.now(), hold: holdId() };
     sim.mesh?.broadcast(msg);
     sim.chan?.publish(me.id, JSON.stringify(msg)).catch(() => {});
   }
@@ -145,14 +152,16 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
               const sw = sim.pending[i];
               // Con la pelota en la mano, el primer gesto (levantar el celular) la tira para arriba.
               if (sw && rally.serving && rally.held && rally.server === i) {
-                tossBall(rally); sim.pending[i] = null;
-              } else if (sw && t - sw.at < SWING_WINDOW && (sw.real ? canReachWide(rally, i) : canReach(rally, i))) {
-                // El del celular siempre entra: la fuerza la hace ir más rápido y el momento (temprano o tarde) elige para dónde.
-                if (sw.real) { const shot = swingShot(sw.f, timingOf(rally, i)); hitBall(rally, i, shot.power, shot.aim); }
-                else hitBall(rally, i, sw.f, sw.a);
+                tossBall(rally); sim.pending[i] = null; if (sw.id) ack(sw.id, sw.k, 'arriba', false);
+              } else if (sw && t - sw.at < (sw.real ? EARLY_S + 0.1 : SWING_WINDOW) && (sw.real ? canReachWide(rally, i) : canReach(rally, i))) {
+                // El del celular depende de cómo le pegaste: justo entra; temprano se abre, tarde va a la red, flojo queda corto.
+                const q = sw.real ? hitSwing(rally, i, sw.f, sw.dt) : (hitBall(rally, i, sw.f, sw.a), '');
                 sim.pending[i] = null;
-                if (sw.id) ack(sw.id, sw.k);
-              } else if (sw && t - sw.at >= SWING_WINDOW) sim.pending[i] = null;
+                if (sw.id) ack(sw.id, sw.k, q);
+              } else if (sw && t - sw.at >= (sw.real ? EARLY_S + 0.1 : SWING_WINDOW)) {
+                if (sw.id) ack(sw.id, sw.k, swingQuality(sw.f, sw.dt) === 'temprano' ? 'pasó' : 'tarde', false);
+                sim.pending[i] = null;
+              }
             } else if (canReach(rally, i)) {
               // La máquina: le pega con un poco de demora y a veces la erra.
               if (!sim.cpuAt[i]) sim.cpuAt[i] = t + 0.08 + Math.random() * 0.15;
