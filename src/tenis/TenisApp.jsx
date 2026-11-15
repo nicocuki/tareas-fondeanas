@@ -153,5 +153,5 @@ export default function TenisApp({ onBackToMenu }) {
       </div></div>
     );
   }
-  return <TenisControl room={room} me={me} code={code} onLeave={handleLeave} />;
+  return <TenisControl room={room} me={me} code={code} onLeave={handleLeave} onDispatch={dispatch} />;
 }

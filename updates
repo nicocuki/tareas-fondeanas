@@ -1115,9 +1115,16 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.62.0 = Tenis Movido: modo local y online, 1 contra 1 y 2 contra 2
+1.62.0 = Tenis Movido: modo local y online, 1 contra 1 y 2 contra 2
 - Modo local: una sola compu con la pantalla partida en dos, cada mitad vista desde atrás de un equipo.
 - Modo online: cada equipo juega en su compu. El anfitrión abre la cancha, elige «Online» y la otra compu entra con el mismo código («Unirme con esta compu»). Cada compu muestra su propio QR para conectar los celulares de su equipo.
 - 1 contra 1 o 2 contra 2: en el dobles cada equipo tiene uno al fondo y otro en la red, y se juega con los pasillos. Los lugares sin celular los juega la máquina.
 - La pelota va más lenta.
 - Nueva barra del tanteo con los nombres de cada equipo, el cartel «Saca» arriba del que saca y el nombre debajo de cada jugador.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.63.0 = Tenis Movido: el celular es una raqueta de verdad
+- Antes de jugar, cada uno calibra su celular: lo pone derecho apuntando a la compu y se queda quieto un segundo. Cuando sale el verde, ya puede jugar. El partido no arranca hasta que estén todos calibrados.
+- Ya no hay ayuda: la pelota sale para donde apuntaba el celular y con la fuerza del brazo. Si le pegás demasiado fuerte se va larga, si pegás torcido se va ancha y si llegás temprano o tarde la tirás para un costado.
+- «Recalibrar» en el celular, por si te moviste de lugar.

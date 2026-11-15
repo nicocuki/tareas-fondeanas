@@ -27,6 +27,10 @@ test('tenis: la compu es la cancha y los celulares toman los dos lados', () => {
   r = applyAction(r, { type: 'join', playerId: 'b', name: 'Beto' }, ctx);
   assert.deepEqual(r.players.map((p) => p.slot), [0, 1]);
   assert.equal(applyAction(r, { type: 'join', playerId: 'c', name: 'Caro' }, ctx), null, 'son dos lados');
+  assert.equal(applyAction(r, { type: 'start', playerId: 'pc' }, ctx), null, 'faltan calibrar los celulares');
+  r = applyAction(r, { type: 'calibrate', playerId: 'a' }, ctx);
+  r = applyAction(r, { type: 'calibrate', playerId: 'b' }, ctx);
+  assert.equal(applyAction(r, { type: 'calibrate', playerId: 'b' }, ctx), null, 'ya estaba calibrado');
   assert.equal(applyAction(r, { type: 'start', playerId: 'a' }, ctx), null, 'arranca la cancha, no un celular');
   r = applyAction(r, { type: 'start', playerId: 'pc' }, ctx);
   assert.equal(r.phase, 'playing');
@@ -94,6 +98,7 @@ test('tenis: en el 2v2 hay cuatro lugares, dos por equipo, y el QR de cada compu
   r = applyAction(r, { type: 'screenJoin', playerId: 'pc2', name: 'Compu de Beto' }, ctx);
   assert.equal(r.screens[1].team, 1);
   assert.equal(applyAction(r, { type: 'screenJoin', playerId: 'pc3', name: 'Otra' }, ctx), null, 'son dos compus');
+  for (const p of r.players) r = applyAction(r, { type: 'calibrate', playerId: p.id }, ctx);
   assert.equal(applyAction(r, { type: 'start', playerId: 'pc2' }, ctx), null, 'arranca el anfitrión');
   r = applyAction(r, { type: 'start', playerId: 'pc' }, ctx);
   assert.equal(r.phase, 'playing');
@@ -127,4 +132,19 @@ test('tenis: la pelota y los jugadores viajan a la otra compu y llegan iguales',
   const copy = unpackRally(packRally(r), null);
   assert.ok(Math.abs(copy.ball.z - r.ball.z) < 0.01 && copy.players.length === 4);
   assert.equal(copy.serving, false);
+});
+
+test('tenis: el golpe del celular no tiene ayuda: plano y medio entra, a fondo se va largo, torcido se va ancho', async () => {
+  const S = await import('../src/tenis/sim.js');
+  const play = (opts) => {
+    const r = S.newRally(0); r.serving = false; r.ball.y = 1.1; r.ball.vy = 0; r.ball.z = r.players[0].z;
+    S.hitSwing(r, 0, opts);
+    for (let i = 0; i < 600; i++) { const o = S.stepRally(r); if (o) return o; if (r.bounces === 1) return { in: true, x: r.ball.x, z: r.ball.z }; }
+    return null;
+  };
+  assert.ok(play({ power: 0.5 }).in, 'golpe medio y derecho: adentro');
+  assert.equal(play({ power: 1 }).in, undefined, 'a fondo y plano: se va');
+  assert.equal(play({ power: 0.5, yaw: 0.9 }).in, undefined, 'muy torcido: se va ancho');
+  const late = S.newRally(0); late.serving = false; late.ball.z = late.players[0].z + 1.2;
+  assert.ok(S.timingOf(late, 0) < -0.4, 'la pelota ya pasó: tarde');
 });

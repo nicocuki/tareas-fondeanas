@@ -10,7 +10,7 @@ import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { COLORS, TEAM_COLORS, findScreen, playerAt, pointText, slotCount, startProblem, teamOf } from './game.js';
-import { STEP, SWING_WINDOW, canReach, hitBall, newRally, packRally, stepRally, unpackRally } from './sim.js';
+import { STEP, SWING_WINDOW, canReach, canReachWide, hitBall, hitSwing, timingOf, newRally, packRally, stepRally, unpackRally } from './sim.js';
 
 const POINT_PAUSE = 1.6;   // segundos entre que se define el punto y el saque siguiente
 const SWING_ANIM = 0.3;
@@ -83,7 +83,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
         const key = `${id}:${sw.k}`;
         if (sim.seen.has(key)) continue;
         sim.seen.add(key);
-        sim.pending[pl.slot] = { at: performance.now() / 1000, f: sw.f, a: sw.a, k: sw.k, id };
+        sim.pending[pl.slot] = { at: performance.now() / 1000, f: sw.f, a: sw.a, l: sw.l || 0, s: sw.s || 1, real: true, k: sw.k, id };
         sim.swingAt[pl.slot] = performance.now() / 1000;
       }
     };
@@ -138,8 +138,10 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
           for (let i = 0; i < n; i++) {
             if (playerAt(r, i)) {
               const sw = sim.pending[i];
-              if (sw && t - sw.at < SWING_WINDOW && canReach(rally, i)) {
-                hitBall(rally, i, sw.f, sw.a);
+              if (sw && t - sw.at < SWING_WINDOW && (sw.real ? canReachWide(rally, i) : canReach(rally, i))) {
+                // El del celular es un golpe de verdad: sale para donde apuntó, con la fuerza del brazo y según si llegó temprano o tarde.
+                if (sw.real) hitSwing(rally, i, { power: sw.f, yaw: sw.a, loft: sw.l, side: sw.s, timing: timingOf(rally, i) });
+                else hitBall(rally, i, sw.f, sw.a);
                 sim.pending[i] = null;
                 if (sw.id) ack(sw.id, sw.k);
               } else if (sw && t - sw.at >= SWING_WINDOW) sim.pending[i] = null;
@@ -226,7 +228,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
               {online && host && <p className="tn-small">La compu del otro equipo entra a Tenis Movido, toca «Unirme con esta compu» y escribe este mismo código. {(room.screens || []).length > 1 ? <b>✅ Ya está conectada.</b> : <b>Todavía no entró.</b>}</p>}
               <ul className="tn-slots">
                 {Array.from({ length: count }, (_, s) => (online && teamOf(s) !== myTeam && !host ? null : (
-                  <li key={s} style={{ borderColor: COLORS[s] }} data-slot={s}>{TEAM_NAME[teamOf(s)]} {count > 2 ? SLOT_NAME[s] : ''}: {playerAt(room, s) ? <b>📱 {playerAt(room, s).name}</b> : <em>juega la máquina</em>}</li>
+                  <li key={s} style={{ borderColor: COLORS[s] }} data-slot={s}>{TEAM_NAME[teamOf(s)]} {count > 2 ? SLOT_NAME[s] : ''}: {playerAt(room, s) ? <b>📱 {playerAt(room, s).name} {playerAt(room, s).cal ? '✅' : '⏳ calibrando'}</b> : <em>juega la máquina</em>}</li>
                 )))}
               </ul>
             </div>

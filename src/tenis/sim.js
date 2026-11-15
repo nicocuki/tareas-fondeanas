@@ -65,6 +65,49 @@ export function hitBall(r, who, power, aim) {
   r.last = who; r.lastTeam = team; r.serving = false; r.bounces = 0; r.bounceSide = -1; r.hits += 1;
 }
 
+// ─── El golpe de verdad (el del celular) ─────────────────────────────────────
+// Sin ayuda: la pelota sale para donde apuntaba la raqueta y con la fuerza del brazo. Si le pegás tarde, torcido o
+// demasiado fuerte, se va afuera o a la red, como en una cancha de verdad.
+//   power: 0 a 1 (lo rápido del brazo). yaw: para dónde apuntaba la raqueta (radianes, + a la derecha de quien pega).
+//   loft: cuánto estaba inclinada la cara de la raqueta hacia arriba (radianes, + abre y la levanta).
+//   timing: -1 (tarde) a 1 (temprano); side: 1 de drive, -1 de revés. Temprano tira la pelota hacia el lado del golpe y tarde, al otro.
+export const SWING_SPEED = 11;      // m/s con fuerza 0
+export const SWING_SPEED_PLUS = 14; // se suma con fuerza 1: a fondo y plano, se va larga
+export const SWING_ELEV = 0.2;      // ángulo de salida con la raqueta derecha
+export const MAX_YAW = 0.9;
+export function hitSwing(r, who, { power = 0.5, yaw = 0, loft = 0, timing = 0, side = 1 } = {}) {
+  const b = r.ball;
+  const team = teamOf(who);
+  const dirZ = team === 0 ? -1 : 1;
+  const totalYaw = Math.max(-MAX_YAW - 0.6, Math.min(MAX_YAW + 0.6, Math.max(-MAX_YAW, Math.min(MAX_YAW, yaw)) + timing * 0.55 * side));
+  const elev = Math.max(-0.15, Math.min(0.75, SWING_ELEV + Math.max(-0.5, Math.min(0.5, loft)) * 0.6));
+  const speed = SWING_SPEED + Math.max(0, Math.min(1, power)) * SWING_SPEED_PLUS;
+  const h = speed * Math.cos(elev);
+  b.vx = h * Math.sin(totalYaw) * (team === 0 ? 1 : -1);
+  b.vz = h * Math.cos(totalYaw) * dirZ;
+  b.vy = speed * Math.sin(elev);
+  r.last = who; r.lastTeam = team; r.serving = false; r.bounces = 0; r.bounceSide = -1; r.hits += 1;
+  return totalYaw;
+}
+
+// Con el golpe del celular se puede pegar antes o después del punto justo: la zona es más larga y el «timing» sale de dónde estaba la pelota.
+export const REACH_Z_WIDE = 2.4;
+export function canReachWide(r, who) {
+  const b = r.ball, p = r.players[who];
+  if (r.over || !p) return false;
+  if (r.serving) return canReach(r, who);
+  const team = teamOf(who);
+  const coming = team === 0 ? b.vz > 0 : b.vz < 0;
+  return coming && r.lastTeam !== team && Math.abs(b.z - p.z) < REACH_Z_WIDE && Math.abs(b.x - p.x) < REACH_X + 0.3 && b.y < 2.9;
+}
+// 1 = muy temprano (la pelota todavía adelante del jugador), 0 = justo, -1 = tarde (ya lo pasó). En el saque, siempre justo.
+export function timingOf(r, who) {
+  if (r.serving) return 0;
+  const p = r.players[who], b = r.ball;
+  const ahead = (teamOf(who) === 0 ? p.z - b.z : b.z - p.z);
+  return Math.max(-1, Math.min(1, ahead / REACH_Z_WIDE));
+}
+
 // ¿Puede pegarle el jugador `who` ahora? (la pelota viene hacia su lado y está a su alcance)
 export function canReach(r, who) {
   const b = r.ball, p = r.players[who];
