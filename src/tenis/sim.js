@@ -33,14 +33,16 @@ function homeOf(i, count) {
   return isNet(i) ? { x: dir * -1.6, z: dir * NET_Z } : { x: dir * 1.4, z: sideZ(team) };
 }
 
-export function newRally(server, count = 2) {
+// `held`: el que saca es un celular y arranca con la pelota en la mano; la tira para arriba con `tossBall`.
+export function newRally(server, count = 2, held = false) {
   const players = [];
   for (let i = 0; i < count; i++) players.push({ ...homeOf(i, count), team: teamOf(i) });
   const s = players[server];
   const z = s.z - Math.sign(s.z) * 0.6;
   return {
-    ball: { x: s.x + (server === 0 ? 0.6 : -0.6), y: 1.0, z, vx: 0, vy: 4.2, vz: 0 }, // la pelota sube del saque
+    ball: { x: s.x + (server === 0 ? 0.6 : -0.6), y: 1.0, z, vx: 0, vy: held ? 0 : 4.2, vz: 0 }, // la pelota sube del saque
     players, server, last: server, lastTeam: teamOf(server), serving: true, bounces: 0, bounceSide: -1, over: null, hits: 0, tossAt: 0,
+    hand: held, held,
   };
 }
 
@@ -65,37 +67,23 @@ export function hitBall(r, who, power, aim) {
   r.last = who; r.lastTeam = team; r.serving = false; r.bounces = 0; r.bounceSide = -1; r.hits += 1;
 }
 
-// ─── El golpe de verdad (el del celular) ─────────────────────────────────────
-// Sin ayuda: la pelota sale para donde apuntaba la raqueta y con la fuerza del brazo. Si le pegás tarde, torcido o
-// demasiado fuerte, se va afuera o a la red, como en una cancha de verdad.
-//   power: 0 a 1 (lo rápido del brazo). yaw: para dónde apuntaba la raqueta (radianes, + a la derecha de quien pega).
-//   loft: cuánto estaba inclinada la cara de la raqueta hacia arriba (radianes, + abre y la levanta).
-//   timing: -1 (tarde) a 1 (temprano); side: 1 de drive, -1 de revés. Temprano tira la pelota hacia el lado del golpe y tarde, al otro.
-export const SWING_SPEED = 11;      // m/s con fuerza 0
-export const SWING_SPEED_PLUS = 14; // se suma con fuerza 1: a fondo y plano, se va larga
-export const SWING_ELEV = 0.2;      // ángulo de salida con la raqueta derecha
-export const MAX_YAW = 0.9;
-export function hitSwing(r, who, { power = 0.5, yaw = 0, loft = 0, timing = 0, side = 1 } = {}) {
-  const b = r.ball;
-  const team = teamOf(who);
-  const dirZ = team === 0 ? -1 : 1;
-  const totalYaw = Math.max(-MAX_YAW - 0.6, Math.min(MAX_YAW + 0.6, Math.max(-MAX_YAW, Math.min(MAX_YAW, yaw)) + timing * 0.55 * side));
-  const elev = Math.max(-0.15, Math.min(0.75, SWING_ELEV + Math.max(-0.5, Math.min(0.5, loft)) * 0.6));
-  const speed = SWING_SPEED + Math.max(0, Math.min(1, power)) * SWING_SPEED_PLUS;
-  const h = speed * Math.cos(elev);
-  b.vx = h * Math.sin(totalYaw) * (team === 0 ? 1 : -1);
-  b.vz = h * Math.cos(totalYaw) * dirZ;
-  b.vy = speed * Math.sin(elev);
-  r.last = who; r.lastTeam = team; r.serving = false; r.bounces = 0; r.bounceSide = -1; r.hits += 1;
-  return totalYaw;
+// ─── El golpe del celular ────────────────────────────────────────────────────
+// Lo importante es hacer el gesto a tiempo: cualquier golpe de tenis le pega bien y la pelota entra. La fuerza del brazo
+// la hace ir más rápido y más al fondo, y el momento elige para dónde va: temprano, cruzada; tarde, paralela.
+export const TOSS_VY = 5.2; // la tirada del saque: sube ~1,4 m
+export function tossBall(r) {
+  if (!r.serving || !r.held) return false;
+  r.held = false; r.ball.vy = TOSS_VY;
+  return true;
 }
+export const swingShot = (f, timing) => ({ power: 0.3 + Math.max(0, Math.min(1, f)) * 0.6, aim: Math.max(-0.9, Math.min(0.9, timing * 0.9)) });
 
 // Con el golpe del celular se puede pegar antes o después del punto justo: la zona es más larga y el «timing» sale de dónde estaba la pelota.
 export const REACH_Z_WIDE = 2.4;
 export function canReachWide(r, who) {
   const b = r.ball, p = r.players[who];
   if (r.over || !p) return false;
-  if (r.serving) return canReach(r, who);
+  if (r.serving) return r.server === who && !r.held && b.y > 0.8 && b.y < 3.4; // en el saque: con la pelota en el aire
   const team = teamOf(who);
   const coming = team === 0 ? b.vz > 0 : b.vz < 0;
   return coming && r.lastTeam !== team && Math.abs(b.z - p.z) < REACH_Z_WIDE && Math.abs(b.x - p.x) < REACH_X + 0.3 && b.y < 2.9;
@@ -112,7 +100,7 @@ export function timingOf(r, who) {
 export function canReach(r, who) {
   const b = r.ball, p = r.players[who];
   if (r.over || !p) return false;
-  if (r.serving) return r.server === who && b.vy < 1.5 && b.y > 0.6 && b.y < 2.6; // el saque: le pega cuando la pelota baja
+  if (r.serving) return r.server === who && !r.held && b.vy < 1.5 && b.y > 0.6 && b.y < 2.6; // el saque: le pega cuando la pelota baja
   const team = teamOf(who);
   const coming = team === 0 ? b.vz > 0 : b.vz < 0;
   return coming && r.lastTeam !== team && Math.abs(b.z - p.z) < REACH_Z && Math.abs(b.x - p.x) < REACH_X && b.y < 2.8;
@@ -142,8 +130,10 @@ export function stepRally(r, dt = STEP) {
   });
   if (r.serving) {
     // La pelota del saque sube y baja en la mano; si nadie le pega, se vuelve a tirar.
+    if (r.held) return null;
     b.vy -= GRAVITY * dt; b.y += b.vy * dt;
-    if (b.y < 0.9) { b.y = 0.9; b.vy = 4.2; r.tossAt += 1; }
+    // Si nadie le pega, el celular la vuelve a agarrar (y la máquina la vuelve a tirar).
+    if (b.y < 0.9) { b.y = 1.0; b.vy = r.hand ? 0 : 4.2; r.held = r.hand; r.tossAt += 1; }
     return null;
   }
   const pz = b.z;
@@ -188,7 +178,10 @@ export function unpackRally(snap, prev) {
 
 // ─── El golpe que viene del celular ──────────────────────────────────────────
 // La fuerza sale del pico de aceleración (m/s², sin la gravedad) y el lado del giro de la muñeca. Puro, para probarlo.
-export const SWING_MIN = 14;       // menos que esto no es un golpe
-export const SWING_MAX = 45;       // con esto o más, fuerza 1
-export const SWING_COOLDOWN = 0.45; // segundos entre un golpe y el siguiente
-export const swingPower = (peak) => Math.max(0, Math.min(1, (peak - SWING_MIN) / (SWING_MAX - SWING_MIN)));
+export const SWING_MIN = 11;       // aceleración (m/s², sin la gravedad) que ya cuenta como golpe
+export const SWING_MAX = 35;       // con esto o más, fuerza 1
+export const TWIST_MIN = 280;      // giro de la muñeca (°/s) que también cuenta como golpe
+export const TWIST_MAX = 900;
+export const LIFT_MIN = 4;         // con la pelota en la mano, alcanza con levantar el celular
+export const SWING_COOLDOWN = 0.45; // segundos entre un gesto y el siguiente
+export const swingPower = (peak, twist = 0) => Math.max(0, Math.min(1, Math.max((peak - SWING_MIN) / (SWING_MAX - SWING_MIN), (twist - TWIST_MIN) / (TWIST_MAX - TWIST_MIN))));

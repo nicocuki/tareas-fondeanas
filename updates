@@ -1124,7 +1124,15 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.63.0 = Tenis Movido: el celular es una raqueta de verdad
+1.63.0 = Tenis Movido: el celular es una raqueta de verdad
 - Antes de jugar, cada uno calibra su celular: lo pone derecho apuntando a la compu y se queda quieto un segundo. Cuando sale el verde, ya puede jugar. El partido no arranca hasta que estén todos calibrados.
 - Ya no hay ayuda: la pelota sale para donde apuntaba el celular y con la fuerza del brazo. Si le pegás demasiado fuerte se va larga, si pegás torcido se va ancha y si llegás temprano o tarde la tirás para un costado.
 - «Recalibrar» en el celular, por si te moviste de lugar.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.64.0 = Tenis Movido: control más simple, con saque de verdad
+- Al sacar tenés la pelota en la mano: levantás el celular y la tirás para arriba, y le pegás cuando baja. Si no le pegás, la volvés a agarrar.
+- Cualquier golpe de tenis le pega bien y la pelota entra. Pegarle más fuerte la hace más rápida, y el momento elige para dónde va: antes la cruzás, más tarde la tirás paralela.
+- Se detecta mejor el golpe: cuenta también el giro de la muñeca, no solo el empujón.
+- Ya no hace falta calibrar el celular antes de jugar.

@@ -60,8 +60,6 @@ export const matchWinner = (score) => (score.g[0] >= GAMES_TO_WIN ? 0 : score.g[
 export function startProblem(room) {
   if (!room.players.length) return 'Conectá al menos un celular: escaneá el QR.';
   if (room.options.mode === 'online' && (room.screens || []).length < 2) return 'Falta la compu del otro equipo: que entre con el código de la cancha.';
-  const missing = room.players.filter((p) => !p.cal);
-  if (missing.length) return `Faltan calibrar: ${missing.map((p) => p.name).join(', ')}.`;
   return null;
 }
 
@@ -98,16 +96,10 @@ export function applyAction(room, action, ctx = {}) {
       if (!cleanName(action.name)) return null;
       const slot = freeSlot(next, action.team);
       if (slot == null) return null;
-      next.players.push({ id: action.playerId, name: cleanName(action.name), avatar: action.avatar || '🎾', slot, cal: false });
+      next.players.push({ id: action.playerId, name: cleanName(action.name), avatar: action.avatar || '🎾', slot });
       break;
     }
     // La compu del otro equipo, en el online.
-    // El celular quedó derecho y quieto apuntando a la compu: ya sabe dónde está «adelante».
-    case 'calibrate': {
-      if (!me || me.cal) return null;
-      me.cal = true;
-      break;
-    }
     case 'screenJoin': {
       if (screen) { screen.name = cleanName(action.name) || screen.name; break; }
       if (next.options.mode !== 'online' || next.screens.length >= 2 || next.phase === 'playing') return null;

@@ -27,10 +27,6 @@ test('tenis: la compu es la cancha y los celulares toman los dos lados', () => {
   r = applyAction(r, { type: 'join', playerId: 'b', name: 'Beto' }, ctx);
   assert.deepEqual(r.players.map((p) => p.slot), [0, 1]);
   assert.equal(applyAction(r, { type: 'join', playerId: 'c', name: 'Caro' }, ctx), null, 'son dos lados');
-  assert.equal(applyAction(r, { type: 'start', playerId: 'pc' }, ctx), null, 'faltan calibrar los celulares');
-  r = applyAction(r, { type: 'calibrate', playerId: 'a' }, ctx);
-  r = applyAction(r, { type: 'calibrate', playerId: 'b' }, ctx);
-  assert.equal(applyAction(r, { type: 'calibrate', playerId: 'b' }, ctx), null, 'ya estaba calibrado');
   assert.equal(applyAction(r, { type: 'start', playerId: 'a' }, ctx), null, 'arranca la cancha, no un celular');
   r = applyAction(r, { type: 'start', playerId: 'pc' }, ctx);
   assert.equal(r.phase, 'playing');
@@ -46,7 +42,8 @@ test('tenis: la compu es la cancha y los celulares toman los dos lados', () => {
 test('tenis: la fuerza del golpe sale del pico de aceleración', () => {
   assert.equal(swingPower(5), 0);
   assert.equal(swingPower(100), 1);
-  assert.ok(swingPower(30) > 0.3 && swingPower(30) < 0.7);
+  assert.ok(swingPower(23) > 0.3 && swingPower(23) < 0.7);
+  assert.ok(swingPower(5, 600) > 0.3, "un giro de muñeca fuerte también cuenta");
 });
 
 test('tenis: un golpe hace picar la pelota del otro lado, adentro de la cancha', () => {
@@ -98,7 +95,6 @@ test('tenis: en el 2v2 hay cuatro lugares, dos por equipo, y el QR de cada compu
   r = applyAction(r, { type: 'screenJoin', playerId: 'pc2', name: 'Compu de Beto' }, ctx);
   assert.equal(r.screens[1].team, 1);
   assert.equal(applyAction(r, { type: 'screenJoin', playerId: 'pc3', name: 'Otra' }, ctx), null, 'son dos compus');
-  for (const p of r.players) r = applyAction(r, { type: 'calibrate', playerId: p.id }, ctx);
   assert.equal(applyAction(r, { type: 'start', playerId: 'pc2' }, ctx), null, 'arranca el anfitrión');
   r = applyAction(r, { type: 'start', playerId: 'pc' }, ctx);
   assert.equal(r.phase, 'playing');
@@ -134,17 +130,21 @@ test('tenis: la pelota y los jugadores viajan a la otra compu y llegan iguales',
   assert.equal(copy.serving, false);
 });
 
-test('tenis: el golpe del celular no tiene ayuda: plano y medio entra, a fondo se va largo, torcido se va ancho', async () => {
+test('tenis: el saque arranca con la pelota en la mano y cualquier golpe del celular entra', async () => {
   const S = await import('../src/tenis/sim.js');
-  const play = (opts) => {
-    const r = S.newRally(0); r.serving = false; r.ball.y = 1.1; r.ball.vy = 0; r.ball.z = r.players[0].z;
-    S.hitSwing(r, 0, opts);
-    for (let i = 0; i < 600; i++) { const o = S.stepRally(r); if (o) return o; if (r.bounces === 1) return { in: true, x: r.ball.x, z: r.ball.z }; }
-    return null;
-  };
-  assert.ok(play({ power: 0.5 }).in, 'golpe medio y derecho: adentro');
-  assert.equal(play({ power: 1 }).in, undefined, 'a fondo y plano: se va');
-  assert.equal(play({ power: 0.5, yaw: 0.9 }).in, undefined, 'muy torcido: se va ancho');
-  const late = S.newRally(0); late.serving = false; late.ball.z = late.players[0].z + 1.2;
-  assert.ok(S.timingOf(late, 0) < -0.4, 'la pelota ya pasó: tarde');
+  const r = S.newRally(0, 2, true);
+  for (let i = 0; i < 240; i++) S.stepRally(r);
+  assert.ok(r.held && r.serving && Math.abs(r.ball.y - 1) < 1e-9, 'quieta en la mano hasta que la tira');
+  assert.equal(S.canReachWide(r, 0), false, 'con la pelota en la mano no se le pega');
+  assert.ok(S.tossBall(r));
+  let up = 0; for (let i = 0; i < 60; i++) { S.stepRally(r); up = Math.max(up, r.ball.y); }
+  assert.ok(up > 2, 'sube');
+  for (let i = 0; i < 240; i++) S.stepRally(r);
+  assert.ok(r.held, 'si no le pega, la vuelve a agarrar');
+  for (const f of [0, 0.5, 1]) for (const timing of [-1, 0, 1]) {
+    const q = S.newRally(1); q.serving = false; q.lastTeam = 1; q.ball.y = 1.1; q.ball.z = q.players[0].z;
+    const shot = S.swingShot(f, timing); S.hitBall(q, 0, shot.power, shot.aim);
+    let out = null; for (let i = 0; i < 1200 && !out && q.bounces === 0; i++) out = S.stepRally(q);
+    assert.equal(out, null, `fuerza ${f}, momento ${timing}: entra`);
+  }
 });

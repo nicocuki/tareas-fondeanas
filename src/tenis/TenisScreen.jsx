@@ -10,7 +10,7 @@ import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { COLORS, TEAM_COLORS, findScreen, playerAt, pointText, slotCount, startProblem, teamOf } from './game.js';
-import { STEP, SWING_WINDOW, canReach, canReachWide, hitBall, hitSwing, timingOf, newRally, packRally, stepRally, unpackRally } from './sim.js';
+import { STEP, SWING_WINDOW, canReach, canReachWide, hitBall, swingShot, timingOf, tossBall, newRally, packRally, stepRally, unpackRally } from './sim.js';
 
 const POINT_PAUSE = 1.6;   // segundos entre que se define el punto y el saque siguiente
 const SWING_ANIM = 0.3;
@@ -54,7 +54,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
   // Cada partido nuevo (o si cambia el formato) arranca con el saque del equipo que le toca.
   const count = slotCount(room);
   useEffect(() => {
-    sim.rally = newRally(roomRef.current.score.server, count);
+    sim.rally = newRally(roomRef.current.score.server, count, Boolean(playerAt(roomRef.current, roomRef.current.score.server)));
     sim.overAt = 0; sim.sentPoint = -1;
   }, [room.n, playing, count]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -83,7 +83,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
         const key = `${id}:${sw.k}`;
         if (sim.seen.has(key)) continue;
         sim.seen.add(key);
-        sim.pending[pl.slot] = { at: performance.now() / 1000, f: sw.f, a: sw.a, l: sw.l || 0, s: sw.s || 1, real: true, k: sw.k, id };
+        sim.pending[pl.slot] = { at: performance.now() / 1000, f: sw.f, a: 0, real: true, k: sw.k, id };
         sim.swingAt[pl.slot] = performance.now() / 1000;
       }
     };
@@ -93,8 +93,13 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
     return () => { off(); mesh?.close(); chan.remove(me.id).catch(() => {}); sim.mesh = null; sim.chan = null; };
   }, [code, me.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Quién tiene la pelota en la mano para sacar (el celular lo muestra). Va en todos los mensajes de la compu del anfitrión.
+  function holdId() {
+    const r = sim.rally, room = roomRef.current;
+    return r && r.serving && r.held && room.phase === 'playing' ? playerAt(room, r.server)?.id || '' : '';
+  }
   function ack(id, k) {
-    const msg = { hit: k, to: id, t: Date.now() };
+    const msg = { hit: k, to: id, t: Date.now(), hold: holdId() };
     sim.mesh?.broadcast(msg);
     sim.chan?.publish(me.id, JSON.stringify(msg)).catch(() => {});
   }
@@ -128,7 +133,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
       const r = roomRef.current;
       const isHost = r.hostId === me.id;
       const n = slotCount(r);
-      if (!sim.rally || sim.rally.players.length !== n) sim.rally = newRally(r.score?.server || 0, n);
+      if (!sim.rally || sim.rally.players.length !== n) sim.rally = newRally(r.score?.server || 0, n, Boolean(playerAt(r, r.score?.server || 0)));
       const rally = sim.rally;
       if (isHost && r.phase === 'playing') {
         acc += dt;
@@ -138,9 +143,12 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
           for (let i = 0; i < n; i++) {
             if (playerAt(r, i)) {
               const sw = sim.pending[i];
-              if (sw && t - sw.at < SWING_WINDOW && (sw.real ? canReachWide(rally, i) : canReach(rally, i))) {
-                // El del celular es un golpe de verdad: sale para donde apuntó, con la fuerza del brazo y según si llegó temprano o tarde.
-                if (sw.real) hitSwing(rally, i, { power: sw.f, yaw: sw.a, loft: sw.l, side: sw.s, timing: timingOf(rally, i) });
+              // Con la pelota en la mano, el primer gesto (levantar el celular) la tira para arriba.
+              if (sw && rally.serving && rally.held && rally.server === i) {
+                tossBall(rally); sim.pending[i] = null;
+              } else if (sw && t - sw.at < SWING_WINDOW && (sw.real ? canReachWide(rally, i) : canReach(rally, i))) {
+                // El del celular siempre entra: la fuerza la hace ir más rápido y el momento (temprano o tarde) elige para dónde.
+                if (sw.real) { const shot = swingShot(sw.f, timingOf(rally, i)); hitBall(rally, i, shot.power, shot.aim); }
                 else hitBall(rally, i, sw.f, sw.a);
                 sim.pending[i] = null;
                 if (sw.id) ack(sw.id, sw.k);
@@ -162,10 +170,16 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
           sim.sentPoint = r.score.k || 0;
           dispatchRef.current({ type: 'point', n: r.n, side: rally.over.winner, k: r.score.k || 0 });
         }
+        // A los celulares: quién tiene la pelota en la mano (por el canal directo seguido; por el servidor, solo cuando cambia).
+        const hold = holdId();
+        if (t - (sim.holdAt || 0) > 0.3 || hold !== sim.hold) {
+          sim.holdAt = t; sim.mesh?.broadcast({ hold });
+          if (hold !== sim.hold) { sim.hold = hold; sim.chan?.publish(me.id, JSON.stringify({ hold })).catch(() => {}); }
+        }
         // En el online, la pelota va a la otra compu.
         if (r.options?.mode === 'online' && t - sim.sentAt >= SEND_EVERY) {
           sim.sentAt = t;
-          const snap = { r: packRally(rally), sw: sim.swingAt.slice(0, n).map((s) => (t - s < SWING_ANIM ? Math.round((t - s) * 100) / 100 : -1)), m: t - sim.msgAt < 2.5 ? sim.msg : '' };
+          const snap = { r: packRally(rally), sw: sim.swingAt.slice(0, n).map((s) => (t - s < SWING_ANIM ? Math.round((t - s) * 100) / 100 : -1)), m: t - sim.msgAt < 2.5 ? sim.msg : '', hold };
           sim.mesh?.broadcast(snap);
           const other = (r.screens || []).find((s) => s.id !== me.id);
           if (other && (!sim.mesh || !sim.mesh.isOpen(other.id)) && t - sim.serverAt >= SERVER_EVERY && sim.chan) { sim.serverAt = t; sim.chan.publish(me.id, JSON.stringify(snap)).catch(() => {}); }
@@ -187,7 +201,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
   // Cuando la sala anota el punto, saque nuevo (lo arma la compu del anfitrión; la otra lo recibe).
   useEffect(() => {
     if (!playing || !sim.overAt) return;
-    sim.rally = newRally(room.score.server, slotCount(room));
+    sim.rally = newRally(room.score.server, slotCount(room), Boolean(playerAt(room, room.score.server)));
     sim.overAt = 0; sim.cpuAt = [0, 0, 0, 0]; sim.pending = [null, null, null, null];
   }, [room.score?.k]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -228,7 +242,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
               {online && host && <p className="tn-small">La compu del otro equipo entra a Tenis Movido, toca «Unirme con esta compu» y escribe este mismo código. {(room.screens || []).length > 1 ? <b>✅ Ya está conectada.</b> : <b>Todavía no entró.</b>}</p>}
               <ul className="tn-slots">
                 {Array.from({ length: count }, (_, s) => (online && teamOf(s) !== myTeam && !host ? null : (
-                  <li key={s} style={{ borderColor: COLORS[s] }} data-slot={s}>{TEAM_NAME[teamOf(s)]} {count > 2 ? SLOT_NAME[s] : ''}: {playerAt(room, s) ? <b>📱 {playerAt(room, s).name} {playerAt(room, s).cal ? '✅' : '⏳ calibrando'}</b> : <em>juega la máquina</em>}</li>
+                  <li key={s} style={{ borderColor: COLORS[s] }} data-slot={s}>{TEAM_NAME[teamOf(s)]} {count > 2 ? SLOT_NAME[s] : ''}: {playerAt(room, s) ? <b>📱 {playerAt(room, s).name}</b> : <em>juega la máquina</em>}</li>
                 )))}
               </ul>
             </div>
