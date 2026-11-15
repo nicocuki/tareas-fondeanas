@@ -1,20 +1,27 @@
-// Tenis Movido: la compu. Muestra la cancha, el QR para conectar los celulares, recibe los golpes y simula la pelota.
-// Los golpes llegan directo del celular (WebRTC) o, si no se puede, por el servidor (tenis/{sala}/p/{id}); cada uno
-// trae un número `k` y se usa una sola vez. Al pegarle, la compu le avisa al celular (`hit`) para que vibre.
+// Tenis Movido: una compu. Muestra la cancha y el QR para conectar los celulares.
+//
+// La compu del anfitrión es la única que simula la pelota: recibe los golpes de todos los celulares (directo por WebRTC
+// o por tenis/{sala}/p/{id}), le avisa al celular que pegó (`hit`, para que vibre) y, en el online, le manda a la otra
+// compu cómo está la pelota y los jugadores (`r`, 30 veces por segundo). La otra compu solo dibuja, desde su lado.
+// En el modo local la pantalla se parte en dos: a la izquierda detrás del equipo 0 y a la derecha detrás del equipo 1.
 import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
-import { COLORS, playerAt, pointText, startProblem } from './game.js';
-import { STEP, SWING_WINDOW, canReach, hitBall, newRally, stepRally } from './sim.js';
+import { COLORS, TEAM_COLORS, findScreen, playerAt, pointText, slotCount, startProblem, teamOf } from './game.js';
+import { STEP, SWING_WINDOW, canReach, hitBall, newRally, packRally, stepRally, unpackRally } from './sim.js';
 
 const POINT_PAUSE = 1.6;   // segundos entre que se define el punto y el saque siguiente
 const SWING_ANIM = 0.3;
+const SEND_EVERY = 1 / 30;
+const SERVER_EVERY = 1 / 12;
 const WHY = { red: 'a la red', afuera: 'afuera', 'pique propio': 'picó de su lado', 'doble pique': 'doble pique', 'no llegó': 'no llegó' };
+const TEAM_NAME = ['Rojo', 'Azul'];
+const SLOT_NAME = ['al fondo', 'al fondo', 'en la red', 'en la red'];
 
-export function controlUrl(code) {
-  return `${window.location.origin}/?juego=tenis&control=${code}`;
+export function controlUrl(code, team) {
+  return `${window.location.origin}/?juego=tenis&control=${code}${team === 0 || team === 1 ? `&equipo=${team}` : ''}`;
 }
 
 export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
@@ -23,12 +30,16 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
   const dispatchRef = useRef(onDispatch);
   roomRef.current = room;
   dispatchRef.current = onDispatch;
+  const host = room.hostId === me.id;
+  const online = room.options?.mode === 'online';
+  const myTeam = findScreen(room, me.id)?.team ?? 0;
   const [qr, setQr] = useState('');
-  const [hud, setHud] = useState({ loading: true, msg: '', last: [null, null] });
-  const sim = useRef({ seen: new Set(), pending: [null, null], swingAt: [-9, -9], lastSwing: [null, null], rally: null, overAt: 0, sentPoint: -1, cpuAt: 0, msg: '', msgAt: 0 }).current;
+  const [hud, setHud] = useState({ loading: true, msg: '' });
+  const sim = useRef({ seen: new Set(), pending: [null, null, null, null], swingAt: [-9, -9, -9, -9], rally: null, overAt: 0, sentPoint: -1, cpuAt: [0, 0, 0, 0], msg: '', msgAt: 0, sentAt: 0, serverAt: 0 }).current;
   const playing = room.phase === 'playing';
+  const qrUrl = controlUrl(code, online ? myTeam : null);
 
-  useEffect(() => { QRCode.toDataURL(controlUrl(code), { margin: 1, width: 360 }).then(setQr).catch(() => setQr('')); }, [code]);
+  useEffect(() => { QRCode.toDataURL(qrUrl, { margin: 1, width: 360 }).then(setQr).catch(() => setQr('')); }, [qrUrl]);
 
   useEffect(() => {
     let dead = false;
@@ -40,29 +51,40 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
     return () => { dead = true; sim.r?.dispose(); sim.r = null; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Cada partido nuevo arranca con el saque del lado que le toca.
+  // Cada partido nuevo (o si cambia el formato) arranca con el saque del equipo que le toca.
+  const count = slotCount(room);
   useEffect(() => {
-    if (!playing) return;
-    sim.rally = newRally(roomRef.current.score.server);
+    sim.rally = newRally(roomRef.current.score.server, count);
     sim.overAt = 0; sim.sentPoint = -1;
-  }, [room.n, playing]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [room.n, playing, count]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Red: los golpes de los celulares ─────────────────────────────────────
+  // ─── Red ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     const chan = backend.tenisChannel(code);
     const onSnap = (id, raw) => {
       if (id === me.id || !raw) return;
       let snap = raw;
       if (typeof raw === 'string') { try { snap = JSON.parse(raw); } catch { return; } }
-      const pl = roomRef.current.players.find((p) => p.id === id);
+      const r = roomRef.current;
+      // La otra compu recibe la pelota de la del anfitrión.
+      if (snap.r && id === r.hostId && r.hostId !== me.id) {
+        sim.rally = unpackRally(snap.r, sim.rally);
+        const t = performance.now() / 1000;
+        (snap.sw || []).forEach((age, i) => { if (age >= 0) sim.swingAt[i] = t - age; });
+        if (snap.m && snap.m !== sim.msg) { sim.msg = snap.m; sim.msgAt = t; }
+        return;
+      }
+      // Los golpes de los celulares los procesa solo la compu del anfitrión.
+      if (r.hostId !== me.id) return;
+      const pl = r.players.find((p) => p.id === id);
       if (!pl) return;
       for (const sw of snap.sw || []) {
+        if (typeof sw !== 'object') continue;
         const key = `${id}:${sw.k}`;
         if (sim.seen.has(key)) continue;
         sim.seen.add(key);
         sim.pending[pl.slot] = { at: performance.now() / 1000, f: sw.f, a: sw.a, k: sw.k, id };
         sim.swingAt[pl.slot] = performance.now() / 1000;
-        sim.lastSwing[pl.slot] = sw.f;
       }
     };
     const mesh = createMesh({ signaling: chan.signaling, myId: me.id, onMessage: onSnap });
@@ -71,27 +93,30 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
     return () => { off(); mesh?.close(); chan.remove(me.id).catch(() => {}); sim.mesh = null; sim.chan = null; };
   }, [code, me.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Le avisa al celular que le pegó (para que vibre).
   function ack(id, k) {
     const msg = { hit: k, to: id, t: Date.now() };
     sim.mesh?.broadcast(msg);
     sim.chan?.publish(me.id, JSON.stringify(msg)).catch(() => {});
   }
 
-  // Para probar en la compu sin celular: Espacio le pega con el lado cercano y K con el de enfrente.
+  // Para probar sin celular: Espacio le pega el del fondo de tu equipo y, en el local, K el del otro equipo.
   useEffect(() => {
     const down = (e) => {
-      if (e.target instanceof HTMLInputElement || e.repeat) return;
-      const slot = e.code === 'Space' ? 0 : e.code === 'KeyK' ? 1 : -1;
+      if (e.target instanceof HTMLInputElement || e.repeat || roomRef.current.hostId !== me.id) return;
+      const team = findScreen(roomRef.current, me.id)?.team ?? 0;
+      const slot = e.code === 'Space' ? team : e.code === 'KeyK' && roomRef.current.options?.mode !== 'online' ? 1 - team : -1;
       if (slot < 0) return;
       e.preventDefault();
-      sim.pending[slot] = { at: performance.now() / 1000, f: 0.6, a: (Math.random() - 0.5) * 1.6, k: -1 };
-      sim.swingAt[slot] = performance.now() / 1000;
-      sim.lastSwing[slot] = 0.6;
+      // El de la red de ese equipo también puede: el que esté más cerca de la pelota.
+      const r = sim.rally;
+      const mate = slot + 2;
+      const who = r && r.players[mate] && Math.abs(r.ball.z - r.players[mate].z) < Math.abs(r.ball.z - r.players[slot].z) ? mate : slot;
+      sim.pending[who] = { at: performance.now() / 1000, f: 0.6, a: (Math.random() - 0.5) * 1.6, k: -1 };
+      sim.swingAt[who] = performance.now() / 1000;
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [me.id]);
 
   // ─── Un cuadro ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -101,96 +126,120 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
       const dt = Math.min(0.1, t - last);
       last = t;
       const r = roomRef.current;
-      if (!sim.rally) sim.rally = newRally(r.score?.server || 0);
+      const isHost = r.hostId === me.id;
+      const n = slotCount(r);
+      if (!sim.rally || sim.rally.players.length !== n) sim.rally = newRally(r.score?.server || 0, n);
       const rally = sim.rally;
-      if (r.phase === 'playing') {
+      if (isHost && r.phase === 'playing') {
         acc += dt;
         let guard = 0;
         while (acc >= STEP && guard++ < 20) {
           acc -= STEP;
-          for (const side of [0, 1]) {
-            const human = playerAt(r, side);
-            if (human) {
-              const sw = sim.pending[side];
-              if (sw && t - sw.at < SWING_WINDOW && canReach(rally, side)) {
-                hitBall(rally, side, sw.f, sw.a);
-                sim.pending[side] = null;
+          for (let i = 0; i < n; i++) {
+            if (playerAt(r, i)) {
+              const sw = sim.pending[i];
+              if (sw && t - sw.at < SWING_WINDOW && canReach(rally, i)) {
+                hitBall(rally, i, sw.f, sw.a);
+                sim.pending[i] = null;
                 if (sw.id) ack(sw.id, sw.k);
-              } else if (sw && t - sw.at >= SWING_WINDOW) sim.pending[side] = null;
-            } else if (canReach(rally, side)) {
+              } else if (sw && t - sw.at >= SWING_WINDOW) sim.pending[i] = null;
+            } else if (canReach(rally, i)) {
               // La máquina: le pega con un poco de demora y a veces la erra.
-              if (!sim.cpuAt) sim.cpuAt = t + 0.08 + Math.random() * 0.15;
-              if (t >= sim.cpuAt) { sim.cpuAt = 0; if (rally.serving || Math.random() > 0.12) { hitBall(rally, side, 0.35 + Math.random() * 0.4, (Math.random() - 0.5) * 1.8); sim.swingAt[side] = t; } }
+              if (!sim.cpuAt[i]) sim.cpuAt[i] = t + 0.08 + Math.random() * 0.15;
+              if (t >= sim.cpuAt[i]) { sim.cpuAt[i] = 0; if (rally.serving || Math.random() > 0.12) { hitBall(rally, i, 0.35 + Math.random() * 0.4, (Math.random() - 0.5) * 1.8); sim.swingAt[i] = t; } }
             }
           }
           const over = stepRally(rally);
           if (over && !sim.overAt) {
             sim.overAt = t;
-            const name = playerAt(r, over.winner)?.name || 'la máquina';
-            sim.msg = `Punto para ${name} (${WHY[over.why] || over.why})`; sim.msgAt = t;
+            sim.msg = `Punto para el equipo ${TEAM_NAME[over.winner]} (${WHY[over.why] || over.why})`; sim.msgAt = t;
           }
         }
         if (acc > 1) acc = 0;
-        // Se anota el punto y se vuelve a sacar.
         if (sim.overAt && t - sim.overAt > POINT_PAUSE && sim.sentPoint !== (r.score.k || 0)) {
           sim.sentPoint = r.score.k || 0;
           dispatchRef.current({ type: 'point', n: r.n, side: rally.over.winner, k: r.score.k || 0 });
         }
+        // En el online, la pelota va a la otra compu.
+        if (r.options?.mode === 'online' && t - sim.sentAt >= SEND_EVERY) {
+          sim.sentAt = t;
+          const snap = { r: packRally(rally), sw: sim.swingAt.slice(0, n).map((s) => (t - s < SWING_ANIM ? Math.round((t - s) * 100) / 100 : -1)), m: t - sim.msgAt < 2.5 ? sim.msg : '' };
+          sim.mesh?.broadcast(snap);
+          const other = (r.screens || []).find((s) => s.id !== me.id);
+          if (other && (!sim.mesh || !sim.mesh.isOpen(other.id)) && t - sim.serverAt >= SERVER_EVERY && sim.chan) { sim.serverAt = t; sim.chan.publish(me.id, JSON.stringify(snap)).catch(() => {}); }
+        }
       }
-      if (!hidden && sim.r) sim.r.draw({ rally, swing: [0, 1].map((s) => Math.max(0, 1 - (t - sim.swingAt[s]) / SWING_ANIM)) });
-      if (t - hudAt > 0.15) {
-        hudAt = t;
-        setHud({ loading: !sim.r, msg: t - sim.msgAt < 2.5 ? sim.msg : '', last: [...sim.lastSwing], serving: rally.serving ? rally.last : -1 });
+      if (!hidden && sim.r) {
+        const team = findScreen(r, me.id)?.team ?? 0;
+        const names = [], colors = [];
+        for (let i = 0; i < n; i++) { names.push(playerAt(r, i)?.name || 'Máquina'); colors.push(COLORS[i]); }
+        sim.r.draw({ rally, views: r.options?.mode === 'online' ? [team] : [0, 1], names, colors, swing: [0, 1, 2, 3].map((s) => Math.max(0, 1 - (t - sim.swingAt[s]) / SWING_ANIM)) });
       }
+      if (t - hudAt > 0.15) { hudAt = t; setHud({ loading: !sim.r, msg: t - sim.msgAt < 2.5 ? sim.msg : '' }); }
     }
     const stop = everyFrame(frame);
     window.__tenis = sim; // para manejar la cancha desde un navegador automatizado
     return () => { stop(); if (window.__tenis === sim) delete window.__tenis; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [me.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Cuando la sala anota el punto, saque nuevo.
+  // Cuando la sala anota el punto, saque nuevo (lo arma la compu del anfitrión; la otra lo recibe).
   useEffect(() => {
     if (!playing || !sim.overAt) return;
-    sim.rally = newRally(room.score.server);
-    sim.overAt = 0; sim.cpuAt = 0; sim.pending = [null, null];
+    sim.rally = newRally(room.score.server, slotCount(room));
+    sim.overAt = 0; sim.cpuAt = [0, 0, 0, 0]; sim.pending = [null, null, null, null];
   }, [room.score?.k]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const problem = startProblem(room);
-  const nameAt = (s) => playerAt(room, s)?.name || 'Máquina';
+  const teamNames = (team) => { const ns = []; for (let s = team; s < count; s += 2) ns.push(playerAt(room, s)?.name || 'Máquina'); return ns.join(' y '); };
+  const split = !online;
   return (
-    <div className="tn-stage" data-tenis-screen>
+    <div className={`tn-stage${split ? ' is-split' : ''}`} data-tenis-screen data-mode={online ? 'online' : 'local'}>
       <canvas ref={canvasRef} className="tn-canvas" data-tenis-canvas />
+      {split && <div className="tn-divider" />}
       <div className="tn-score" data-score>
-        <span style={{ color: COLORS[0] }}>{nameAt(0)} <b>{room.score.g[0]}</b></span>
+        <span className="tn-team" style={{ '--tc': TEAM_COLORS[0] }}>{teamNames(0)}</span>
+        <span className="tn-games"><b>{room.score.g[0]}</b> – <b>{room.score.g[1]}</b></span>
         <em>{pointText(room.score)}</em>
-        <span style={{ color: COLORS[1] }}><b>{room.score.g[1]}</b> {nameAt(1)}</span>
+        <span className="tn-team" style={{ '--tc': TEAM_COLORS[1] }}>{teamNames(1)}</span>
       </div>
       {hud.msg && <div className="tn-msg">{hud.msg}</div>}
-      {playing && hud.serving >= 0 && <div className="tn-hint">Saca {nameAt(hud.serving)}: {playerAt(room, hud.serving) ? '¡hacé el gesto del golpe con el celular!' : 'ya va…'}</div>}
 
       {room.phase !== 'playing' && (
         <div className="tn-panel" data-panel>
-          {room.phase === 'final' && <h2 className="tn-win">🏆 ¡Ganó {nameAt(room.winner)}!</h2>}
-          <h2>Conectá los celulares</h2>
+          {room.phase === 'final' && <h2 className="tn-win">🏆 ¡Ganó el equipo {TEAM_NAME[room.winner]}: {teamNames(room.winner)}!</h2>}
+          {host ? (
+            <div className="tn-opts">
+              <div className="tn-seg" role="group" aria-label="Modo">
+                {[['local', '🖥️ Local (una compu)'], ['online', '🌐 Online (una compu por equipo)']].map(([v, l]) => <button key={v} type="button" className={room.options.mode === v ? 'is-on' : ''} onClick={() => onDispatch({ type: 'setOptions', options: { mode: v } })} data-mode-opt={v}>{l}</button>)}
+              </div>
+              <div className="tn-seg" role="group" aria-label="Formato">
+                {[['1v1', '1 contra 1'], ['2v2', '2 contra 2']].map(([v, l]) => <button key={v} type="button" className={room.options.format === v ? 'is-on' : ''} onClick={() => onDispatch({ type: 'setOptions', options: { format: v } })} data-format-opt={v}>{l}</button>)}
+              </div>
+            </div>
+          ) : <p className="tn-small">Sos la compu del equipo {TEAM_NAME[myTeam]}. El anfitrión elige el formato y arranca.</p>}
+          <h2>{online ? `Celulares del equipo ${TEAM_NAME[myTeam]}` : 'Conectá los celulares'}</h2>
           <div className="tn-connect">
             {qr ? <img src={qr} alt="QR para conectar el celular" className="tn-qr" data-qr /> : <div className="tn-qr" />}
             <div>
               <p>Escaneá el QR con la cámara del celular, o entrá a <b>{window.location.host}</b> y escribí el código:</p>
               <p className="tn-code" data-code>{code}</p>
+              {online && host && <p className="tn-small">La compu del otro equipo entra a Tenis Movido, toca «Unirme con esta compu» y escribe este mismo código. {(room.screens || []).length > 1 ? <b>✅ Ya está conectada.</b> : <b>Todavía no entró.</b>}</p>}
               <ul className="tn-slots">
-                {[0, 1].map((s) => <li key={s} style={{ borderColor: COLORS[s] }} data-slot={s}>{s === 0 ? 'Cerca' : 'Enfrente'}: {playerAt(room, s) ? <b>📱 {playerAt(room, s).name}</b> : <em>{s === 1 ? 'juega la máquina' : 'esperando…'}</em>}</li>)}
+                {Array.from({ length: count }, (_, s) => (online && teamOf(s) !== myTeam && !host ? null : (
+                  <li key={s} style={{ borderColor: COLORS[s] }} data-slot={s}>{TEAM_NAME[teamOf(s)]} {count > 2 ? SLOT_NAME[s] : ''}: {playerAt(room, s) ? <b>📱 {playerAt(room, s).name}</b> : <em>juega la máquina</em>}</li>
+                )))}
               </ul>
             </div>
           </div>
-          <p className="tn-small">Con el celular en la mano como una raqueta, hacé el gesto de pegarle cuando la pelota llega. Para probar sin celular: <kbd>Espacio</kbd> le pega el de cerca y <kbd>K</kbd> el de enfrente.</p>
+          <p className="tn-small">Con el celular en la mano como una raqueta, hacé el gesto de pegarle cuando la pelota llega. Para probar sin celular: <kbd>Espacio</kbd>{online ? '' : <> y <kbd>K</kbd></>}.</p>
           <div className="tn-actions">
-            <button type="button" className="tf-btn tf-btn-primary" disabled={Boolean(problem)} onClick={() => onDispatch({ type: 'start' })} data-start>🎾 {room.phase === 'final' ? 'Otro partido' : '¡A jugar!'}</button>
-            <button type="button" className="tf-btn tf-btn-soft" onClick={onLeave}>Cerrar la cancha</button>
+            {host && <button type="button" className="tf-btn tf-btn-primary" disabled={Boolean(problem)} onClick={() => onDispatch({ type: 'start' })} data-start>🎾 {room.phase === 'final' ? 'Otro partido' : '¡A jugar!'}</button>}
+            <button type="button" className="tf-btn tf-btn-soft" onClick={onLeave}>{host ? 'Cerrar la cancha' : 'Salir'}</button>
           </div>
-          {problem && <p className="tn-small">{problem}</p>}
+          {host && problem && <p className="tn-small">{problem}</p>}
         </div>
       )}
-      {playing && <button type="button" className="tn-corner tf-btn tf-btn-soft" onClick={() => onDispatch({ type: 'toLobby' })}>Pausa / QR</button>}
+      {playing && host && <button type="button" className="tn-corner tf-btn tf-btn-soft" onClick={() => onDispatch({ type: 'toLobby' })}>Pausa / QR</button>}
     </div>
   );
 }

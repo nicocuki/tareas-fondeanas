@@ -1106,9 +1106,18 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 ----------------------------------------------------------------------------------------------------
 
-LATEST 1.61.0 = Prototipo nuevo: Tenis Movido (el celular es la raqueta)
+1.61.0 = Prototipo nuevo: Tenis Movido (el celular es la raqueta)
 - La compu (o la tele) abre la cancha en 3D y muestra un QR con un código de 4 letras.
 - Cada celular escanea el QR y se vuelve el control: lo agarrás como una raqueta y hacés el gesto del golpe. Cuanto más rápido movés el brazo, más fuerte sale la pelota, y el celular vibra cuando le pegás.
 - De 1 a 2 celulares; con uno solo, del otro lado juega la máquina. Se cuenta como en el tenis y gana el primero a 3 juegos.
 - Si el celular no tiene sensores (o no dio permiso) está el botón GOLPEAR. En la compu, para probar sin celular: Espacio y K.
 - Es un prototipo: todavía hay que ajustar con celulares de verdad cuánto movimiento cuenta como golpe.
+
+----------------------------------------------------------------------------------------------------
+
+LATEST 1.62.0 = Tenis Movido: modo local y online, 1 contra 1 y 2 contra 2
+- Modo local: una sola compu con la pantalla partida en dos, cada mitad vista desde atrás de un equipo.
+- Modo online: cada equipo juega en su compu. El anfitrión abre la cancha, elige «Online» y la otra compu entra con el mismo código («Unirme con esta compu»). Cada compu muestra su propio QR para conectar los celulares de su equipo.
+- 1 contra 1 o 2 contra 2: en el dobles cada equipo tiene uno al fondo y otro en la red, y se juega con los pasillos. Los lugares sin celular los juega la máquina.
+- La pelota va más lenta.
+- Nueva barra del tanteo con los nombres de cada equipo, el cartel «Saca» arriba del que saca y el nombre debajo de cada jugador.

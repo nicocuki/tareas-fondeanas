@@ -16,6 +16,7 @@ const GAME = 'tenis';
 const clean = (v) => (v || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
 const params = () => new URLSearchParams(window.location.search);
 const urlCode = () => clean(params().get('control') || params().get('sala'));
+const urlTeam = () => { const t = params().get('equipo'); return t === '0' ? 0 : t === '1' ? 1 : null; };
 function setUrl(code, role) {
   const url = new URL(window.location.origin + '/');
   url.searchParams.set('juego', GAME);
@@ -23,10 +24,11 @@ function setUrl(code, role) {
   window.history.replaceState(null, '', url.toString());
 }
 
-function Entry({ onOpen, onJoin, busy, error, onBack, initialCode }) {
+function Entry({ onOpen, onJoin, onScreenJoin, busy, error, onBack, initialCode }) {
   const profile = getProfile();
   const [name, setName] = useState(profile.name);
   const [code, setCode] = useState(initialCode);
+  const [screenCode, setScreenCode] = useState('');
   const phone = Boolean(initialCode);
   return (
     <div className="cs-root tn-page">
@@ -37,6 +39,11 @@ function Entry({ onOpen, onJoin, busy, error, onBack, initialCode }) {
             <h2>🖥️ En la compu (o la tele)</h2>
             <p>Abrí la cancha acá: aparece un QR para que se conecten los celulares.</p>
             <button type="button" className="tf-btn tf-btn-primary tf-btn-block" disabled={busy} onClick={onOpen} data-open>Abrir la cancha en esta pantalla</button>
+            <p className="tn-small">¿Juegan online y la cancha ya la abrió el otro equipo? Uní esta compu con su código:</p>
+            <form className="tf-join-row" onSubmit={(e) => { e.preventDefault(); onScreenJoin(screenCode); }}>
+              <input className="tf-input tf-code-input" aria-label="Código de la cancha online" placeholder="ABCD" maxLength={4} value={screenCode} onChange={(e) => setScreenCode(clean(e.target.value))} data-screen-code />
+              <button type="submit" className="tf-btn tf-btn-soft" disabled={busy || screenCode.length !== 4} data-screen-join>Unirme con esta compu</button>
+            </form>
             <div className="tn-or"><span>o, si estás en el celular</span></div>
           </>
         )}
@@ -104,10 +111,24 @@ export default function TenisApp({ onBackToMenu }) {
     setBusy(true);
     try {
       const playerId = makeId();
-      const res = await backend.updateRoom(target, (current) => applyAction(current, { type: 'join', playerId, name: cleanName(name), avatar: getProfile().avatar }));
+      const res = await backend.updateRoom(target, (current) => applyAction(current, { type: 'join', playerId, name: cleanName(name), avatar: getProfile().avatar, team: urlTeam() }));
       if (!res.room || res.room.gameType !== GAME_TYPE) { setError('No encontramos esa cancha. Revisá el código que muestra la compu.'); return; }
-      if (!findPlayer(res.room, playerId)) { setError(`La cancha ya tiene ${MAX_PLAYERS} controles conectados.`); return; }
+      if (!findPlayer(res.room, playerId)) { setError(urlTeam() != null ? 'Los lugares de ese equipo ya están ocupados.' : `La cancha ya tiene todos los lugares ocupados (hasta ${MAX_PLAYERS}).`); return; }
       enter({ code: target, playerId, name: cleanName(name), role: 'control' });
+    } catch {
+      setError('No se pudo conectar. Probá de nuevo.');
+    } finally { setBusy(false); }
+  }
+
+  async function handleScreenJoin(target) {
+    setBusy(true);
+    try {
+      const playerId = makeId();
+      const name = getProfile().name || 'Cancha 2';
+      const res = await backend.updateRoom(target, (current) => applyAction(current, { type: 'screenJoin', playerId, name }));
+      if (!res.room || res.room.gameType !== GAME_TYPE) { setError('No encontramos esa cancha.'); return; }
+      if (!res.room.screens?.some((s) => s.id === playerId)) { setError(res.room.options?.mode !== 'online' ? 'Esa cancha está en modo local: el anfitrión tiene que elegir «Online».' : 'Esa cancha ya tiene las dos compus.'); return; }
+      enter({ code: target, playerId, name, role: 'screen' });
     } catch {
       setError('No se pudo conectar. Probá de nuevo.');
     } finally { setBusy(false); }
@@ -116,10 +137,10 @@ export default function TenisApp({ onBackToMenu }) {
   function handleLeave() {
     const leaving = session;
     clearSession(); setUrl('', ''); setSession(null); setRoom(null);
-    if (leaving?.role === 'control') backend.updateRoom(leaving.code, (current) => applyAction(current, { type: 'leave', playerId: leaving.playerId })).catch(() => {});
+    if (leaving && leaving.playerId !== room?.hostId) backend.updateRoom(leaving.code, (current) => applyAction(current, { type: 'leave', playerId: leaving.playerId })).catch(() => {});
   }
 
-  if (!session) return <Entry onOpen={handleOpen} onJoin={handleJoin} busy={busy} error={error} onBack={onBackToMenu} initialCode={urlCode()} />;
+  if (!session) return <Entry onOpen={handleOpen} onJoin={handleJoin} onScreenJoin={handleScreenJoin} busy={busy} error={error} onBack={onBackToMenu} initialCode={urlCode()} />;
   if (!room) return <div className="cs-root tn-page"><p className="tn-small">Conectando…</p></div>;
   const me = { id: session.playerId, name: session.name };
   if (session.role === 'screen') return <div className="tn-screen"><TenisScreen room={room} me={me} code={code} onDispatch={dispatch} onLeave={handleLeave} />{error && <p className="tn-error tn-banner">{error}</p>}</div>;

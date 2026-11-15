@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { addPoint, applyAction, matchWinner, newRoom, newScore, pointText } from '../src/tenis/game.js';
-import { HALF_L, HALF_W, STEP, canReach, hitBall, newRally, sideOf, stepRally, swingPower } from '../src/tenis/sim.js';
+import { HALF_L, HALF_W, STEP, canReach, hitBall, newRally, packRally, sideOf, stepRally, swingPower, unpackRally } from '../src/tenis/sim.js';
 
 const ctx = { now: 0 };
 
@@ -10,7 +10,7 @@ test('tenis: el tanteo cuenta 15, 30, 40, iguales, ventaja y juego', () => {
   s = addPoint(s, 0); assert.equal(pointText(s), '15 – 0');
   s = addPoint(s, 0); s = addPoint(s, 1); assert.equal(pointText(s), '30 – 15');
   s = addPoint(s, 0); s = addPoint(s, 1); s = addPoint(s, 1); assert.equal(pointText(s), 'Iguales');
-  s = addPoint(s, 1); assert.equal(pointText(s), 'Ventaja lejos');
+  s = addPoint(s, 1); assert.equal(pointText(s), 'Ventaja');
   s = addPoint(s, 0); assert.equal(pointText(s), 'Iguales');
   s = addPoint(s, 0); s = addPoint(s, 0);
   assert.deepEqual(s.g, [1, 0]);
@@ -80,4 +80,51 @@ test('tenis: dos máquinas pelotean y se definen puntos (la pelota llega al alca
   }
   assert.ok(hits > 40, `hubo peloteo (${hits} golpes)`);
   assert.ok(points >= 18, `se definieron puntos (${points})`);
+});
+
+test('tenis: en el 2v2 hay cuatro lugares, dos por equipo, y el QR de cada compu llena los de su equipo', () => {
+  let r = newRoom('pc', 'Tele', '📺');
+  r = applyAction(r, { type: 'setOptions', playerId: 'pc', options: { format: '2v2', mode: 'online' } }, ctx);
+  assert.equal(applyAction(r, { type: 'start', playerId: 'pc' }, ctx), null);
+  r = applyAction(r, { type: 'join', playerId: 'a', name: 'Ana', team: 1 }, ctx);
+  r = applyAction(r, { type: 'join', playerId: 'b', name: 'Beto', team: 1 }, ctx);
+  assert.deepEqual(r.players.map((p) => p.slot), [1, 3]);
+  assert.equal(applyAction(r, { type: 'join', playerId: 'c', name: 'Caro', team: 1 }, ctx), null, 'el equipo azul ya está lleno');
+  assert.equal(applyAction(r, { type: 'start', playerId: 'pc' }, ctx), null, 'en el online falta la otra compu');
+  r = applyAction(r, { type: 'screenJoin', playerId: 'pc2', name: 'Compu de Beto' }, ctx);
+  assert.equal(r.screens[1].team, 1);
+  assert.equal(applyAction(r, { type: 'screenJoin', playerId: 'pc3', name: 'Otra' }, ctx), null, 'son dos compus');
+  assert.equal(applyAction(r, { type: 'start', playerId: 'pc2' }, ctx), null, 'arranca el anfitrión');
+  r = applyAction(r, { type: 'start', playerId: 'pc' }, ctx);
+  assert.equal(r.phase, 'playing');
+  r = applyAction(r, { type: 'leave', playerId: 'pc2' }, ctx);
+  assert.equal(r.phase, 'lobby', 'si se va la otra compu, se pausa');
+  r = applyAction(r, { type: 'setOptions', playerId: 'pc', options: { format: '1v1' } }, ctx);
+  assert.deepEqual(r.players.map((p) => p.slot), [1], 'al pasar a 1v1, el de la red se queda sin lugar');
+  r = applyAction(r, { type: 'setOptions', playerId: 'pc', options: { mode: 'local' } }, ctx);
+  assert.equal(applyAction(r, { type: 'screenJoin', playerId: 'pc2', name: 'X' }, ctx), null, 'en el local hay una sola compu');
+});
+
+test('tenis: en el 2v2 la pelota llega a los de la red y a los del fondo, y se definen puntos', () => {
+  let hits = 0, net = 0, points = 0;
+  for (let n = 0; n < 20; n++) {
+    const r = newRally(n % 2, 4);
+    let over = null;
+    for (let i = 0; i < 120 * 30 && !over; i++) {
+      for (let p = 0; p < 4; p++) if (r.hits < 8 && canReach(r, p)) { hitBall(r, p, 0.5, ((i * 7 + n) % 9) / 4.5 - 1); hits += 1; if (p >= 2) net += 1; }
+      over = stepRally(r);
+    }
+    if (over) points += 1;
+  }
+  assert.ok(hits > 40 && net > 3, `peloteo (${hits} golpes, ${net} en la red)`);
+  assert.ok(points >= 18);
+});
+
+test('tenis: la pelota y los jugadores viajan a la otra compu y llegan iguales', () => {
+  const r = newRally(1, 4);
+  hitBall(r, 1, 0.7, 0.3);
+  for (let i = 0; i < 40; i++) stepRally(r);
+  const copy = unpackRally(packRally(r), null);
+  assert.ok(Math.abs(copy.ball.z - r.ball.z) < 0.01 && copy.players.length === 4);
+  assert.equal(copy.serving, false);
 });

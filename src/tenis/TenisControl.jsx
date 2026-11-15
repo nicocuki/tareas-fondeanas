@@ -7,7 +7,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
 import { createMesh } from '../futbol/p2p.js';
-import { COLORS, pointText } from './game.js';
+import { COLORS, pointText, slotCount } from './game.js';
 import { SWING_COOLDOWN, SWING_MIN, swingPower } from './sim.js';
 
 const KEEP_MS = 2500;     // cuánto tiempo sigue viajando un golpe en los mensajes
@@ -111,7 +111,7 @@ export default function TenisControl({ room, me, code, onLeave }) {
       <header>
         <span className="tn-dot" />
         <b>{me.name}</b>
-        <small>{slot === 0 ? 'Lado cercano' : 'Lado de enfrente'} · sala {code}</small>
+        <small>Equipo {slot % 2 === 0 ? 'Rojo' : 'Azul'}{slotCount(room) > 2 ? (slot >= 2 ? ' · en la red' : ' · al fondo') : ''} · sala {code}</small>
       </header>
       <p className="tn-ctrl-score" data-score>{room.phase === 'playing' ? `${room.score.g[0]} – ${room.score.g[1]} · ${pointText(room.score)}` : room.phase === 'final' ? 'Terminó el partido' : 'Esperando que arranque la cancha…'}</p>
       {!armed ? (
