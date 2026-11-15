@@ -13,7 +13,14 @@ import { COLORS, TEAM_COLORS, findScreen, playerAt, pointText, slotCount, startP
 import { STEP, SWING_WINDOW, canReach, canReachWide, hitBall, hitSwing, swingQuality, swingTiming, EARLY_S, SWING_LAG, BUTTON_LAG, tossBall, newRally, packRally, stepRally, unpackRally } from './sim.js';
 
 const POINT_PAUSE = 1.6;   // segundos entre que se define el punto y el saque siguiente
-const SWING_ANIM = 0.3;
+const SWING_ANIM = 0.75; // lo que dura la animación del golpe (SWING_TIME de render.js)
+// De qué lado le queda la pelota a un jugador diestro: 1 drive, −1 revés (y 0 si está sacando).
+function ballSide(r, i) {
+  if (r.serving && r.server === i) return 0;
+  const p = r.players[i]; if (!p) return 1;
+  const right = (r.ball.x - p.x) * (i % 2 === 0 ? 1 : -1);
+  return right > -0.15 ? 1 : -1;
+}
 const SEND_EVERY = 1 / 30;
 const SERVER_EVERY = 1 / 12;
 const WHY = { red: 'a la red', afuera: 'afuera', 'pique propio': 'picó de su lado', 'doble pique': 'doble pique', 'no llegó': 'no llegó' };
@@ -35,7 +42,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
   const myTeam = findScreen(room, me.id)?.team ?? 0;
   const [qr, setQr] = useState('');
   const [hud, setHud] = useState({ loading: true, msg: '' });
-  const sim = useRef({ seen: new Set(), pending: [null, null, null, null], swingAt: [-9, -9, -9, -9], rally: null, overAt: 0, sentPoint: -1, cpuAt: [0, 0, 0, 0], msg: '', msgAt: 0, sentAt: 0, serverAt: 0 }).current;
+  const sim = useRef({ seen: new Set(), pending: [null, null, null, null], swingAt: [-9, -9, -9, -9], swingSide: [1, 1, 1, 1], rally: null, overAt: 0, sentPoint: -1, cpuAt: [0, 0, 0, 0], msg: '', msgAt: 0, sentAt: 0, serverAt: 0 }).current;
   const playing = room.phase === 'playing';
   const qrUrl = controlUrl(code, online ? myTeam : null);
 
@@ -70,7 +77,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
       if (snap.r && id === r.hostId && r.hostId !== me.id) {
         sim.rally = unpackRally(snap.r, sim.rally);
         const t = performance.now() / 1000;
-        (snap.sw || []).forEach((age, i) => { if (age >= 0) sim.swingAt[i] = t - age; });
+        (snap.sw || []).forEach((age, i) => { if (age >= 0) { sim.swingAt[i] = t - age; sim.swingSide[i] = snap.sd?.[i] ?? 1; } });
         if (snap.m && snap.m !== sim.msg) { sim.msg = snap.m; sim.msgAt = t; }
         return;
       }
@@ -90,7 +97,8 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
         if (!held && dt == null) continue; // la pelota no viene para él: es un movimiento cualquiera
         if (!held && (dt > EARLY_S || dt < -EARLY_S)) { ack(id, sw.k, dt > 0 ? 'pasó' : 'tarde', false); continue; }
         sim.pending[pl.slot] = { at: performance.now() / 1000, f: sw.f, a: 0, dt, real: true, k: sw.k, id };
-        sim.swingAt[pl.slot] = performance.now() / 1000;
+        // La animación: el lado lo dice el celular (por cómo giró) y, si no se supo, de qué lado viene la pelota.
+        if (!held) { sim.swingAt[pl.slot] = performance.now() / 1000; sim.swingSide[pl.slot] = rally?.serving ? 0 : sw.s || ballSide(rally, pl.slot); }
       }
     };
     const mesh = createMesh({ signaling: chan.signaling, myId: me.id, onMessage: onSnap });
@@ -124,7 +132,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
       const mate = slot + 2;
       const who = r && r.players[mate] && Math.abs(r.ball.z - r.players[mate].z) < Math.abs(r.ball.z - r.players[slot].z) ? mate : slot;
       sim.pending[who] = { at: performance.now() / 1000, f: 0.6, a: (Math.random() - 0.5) * 1.6, k: -1 };
-      sim.swingAt[who] = performance.now() / 1000;
+      sim.swingAt[who] = performance.now() / 1000; sim.swingSide[who] = r ? ballSide(r, who) : 1;
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
@@ -165,7 +173,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
             } else if (canReach(rally, i)) {
               // La máquina: le pega con un poco de demora y a veces la erra.
               if (!sim.cpuAt[i]) sim.cpuAt[i] = t + 0.08 + Math.random() * 0.15;
-              if (t >= sim.cpuAt[i]) { sim.cpuAt[i] = 0; if (rally.serving || Math.random() > 0.12) { hitBall(rally, i, 0.35 + Math.random() * 0.4, (Math.random() - 0.5) * 1.8); sim.swingAt[i] = t; } }
+              if (t >= sim.cpuAt[i]) { sim.cpuAt[i] = 0; if (rally.serving || Math.random() > 0.12) { sim.swingSide[i] = ballSide(rally, i); hitBall(rally, i, 0.35 + Math.random() * 0.4, (Math.random() - 0.5) * 1.8); sim.swingAt[i] = t - 0.18; } }
             }
           }
           const over = stepRally(rally);
@@ -188,7 +196,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
         // En el online, la pelota va a la otra compu.
         if (r.options?.mode === 'online' && t - sim.sentAt >= SEND_EVERY) {
           sim.sentAt = t;
-          const snap = { r: packRally(rally), sw: sim.swingAt.slice(0, n).map((s) => (t - s < SWING_ANIM ? Math.round((t - s) * 100) / 100 : -1)), m: t - sim.msgAt < 2.5 ? sim.msg : '', hold };
+          const snap = { r: packRally(rally), sw: sim.swingAt.slice(0, n).map((s) => (t - s < SWING_ANIM ? Math.round((t - s) * 100) / 100 : -1)), sd: sim.swingSide.slice(0, n), m: t - sim.msgAt < 2.5 ? sim.msg : '', hold };
           sim.mesh?.broadcast(snap);
           const other = (r.screens || []).find((s) => s.id !== me.id);
           if (other && (!sim.mesh || !sim.mesh.isOpen(other.id)) && t - sim.serverAt >= SERVER_EVERY && sim.chan) { sim.serverAt = t; sim.chan.publish(me.id, JSON.stringify(snap)).catch(() => {}); }
@@ -198,7 +206,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
         const team = findScreen(r, me.id)?.team ?? 0;
         const names = [], colors = [];
         for (let i = 0; i < n; i++) { names.push(playerAt(r, i)?.name || 'Máquina'); colors.push(COLORS[i]); }
-        sim.r.draw({ rally, views: r.options?.mode === 'online' ? [team] : [0, 1], names, colors, swing: [0, 1, 2, 3].map((s) => Math.max(0, 1 - (t - sim.swingAt[s]) / SWING_ANIM)) });
+        sim.r.draw({ rally, views: r.options?.mode === 'online' ? [team] : [0, 1], names, colors, swing: [0, 1, 2, 3].map((s) => ({ age: t - sim.swingAt[s], side: sim.swingSide[s] })) });
       }
       if (t - hudAt > 0.15) { hudAt = t; setHud({ loading: !sim.r, msg: t - sim.msgAt < 2.5 ? sim.msg : '' }); }
     }

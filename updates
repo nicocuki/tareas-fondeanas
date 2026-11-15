@@ -1139,8 +1139,16 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.65.0 = Tenis Movido: hay que pegarle en el momento justo
+1.65.0 = Tenis Movido: hay que pegarle en el momento justo
 - Ya no alcanza con mover el celular cuando llega la pelota: hay que pegarle justo cuando pasa por tu jugador y con un golpe de verdad.
 - Si te adelantás, la pelota se abre y se puede ir afuera; si te adelantás mucho, le pasás por al lado. Si llegás tarde, baja y se puede ir a la red. Un golpecito flojo queda corto. Pegar fuerte a destiempo la manda larga.
 - En el saque, pegale cuando la pelota llega arriba y empieza a bajar.
 - El celular te dice cómo te salió cada golpe: «¡Justo!», «Temprano», «Tarde», «Flojo».
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.66.0 = Tenis Movido: jugadores nuevos con animación de golpe
+- Jugadores rehechos, con piernas, brazos y raqueta de verdad. Esperan la pelota agachados, con la raqueta adelante agarrada con las dos manos.
+- Animación de golpe completa: preparación, impacto y terminación. Hay una para el drive, otra para el revés y otra para el saque (tirar la pelota y pegarle arriba). Cuando se mueven, corren.
+- El celular detecta si le pegaste de drive o de revés por cómo giraste el brazo, y tu jugador hace ese golpe. Si no se nota, elige según de qué lado viene la pelota. Hay una opción «Soy zurdo».
+- La cámara quedó más baja y más cerca: ves a tu jugador de espaldas, abajo, y toda la cancha adelante.

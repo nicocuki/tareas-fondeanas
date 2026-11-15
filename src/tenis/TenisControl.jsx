@@ -23,7 +23,9 @@ export default function TenisControl({ room, me, code, onLeave }) {
   const [last, setLast] = useState(null);   // { f, hit }
   const [noSensor, setNoSensor] = useState(false);
   const [holding, setHolding] = useState(false); // tenés la pelota en la mano para sacar
+  const [lefty, setLefty] = useState(() => { try { return localStorage.getItem('tf:tenis:zurdo') === '1'; } catch { return false; } });
   const s = useRef({ k: 0, swings: [], peak: 0, twist: 0, startAt: 0, coolUntil: 0, gotMotion: false, holding: false }).current;
+  s.lefty = lefty;
   const mine = room.players.find((p) => p.id === me.id);
   const slot = mine?.slot ?? 0;
 
@@ -51,20 +53,20 @@ export default function TenisControl({ room, me, code, onLeave }) {
   function send() {
     const now = Date.now();
     s.swings = s.swings.filter((w) => now - w.t < KEEP_MS);
-    const msg = { t: now, sw: s.swings.map(({ k, f, b }) => (b ? { k, f, b } : { k, f })) };
+    const msg = { t: now, sw: s.swings.map(({ k, f, b, sd }) => ({ k, f, ...(b ? { b } : {}), ...(sd ? { s: sd } : {}) })) };
     s.mesh?.broadcast(msg);
     if (!s.mesh || !s.mesh.isOpen(room.hostId)) s.chan?.publish(me.id, JSON.stringify(msg)).catch(() => {});
   }
 
   // `button`: vino del botón (sin la ventana del pico del sensor, llega antes).
-  function swing(f, button = false) {
+  function swing(f, button = false, side = 0) {
     const now = Date.now();
     if (now < s.coolUntil) return;
     s.coolUntil = now + SWING_COOLDOWN * 1000;
-    const w = { k: ++s.k, f: Math.round(f * 100) / 100, t: now, b: button ? 1 : 0 };
+    const w = { k: ++s.k, f: Math.round(f * 100) / 100, t: now, b: button ? 1 : 0, sd: side };
     s.swings.push(w);
     navigator.vibrate?.(15);
-    setLast({ f: w.f, hit: false, toss: s.holding });
+    setLast({ f: w.f, hit: false, toss: s.holding, side });
     send();
   }
 
@@ -80,15 +82,24 @@ export default function TenisControl({ room, me, code, onLeave }) {
     const rr = e.rotationRate || {};
     const twist = Math.hypot(rr.alpha || 0, rr.beta || 0, rr.gamma || 0); // grados por segundo
     const now = Date.now();
+    // Para saber si fue drive o revés: hacia dónde queda «arriba» (la gravedad, promediada mientras no hay golpe) y cuánto
+    // giró el celular alrededor de ese eje durante el golpe (positivo = contra las agujas del reloj visto desde arriba).
+    // No depende de cómo agarres el celular: para un diestro, el drive gira para un lado y el revés para el otro.
+    const g = e.accelerationIncludingGravity;
+    if (!s.startAt && g && g.x != null) { const k = 0.1; s.up = s.up ? s.up.map((v, i) => v + ([g.x, g.y, g.z][i] - v) * k) : [g.x, g.y, g.z]; }
+    const up = s.up, n = up ? Math.hypot(up[0], up[1], up[2]) || 1 : 1;
+    const yaw = up ? ((rr.beta || 0) * up[0] + (rr.gamma || 0) * up[1] + (rr.alpha || 0) * up[2]) / n : 0;
     if (!s.startAt) {
       const go = s.holding ? mag > LIFT_MIN : mag > SWING_MIN || twist > TWIST_MIN;
-      if (go && now >= s.coolUntil) { s.startAt = now; s.peak = mag; s.twist = twist; }
+      if (go && now >= s.coolUntil) { s.startAt = now; s.peak = mag; s.twist = twist; s.yaw = yaw; }
       return;
     }
-    s.peak = Math.max(s.peak, mag); s.twist = Math.max(s.twist, twist);
+    s.peak = Math.max(s.peak, mag); s.twist = Math.max(s.twist, twist); s.yaw += yaw;
     if (now - s.startAt >= PEAK_MS) {
       s.startAt = 0;
-      swing(swingPower(s.peak, s.twist));
+      // Lado: solo si giró claro para un lado (si no, la compu lo decide por dónde viene la pelota). Zurdos al revés.
+      const side = Math.abs(s.yaw) < 300 ? 0 : (s.yaw > 0 ? 1 : -1) * (s.lefty ? -1 : 1);
+      swing(swingPower(s.peak, s.twist), false, side);
     }
   }
 
@@ -129,9 +140,10 @@ export default function TenisControl({ room, me, code, onLeave }) {
           {playing && holding && <p className="tn-serve" data-serve>🎾 ¡Sacás vos! Levantá el celular para tirar la pelota y pegale cuando baja.</p>}
           <div className={`tn-meter${last?.hit ? ' is-hit' : ''}`} data-last={last ? last.f : ''}>
             <i style={{ width: `${(last?.f || 0) * 100}%` }} />
-            <span data-quality={last?.q || ''}>{last ? (QUALITY[last.q] || (last.toss ? '¡Arriba!' : `Golpe ${Math.round(last.f * 100)} %`)) : 'Hacé el gesto de pegarle a la pelota'}</span>
+            <span data-quality={last?.q || ''}>{last ? `${last.side ? (last.side > 0 ? 'Drive · ' : 'Revés · ') : ''}${QUALITY[last.q] || (last.toss ? '¡Arriba!' : `Golpe ${Math.round(last.f * 100)} %`)}` : 'Hacé el gesto de pegarle a la pelota'}</span>
           </div>
           <button type="button" className="tn-swing" onClick={() => swing(0.5 + Math.random() * 0.2, true)} data-swing>{playing && holding ? 'TIRAR LA PELOTA' : 'GOLPEAR'}</button>
+          <label className="tn-lefty"><input type="checkbox" checked={lefty} onChange={(e) => { setLefty(e.target.checked); try { localStorage.setItem('tf:tenis:zurdo', e.target.checked ? '1' : '0'); } catch { /* sin guardar */ } }} data-lefty /> Soy zurdo</label>
           <p className="tn-small">{noSensor ? 'Este aparato no manda movimiento: usá el botón.' : 'Agarrá el celular como una raqueta y hacé el golpe de tenis justo cuando la pelota llega a tu jugador. Si te adelantás se te abre, si llegás tarde va a la red, y un golpecito flojo queda corto.'}</p>
         </>
       )}

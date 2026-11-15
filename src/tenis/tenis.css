@@ -49,3 +49,4 @@
 
 .tn-serve { margin: 0; padding: 10px 14px; border-radius: 12px; background: #ffd23f; color: #1d2333; font-weight: 700; text-align: center; animation: tn-pulse 1s ease-in-out infinite alternate; }
 @keyframes tn-pulse { from { transform: scale(1); } to { transform: scale(1.03); } }
+.tn-lefty { display: flex; gap: 8px; align-items: center; justify-content: center; font-size: 14px; opacity: 0.85; }
