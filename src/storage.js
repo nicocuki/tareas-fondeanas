@@ -163,6 +163,26 @@ const fpsChannel = (code) => peerChannel('fps', code);
 const pistaChannel = (code) => peerChannel('pista', code);
 // Tenis Movido: los golpes del celular a la compu (y el aviso de vuelta), directo o por tenis/{sala}/p/{id}.
 const tenisChannel = (code) => peerChannel('tenis', code);
+// Fondo Kart: las compus se pasan los karts y los ítems por kart/{sala}; cada compu tiene su propio canal con sus celulares
+// (los volantes), kartpad/{sala}/{compu}, así los celulares de una compu no se conectan con todas las demás.
+const kartChannel = (code) => peerChannel('kart', code);
+function kartPadChannel(code, screen) {
+  const at = (path) => ref(`kartpad/${code}/${screen}/${path}`);
+  return {
+    signaling: signalingAt(at),
+    publish: (id, snap) => set(at(`p/${id}`), snap),
+    leaveOnDisconnect: (id) => onDisconnect(at(`p/${id}`)).remove(),
+    remove: (id) => remove(at(`p/${id}`)),
+    subscribe(onSnap) {
+      const list = at('p');
+      const offs = [
+        onChildAdded(list, (snap) => onSnap(snap.key, snap.val())),
+        onChildChanged(list, (snap) => onSnap(snap.key, snap.val())),
+      ];
+      return () => offs.forEach((off) => off());
+    },
+  };
+}
 
 // Generala: dónde tiene el cubilete el que está por tirar, para que los demás lo vean sacudirlo. No se guarda.
 //   generala/{sala}/mano   { n: turno, r: tirada, x, z }
@@ -180,5 +200,5 @@ function subscribeServerOffset(onOffset) {
 }
 
 export const backend = {
-  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, generalaChannel, bomberChannel, fpsChannel, pistaChannel, tenisChannel, royale3dChannel, subscribeServerOffset,
+  subscribeRoom, updateRoom, createRoom, subscribeConnection, futbolChannel, tirosChannel, naveChannel, cohetesChannel, pixelChannel, mineChannel, timbaChannel, generalaChannel, bomberChannel, fpsChannel, pistaChannel, tenisChannel, kartChannel, kartPadChannel, royale3dChannel, subscribeServerOffset,
 };

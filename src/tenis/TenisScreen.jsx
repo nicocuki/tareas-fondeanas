@@ -9,6 +9,7 @@ import QRCode from 'qrcode';
 import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
+import { SKIN_IDS } from '../wii/skins.js';
 import { COLORS, TEAM_COLORS, findScreen, playerAt, pointText, slotCount, startProblem, teamOf } from './game.js';
 import { STEP, SWING_WINDOW, canReach, canReachWide, hitBall, hitSwing, swingQuality, swingTiming, EARLY_S, SWING_LAG, BUTTON_LAG, tossBall, newRally, packRally, stepRally, unpackRally } from './sim.js';
 
@@ -75,8 +76,14 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
       const r = roomRef.current;
       // La otra compu recibe la pelota de la del anfitrión.
       if (snap.r && id === r.hostId && r.hostId !== me.id) {
-        sim.rally = unpackRally(snap.r, sim.rally);
+        // Se guarda con la hora de llegada y se dibuja un poco en el pasado, interpolando entre dos fotos (ver `smooth`):
+        // aplicarla tal cual llegaba hacía que la pelota avanzara a los saltos.
         const t = performance.now() / 1000;
+        sim.buf ||= [];
+        const lastAt = sim.buf.length ? sim.buf[sim.buf.length - 1].at : 0;
+        if (lastAt) sim.gap = (sim.gap || 1 / 30) * 0.9 + Math.min(0.5, t - lastAt) * 0.1;
+        sim.buf.push({ at: t, r: unpackRally(snap.r, null) });
+        if (sim.buf.length > 30) sim.buf.shift();
         (snap.sw || []).forEach((age, i) => { if (age >= 0) { sim.swingAt[i] = t - age; sim.swingSide[i] = snap.sd?.[i] ?? 1; } });
         if (snap.m && snap.m !== sim.msg) { sim.msg = snap.m; sim.msgAt = t; }
         return;
@@ -106,6 +113,25 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
     const off = chan.subscribe(onSnap);
     return () => { off(); mesh?.close(); chan.remove(me.id).catch(() => {}); sim.mesh = null; sim.chan = null; };
   }, [code, me.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // La otra compu: la pelota y los jugadores a `delay` segundos en el pasado, entre las dos fotos que lo rodean.
+  function smooth(t) {
+    const buf = sim.buf;
+    const delay = Math.min(0.3, Math.max(0.07, (sim.gap || 1 / 30) * 2.5));
+    const at = t - delay;
+    let i = buf.length - 1;
+    while (i > 0 && buf[i - 1].at > at) i--;
+    const b = buf[i], a = buf[i - 1] || b;
+    const u = b === a ? 1 : Math.max(0, Math.min(1, (at - a.at) / (b.at - a.at)));
+    if (!sim.rally || sim.rally.players.length !== b.r.players.length) sim.rally = unpackRally(packRally(b.r), null);
+    const r = sim.rally, l = (x, y) => x + (y - x) * u;
+    // Si la pelota cambió de lado de golpe (saque nuevo) no se interpola: va directo.
+    const jump = Math.hypot(b.r.ball.x - a.r.ball.x, b.r.ball.z - a.r.ball.z) > 8;
+    r.ball.x = jump ? b.r.ball.x : l(a.r.ball.x, b.r.ball.x); r.ball.y = jump ? b.r.ball.y : l(a.r.ball.y, b.r.ball.y); r.ball.z = jump ? b.r.ball.z : l(a.r.ball.z, b.r.ball.z);
+    b.r.players.forEach((p, k) => { r.players[k].x = l(a.r.players[k].x, p.x); r.players[k].z = l(a.r.players[k].z, p.z); });
+    r.serving = b.r.serving; r.server = b.r.server; r.over = b.r.over; r.held = b.r.held;
+    while (buf.length > 2 && buf[1].at < at - 0.5) buf.shift();
+  }
 
   // Quién tiene la pelota en la mano para sacar (el celular lo muestra). Va en todos los mensajes de la compu del anfitrión.
   function holdId() {
@@ -202,11 +228,12 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
           if (other && (!sim.mesh || !sim.mesh.isOpen(other.id)) && t - sim.serverAt >= SERVER_EVERY && sim.chan) { sim.serverAt = t; sim.chan.publish(me.id, JSON.stringify(snap)).catch(() => {}); }
         }
       }
+      if (!isHost && sim.buf?.length) smooth(t);
       if (!hidden && sim.r) {
         const team = findScreen(r, me.id)?.team ?? 0;
-        const names = [], colors = [];
-        for (let i = 0; i < n; i++) { names.push(playerAt(r, i)?.name || 'Máquina'); colors.push(COLORS[i]); }
-        sim.r.draw({ rally, views: r.options?.mode === 'online' ? [team] : [0, 1], names, colors, swing: [0, 1, 2, 3].map((s) => ({ age: t - sim.swingAt[s], side: sim.swingSide[s] })) });
+        const names = [], colors = [], skins = [];
+        for (let i = 0; i < n; i++) { names.push(playerAt(r, i)?.name || 'Máquina'); colors.push(COLORS[i]); skins.push(playerAt(r, i)?.skin || SKIN_IDS[(i + 4) % SKIN_IDS.length]); }
+        sim.r.draw({ rally: sim.rally, skins, views: r.options?.mode === 'online' ? [team] : [0, 1], names, colors, swing: [0, 1, 2, 3].map((s) => ({ age: t - sim.swingAt[s], side: sim.swingSide[s] })) });
       }
       if (t - hudAt > 0.15) { hudAt = t; setHud({ loading: !sim.r, msg: t - sim.msgAt < 2.5 ? sim.msg : '' }); }
     }

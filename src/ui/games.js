@@ -3,7 +3,49 @@
 // enrutador de App.jsx y en ROOTS (worker/rules.js), y ponele categoría en `CATEGORY_OF`. Los 3D llevan `section: '3d'` y salen en la vidriera de «Tareas 3D» de la portada. Cada juego lleva `image`: una captura de la partida en `public/juegos/`.
 export const GAMES = [
   {
+    id: 'wii',
+    image: '/juegos/wii.jpg',
+    section: '3d', // va en la vidriera «Tareas 3D» de la portada
+    title: 'Juegos Wii',
+    emoji: '🕹️',
+    color: 'var(--game-wii)',
+    onColor: '#ffffff',
+    tagline: 'Fondo Kart y Tenis Movido, con el celular como control',
+    description: 'Un juego con juegos adentro, con los mismos 8 personajes: Fondo Kart, carreras de karts de hasta 8 con derrape, mini turbo, ítems y 7 pistas (online o local con pantalla partida, con teclado o el celular de volante), y Tenis Movido, donde el celular es la raqueta.',
+    players: '1 a 8',
+    min: 1,
+    max: 8,
+    duration: '5–15 min',
+    input: 'Teclado o celular',
+    badge: 'Nuevo',
+    howTo: [
+      'Elegí un juego: Fondo Kart o Tenis Movido. En los dos elegís uno de los 8 personajes.',
+      'Fondo Kart online: cada uno entra desde su compu con el código y elige si maneja con el teclado o con el celular (escanea el QR de su compu). Local: una compu muestra la pantalla partida y cada uno se conecta con su celular.',
+      'En Fondo Kart el anfitrión elige ítems, bots y cilindrada; al arrancar se vota la pista (el «?» elige una al azar). Teclado: WASD o flechas, Espacio derrapa, E usa el ítem. Derrapá en las curvas para cargar el mini turbo y acelerá justo en el «2» para salir con turbo.',
+      'En Tenis Movido la compu muestra la cancha y el celular es la raqueta: hacé el gesto del golpe cuando llega la pelota.',
+    ],
+  },
+  {
+    id: 'kart',
+    menu: false, // se entra desde Juegos Wii; el link ?juego=kart (el de los QR) sigue andando
+    image: '/juegos/kart.jpg',
+    section: '3d',
+    title: 'Fondo Kart',
+    emoji: '🏎️',
+    color: 'var(--game-wii)',
+    onColor: '#ffffff',
+    tagline: 'Carreras de karts con ítems, derrape y mini turbo',
+    description: 'Carreras de karts de hasta 8 (con bots si faltan) en 7 pistas: derrapá para cargar el mini turbo, agarrá cajas de ítems y tirá cáscaras, caparazones y bombas. Online (cada uno en su compu) o local con la pantalla partida, con el teclado o el celular de volante.',
+    players: '1 a 8',
+    min: 1,
+    max: 8,
+    duration: '3–5 min',
+    input: 'Teclado o celular',
+    howTo: ['Ver Juegos Wii.'],
+  },
+  {
     id: 'tenis',
+    menu: false, // se entra desde Juegos Wii; el link ?juego=tenis (el de los QR) sigue andando
     image: '/juegos/tenis.jpg',
     section: '3d', // va en la vidriera «Tareas 3D» de la portada
     title: 'Tenis Movido',

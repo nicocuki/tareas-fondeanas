@@ -9,6 +9,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
 import { createMesh } from '../futbol/p2p.js';
 import { COLORS, pointText, slotCount } from './game.js';
+import SkinPicker from '../wii/SkinPicker.jsx';
 import { LIFT_MIN, SWING_COOLDOWN, SWING_MIN, TWIST_MIN, swingPower } from './sim.js';
 
 const KEEP_MS = 2500;     // cuánto tiempo sigue viajando un gesto en los mensajes
@@ -17,7 +18,7 @@ const PING_MS = 1000;     // aunque no golpee, manda señales de vida
 // Cómo te salió el golpe (lo dice la compu).
 const QUALITY = { justo: '¡Justo! 🎯', temprano: 'Temprano: se te abrió', tarde: 'Tarde: la pelota ya pasaba', flojo: 'Flojo: pegale con ganas', 'pasó': 'Muy temprano: le pasaste por al lado', arriba: '¡Arriba! Pegale cuando baja' };
 
-export default function TenisControl({ room, me, code, onLeave }) {
+export default function TenisControl({ room, me, code, onLeave, onDispatch }) {
   const [armed, setArmed] = useState(false);
   const [error, setError] = useState('');
   const [last, setLast] = useState(null);   // { f, hit }
@@ -133,6 +134,7 @@ export default function TenisControl({ room, me, code, onLeave }) {
         <small>Equipo {slot % 2 === 0 ? 'Rojo' : 'Azul'}{slotCount(room) > 2 ? (slot >= 2 ? ' · en la red' : ' · al fondo') : ''} · sala {code}</small>
       </header>
       <p className="tn-ctrl-score" data-score>{playing ? `${room.score.g[0]} – ${room.score.g[1]} · ${pointText(room.score)}` : room.phase === 'final' ? 'Terminó el partido' : 'Esperando que arranque la cancha…'}</p>
+      {!playing && <SkinPicker value={mine?.skin} onPick={(skin) => onDispatch?.({ type: 'setSkin', skin })} compact />}
       {!armed ? (
         <button type="button" className="tn-arm" onClick={arm} data-arm>🎾 Tocá para activar el control</button>
       ) : (

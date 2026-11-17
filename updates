@@ -1147,8 +1147,19 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.66.0 = Tenis Movido: jugadores nuevos con animación de golpe
+1.66.0 = Tenis Movido: jugadores nuevos con animación de golpe
 - Jugadores rehechos, con piernas, brazos y raqueta de verdad. Esperan la pelota agachados, con la raqueta adelante agarrada con las dos manos.
 - Animación de golpe completa: preparación, impacto y terminación. Hay una para el drive, otra para el revés y otra para el saque (tirar la pelota y pegarle arriba). Cuando se mueven, corren.
 - El celular detecta si le pegaste de drive o de revés por cómo giraste el brazo, y tu jugador hace ese golpe. Si no se nota, elige según de qué lado viene la pelota. Hay una opción «Soy zurdo».
 - La cámara quedó más baja y más cerca: ves a tu jugador de espaldas, abajo, y toda la cancha adelante.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.67.0 = Juegos Wii y Fondo Kart
+- Nuevo en Tareas 3D: Juegos Wii, un juego con juegos adentro. Por ahora trae Fondo Kart y Tenis Movido, con 8 personajes para elegir.
+- Fondo Kart: carreras de karts de hasta 8 en 7 pistas (pradera, playa, desierto, nieve, castillo con lava, ciudad de noche y una ruta arcoíris en el espacio). Antes de cada carrera se vota la pista, y el «?» elige una al azar.
+- Derrapá en las curvas para cargar el mini turbo (azul, naranja y violeta) y acelerá justo en el «2» de la cuenta para salir con turbo. Ir pegado atrás de otro te da un turbo de rebufo.
+- Ítems (se pueden apagar): cáscaras, caparazones que rebotan, que persiguen o que vuelan al primero, hongos turbo, hongo dorado, estrella, rayo, bomba y bocinazo. Los bots completan la carrera si faltan corredores. Hay 50cc, 100cc y 150cc.
+- Online: cada uno juega en su compu y elige manejar con el teclado o con el celular de volante. Local: una compu con la pantalla partida (hasta 4) y cada uno maneja con su celular.
+- El celular de volante tiene dos modos: joystick o inclinarlo como un volante.
+- Tenis Movido: cada uno elige su personaje, y en el online la compu que no es la del anfitrión ya no ve la pelota a los saltos.

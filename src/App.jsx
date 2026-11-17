@@ -29,11 +29,15 @@ import Royale3DApp from './royale3d/Royale3DApp.jsx';
 import FpsApp from './fps/FpsApp.jsx';
 import PistaApp from './pista/PistaApp.jsx';
 import TenisApp from './tenis/TenisApp.jsx';
+import KartApp from './kart/KartApp.jsx';
+import WiiApp from './wii/WiiApp.jsx';
 
 const SCREENS = {
   royale3d: Royale3DApp,
   fps: FpsApp,
   pista: PistaApp,
+  wii: WiiApp,
+  kart: KartApp,
   tenis: TenisApp,
   abismo: AbismoApp,
   bomber: BomberApp,

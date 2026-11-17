@@ -9,6 +9,7 @@
 // Lo de a una vez va acá (quién juega dónde, el tanteo); los golpes van en vivo del celular a la compu del anfitrión,
 // que es la única que simula la pelota y la manda a la otra compu (TenisScreen.jsx).
 import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
+import { freeSkin, isSkin } from '../wii/skins.js';
 
 export const GAME_TYPE = 'tenis';
 export const MAX_PLAYERS = 4;
@@ -96,7 +97,7 @@ export function applyAction(room, action, ctx = {}) {
       if (!cleanName(action.name)) return null;
       const slot = freeSlot(next, action.team);
       if (slot == null) return null;
-      next.players.push({ id: action.playerId, name: cleanName(action.name), avatar: action.avatar || '🎾', slot });
+      next.players.push({ id: action.playerId, name: cleanName(action.name), avatar: action.avatar || '🎾', slot, skin: isSkin(action.skin) ? action.skin : freeSkin(next.players.map((p) => p.skin)) });
       break;
     }
     // La compu del otro equipo, en el online.
@@ -112,6 +113,12 @@ export function applyAction(room, action, ctx = {}) {
         next.screens = next.screens.filter((s) => s.id !== screen.id);
         if (next.phase === 'playing') next.phase = 'lobby'; // sin la otra compu no se puede seguir
       } else return null;
+      break;
+    }
+    // El personaje (src/wii/skins.js), lo elige cada uno desde su celular.
+    case 'setSkin': {
+      if (!me || !isSkin(action.skin)) return null;
+      me.skin = action.skin;
       break;
     }
     case 'setOptions': {

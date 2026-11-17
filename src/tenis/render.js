@@ -5,24 +5,15 @@
 // izquierda detrás del equipo 0 y a la derecha detrás del equipo 1).
 import * as THREE from 'three';
 import { HALF_L, HALF_W, HALF_W2, NET_H } from './sim.js';
+import { characterModel } from '../wii/character.js';
 
 const mat = (color) => new THREE.MeshLambertMaterial({ color });
 function mesh(geo, color, shadow = true) { const m = new THREE.Mesh(geo, mat(color)); m.castShadow = shadow; m.receiveShadow = true; return m; }
 
 // ─── El jugador ──────────────────────────────────────────────────────────────
-// Un muñeco propio (cabeza redonda con vincha, remera del color de su lugar, pantalón y zapatillas blancas) armado con
-// articulaciones: caderas, rodillas, torso, hombros, codos y muñeca. Mira hacia −z y su derecha es +x; los del equipo 1
-// se giran 180°. La pose sale de mezclar poses clave (`POSES`): listo para recibir, preparación, impacto y terminación
-// del drive, del revés y del saque.
-const SKIN = 0xffd6b0, WHITE = 0xf4f4f4, HAIR = 0x5a3a22;
-function seg(len, r, color) { // un tramo que cuelga hacia −y desde su articulación
-  const g = new THREE.Group();
-  const m = mesh(new THREE.CylinderGeometry(r, r * 0.9, len, 10), color); m.position.y = -len / 2; g.add(m);
-  const j = mesh(new THREE.SphereGeometry(r * 1.05, 10, 8), color); g.add(j);
-  const end = new THREE.Group(); end.position.y = -len; g.add(end);
-  g.userData.end = end;
-  return g;
-}
+// El personaje elegido (src/wii/character.js, el mismo de Fondo Kart) con la vincha del color de su lugar y la raqueta.
+// Los del equipo 1 se giran 180°. La pose sale de mezclar poses clave (`POSES`): listo para recibir, preparación, impacto
+// y terminación del drive, del revés y del saque.
 function racketModel() {
   const r = new THREE.Group();
   const handle = mesh(new THREE.CylinderGeometry(0.028, 0.032, 0.26, 8), 0x2a2a2a); handle.position.y = -0.1; r.add(handle);
@@ -32,34 +23,10 @@ function racketModel() {
   strings.scale.set(0.82, 1.1, 1); strings.position.y = -0.55; r.add(strings);
   return r;
 }
-function playerModel(color) {
-  const root = new THREE.Group();
-  const hips = new THREE.Group(); hips.position.y = 0.86; root.add(hips);
-  const pelvis = mesh(new THREE.SphereGeometry(0.2, 12, 10), WHITE); pelvis.scale.set(1.25, 0.7, 0.9); hips.add(pelvis);
-  const legs = [-1, 1].map((sx) => {
-    const thigh = seg(0.42, 0.075, WHITE); thigh.position.x = sx * 0.12; hips.add(thigh);
-    const shin = seg(0.4, 0.065, WHITE); thigh.userData.end.add(shin);
-    const foot = mesh(new THREE.BoxGeometry(0.13, 0.08, 0.26), WHITE); foot.position.set(0, -0.02, -0.06);
-    const ankle = new THREE.Group(); ankle.add(foot); shin.userData.end.add(ankle);
-    return { thigh, shin, ankle, sx };
-  });
-  const torso = new THREE.Group(); hips.add(torso);
-  const body = mesh(new THREE.CapsuleGeometry(0.25, 0.32, 6, 14), color); body.position.y = 0.36; body.scale.set(1, 1, 0.8); torso.add(body);
-  const head = new THREE.Group(); head.position.y = 0.98; torso.add(head);
-  head.add(mesh(new THREE.SphereGeometry(0.3, 18, 14), SKIN));
-  const hair = mesh(new THREE.SphereGeometry(0.31, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), HAIR); hair.position.y = 0.02; head.add(hair);
-  const band = mesh(new THREE.TorusGeometry(0.3, 0.04, 8, 22), WHITE); band.rotation.x = Math.PI / 2; band.position.y = 0.08; head.add(band);
-  const eyeM = new THREE.MeshBasicMaterial({ color: 0x222222 });
-  for (const sx of [-0.1, 0.1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 6), eyeM); e.position.set(sx, 0.02, -0.28); head.add(e); }
-  const arms = [-1, 1].map((sx) => {
-    const upper = seg(0.3, 0.06, color); upper.position.set(sx * 0.31, 0.6, 0); torso.add(upper);
-    const fore = seg(0.27, 0.052, SKIN); upper.userData.end.add(fore);
-    const hand = new THREE.Group(); fore.userData.end.add(hand);
-    hand.add(mesh(new THREE.SphereGeometry(0.07, 10, 8), SKIN));
-    return { upper, fore, hand };
-  });
-  const racket = racketModel(); arms[1].hand.add(racket);
-  root.userData = { hips, legs, torso, head, arms, racket, x: null, run: 0 };
+function playerModel(skin, color) {
+  const root = characterModel(skin, color);
+  const racket = racketModel(); root.userData.arms[1].hand.add(racket);
+  root.userData.racket = racket;
   return root;
 }
 
@@ -182,15 +149,20 @@ export function createRenderer(canvas) {
   const serveTag = makeTag(); scene.add(serveTag);
 
   function ensurePlayers(view) {
-    while (players.length < view.rally.players.length) {
-      const i = players.length;
-      const m = playerModel(new THREE.Color(view.colors[i]).getHex());
-      if (i % 2 === 1) m.rotation.y = Math.PI;
-      const tag = makeTag(); tag.position.y = -0.35; m.add(tag);
-      m.userData.tag = tag;
-      scene.add(m); players.push(m);
+    const n = view.rally.players.length;
+    for (let i = 0; i < Math.max(n, players.length); i++) {
+      const skin = view.skins?.[i] || 'nico';
+      if (players[i] && (i >= n || players[i].userData.skinId !== skin)) { scene.remove(players[i]); players[i] = null; }
+      if (i < n && !players[i]) {
+        const m = playerModel(skin, new THREE.Color(view.colors[i]).getHex());
+        m.userData.skinId = skin;
+        if (i % 2 === 1) m.rotation.y = Math.PI;
+        const tag = makeTag(); tag.position.y = -0.35; m.add(tag);
+        m.userData.tag = tag;
+        scene.add(m); players[i] = m;
+      }
     }
-    for (let i = 0; i < players.length; i++) players[i].visible = i < view.rally.players.length;
+    players.length = n;
   }
 
   function resize() {

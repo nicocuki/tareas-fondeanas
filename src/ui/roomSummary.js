@@ -20,11 +20,12 @@ import { MAX_PLAYERS as MAX_ROYALE3D } from '../royale3d/game.js';
 import { MAX_PLAYERS as MAX_FPS } from '../fps/game.js';
 import { MAX_PLAYERS as MAX_PISTA } from '../pista/game.js';
 import { MAX_PLAYERS as MAX_TENIS } from '../tenis/game.js';
+import { MAX_PLAYERS as MAX_KART } from '../kart/game.js';
 import { roomSettings } from '../gartic/game.js';
 
 // Topes de cada juego. Fútbol no tiene tope.
-const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA, generala: MAX_GENERALA, bomber: MAX_BOMBER, abismo: MAX_ABISMO, royale3d: MAX_ROYALE3D, fps: MAX_FPS, pista: MAX_PISTA, tenis: MAX_TENIS };
-const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena', 'timba', 'generala', 'bomber', 'abismo', 'royale3d', 'fps', 'pista', 'tenis'];
+const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA, generala: MAX_GENERALA, bomber: MAX_BOMBER, abismo: MAX_ABISMO, royale3d: MAX_ROYALE3D, fps: MAX_FPS, pista: MAX_PISTA, tenis: MAX_TENIS, kart: MAX_KART };
+const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena', 'timba', 'generala', 'bomber', 'abismo', 'royale3d', 'fps', 'pista', 'tenis', 'kart'];
 
 // `gartic`: lo que hay en garticRooms/{código} (objeto); `raw`: lo que hay en rooms/{código} (texto JSON).
 // Devuelve { code, game, host, hostAvatar, players, max, phase, local } o null si no existe.

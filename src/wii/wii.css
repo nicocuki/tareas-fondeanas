@@ -1,0 +1,33 @@
+/* Juegos Wii: el menú de adentro y la elección de personaje (compartida por Tenis Movido y Fondo Kart). */
+.wii-page { max-width: 1000px; margin: 0 auto; padding: 16px; }
+.wii-roster { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 12px 0 20px; }
+.wii-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.wii-card { display: flex; flex-direction: column; text-align: left; padding: 0; border: 2px solid var(--border, #ccc); border-radius: 18px; overflow: hidden; background: var(--surface, #fff); color: var(--text, inherit); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; font: inherit; }
+.wii-card:hover, .wii-card:focus-visible { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); }
+.wii-card-img { position: relative; display: block; aspect-ratio: 16 / 10; background: #1d2333 center / cover no-repeat; }
+.wii-card-img em { position: absolute; top: 10px; left: 10px; background: #ffd23f; color: #1d2333; font-style: normal; font-weight: 800; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; }
+.wii-card-body { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; }
+.wii-card-body b { font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.35rem; }
+.wii-card-body > span { color: var(--muted, #555); font-size: 0.95rem; }
+.wii-card-body .wii-play { color: var(--accent, #e8423f); font-weight: 800; margin-top: 4px; }
+
+/* La cara de cada personaje, hecha con CSS. */
+.wii-face { position: relative; display: inline-block; flex: none; border-radius: 50%; background: #2a3550; overflow: hidden; }
+.wii-face i { position: absolute; display: block; }
+.wii-face-shirt { left: 15%; right: 15%; bottom: -18%; height: 42%; border-radius: 50% 50% 0 0; background: var(--sh); }
+.wii-face-head { left: 27%; top: 20%; width: 46%; height: 46%; border-radius: 50%; background: var(--sk); }
+.wii-face-hair { left: 25%; top: 16%; width: 50%; height: 26%; border-radius: 50% 50% 20% 20%; background: var(--hr); }
+.wii-face[data-style='bald'] .wii-face-hair { opacity: 0; }
+.wii-face[data-style='long'] .wii-face-hair { height: 52%; border-radius: 50% 50% 30% 30%; z-index: 0; }
+.wii-face[data-style='long'] .wii-face-head { z-index: 1; }
+.wii-face[data-style='pony'] .wii-face-hair { box-shadow: 9px 6px 0 -3px var(--hr); }
+.wii-face[data-style='bun'] .wii-face-hair { box-shadow: 0 -6px 0 -2px var(--hr); }
+.wii-face[data-style='curly'] .wii-face-hair { top: 10%; height: 32%; left: 20%; width: 60%; border-radius: 40%; }
+.wii-face[data-style='cap'] .wii-face-hair { background: var(--cp); box-shadow: -6px 4px 0 -2px var(--cp); }
+
+.wii-skins { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.wii-skins button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 2px solid transparent; border-radius: 14px; background: var(--surface-2, rgba(127, 127, 127, 0.12)); color: inherit; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+.wii-skins button.is-on { border-color: #ffd23f; background: rgba(255, 210, 63, 0.18); }
+.wii-skins button:disabled { opacity: 0.35; cursor: not-allowed; }
+.wii-skins.is-compact { gap: 6px; }
+.wii-skins.is-compact button { padding: 5px 2px; font-size: 0.75rem; }
