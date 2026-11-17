@@ -9,6 +9,7 @@ import QRCode from 'qrcode';
 import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
+import { PublicSwitch } from '../lobby/PublicRoom.jsx';
 import { SKIN_IDS } from '../wii/skins.js';
 import { COLORS, TEAM_COLORS, findScreen, playerAt, pointText, slotCount, startProblem, teamOf } from './game.js';
 import { STEP, SWING_WINDOW, canReach, canReachWide, hitBall, hitSwing, swingQuality, swingTiming, EARLY_S, SWING_LAG, BUTTON_LAG, tossBall, newRally, packRally, stepRally, unpackRally } from './sim.js';
@@ -277,6 +278,7 @@ export default function TenisScreen({ room, me, code, onDispatch, onLeave }) {
               </div>
             </div>
           ) : <p className="tn-small">Sos la compu del equipo {TEAM_NAME[myTeam]}. El anfitrión elige el formato y arranca.</p>}
+          <PublicSwitch code={code} host={host} players={room.players.length + 1} />
           <h2>{online ? `Celulares del equipo ${TEAM_NAME[myTeam]}` : 'Conectá los celulares'}</h2>
           <div className="tn-connect">
             {qr ? <img src={qr} alt="QR para conectar el celular" className="tn-qr" data-qr /> : <div className="tn-qr" />}

@@ -12,6 +12,7 @@ import { createMesh } from '../futbol/p2p.js';
 import GameHero from '../ui/GameHero.jsx';
 import { getProfile, setProfile, useRegisterRoom } from '../ui/store.js';
 import { isKicked } from '../lobby/kick.js';
+import { PublicSwitch } from '../lobby/PublicRoom.jsx';
 import SkinPicker, { SkinFace } from '../wii/SkinPicker.jsx';
 import { skinById } from '../wii/skins.js';
 import { GAME_TYPE, MAX_LOCAL, MAX_PLAYERS, applyAction, cleanName, findPlayer, makeId, newRoom, racersFor, startProblem } from './game.js';
@@ -165,6 +166,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, phones }) {
       <div className="kt-lobby-head">
         <h1>🏎️ Fondo Kart</h1>
         <div className="kt-code">Código <b data-code>{code}</b>
+          {!local && <PublicSwitch code={code} host={host} players={room.players.length} />}
           {!local && <button type="button" className="tf-btn tf-btn-soft" onClick={() => { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? '¡Copiado!' : 'Copiar link'}</button>}
         </div>
       </div>

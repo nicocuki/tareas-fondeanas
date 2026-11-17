@@ -163,3 +163,14 @@ test('kart: en el local los celulares entran a la compu del anfitrión, hasta 4'
   room = applyAction(room, { type: 'setOptions', playerId: 'h', options: { mode: 'online' } }, { now: 0 });
   assert.deepEqual(room.players.map((p) => p.id), ['h'], 'al pasar a online salen los celulares');
 });
+
+test('kart: una sala pública de Fondo Kart (online) y una de Tenis Movido sin celulares aparecen en la portada', async () => {
+  const { roomListing } = await import('../worker/publicas.js');
+  const tree = (code, room) => ({ publica: { [code]: true }, rooms: { [code]: JSON.stringify(room) } });
+  const kart = newRoom('h', 'Nico', '🏎️', 0);
+  assert.equal(roomListing(tree('ABCD', kart), 'ABCD', 1)?.game, 'kart');
+  const local = applyAction(kart, { type: 'setOptions', playerId: 'h', options: { mode: 'local' } }, { now: 0 });
+  assert.equal(roomListing(tree('ABCD', local), 'ABCD', 1), null, 'la local no: se entra con el celular');
+  const tenis = (await import('../src/tenis/game.js')).newRoom('h', 'Cancha', '📺', 0);
+  assert.equal(roomListing(tree('WXYZ', tenis), 'WXYZ', 1)?.game, 'tenis');
+});

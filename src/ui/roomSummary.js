@@ -24,7 +24,7 @@ import { MAX_PLAYERS as MAX_KART } from '../kart/game.js';
 import { roomSettings } from '../gartic/game.js';
 
 // Topes de cada juego. Fútbol no tiene tope.
-const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA, generala: MAX_GENERALA, bomber: MAX_BOMBER, abismo: MAX_ABISMO, royale3d: MAX_ROYALE3D, fps: MAX_FPS, pista: MAX_PISTA, tenis: MAX_TENIS, kart: MAX_KART };
+const MAX = { 'codigo-secreto': MAX_CODIGO, 'cafe-o-te': 4, 'la-mecha': MAX_MECHA, meme: MAX_MEME, tiros: MAX_TIROS, nave: MAX_NAVE, cohetes: MAX_COHETES, pixel: MAX_PIXEL, mine: MAX_MINE, monopoly: MAX_MONOPOLY, teg: MAX_TEG, arena: MAX_ARENA, timba: MAX_TIMBA, generala: MAX_GENERALA, bomber: MAX_BOMBER, abismo: MAX_ABISMO, royale3d: MAX_ROYALE3D, fps: MAX_FPS, pista: MAX_PISTA, tenis: MAX_TENIS + 2, kart: MAX_KART };
 const GAMES = ['cafe-o-te', 'futbol', 'la-mecha', 'meme', 'tiros', 'nave', 'cohetes', 'pixel', 'mine', 'monopoly', 'teg', 'arena', 'timba', 'generala', 'bomber', 'abismo', 'royale3d', 'fps', 'pista', 'tenis', 'kart'];
 
 // `gartic`: lo que hay en garticRooms/{código} (objeto); `raw`: lo que hay en rooms/{código} (texto JSON).
@@ -44,13 +44,14 @@ export function summarizeRoom(code, gartic, raw) {
   try { room = JSON.parse(raw); } catch { return null; }
   if (!room || typeof room !== 'object') return null;
   const game = GAMES.includes(room.gameType) ? room.gameType : 'codigo-secreto';
-  const list = Array.isArray(room.players) ? room.players : [];
+  // En Tenis Movido las compus no son jugadores (`screens`): se cuentan igual, así la sala se lista sin celulares conectados.
+  const list = [...(game === 'tenis' && Array.isArray(room.screens) ? room.screens : []), ...(Array.isArray(room.players) ? room.players : [])];
   const host = list.find((p) => p?.id === room.hostId) || list[0];
   return {
     code, game, host: String(host?.name || '').slice(0, 24), hostAvatar: typeof host?.avatar === 'string' ? host.avatar : '',
     players: list.length, max: MAX[game] || null,
     people: list.slice(0, 30).map((p) => ({ name: String(p?.name || '').slice(0, 24), avatar: typeof p?.avatar === 'string' ? p.avatar : '', bot: Boolean(p?.bot) })),
-    phase: room.phase || 'lobby', local: Boolean(room.isTrainingMode || room.isLocalGame),
+    phase: room.phase || 'lobby', local: Boolean(room.isTrainingMode || room.isLocalGame || (game === 'kart' && room.options?.mode === 'local')),
   };
 }
 
