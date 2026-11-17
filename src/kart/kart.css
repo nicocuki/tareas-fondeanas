@@ -160,3 +160,6 @@
 .kt-banner-zone.is-lap { color: #ffe14a; font-size: 40px; -webkit-text-stroke: 2px #1d2333; paint-order: stroke; background: rgba(232, 66, 63, 0.85); }
 @keyframes kt-slide { 0% { transform: translate(-150%, 0); opacity: 0; } 12% { transform: translate(-50%, 0); opacity: 1; } 80% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(60%, 0); opacity: 0; } }
 .kt-glide { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); padding: 4px 14px; border-radius: 999px; background: rgba(63, 139, 255, 0.85); font-weight: 800; white-space: nowrap; }
+.kt-back { position: absolute; left: 50%; top: 9%; transform: translateX(-50%); padding: 4px 14px; border-radius: 999px; background: rgba(232, 66, 63, 0.85); font-weight: 800; white-space: nowrap; }
+.kp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.kp-rear { background: #b061ff; font-size: 14px; }

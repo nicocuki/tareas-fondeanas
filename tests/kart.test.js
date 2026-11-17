@@ -7,9 +7,9 @@ import { SKIN_IDS } from '../src/wii/skins.js';
 
 const seeded = (seed) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 
-test('kart: las 3 pistas son circuitos cerrados y la largada, las cajas y los aceleradores quedan sobre el asfalto', () => {
-  assert.equal(TRACKS.length, 3);
-  assert.equal(RANDOM_PICK, 3);
+test('kart: las pistas son circuitos cerrados y la largada, las cajas y los aceleradores quedan sobre el asfalto', () => {
+  assert.equal(TRACKS.length, 5);
+  assert.equal(RANDOM_PICK, 5);
   for (let i = 0; i < TRACKS.length; i++) {
     const t = buildTrack(i);
     assert.ok(t.length > 500, `${t.id} mide ${t.length}`);
@@ -228,4 +228,57 @@ test('kart: saltar de una rampa con derrape es una pirueta que da turbo al caer'
   }
   assert.ok(launched, 'salió volando');
   assert.ok(k.trickAt != null && k.boost > 0, 'pirueta con turbo');
+});
+
+test('kart: los atajos ahorran camino, se manejan a la velocidad de siempre y las rampas están en recta', async () => {
+  const { cutAt } = await import('../src/kart/tracks.js');
+  for (let i = 0; i < TRACKS.length; i++) {
+    const t = buildTrack(i);
+    for (const c of t.cuts) {
+      assert.ok(c.len < c.road * 0.75, `${t.id}: el atajo mide ${c.len.toFixed(0)} m contra ${c.road.toFixed(0)} m de pista`);
+      // Un kart que entra derecho por el atajo no va por la banquina ni choca la pared: llega a la salida rápido.
+      const k = newKart('a', 0, t);
+      const [ax, az] = c.pts[0], [bx, bz] = c.pts[1];
+      Object.assign(k, { x: ax, z: az, y: c.ys[0], yaw: Math.atan2(-(bx - ax), -(bz - az)), speed: 25, started: true });
+      let slowest = 99;
+      for (let n = 0; n < 60 * 3; n++) {
+        const at = cutAt(t, k.x, k.z);
+        const seg = at ? c.pts.findIndex((p, j) => j > 0 && Math.hypot(p[0] - k.x, p[1] - k.z) < 30) : -1;
+        const tgt = c.pts[Math.max(1, seg)] || c.pts[c.pts.length - 1];
+        const want = Math.atan2(-(tgt[0] - k.x), -(tgt[1] - k.z));
+        let d = want - k.yaw; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+        stepKart(k, { s: Math.max(-1, Math.min(1, -d * 3)), a: true, d: false }, STEP, t, { cc: 150, t: 5 + n * STEP });
+        if (at) slowest = Math.min(slowest, k.speed);
+        if (Math.hypot(k.x - c.pts[c.pts.length - 1][0], k.z - c.pts[c.pts.length - 1][1]) < 6) break;
+      }
+      assert.ok(slowest > 20, `${t.id}: en el atajo no se frena (${slowest.toFixed(1)} m/s)`);
+      assert.equal(k.fall, 0, `${t.id}: no se cae en el atajo`);
+    }
+    for (const jp of t.jumps) {
+      let curv = 0; for (let o = -6; o <= 6; o++) curv = Math.max(curv, Math.abs(t.samples[(jp.i + o + t.count) % t.count].k));
+      assert.ok(curv < 0.015, `${t.id}: la rampa ${jp.i} está en una curva (${curv.toFixed(3)})`);
+    }
+  }
+});
+
+test('kart: después de girar por un golpe el kart sigue mirando para donde miraba', () => {
+  const t = buildTrack(0);
+  const k = newKart('a', 0, t);
+  k.started = true; k.speed = 20;
+  const yaw = k.yaw;
+  hitKart(k, 'verde');
+  for (let n = 0; n < 60 * 2.5; n++) stepKart(k, { s: 0, a: false, d: false }, STEP, t, { cc: 100, t: 5 + n * STEP });
+  assert.equal(k.spin, 0);
+  assert.ok(Math.abs(k.yaw - yaw) < 0.2, `miraba ${yaw.toFixed(2)} y quedó en ${k.yaw.toFixed(2)}`);
+});
+
+test('kart: mirando para atrás el caparazón sale para atrás y la cáscara para adelante', () => {
+  const t = buildTrack(0);
+  const k = newKart('a', 0, t);
+  const [fx, fz] = [-Math.sin(k.yaw), -Math.cos(k.yaw)];
+  const ahead = (p) => (p.x - k.x) * fx + (p.z - k.z) * fz;
+  assert.ok(ahead(spawnShot('verde', 'a', k, 's', 0)) > 0, 'normal: adelante');
+  assert.ok(ahead(spawnShot('verde', 'a', k, 's', 0, '', true)) < 0, 'para atrás');
+  assert.ok(ahead(spawnShot('banana', 'a', k, 's', 0)) < 0, 'la cáscara normal: atrás');
+  assert.ok(ahead(spawnShot('banana', 'a', k, 's', 0, '', true)) > 0, 'la cáscara tirada: adelante');
 });

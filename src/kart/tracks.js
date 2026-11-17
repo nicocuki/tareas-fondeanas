@@ -6,9 +6,9 @@
 // del centro (`lat`, en fracción del medio ancho):
 //   - `zones`: tramos con nombre (se anuncian al entrar), qué hay al costado (`edge`: `wall` banquina y pared, `lava` o
 //     `void` te caés) y cómo se dibujan (`kind`: `tunnel`, `bridge`, `rainbow`…).
-//   - `jumps`: rampas que te tiran al aire; con `glide` se abre el planeador y la pista sigue después de un pozo (`gap`)
+//   - `jumps`: rampas (en una recta) que te tiran al aire; con `glide` se abre el planeador y la pista sigue después de un pozo (`gap`, dos puntos)
 //     que hay que cruzar volando, con monedas en el aire.
-//   - `cuts`: atajos (un camino angosto por afuera de la pista, de tierra: conviene con un hongo).
+//   - `cuts`: atajos: un camino angosto (de asfalto, a la misma velocidad) que corta por adentro de una vuelta larga.
 //   - `obstacles`: cosas que se mueven solas según la hora de la carrera (prensas, barras de fuego, autos, rocas que
 //     ruedan, géiseres, vacas, péndulos). `lap` = desde qué vuelta aparecen (las «fases»).
 //   - `boxes` (filas de cajas de ítems), `pads` (aceleradores), `coins` (filas de monedas).
@@ -18,30 +18,30 @@ export const TRACKS = [
   {
     id: 'valle', name: 'Valle Ventoso', emoji: '🌾', theme: 'valle', width: 15, edge: 'wall', off: 'pasto', wallAt: 6, fallAt: 1.5,
     pts: [[0, 0, 0], [90, 0, 0], [170, -10, 2], [232, -52, 6], [252, -122, 10], [222, -190, 12], [150, -222, 11], [80, -206, 7],
-      [30, -200, 6], [-10, -200, 6], [-50, -200, 3], [-90, -200, 1], [-130, -200, 0], [-195, -182, 0], [-248, -122, 2],
-      [-262, -40, 5], [-232, 40, 6], [-180, 92, 3], [-110, 112, 0], [-62, 78, 0], [-62, 24, 0], [-40, 0, 0]],
+      [30, -200, 6], [-10, -200, 6], [-50, -200, 3], [-90, -200, 1], [-130, -200, 0], [-190, -232, 0], [-255, -188, 0],
+      [-270, -110, 0], [-262, -40, 4], [-232, 40, 6], [-180, 92, 3], [-110, 112, 0], [-62, 78, 0], [-62, 24, 0], [-40, 0, 0]],
     zones: [
       { at: [0, 0], name: 'Pradera de largada' },
       { at: [200, -40], name: 'Subida del molino' },
       { at: [40, -200], name: 'Salto del río', kind: 'river' },
-      { at: [-180, -186], name: 'Campo de girasoles' },
-      { at: [-258, -70], name: 'Túnel del cerro', kind: 'tunnel' },
+      { at: [-190, -230], name: 'Campo de girasoles' },
+      { at: [-262, -40], name: 'Túnel del cerro', kind: 'tunnel' },
       { at: [-200, 80], name: 'Granja de las vacas' },
     ],
-    jumps: [{ at: [20, -200], glide: true, gap: [-6, -110] }, { at: [-120, 110] }, { at: [130, -5] }],
-    cuts: [{ pts: [[-140, -196], [-190, -160], [-228, -120], [-246, -88]], w: 7, pad: [-190, -160] }],
-    boxes: [[60, 0], [235, -150], [-160, -192], [-205, 72]],
+    jumps: [{ at: [20, -200], glide: true, gap: [[-6, -200], [-110, -200]] }, { at: [40, 0] }],
+    cuts: [{ pts: [[-140, -201], [-200, -160], [-240, -128], [-266, -100]], w: 8, pad: [-200, -160] }],
+    boxes: [[60, 0], [235, -150], [-200, -228], [-205, 72]],
     pads: [[200, -30, 0.3], [-100, -201, -0.3], [-240, 30, 0]],
-    coins: [[110, -2, 0, 6], [180, -180, 0.3, 5], [-225, 52, -0.3, 5], [-70, 100, 0, 5]],
+    coins: [[110, -2, 0, 6], [180, -180, 0.3, 5], [-225, 52, -0.3, 5], [-70, 100, 0, 5], [-220, -140, 0, 5]],
     obstacles: [
       { type: 'cow', at: [-150, 106], range: 0.8, speed: 0.35 },
       { type: 'cow', at: [-80, 98], range: 0.8, speed: 0.5, ph: 2 },
       { type: 'cow', at: [-200, 82], range: 0.7, speed: 0.6, ph: 1, lap: 2 },
-      { type: 'pendulum', at: [-258, -10], swing: 0.8, period: 3.2 },
-      { type: 'pendulum', at: [-252, 18], swing: 0.8, period: 3.2, ph: 1.6, lap: 2 },
+      { type: 'pendulum', at: [-262, -30], swing: 0.8, period: 3.2 },
+      { type: 'pendulum', at: [-254, 6], swing: 0.8, period: 3.2, ph: 1.6, lap: 2 },
       { type: 'boulder', at: [250, -115], speed: 14, len: 120, lap: 3 },
     ],
-    deco: { windmills: [[270, -80], [200, -250], [110, -250]], river: true },
+    deco: { windmills: [[275, -80], [200, -255], [110, -255]] },
   },
   {
     id: 'volcan', name: 'Volcán Vértigo', emoji: '🌋', theme: 'volcan', width: 14, edge: 'lava', fallAt: 1.5, wallAt: 4, off: 'pasto',
@@ -56,51 +56,110 @@ export const TRACKS = [
       { at: [-348, 130], name: 'Castillo del dragón', edge: 'wall', kind: 'castle' },
       { at: [-120, 258], name: 'Puente de obsidiana', kind: 'bridge' },
     ],
-    jumps: [{ at: [-190, -18], glide: true, gap: [-215, -330] }, { at: [200, 130] }, { at: [-60, -155] }],
+    jumps: [{ at: [-188, -21], glide: true, gap: [[-215, 0], [-330, 88]] }, { at: [-200, 260] }],
     cuts: [],
     boxes: [[60, 226], [225, 40], [-20, -162], [-330, 190], [-200, 258]],
     pads: [[150, 190, 0], [80, -155, 0.3], [-280, 238, 0], [-120, -128, -0.3]],
-    coins: [[205, 120, 0, 5], [160, -110, -0.3, 5], [-345, 150, 0, 5], [-40, 245, 0, 6]],
+    coins: [[205, 120, 0, 5], [160, -110, -0.3, 5], [-345, 150, 0, 5], [-40, 245, 0, 6], [100, 220, 0.3, 5]],
     obstacles: [
       { type: 'firebar', at: [225, 0], len: 0.85, speed: 1.6 },
       { type: 'firebar', at: [30, -165], len: 0.85, speed: -1.9 },
+      { type: 'firebar', at: [180, 170], len: 0.8, speed: 1.3, lap: 2 },
       { type: 'geyser', at: [190, -80], lat: 0.4, period: 4, ph: 0 },
       { type: 'geyser', at: [-130, -110], lat: -0.35, period: 3.6, ph: 1.5 },
+      { type: 'geyser', at: [120, -140], lat: 0, period: 4.4, ph: 2.5, lap: 2 },
       { type: 'boulder', at: [-150, -80], speed: 13, len: 200, lap: 2 },
       { type: 'crusher', at: [-352, 165], lat: -0.45, period: 2.8, ph: 0 },
       { type: 'crusher', at: [-340, 185], lat: 0.45, period: 2.8, ph: 1.4 },
       { type: 'crusher', at: [-305, 225], lat: 0, period: 3.2, ph: 0.7 },
       { type: 'firebar', at: [-250, 252], len: 0.9, speed: 2.2, lap: 3 },
     ],
-    deco: { volcano: true, castle: [-330, 170] },
+    deco: { castle: [-330, 170] },
   },
   {
-    id: 'neon', name: 'Ruta Neón', emoji: '🌃', theme: 'neon', width: 15, edge: 'wall', off: 'vereda', wallAt: 3, fallAt: 1.5,
-    pts: [[-150, 0, 0], [-60, 0, 0], [0, 0, 0], [60, 0, 0], [150, 10, 0], [222, -40, 2], [242, -120, 5], [192, -190, 8], [110, -205, 10],
-      [40, -152, 10], [8, -72, 10], [0, 0, 10], [-8, 72, 10], [-30, 150, 10], [-45, 205, 9], [-62, 262, 7], [-82, 318, 6],
-      [-150, 368, 13], [-240, 360, 19], [-305, 290, 22], [-325, 195, 18], [-302, 110, 12], [-262, 40, 6], [-212, 10, 2]],
+    id: 'neon', name: 'Ruta Neón', emoji: '🌃', theme: 'neon', width: 16, edge: 'wall', off: 'vereda', wallAt: 3, fallAt: 1.5,
+    pts: [[-120, 0, 0], [-40, 0, 0], [0, 0, 0], [40, 0, 0], [120, 0, 0], [190, -20, 0], [222, -80, 2], [212, -150, 5], [160, -196, 8],
+      [90, -206, 10], [38, -170, 10], [10, -105, 10], [0, -40, 10], [0, 20, 10], [0, 90, 10], [0, 150, 8], [0, 210, 7], [-6, 262, 6],
+      [-60, 320, 12], [-150, 345, 18], [-240, 310, 22], [-290, 230, 18], [-292, 150, 6], [-328, 85, 1], [-305, 25, 0], [-245, 6, 0], [-180, 0, 0]],
     zones: [
-      { at: [-100, 0], name: 'Avenida Neón', kind: 'city' },
-      { at: [240, -100], name: 'Autopista', kind: 'city' },
-      { at: [6, -40], name: 'Paso elevado', kind: 'bridge' },
-      { at: [-30, 150], name: 'Azoteas', kind: 'roof' },
-      { at: [-200, 368], name: 'Ruta del cielo', edge: 'void', kind: 'rainbow' },
-      { at: [-290, 80], name: 'Bajada a la ciudad', kind: 'city' },
+      { at: [-80, 0], name: 'Avenida Neón', kind: 'city' },
+      { at: [222, -90], name: 'Autopista del puerto', kind: 'city' },
+      { at: [10, -105], name: 'Paso elevado', kind: 'bridge' },
+      { at: [0, 100], name: 'Salto de las azoteas', kind: 'roof' },
+      { at: [-100, 335], name: 'Ruta del cielo', edge: 'void', kind: 'rainbow' },
+      { at: [-310, 60], name: 'Bajada al barrio chino', kind: 'city' },
     ],
-    jumps: [{ at: [-36, 172], glide: true, gap: [-44, -76] }, { at: [180, -170] }, { at: [-322, 150] }],
-    cuts: [{ pts: [[165, 2], [205, -30], [228, -70], [238, -98]], w: 6, pad: [205, -30] }],
-    boxes: [[-100, 0], [242, -95], [20, -110], [-110, 350], [-318, 230]],
-    pads: [[100, 4, 0], [-260, 370, 0.3], [-290, 300, -0.3], [-260, 42, 0]],
-    coins: [[-50, 0, 0.3, 6], [150, -205, 0, 5], [-200, 368, 0, 6], [-310, 160, 0, 5]],
+    jumps: [{ at: [0, 120], glide: true, gap: [[0, 136], [0, 228]] }, { at: [80, 0] }],
+    cuts: [{ pts: [[-290, 140], [-276, 92], [-258, 50], [-238, 10]], w: 8, pad: [-264, 64] }],
+    boxes: [[-80, 0], [222, -100], [10, -60], [-150, 345], [-305, 30]],
+    pads: [[150, -5, 0], [-200, 340, 0.3], [-280, 250, -0.3], [-320, 100, 0]],
+    coins: [[-30, 0, 0.3, 6], [150, -205, 0, 5], [-200, 340, 0, 6], [-300, 180, 0, 5], [0, 40, 0, 6]],
     obstacles: [
-      { type: 'car', from: [-150, 0], to: [150, 10], lat: 0.4, speed: 12 },
-      { type: 'car', from: [-150, 0], to: [150, 10], lat: -0.4, speed: 9, ph: 0.5 },
-      { type: 'car', from: [222, -40], to: [110, -205], lat: 0.35, speed: 11, ph: 0.3, lap: 2 },
-      { type: 'car', from: [-262, 40], to: [-150, 0], lat: -0.3, speed: 10, ph: 0.2, lap: 2 },
-      { type: 'pendulum', at: [-240, 360], swing: 0.85, period: 2.6 },
-      { type: 'pendulum', at: [-305, 290], swing: 0.85, period: 2.6, ph: 1.3, lap: 3 },
+      { type: 'car', from: [-120, 0], to: [190, -20], lat: 0.4, speed: 12 },
+      { type: 'car', from: [-120, 0], to: [190, -20], lat: -0.4, speed: 9, ph: 0.5 },
+      { type: 'car', from: [190, -20], to: [90, -206], lat: 0.35, speed: 11, ph: 0.3, lap: 2 },
+      { type: 'car', from: [-305, 25], to: [-120, 0], lat: -0.3, speed: 10, ph: 0.2, lap: 2 },
+      { type: 'pendulum', at: [-150, 345], swing: 0.85, period: 2.6 },
+      { type: 'pendulum', at: [-240, 310], swing: 0.85, period: 2.6, ph: 1.3, lap: 3 },
+      { type: 'crusher', at: [-305, 25], lat: 0.4, period: 3, lap: 3 },
     ],
     deco: { city: true },
+  },
+  {
+    id: 'playa', name: 'Playa Coral', emoji: '🏝️', theme: 'playa', width: 15, edge: 'wall', off: 'arena', wallAt: 5, fallAt: 1.5,
+    pts: [[0, 0, 0], [80, 0, 0], [160, -20, 1], [240, -40, 1], [262, -110, 1], [230, -165, 1], [190, -205, 2], [120, -220, 2],
+      [60, -200, 2], [0, -200, 2], [-60, -200, 2], [-100, -200, 2], [-140, -200, 1], [-190, -200, 0], [-240, -170, 0],
+      [-262, -110, 5], [-240, -50, 10], [-190, -20, 5], [-120, 10, 0], [-60, 10, 0]],
+    zones: [
+      { at: [0, 0], name: 'Paseo marítimo' },
+      { at: [240, -60], name: 'Dunas del faro' },
+      { at: [60, -200], name: 'Muelle', kind: 'bridge' },
+      { at: [-110, -200], name: 'Vuelo sobre la bahía', kind: 'glide' },
+      { at: [-250, -140], name: 'Puerto de los barcos' },
+      { at: [-150, -5], name: 'Malecón' },
+    ],
+    jumps: [{ at: [-70, -200], glide: true, gap: [[-86, -200], [-172, -200]] }, { at: [100, -3] }],
+    cuts: [{ pts: [[168, -24], [210, -70], [226, -110], [228, -150]], w: 8, pad: [210, -70] }],
+    boxes: [[50, 0], [255, -100], [20, -200], [-240, -100], [-140, 8]],
+    pads: [[140, -15, 0], [-30, -200, 0], [-262, -120, 0.3]],
+    coins: [[20, 0, -0.3, 6], [200, -200, 0, 5], [-250, -80, 0, 5], [-90, 10, 0.3, 5], [215, -95, 0, 4]],
+    obstacles: [
+      { type: 'crab', at: [190, -205], range: 0.8, speed: 0.6 },
+      { type: 'crab', at: [-240, -170], range: 0.8, speed: 0.5, ph: 1 },
+      { type: 'ball', at: [-190, -20], range: 0.85, speed: 0.45, ph: 0.5 },
+      { type: 'ball', at: [80, 0], range: 0.8, speed: 0.4, lap: 2 },
+      { type: 'wave', at: [0, -200], lat: 0.3, period: 3.4 },
+      { type: 'wave', at: [40, -200], lat: -0.3, period: 3.4, ph: 1.7, lap: 2 },
+      { type: 'boulder', at: [262, -110], speed: 12, len: 90, lap: 3, look: 'coco' },
+    ],
+    deco: { sea: [-175, 50, -320, -178], lighthouse: [295, -90] },
+  },
+  {
+    id: 'nieve', name: 'Pico Nevado', emoji: '🏔️', theme: 'nieve', width: 15, edge: 'wall', off: 'nieve', wallAt: 5, fallAt: 1.5,
+    pts: [[0, 0, 0], [90, 0, 0], [170, -30, 3], [220, -100, 8], [200, -180, 14], [130, -230, 20], [40, -240, 26], [-40, -210, 30],
+      [-80, -180, 26], [-120, -150, 18], [-160, -120, 10], [-200, -90, 4], [-240, -40, 0], [-262, 40, 0], [-200, 85, 0], [-110, 70, 0], [-45, 25, 0]],
+    zones: [
+      { at: [0, 0], name: 'Pueblo nevado' },
+      { at: [200, -150], name: 'Subida de los pinos' },
+      { at: [90, -236], name: 'Cueva de hielo', kind: 'tunnel' },
+      { at: [-40, -210], name: 'La cumbre' },
+      { at: [-110, -158], name: 'Vuelo de la cumbre', kind: 'glide' },
+      { at: [-250, 0], name: 'Lago congelado' },
+    ],
+    jumps: [{ at: [-66, -190], glide: true, gap: [[-86, -175], [-186, -100]] }, { at: [120, -10] }],
+    cuts: [{ pts: [[-238, -30], [-215, 10], [-185, 45], [-155, 72]], w: 8, pad: [-200, 28] }],
+    boxes: [[60, 0], [215, -120], [40, -240], [-255, 20], [-120, 70]],
+    pads: [[200, -60, 0], [-25, -218, 0], [-230, 70, 0]],
+    coins: [[150, -18, 0, 5], [180, -205, 0.3, 5], [-262, 30, 0, 5], [-80, 60, 0, 6], [-200, 25, 0, 4]],
+    obstacles: [
+      { type: 'boulder', at: [40, -240], speed: 13, len: 150, look: 'snow' },
+      { type: 'boulder', at: [-40, -210], speed: 14, len: 180, ph: 6, look: 'snow', lap: 2 },
+      { type: 'penguin', at: [-240, -40], range: 0.8, speed: 0.4 },
+      { type: 'penguin', at: [-200, 85], range: 0.8, speed: 0.55, ph: 1.2 },
+      { type: 'pendulum', at: [110, -234], swing: 0.8, period: 3, look: 'ice' },
+      { type: 'crusher', at: [-262, 40], lat: 0, period: 3.2, lap: 3, look: 'ice' },
+    ],
+    deco: { pines: true },
   },
 ];
 // La casilla de la votación con «?» elige una al azar.
@@ -185,19 +244,26 @@ export function buildTrack(index) {
     const i = idxOf(jp.at);
     let gap = null;
     if (jp.gap) {
-      // El pozo arranca y termina en las muestras más cercanas a esos x sobre la recta (después de la rampa).
-      const near = (gx) => { let b = i, bd = Infinity; for (let o = 0; o < 140; o++) { const k = (i + o) % count, d = Math.abs(samples[k].x - gx) + Math.abs((samples[k].z - samples[i].z) * 0); if (d < bd) { bd = d; b = k; } } return b; };
+      // El pozo arranca y termina en las muestras más cercanas a esos dos puntos (después de la rampa).
+      const near = ([gx, gz]) => { let b = i, bd = Infinity; for (let o = 0; o < 160; o++) { const k = (i + o) % count, d = (samples[k].x - gx) ** 2 + (samples[k].z - gz) ** 2; if (d < bd) { bd = d; b = k; } } return b; };
       gap = [near(jp.gap[0]), near(jp.gap[1])];
       for (let k = gap[0]; k !== (gap[1] + 1) % count; k = (k + 1) % count) gapAt[k] = 1;
     }
     return { i, glide: Boolean(jp.glide), gap, ...at(i, 0) };
   });
   // Atajos: polilíneas con ancho.
-  const cuts = (def.cuts || []).map((c) => ({ pts: c.pts, w: c.w, pad: c.pad, y: samples[idxOf(c.pts[0])].y }));
+  // La altura de cada punto del atajo es la del asfalto más cercano (de punta a punta se interpola), y se guarda cuánto mide
+  // y cuánto se ahorra (`road`: lo que mide la pista entre la entrada y la salida).
+  const cuts = (def.cuts || []).map((c) => {
+    const ys = c.pts.map((pt) => samples[idxOf(pt)].y);
+    let len = 0; for (let k = 1; k < c.pts.length; k++) len += Math.hypot(c.pts[k][0] - c.pts[k - 1][0], c.pts[k][1] - c.pts[k - 1][1]);
+    const road = (((idxOf(c.pts[c.pts.length - 1]) - idxOf(c.pts[0])) + count) % count) * STEP_M;
+    return { pts: c.pts, w: c.w, pad: c.pad, ys, y: ys[0], len, road };
+  });
   const boxes = [];
   for (const b of def.boxes) { const i = idxOf(b); for (const lat of [-0.6, -0.2, 0.2, 0.6]) boxes.push(at(i, lat * half)); }
   const pads = def.pads.map(([x, z, lat]) => ({ ...at(idxOf([x, z]), lat * half), r: 2.6 }));
-  for (const c of cuts) if (c.pad) pads.push({ x: c.pad[0], z: c.pad[1], y: c.y, i: idxOf(c.pad), r: 2.4, cut: true });
+  for (const c of cuts) if (c.pad) pads.push({ x: c.pad[0], z: c.pad[1], y: cutAt({ cuts: [c] }, c.pad[0], c.pad[1])?.y ?? c.y, i: idxOf(c.pad), r: 2.4, cut: true });
   // Monedas: filas en la pista y arcos en el aire sobre cada pozo de planeo (por donde pasa volando el que planea).
   const coins = [];
   for (const [x, z, lat, nCoins] of def.coins || []) {
@@ -265,14 +331,15 @@ export function nearest(track, x, z, hint = -1, y = null) {
   return { i: best, lat, s: sm.s, y: sm.y + (other.y - sm.y) * u };
 }
 
-// ¿(x, z) está sobre un atajo? Devuelve el atajo o null.
-export function cutAt(track, x, z) {
+// ¿(x, z) está sobre un atajo (con `pad` metros de más a los costados)? Devuelve { c, y } (el atajo y la altura del piso
+// ahí) o null.
+export function cutAt(track, x, z, pad = 0) {
   for (const c of track.cuts) {
     for (let k = 0; k < c.pts.length - 1; k++) {
       const [ax, az] = c.pts[k], [bx, bz] = c.pts[k + 1];
       const vx = bx - ax, vz = bz - az, l2 = vx * vx + vz * vz;
       const t = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / l2));
-      if ((ax + vx * t - x) ** 2 + (az + vz * t - z) ** 2 < (c.w / 2) ** 2) return c;
+      if ((ax + vx * t - x) ** 2 + (az + vz * t - z) ** 2 < (c.w / 2 + pad) ** 2) return { c, y: c.ys ? c.ys[k] + (c.ys[k + 1] - c.ys[k]) * t : c.y };
     }
   }
   return null;
@@ -286,10 +353,10 @@ export function obstacleParts(track, o, t) {
   const base = S[o.i];
   const ph = o.ph || 0;
   switch (o.type) {
-    case 'cow': case 'pendulum': {
+    case 'cow': case 'crab': case 'ball': case 'penguin': case 'pendulum': {
       const per = o.period || 1 / (o.speed || 0.5) * 2;
       const lat = Math.sin((t + ph) * (Math.PI * 2) / per) * (o.range || o.swing || 0.7) * half;
-      return [{ x: base.x + base.nx * lat, z: base.z + base.nz * lat, y: base.y, r: o.type === 'cow' ? 1.6 : 1.5, kind: o.type, lat, ang: Math.cos((t + ph) * (Math.PI * 2) / per) }];
+      return [{ x: base.x + base.nx * lat, z: base.z + base.nz * lat, y: base.y, r: { cow: 1.6, crab: 1.1, ball: 1.4, penguin: 1.0 }[o.type] || 1.5, kind: o.type, lat, ang: Math.cos((t + ph) * (Math.PI * 2) / per) }];
     }
     case 'boulder': {
       // Rueda para atrás (cuesta abajo) por la pista, de la muestra de arriba hasta `len` metros, y vuelve a empezar.
@@ -314,11 +381,11 @@ export function obstacleParts(track, o, t) {
       for (let f = 1; f <= 5; f++) { const d = (f / 5) * len; parts.push({ x: base.x + Math.cos(ang) * d, z: base.z + Math.sin(ang) * d, y: base.y + 1, r: 0.9, kind: 'fire', ang, len }); }
       return parts;
     }
-    case 'geyser': {
+    case 'geyser': case 'wave': {
       const per = o.period || 4, c = ((t + ph) % per + per) % per;
       const active = c > per - 1.2;
       const lat = (o.lat || 0) * half;
-      return [{ x: base.x + base.nx * lat, z: base.z + base.nz * lat, y: base.y, r: active ? 2.4 : 0, kind: 'geyser', h: active ? Math.sin(((c - (per - 1.2)) / 1.2) * Math.PI) : 0 }];
+      return [{ x: base.x + base.nx * lat, z: base.z + base.nz * lat, y: base.y, r: active ? 2.4 : 0, kind: o.type, h: active ? Math.sin(((c - (per - 1.2)) / 1.2) * Math.PI) : 0 }];
     }
     case 'crusher': {
       // Prensa: sube despacio, se queda arriba y cae de golpe; mientras está abajo, aplasta.

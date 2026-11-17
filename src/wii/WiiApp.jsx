@@ -9,7 +9,7 @@ import KartApp from '../kart/KartApp.jsx';
 import './wii.css';
 
 const INSIDE = [
-  { id: 'kart', title: 'Fondo Kart', emoji: '🏎️', image: '/juegos/kart.jpg', badge: 'Nuevo', text: 'Carreras de karts de hasta 8 con derrape y mini turbo, ítems y 3 pistas con saltos, planeador, atajos y obstáculos. Online (cada uno en su compu) o local con la pantalla partida, con el teclado o el celular de volante.', App: KartApp },
+  { id: 'kart', title: 'Fondo Kart', emoji: '🏎️', image: '/juegos/kart.jpg', badge: 'Nuevo', text: 'Carreras de karts de hasta 8 con derrape y mini turbo, ítems y 5 pistas con saltos, planeador, atajos y obstáculos. Online (cada uno en su compu) o local con la pantalla partida, con el teclado o el celular de volante.', App: KartApp },
   { id: 'tenis', title: 'Tenis Movido', emoji: '🎾', image: '/juegos/tenis.jpg', text: 'La compu muestra la cancha y el celular es la raqueta: hacés el gesto del golpe y la pelota sale. 1 contra 1 o 2 contra 2, local u online.', App: TenisApp },
 ];
 

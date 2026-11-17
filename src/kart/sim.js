@@ -117,7 +117,8 @@ export function stepKart(k, inp, dt, track, env) {
   if (k.glide) turn = k.steer * 0.9;
   else if (k.air && !k.drift && !k.hop) turn *= 0.5;
   k.yaw = wrap(k.yaw - turn * dt);
-  if (spinning) k.yaw = wrap(k.yaw + dt * 9);
+  // Girando por un golpe el kart sigue apuntando para donde iba: la vuelta es solo dibujo, así al terminar queda mirando
+  // para el mismo lado que antes del golpe.
   k.slide += ((k.drift ? k.drift * 0.32 : 0) - k.slide) * Math.min(1, 8 * dt);
   const m = k.yaw + k.slide;
   const [fx, fz] = fwd(m);
@@ -134,7 +135,7 @@ export function stepKart(k, inp, dt, track, env) {
   const edge = track.edgeAt ? track.edgeAt[nr.i] : track.edge;
   const inGap = !cut && track.gapAt && track.gapAt[nr.i] === 1;
   const away = Math.abs(nr.lat) - track.half;
-  k.off = cut ? true : away > 0;
+  k.off = cut ? false : away > 0; // el atajo es asfalto: se va a la velocidad de siempre
   const floorY = cut ? cut.y : nr.y;
   k.gy = floorY; // la sombra va sobre el piso
   const hasGround = !inGap && (cut || edge === 'wall' || away <= (track.fallAt ?? 2));
@@ -292,11 +293,14 @@ export function rankingOf(karts, finish = {}) {
 export const SHOT_SPEED = { verde: 50, rojo: 46, azul: 60 };
 export const SHOT_LIFE = { verde: 7, rojo: 10, azul: 20, banana: 120, bomba: BOMB_FUSE + 0.6 };
 
-export function spawnShot(w, owner, k, key, born, tgt = '') {
-  const [fx, fz] = fwd(k.yaw);
+// `back`: mirando para atrás se tira para atrás (los caparazones y la bomba); la cáscara al revés, para adelante.
+export function spawnShot(w, owner, k, key, born, tgt = '', back = false) {
+  const yaw = back ? wrap(k.yaw + Math.PI) : k.yaw;
+  const [fx, fz] = fwd(yaw);
   const ahead = w === 'banana' ? -2.6 : 2.4;
-  const p = { key, w, o: owner, x: k.x + fx * ahead, z: k.z + fz * ahead, y: k.y + (w === 'azul' ? 6 : 0.4), yaw: k.yaw, v: SHOT_SPEED[w] || 0, born, tgt, idx: k.idx, vy: 0, landed: w === 'banana' };
-  if (w === 'bomba') { p.v = 22 + Math.max(0, k.speed) * 0.5; p.vy = 7; p.y = k.y + 1.2; }
+  const p = { key, w, o: owner, x: k.x + fx * ahead, z: k.z + fz * ahead, y: k.y + (w === 'azul' ? 6 : 0.4), yaw: w === 'banana' ? k.yaw : yaw, v: SHOT_SPEED[w] || 0, born, tgt, idx: k.idx, vy: 0, landed: w === 'banana' };
+  if (w === 'banana' && back) { p.x = k.x - fx * 14; p.z = k.z - fz * 14; } // la cáscara se tira para adelante
+  if (w === 'bomba') { p.v = back ? 10 : 22 + Math.max(0, k.speed) * 0.5; p.vy = 7; p.y = k.y + 1.2; }
   return p;
 }
 

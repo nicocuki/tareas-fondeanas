@@ -1,5 +1,6 @@
 // Fondo Kart: el celular como volante. Se usa acostado (horizontal) y tiene dos modos, que se eligen acá mismo:
-//   - Joystick: el pulgar izquierdo mueve una palanca para doblar; a la derecha, ACELERAR (grande), DERRAPAR, ÍTEM y FRENO.
+//   - Joystick: el pulgar izquierdo mueve una palanca para doblar; a la derecha, ACELERAR (grande), DERRAPAR, ÍTEM, FRENO y
+//     ATRÁS (mantenido: mira para atrás y el ítem sale para atrás).
 //   - Inclinar: se agarra como un volante y se dobla girándolo; DERRAPAR queda bajo el pulgar izquierdo y ACELERAR bajo el
 //     derecho, con ÍTEM y FRENO arriba.
 // Manda lo que apretás 30 veces por segundo a su compu, directo (WebRTC por kartpad/{sala}/{compu}) o por el servidor si no
@@ -26,7 +27,7 @@ export default function KartPad({ code, screenId, playerId, name, children, onLe
   const [linked, setLinked] = useState(false);
   const [tiltView, setTiltView] = useState(0);
   const [portrait, setPortrait] = useState(() => typeof window !== 'undefined' && window.innerHeight > window.innerWidth);
-  const s = useRef({ s: 0, a: false, b: false, d: false, i: 0, rest: null, angle: 0, lastHit: 0, gotAt: 0 }).current;
+  const s = useRef({ s: 0, a: false, b: false, d: false, r: false, i: 0, rest: null, angle: 0, lastHit: 0, gotAt: 0 }).current;
   s.mode = mode; s.auto = auto;
   const padId = useRef(`pad-${playerId}-${Math.random().toString(36).slice(2, 7)}`).current;
 
@@ -54,7 +55,7 @@ export default function KartPad({ code, screenId, playerId, name, children, onLe
     chan.leaveOnDisconnect(padId).catch(() => {});
     let serverAt = 0;
     const timer = setInterval(() => {
-      const msg = { p: playerId, s: +s.s.toFixed(2), a: s.a || s.auto, b: s.b, d: s.d, i: s.i };
+      const msg = { p: playerId, s: +s.s.toFixed(2), a: s.a || s.auto, b: s.b, d: s.d, r: s.r, i: s.i };
       mesh?.broadcast(msg);
       const now = Date.now();
       const direct = mesh?.isOpen(screenId);
@@ -157,7 +158,10 @@ export default function KartPad({ code, screenId, playerId, name, children, onLe
           <div className="kp-joy" {...joy} data-pad-joy><div className="kp-joy-base"><i style={{ transform: `translateX(${knob * 60}px)` }} /></div><span>◀ doblar ▶</span></div>
           <div className="kp-right">
             <button type="button" className="kp-btn kp-item-btn" {...item} data-pad="item">ÍTEM</button>
-            <button type="button" className="kp-btn kp-brake" {...hold('b')} data-pad="brake">FRENO</button>
+            <div className="kp-pair">
+              <button type="button" className="kp-btn kp-brake" {...hold('b')} data-pad="brake">FRENO</button>
+              <button type="button" className="kp-btn kp-rear" {...hold('r')} data-pad="rear">👀 ATRÁS</button>
+            </div>
             <button type="button" className="kp-btn kp-drift" {...hold('d')} data-pad="drift">DERRAPAR</button>
             <button type="button" className="kp-btn kp-gas" {...hold('a')} data-pad="gas">ACELERAR</button>
           </div>
@@ -168,7 +172,10 @@ export default function KartPad({ code, screenId, playerId, name, children, onLe
           <div className="kp-wheel" style={{ transform: `rotate(${tiltView * 90}deg)` }}><i /></div>
           <div className="kp-tilt-right">
             <button type="button" className="kp-btn kp-item-btn" {...item} data-pad="item">ÍTEM</button>
-            <button type="button" className="kp-btn kp-brake" {...hold('b')} data-pad="brake">FRENO</button>
+            <div className="kp-pair">
+              <button type="button" className="kp-btn kp-brake" {...hold('b')} data-pad="brake">FRENO</button>
+              <button type="button" className="kp-btn kp-rear" {...hold('r')} data-pad="rear">👀 ATRÁS</button>
+            </div>
             <button type="button" className="kp-btn kp-gas" {...hold('a')} data-pad="gas">ACELERAR</button>
           </div>
         </>

@@ -52,7 +52,7 @@ function usePadHub(code, screenId, active) {
       let m = raw;
       if (typeof raw === 'string') { try { m = JSON.parse(raw); } catch { return; } }
       if (!m.p) return;
-      h.current.set(m.p, { s: Number(m.s) || 0, a: Boolean(m.a), b: Boolean(m.b), d: Boolean(m.d), i: Number(m.i) || 0, at: performance.now() });
+      h.current.set(m.p, { s: Number(m.s) || 0, a: Boolean(m.a), b: Boolean(m.b), d: Boolean(m.d), r: Boolean(m.r), i: Number(m.i) || 0, at: performance.now() });
     };
     const mesh = createMesh({ signaling: chan.signaling, myId: screenId, onMessage: onMsg });
     const off = chan.subscribe(onMsg);
@@ -243,6 +243,7 @@ function Keys() {
       <li><kbd>A</kbd><kbd>D</kbd>/<kbd>←</kbd><kbd>→</kbd> doblar</li>
       <li><kbd>Espacio</kbd> o <kbd>Shift</kbd> saltar y derrapar</li>
       <li><kbd>E</kbd> o <kbd>Ctrl</kbd> usar el ítem</li>
+      <li><kbd>Q</kbd> mirar para atrás (y el ítem sale para atrás)</li>
     </ul>
   );
 }
