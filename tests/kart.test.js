@@ -1,26 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LAPS, RANDOM_PICK, TRACKS, buildTrack, nearest } from '../src/kart/tracks.js';
+import { LAPS, RANDOM_PICK, TRACKS, buildTrack, nearest, obstacleParts } from '../src/kart/tracks.js';
 import { CC, ITEM_IDS, MT_TIMES, STEP, botInput, hitKart, newKart, rankingOf, rollItem, spawnShot, stepKart, stepShot } from '../src/kart/sim.js';
 import { MAX_LOCAL, applyAction, newRoom, pickTrack, racersFor } from '../src/kart/game.js';
 import { SKIN_IDS } from '../src/wii/skins.js';
 
 const seeded = (seed) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 
-test('kart: las 7 pistas son circuitos cerrados y la largada, las cajas y los aceleradores quedan sobre el asfalto', () => {
-  assert.equal(TRACKS.length, 7);
-  assert.equal(RANDOM_PICK, 7);
+test('kart: las 3 pistas son circuitos cerrados y la largada, las cajas y los aceleradores quedan sobre el asfalto', () => {
+  assert.equal(TRACKS.length, 3);
+  assert.equal(RANDOM_PICK, 3);
   for (let i = 0; i < TRACKS.length; i++) {
     const t = buildTrack(i);
     assert.ok(t.length > 500, `${t.id} mide ${t.length}`);
     const a = t.samples[0], b = t.samples[t.count - 1];
     assert.ok(Math.hypot(a.x - b.x, a.z - b.z) < 3, `${t.id} cierra`);
     for (const g of t.grid) assert.ok(Math.abs(nearest(t, g.x, g.z).lat) < t.half, `${t.id}: lugar de largada adentro`);
-    for (const x of [...t.boxes, ...t.pads]) assert.ok(Math.abs(nearest(t, x.x, x.z).lat) < t.half, `${t.id}: caja o acelerador adentro`);
-    // Ninguna parte de la pista se pisa con otra (si no, el kart saltaría de un tramo al otro).
+    for (const x of [...t.boxes, ...t.pads.filter((p) => !p.cut)]) assert.ok(Math.abs(nearest(t, x.x, x.z).lat) < t.half, `${t.id}: caja o acelerador adentro`);
+    // Ninguna parte de la pista se pisa con otra (si no, el kart saltaría de un tramo al otro), salvo un paso elevado
+    // (un tramo bien arriba del otro, como el cruce de Ruta Neón).
     for (let p = 0; p < t.count; p += 4) for (let q = p + 40; q < t.count - (p < 40 ? 40 - p : 0); q += 4) {
       const d = Math.hypot(t.samples[p].x - t.samples[q].x, t.samples[p].z - t.samples[q].z);
-      assert.ok(d > t.width + 2, `${t.id}: los tramos ${p} y ${q} están a ${d.toFixed(1)} m`);
+      const over = Math.abs(t.samples[p].y - t.samples[q].y) > 6;
+      assert.ok(d > t.width + 2 || over, `${t.id}: los tramos ${p} y ${q} están a ${d.toFixed(1)} m`);
     }
   }
 });
@@ -119,11 +121,11 @@ test('kart: la sala entra, vota la pista, corre y termina con resultados', () =>
   assert.equal(act(room, { type: 'setOptions', playerId: 'p2', options: { cc: 50 } }), null, 'solo el anfitrión');
   room = act(room, { type: 'start', playerId: 'h' });
   assert.equal(room.phase, 'vote');
-  room = act(room, { type: 'vote', playerId: 'h', n: room.vote.n, pick: 3 });
+  room = act(room, { type: 'vote', playerId: 'h', n: room.vote.n, pick: 1 });
   assert.equal(room.phase, 'vote');
-  room = act(room, { type: 'vote', playerId: 'p2', n: room.vote.n, pick: 3 });
+  room = act(room, { type: 'vote', playerId: 'p2', n: room.vote.n, pick: 1 });
   assert.equal(room.phase, 'race', 'votaron todos: arranca');
-  assert.equal(room.race.track, 3);
+  assert.equal(room.race.track, 1);
   assert.equal(room.race.cc, 150);
   assert.equal(room.race.items, false);
   assert.equal(room.race.racers.length, 8);
@@ -173,4 +175,57 @@ test('kart: una sala pública de Fondo Kart (online) y una de Tenis Movido sin c
   assert.equal(roomListing(tree('ABCD', local), 'ABCD', 1), null, 'la local no: se entra con el celular');
   const tenis = (await import('../src/tenis/game.js')).newRoom('h', 'Cancha', '📺', 0);
   assert.equal(roomListing(tree('WXYZ', tenis), 'WXYZ', 1)?.game, 'tenis');
+});
+
+test('kart: cada pista tiene alturas, un salto con planeador, zonas y obstáculos que se mueven solos', () => {
+  for (let i = 0; i < TRACKS.length; i++) {
+    const t = buildTrack(i);
+    const ys = t.samples.map((sm) => sm.y);
+    assert.ok(Math.max(...ys) - Math.min(...ys) > 8, `${t.id}: tiene subidas`);
+    assert.ok(t.jumps.some((j) => j.glide && j.gap), `${t.id}: tiene un salto con planeo`);
+    assert.ok(t.zones.length >= 5, `${t.id}: tiene zonas`);
+    assert.ok(t.coins.some((c) => c.air), `${t.id}: tiene monedas en el aire`);
+    assert.ok(t.obstacles.length >= 4 && t.obstacles.some((o) => o.lap), `${t.id}: tiene obstáculos y alguno de una fase`);
+    // Los obstáculos salen de la hora: misma hora, mismo lugar; otra hora, se movieron.
+    for (const o of t.obstacles) assert.deepEqual(obstacleParts(t, o, 12.3), obstacleParts(t, o, 12.3));
+    assert.ok(t.obstacles.some((o) => JSON.stringify(obstacleParts(t, o, 1)) !== JSON.stringify(obstacleParts(t, o, 2.2))));
+    // Las monedas del aire van arriba del pozo, no metidas en el piso.
+    for (const c of t.coins.filter((x) => x.air)) assert.ok(c.y > t.samples[c.i].y - 20 && c.y > -1, `${t.id}: moneda a ${c.y.toFixed(1)} m`);
+  }
+});
+
+test('kart: la rampa con planeador cruza el pozo y aterriza del otro lado, y si saltás al pozo sin planeo te caés', () => {
+  const t = buildTrack(0);
+  const jp = t.jumps.find((j) => j.glide);
+  const k = newKart('a', 0, t);
+  const sm = t.samples[(jp.i - 20 + t.count) % t.count];
+  Object.assign(k, { x: sm.x, z: sm.z, y: sm.y, idx: (jp.i - 20 + t.count) % t.count, yaw: Math.atan2(-sm.tx, -sm.tz), speed: 22, started: true });
+  let glided = false;
+  for (let n = 0; n < 60 * 8; n++) { stepKart(k, { s: 0, a: true, d: false }, STEP, t, { cc: 100, t: 5 + n * STEP }); if (k.glide) glided = true; if (glided && !k.air) break; }
+  assert.ok(glided, 'abrió el planeador');
+  assert.equal(k.fall, 0, 'no se cayó');
+  assert.ok(!k.air && !t.gapAt[k.idx], 'aterrizó en el asfalto, después del pozo');
+  const k2 = newKart('b', 0, t);
+  const g = t.samples[(jp.gap[0] + 5) % t.count];
+  Object.assign(k2, { x: g.x, z: g.z, y: g.y, idx: (jp.gap[0] + 5) % t.count, yaw: Math.atan2(-g.tx, -g.tz), speed: 5, started: true });
+  for (let n = 0; n < 120 && !k2.fall; n++) stepKart(k2, { s: 0, a: false, d: false }, STEP, t, { cc: 100, t: 5 + n * STEP });
+  assert.ok(k2.fall > 0, 'se cayó al pozo');
+});
+
+test('kart: saltar de una rampa con derrape es una pirueta que da turbo al caer', () => {
+  const t = buildTrack(0);
+  const jp = t.jumps.find((j) => !j.glide);
+  const k = newKart('a', 0, t);
+  const i0 = (jp.i - 8 + t.count) % t.count, sm = t.samples[i0];
+  Object.assign(k, { x: sm.x, z: sm.z, y: sm.y, idx: i0, yaw: Math.atan2(-sm.tx, -sm.tz), speed: 24, started: true });
+  let launched = false, pressed = false;
+  for (let n = 0; n < 300; n++) {
+    const press = launched && !pressed;
+    stepKart(k, { s: 0, a: true, d: press }, STEP, t, { cc: 100, t: 5 + n * STEP });
+    if (press) pressed = true;
+    if (k.air && !launched) launched = true;
+    if (pressed && !k.air) break;
+  }
+  assert.ok(launched, 'salió volando');
+  assert.ok(k.trickAt != null && k.boost > 0, 'pirueta con turbo');
 });

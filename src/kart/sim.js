@@ -10,7 +10,11 @@
 //   - Rebufo: ir pegado atrás de otro kart un rato da un turbo corto.
 //   - Banquina lenta (salvo con estrella o turbo), paredes que frenan y, en el castillo y el espacio, caerse y volver.
 //   - Aceleradores en el piso.
-import { LAPS, nearest, yawOf } from './tracks.js';
+//   - Alturas: el kart va pegado al asfalto (subidas, bajadas, puentes) y sale volando en las lomas y las rampas. Saltar de
+//     una rampa con derrape apretado es una pirueta: al caer da un turbo. Las rampas con planeador abren las alas: se
+//     planea a velocidad pareja (GLIDE_MIN a GLIDE_MAX) bajando a lo que pide esa rampa (`sink`) para cruzar el pozo.
+//   - Monedas: cada una suma un poco de velocidad máxima (hasta 10); un golpe te hace perder tres.
+import { GLIDE_G, GLIDE_MAX, GLIDE_MIN, GLIDE_V, JUMP_V, LAPS, cutAt, nearest, yawOf } from './tracks.js';
 
 export const STEP = 1 / 60;
 export const CC_VALUES = [50, 100, 150];
@@ -22,12 +26,12 @@ export const GRAVITY = 22;
 export const HOP_V = 4.6;
 export const KART_R = 1.15;                      // radio para choques entre karts y con ítems
 export const START_WINDOW = [-1.5, -0.6];        // segundos antes de la largada en que acelerar da turbo
-const SPIN_TIME = { banana: 1.0, verde: 1.4, rojo: 1.4, azul: 2.0, bomba: 1.8, bocina: 1.2, estrella: 1.2, caida: 0 };
+const SPIN_TIME = { obst: 1.2, banana: 1.0, verde: 1.4, rojo: 1.4, azul: 2.0, bomba: 1.8, bocina: 1.2, estrella: 1.2, caida: 0 };
 
 export function newKart(id, slot, track) {
   const g = track.grid[slot % track.grid.length];
   return {
-    id, x: g.x, z: g.z, y: 0, vy: 0, yaw: g.yaw, speed: 0, slide: 0, kx: 0, kz: 0, steer: 0,
+    id, x: g.x, z: g.z, y: g.y || 0, vy: 0, air: false, glide: false, sink: 0, trick: false, coins: 0, yaw: g.yaw, speed: 0, slide: 0, kx: 0, kz: 0, steer: 0,
     drift: 0, charge: 0, hop: false, prevD: false,
     boost: 0, boostPow: 1.3, star: 0, gold: 0, shrink: 0, spin: 0, spinKind: '', inv: 0, fall: 0, slip: 0, slipCd: 0,
     idx: g.i, safe: g.i, ps: null, half: true, lap: 0, prog: 0, off: false, finished: false, finishT: 0,
@@ -44,7 +48,7 @@ function respawn(k, track) {
   const n = track.count;
   const i = (k.safe - 4 + n) % n;
   const sm = track.samples[i];
-  k.x = sm.x; k.z = sm.z; k.y = 0; k.vy = 0; k.yaw = yawOf(sm.tx, sm.tz);
+  k.x = sm.x; k.z = sm.z; k.y = sm.y; k.vy = 0; k.air = false; k.glide = false; k.yaw = yawOf(sm.tx, sm.tz);
   k.speed = 0; k.drift = 0; k.charge = 0; k.slide = 0; k.kx = 0; k.kz = 0; k.idx = i; k.inv = 1.5;
 }
 
@@ -53,7 +57,8 @@ export function hitKart(k, kind) {
   if (k.star > 0 || k.inv > 0 || k.fall > 0) return false;
   k.spin = SPIN_TIME[kind] ?? 1.2; k.spinKind = kind; k.inv = k.spin + 0.6;
   k.drift = 0; k.charge = 0; k.boost = 0; k.gold = 0;
-  if (kind !== 'banana') k.vy = Math.max(k.vy, 5);
+  k.coins = Math.max(0, (k.coins || 0) - 3);
+  if (kind !== 'banana' && !k.glide) { k.vy = Math.max(k.vy, 5); k.air = true; }
   return true;
 }
 
@@ -81,7 +86,7 @@ export function stepKart(k, inp, dt, track, env) {
   k.steer += (s - k.steer) * Math.min(1, dt * 12);
 
   // ─── Velocidad ─────────────────────────────────────────────────────────────
-  let max = C.max * (k.botMul || 1) * (k.shrink > 0 ? 0.7 : 1);
+  let max = C.max * (k.botMul || 1) * (k.shrink > 0 ? 0.7 : 1) * (1 + 0.008 * Math.min(10, k.coins || 0));
   if (k.off && k.star <= 0 && k.boost <= 0) max *= OFF_SLOW[track.off] || 0.5;
   if (k.star > 0) max *= 1.18;
   if (k.boost > 0) max *= k.boostPow || 1.3;
@@ -91,30 +96,26 @@ export function stepKart(k, inp, dt, track, env) {
   else if (c.a) k.speed += (max - k.speed) * Math.min(1, (k.speed > max ? 2.2 : C.acc) * dt);
   else k.speed *= Math.exp(-(k.speed > max ? 2 : 0.7) * dt);
 
-  // ─── Salto y derrape ───────────────────────────────────────────────────────
+  // ─── Salto, derrape y vuelo ────────────────────────────────────────────────
   const dEdge = c.d && !k.prevD;
   k.prevD = Boolean(c.d);
-  if (dEdge && k.y <= 0 && k.vy <= 0 && k.speed > 6) { k.vy = HOP_V; k.hop = true; }
-  if (k.y > 0 || k.vy > 0) {
-    k.vy -= GRAVITY * dt; k.y += k.vy * dt;
-    if (k.y <= 0) {
-      k.y = 0; k.vy = 0;
-      if (k.hop) { k.hop = false; if (c.d && Math.abs(s) > 0.2 && k.speed > 10) { k.drift = Math.sign(s); k.charge = 0; } }
-    }
-  }
+  if (dEdge && !k.air && k.speed > 6) { k.vy = HOP_V; k.hop = true; k.air = true; }
+  if (dEdge && k.air && k.launchT != null && env.t - k.launchT < 0.35 && !k.hop) k.trick = true; // pirueta al salir de una rampa
   if (k.drift) {
-    if (!c.d || k.speed < 8 || spinning || c.b || k.off && k.star <= 0 && k.boost <= 0 && OFF_SLOW[track.off] < 0.55) {
+    if (!c.d || k.speed < 8 || spinning || c.b || k.glide || k.off && k.star <= 0 && k.boost <= 0 && OFF_SLOW[track.off] < 0.55) {
       const lv = mtLevel(k.charge);
       if (!c.d && !spinning && lv) { k.boost = Math.max(k.boost, MT_TIMES[lv]); k.boostPow = 1.3; k.lastMt = lv; }
       k.drift = 0; k.charge = 0;
     } else k.charge += dt * (0.7 + 0.8 * Math.max(0, s * k.drift));
   }
+  if (k.glide) k.speed = clamp(k.speed, GLIDE_MIN, GLIDE_MAX);
 
   // ─── Giro ──────────────────────────────────────────────────────────────────
   const spf = clamp(Math.abs(k.speed) / 6, 0, 1);
   let turn = k.drift ? k.drift * (1.05 + 0.6 * s * k.drift) * spf : k.steer * 2.1 * spf * (1 - 0.3 * clamp(k.speed / C.max, 0, 1));
   if (k.speed < 0) turn = -turn;
-  if (k.y > 0 && !k.drift) turn *= 0.6;
+  if (k.glide) turn = k.steer * 0.9;
+  else if (k.air && !k.drift && !k.hop) turn *= 0.5;
   k.yaw = wrap(k.yaw - turn * dt);
   if (spinning) k.yaw = wrap(k.yaw + dt * 9);
   k.slide += ((k.drift ? k.drift * 0.32 : 0) - k.slide) * Math.min(1, 8 * dt);
@@ -125,13 +126,50 @@ export function stepKart(k, inp, dt, track, env) {
   const kd = Math.exp(-6 * dt); k.kx *= kd; k.kz *= kd;
 
   // ─── La pista ──────────────────────────────────────────────────────────────
-  const nr = nearest(track, k.x, k.z, k.idx);
+  const cut = cutAt(track, k.x, k.z);
+  const prevIdx = k.idx;
+  const nr = cut ? nearest(track, k.x, k.z, -1, k.y) : nearest(track, k.x, k.z, k.idx);
   k.idx = nr.i;
   const sm = track.samples[nr.i];
+  const edge = track.edgeAt ? track.edgeAt[nr.i] : track.edge;
+  const inGap = !cut && track.gapAt && track.gapAt[nr.i] === 1;
   const away = Math.abs(nr.lat) - track.half;
-  k.off = away > 0;
-  if (!k.off) k.safe = nr.i;
-  if (track.edge === 'wall') {
+  k.off = cut ? true : away > 0;
+  const floorY = cut ? cut.y : nr.y;
+  k.gy = floorY; // la sombra va sobre el piso
+  const hasGround = !inGap && (cut || edge === 'wall' || away <= (track.fallAt ?? 2));
+
+  // Altura: pegado al piso, o en el aire hasta volver a tocarlo.
+  if (k.air) {
+    const g = k.glide ? GLIDE_G : GRAVITY;
+    k.vy -= g * dt;
+    if (k.glide) k.vy = Math.max(k.vy, -k.sink);
+    k.y += k.vy * dt;
+    if (hasGround && k.y <= floorY) {
+      k.y = floorY; k.vy = 0; k.air = false;
+      if (k.trick) { k.boost = Math.max(k.boost, 0.9); k.boostPow = 1.3; k.trickAt = env.t; }
+      k.trick = false; k.glide = false; k.launchT = null; k.landAt = env.t;
+      if (k.hop) { k.hop = false; if (c.d && Math.abs(s) > 0.2 && k.speed > 10) { k.drift = Math.sign(s); k.charge = 0; } }
+    }
+  } else if (!hasGround || floorY < k.y - 0.7) {
+    k.air = true; k.vy = Math.max(0, k.vy); // se terminó el piso (una loma o el borde): sigue volando
+  } else {
+    k.vy = clamp((floorY - k.y) / dt, -12, 12);
+    k.y = floorY;
+  }
+  // Rampas: al pasar por una apoyado, sale volando (las de planeador abren las alas).
+  if (!k.air && prevIdx != null && track.jumps) for (const jp of track.jumps) {
+    const dj = (jp.i - prevIdx + track.count) % track.count, moved = (nr.i - prevIdx + track.count) % track.count;
+    const passed = dj > 0 && dj <= moved && moved < 30;
+    if (passed && Math.abs(nr.lat) < track.half + 1 && k.speed > 6) {
+      k.air = true; k.launchT = env.t; k.hop = false;
+      if (jp.glide) { k.glide = true; k.sink = jp.sink; k.vy = GLIDE_V; k.drift = 0; k.charge = 0; k.speed = clamp(k.speed, GLIDE_MIN, GLIDE_MAX); }
+      else k.vy = JUMP_V * clamp(k.speed / 24, 0.6, 1.2);
+    }
+  }
+  if (!k.off && !k.air) k.safe = nr.i;
+  // Pared (salvo en un atajo o volando por arriba).
+  if (edge === 'wall' && !cut && !(k.air && k.y > floorY + 2)) {
     if (away > track.wallAt) {
       const sg = Math.sign(nr.lat), lim = track.half + track.wallAt;
       k.x -= sm.nx * sg * (Math.abs(nr.lat) - lim); k.z -= sm.nz * sg * (Math.abs(nr.lat) - lim);
@@ -147,12 +185,12 @@ export function stepKart(k, inp, dt, track, env) {
         if (env.t - (k.bumpAt ?? -9) > 0.4) { k.kx -= sm.nx * sg * 3; k.kz -= sm.nz * sg * 3; k.bumpAt = env.t; }
       }
     }
-  } else if (away > track.fallAt && k.y < 0.5) {
-    k.fall = 1.3; k.speed = 0; k.drift = 0; k.charge = 0;
   }
+  // Caerse: a la lava, al vacío o al pozo de un salto.
+  if (k.air && k.y < nr.y - 6 || !k.air && !hasGround) { k.fall = 1.3; k.speed = 0; k.drift = 0; k.charge = 0; k.glide = false; k.air = false; }
 
   // ─── Aceleradores del piso ────────────────────────────────────────────────
-  if (k.y < 1) for (const p of track.pads) if ((p.x - k.x) ** 2 + (p.z - k.z) ** 2 < p.r * p.r) { k.boost = Math.max(k.boost, 1.0); k.boostPow = 1.35; }
+  if (!k.air) for (const p of track.pads) if ((p.x - k.x) ** 2 + (p.z - k.z) ** 2 < p.r * p.r) { k.boost = Math.max(k.boost, 1.0); k.boostPow = 1.35; }
 
   // ─── Vueltas ───────────────────────────────────────────────────────────────
   const L = track.length, sNow = nr.s;
@@ -257,8 +295,8 @@ export const SHOT_LIFE = { verde: 7, rojo: 10, azul: 20, banana: 120, bomba: BOM
 export function spawnShot(w, owner, k, key, born, tgt = '') {
   const [fx, fz] = fwd(k.yaw);
   const ahead = w === 'banana' ? -2.6 : 2.4;
-  const p = { key, w, o: owner, x: k.x + fx * ahead, z: k.z + fz * ahead, y: w === 'azul' ? 6 : 0.4, yaw: k.yaw, v: SHOT_SPEED[w] || 0, born, tgt, idx: k.idx, vy: 0, landed: w === 'banana' };
-  if (w === 'bomba') { p.v = 22 + Math.max(0, k.speed) * 0.5; p.vy = 7; p.y = 1.2; }
+  const p = { key, w, o: owner, x: k.x + fx * ahead, z: k.z + fz * ahead, y: k.y + (w === 'azul' ? 6 : 0.4), yaw: k.yaw, v: SHOT_SPEED[w] || 0, born, tgt, idx: k.idx, vy: 0, landed: w === 'banana' };
+  if (w === 'bomba') { p.v = 22 + Math.max(0, k.speed) * 0.5; p.vy = 7; p.y = k.y + 1.2; }
   return p;
 }
 
@@ -272,7 +310,8 @@ export function stepShot(p, dt, track, find, t) {
       const [fx, fz] = fwd(p.yaw);
       p.x += fx * p.v * dt; p.z += fz * p.v * dt;
       p.vy -= GRAVITY * dt; p.y += p.vy * dt;
-      if (p.y <= 0.4) { p.y = 0.4; p.landed = true; }
+      const nr = nearest(track, p.x, p.z, p.idx); p.idx = nr.i;
+      if (p.y <= nr.y + 0.4) { p.y = nr.y + 0.4; p.landed = true; }
     }
     return true;
   }
@@ -282,7 +321,7 @@ export function stepShot(p, dt, track, find, t) {
       const dx = tg.x - p.x, dz = tg.z - p.z, d = Math.hypot(dx, dz);
       const want = yawOf(dx / (d || 1), dz / (d || 1));
       p.yaw = wrap(p.yaw + clamp(wrap(want - p.yaw), -4 * dt, 4 * dt));
-      p.y += ((d < 18 ? 0.6 : 6) - p.y) * Math.min(1, dt * 2);
+      p.y += (tg.y + (d < 18 ? 0.6 : 6) - p.y) * Math.min(1, dt * 2);
     }
     const [fx, fz] = fwd(p.yaw);
     p.x += fx * p.v * dt; p.z += fz * p.v * dt;
@@ -300,8 +339,10 @@ export function stepShot(p, dt, track, find, t) {
   p.x += fx * p.v * dt; p.z += fz * p.v * dt;
   const nr = nearest(track, p.x, p.z, p.idx);
   p.idx = nr.i;
+  if (track.gapAt?.[nr.i]) return false; // se cae al pozo
+  p.y = nr.y + 0.4;
   const away = Math.abs(nr.lat) - track.half;
-  if (track.edge === 'wall') {
+  if ((track.edgeAt ? track.edgeAt[nr.i] : track.edge) === 'wall') {
     if (away > track.wallAt - 0.4) {
       if (p.w === 'rojo') return false;
       const sm = track.samples[nr.i], sg = Math.sign(nr.lat);

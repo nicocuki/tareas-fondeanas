@@ -14,7 +14,7 @@ import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { skinById } from '../wii/skins.js';
 import { SkinFace } from '../wii/SkinPicker.jsx';
-import { buildTrack, LAPS, TRACKS } from './tracks.js';
+import { buildTrack, LAPS, TRACKS, obstacleParts } from './tracks.js';
 import {
   STEP, ITEMS, BOX_R, BOX_RESPAWN, BOMB_FUSE, BOMB_R, BLUE_R, HORN_R, ROLL_TIME, STAR_TIME, GOLD_TIME, SHRINK_TIME, KART_R,
   botInput, bump, hitKart, mtLevel, newKart, rankingOf, rollItem, slipstream, spawnShot, stepKart, stepShot, fwd,
@@ -25,6 +25,8 @@ const SERVER_EVERY = 1 / 10;
 const EVENT_KEEP = 3;
 const PAD_EVERY = 0.25;
 const ORD = (n) => `${n}°`;
+const COIN_RESPAWN = 10;
+const COIN_R = 2.2;
 export const MEDAL = ['🥇', '🥈', '🥉'];
 
 // Teclas: WASD o flechas para manejar, Espacio o Shift derrapa, E / Ctrl / X usa el ítem.
@@ -54,8 +56,9 @@ function useKeys() {
 
 // Kart en foto: lo mínimo para dibujarlo y para que los demás choquen con él.
 const pack = (k) => [k.id, +k.x.toFixed(2), +k.z.toFixed(2), +k.y.toFixed(2), +k.yaw.toFixed(3), +k.speed.toFixed(1), +k.steer.toFixed(2), k.drift, mtLevel(k.charge),
-  k.lap, +k.prog.toFixed(1), +k.boost.toFixed(2), +k.star.toFixed(1), +k.spin.toFixed(2), +k.shrink.toFixed(1), +k.fall.toFixed(2), k.finished ? 1 : 0];
-const unpack = (a) => ({ id: a[0], x: a[1], z: a[2], y: a[3], yaw: a[4], speed: a[5], steer: a[6], drift: a[7], mt: a[8], lap: a[9], prog: a[10], boost: a[11], star: a[12], spin: a[13], shrink: a[14], fall: a[15], finished: a[16] === 1 });
+  k.lap, +k.prog.toFixed(1), +k.boost.toFixed(2), +k.star.toFixed(1), +k.spin.toFixed(2), +k.shrink.toFixed(1), +k.fall.toFixed(2), k.finished ? 1 : 0,
+  (k.air ? 1 : 0) | (k.glide ? 2 : 0) | (k.trick ? 4 : 0), +(k.gy ?? k.y).toFixed(2), k.coins || 0];
+const unpack = (a) => ({ id: a[0], x: a[1], z: a[2], y: a[3], yaw: a[4], speed: a[5], steer: a[6], drift: a[7], mt: a[8], lap: a[9], prog: a[10], boost: a[11], star: a[12], spin: a[13], shrink: a[14], fall: a[15], finished: a[16] === 1, air: Boolean(a[17] & 1), glide: Boolean(a[17] & 2), trick: Boolean(a[17] & 4), gy: a[18] ?? a[3], coins: a[19] || 0 });
 const lerpAngle = (a, b, u) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + d * u; };
 
 export default function KartRace({ room, me, code, offset, onDispatch, pads }) {
@@ -74,8 +77,8 @@ export default function KartRace({ room, me, code, offset, onDispatch, pads }) {
   const S = useRef(null);
   if (!S.current || S.current.n !== race.n) {
     S.current = {
-      n: race.n, karts: new Map(), remote: new Map(), shots: new Map(), seen: new Set(), out: [], seq: 0, boxUntil: track.boxes.map(() => -99),
-      booms: [], usedI: {}, lags: [], sentFinish: new Set(), endTry: 0, snapAt: 0, serverAt: 0, padAt: 0, hits: {},
+      n: race.n, karts: new Map(), remote: new Map(), shots: new Map(), seen: new Set(), out: [], seq: 0, boxUntil: track.boxes.map(() => -99), coinUntil: track.coins.map(() => -99), zoneSeen: {}, lapSeen: {}, track,
+      booms: [], usedI: {}, coinFx: {}, lags: [], sentFinish: new Set(), endTry: 0, snapAt: 0, serverAt: 0, padAt: 0, hits: {},
     };
     race.racers.forEach((r, i) => { if (r.screen === me.id) { const k = newKart(r.id, i, track); k.line = (i % 3 - 1) * track.half * 0.3; k.bot = Boolean(r.bot); S.current.karts.set(r.id, k); } });
   }
@@ -165,6 +168,7 @@ export default function KartRace({ room, me, code, offset, onDispatch, pads }) {
       }
       case 'pop': { const p = s.shots.get(ev.p); if (p) p.gone = true; break; }
       case 'box': s.boxUntil[ev.b] = ev.t + BOX_RESPAWN; break;
+      case 'coin': s.coinUntil[ev.c] = ev.t + COIN_RESPAWN; break;
       case 'boom': {
         const p = s.shots.get(ev.p); if (p) p.gone = true;
         s.booms.push({ key: ev.k, x: ev.x, z: ev.z, r: ev.r, at: now, color: ev.w === 'azul' ? 0x4ab4ff : 0xffa63c });
@@ -230,6 +234,20 @@ export default function KartRace({ room, me, code, offset, onDispatch, pads }) {
     return { s: Math.abs(p.s) > Math.abs(kb.s) ? p.s : kb.s, a: p.a || kb.a, b: p.b || kb.b, d: p.d || kb.d, i: (pad?.i || 0) + kb.i };
   }
 
+  // Lo que se anuncia en el medio de la vista: la zona en la que entraste (2,5 s) o la última vuelta.
+  function banner(id, k, t) {
+    const zi = track.zoneAt[k.idx ?? 0] ?? 0;
+    const zs = s.zoneSeen[id];
+    if (!zs || zs.zi !== zi) s.zoneSeen[id] = { zi, at: zs ? t : -9 };
+    const lap = Math.max(1, k.lap || 0);
+    const ls = s.lapSeen[id];
+    if (!ls || ls.lap !== lap) s.lapSeen[id] = { lap, at: ls ? t : -9 };
+    if (lap === LAPS && t - s.lapSeen[id].at < 2.5 && !k.finished) return { banner: '¡Última vuelta!', bannerKind: 'lap' };
+    if (lap > 1 && lap < LAPS && t - s.lapSeen[id].at < 2) return { banner: `Vuelta ${lap}`, bannerKind: 'lap' };
+    if (t > 0 && t - s.zoneSeen[id].at < 2.5 && track.zones[zi]) return { banner: track.zones[zi].name, bannerKind: 'zone' };
+    return {};
+  }
+
   function step(t) {
     const room = roomRef.current;
     const env = { cc: room.race.cc, t };
@@ -263,6 +281,27 @@ export default function KartRace({ room, me, code, offset, onDispatch, pads }) {
           if (k.bot) k.useAt = t + 1.5 + Math.random() * 5;
         }
       });
+      // Monedas (hasta 10: cada una suma velocidad máxima).
+      if (k.fall <= 0) track.coins.forEach((c, i) => {
+        if (s.coinUntil[i] > t || (c.x - k.x) ** 2 + (c.z - k.z) ** 2 > COIN_R * COIN_R || Math.abs(c.y - k.y - 0.6) > 2.2) return;
+        emit({ y: 'coin', c: i });
+        k.coins = Math.min(10, (k.coins || 0) + 1);
+        s.coinFx[k.id] = performance.now();
+      });
+      // Obstáculos (los de una fase, desde su vuelta).
+      if (k.fall <= 0) for (const o of track.obstacles) {
+        if (o.lap && Math.max(1, k.lap) < o.lap) continue;
+        for (const pt of obstacleParts(track, o, t)) {
+          if (!pt.r || Math.abs(pt.y - k.y) > (pt.kind === 'geyser' ? 6 : 3) || (pt.x - k.x) ** 2 + (pt.z - k.z) ** 2 > (pt.r + KART_R) ** 2) continue;
+          if (hit(k, 'obst')) {
+            if (pt.kind === 'geyser') { k.vy = 13; k.air = true; }
+            if (pt.kind === 'crusher') k.shrink = Math.max(k.shrink, 2.5);
+            const dx = k.x - pt.x, dz = k.z - pt.z, d = Math.hypot(dx, dz) || 1;
+            k.kx += (dx / d) * 6; k.kz += (dz / d) * 6;
+          }
+          break;
+        }
+      }
       if (k.goldOn && k.gold <= 0) { k.goldOn = false; k.item = ''; k.itemN = 0; }
       // Usar el ítem: las personas con el botón (cuenta cuántas veces se apretó), los bots cuando les toca.
       if (k.bot) { if (k.item && !k.rolling && t >= (k.useAt || 0)) { useItem(k, ranking); k.useAt = t + (k.goldOn ? 0.6 : 1 + Math.random() * 2); } }
@@ -344,6 +383,8 @@ export default function KartRace({ room, me, code, offset, onDispatch, pads }) {
           shots: [...s.shots.values()].filter((p) => !p.gone),
           boxes: s.boxUntil.map((u) => u <= t || !room.race.items),
           booms: s.booms.filter((b) => t - b.at < 0.7),
+          coins: s.coinUntil.map((u) => u <= t),
+          t, lap: Math.max(1, ...(views.length ? views : [ranking[0]]).map((id) => findKart(id)?.lap || 1)),
           views: views.length ? views : [ranking[0]],
         };
         s.r.draw(frame);
@@ -352,7 +393,7 @@ export default function KartRace({ room, me, code, offset, onDispatch, pads }) {
         hudAt = now;
         setHud({
           t, ranking, zap: s.zapAt && t - s.zapAt < 0.4,
-          views: (views.length ? views : [ranking[0]]).map((id) => { const k = s.karts.get(id) || findKart(id); return k ? { id, pos: ranking.indexOf(id) + 1, lap: k.lap, item: k.rolling ? '?' : k.item, n: k.itemN, gold: k.goldOn ? k.gold : 0, finished: k.finished, finishT: k.finishT, boost: k.boost > 0, mt: k.drift ? mtLevel(k.charge || 0) : 0, start: k.startBoost && t < 1.5, spin: k.spin > 0 } : null; }),
+          views: (views.length ? views : [ranking[0]]).map((id) => { const k = s.karts.get(id) || findKart(id); return k ? { id, pos: ranking.indexOf(id) + 1, lap: k.lap, item: k.rolling ? '?' : k.item, n: k.itemN, gold: k.goldOn ? k.gold : 0, finished: k.finished, finishT: k.finishT, boost: k.boost > 0, mt: k.drift ? mtLevel(k.charge || 0) : 0, start: k.startBoost && t < 1.5, spin: k.spin > 0, coins: k.coins || 0, coinFx: performance.now() - (s.coinFx[id] || 0) < 300, glide: Boolean(k.glide), trick: k.trickAt != null && t - k.trickAt < 1, ...banner(id, k, t) } : null; }),
         });
       }
     });
@@ -381,6 +422,10 @@ export default function KartRace({ room, me, code, offset, onDispatch, pads }) {
             {hud.views.length > 1 && <div className="kt-name" style={{ '--sh': skinById(race.racers.find((r) => r.id === v.id)?.skin).shirt }}>{nameOf(v.id)}</div>}
             {v.mt > 0 && <div className={`kt-mt is-${v.mt}`}>{['', 'Turbo azul', 'Turbo naranja', '¡Turbo violeta!'][v.mt]}</div>}
             {v.start && <div className="kt-pop">¡Turbo de largada!</div>}
+            {v.trick && <div className="kt-pop">¡Pirueta!</div>}
+            {v.glide && <div className="kt-glide">🪂 Planeando · doblá para juntar monedas</div>}
+            {v.banner && !v.finished && <div className={`kt-banner-zone is-${v.bannerKind}`} key={v.banner}>{v.banner}</div>}
+            <div className={`kt-coins${v.coinFx ? ' is-pop' : ''}`} data-coins={v.coins}><i />{v.coins}</div>
             {v.finished && <div className="kt-finish" data-finished>{MEDAL[v.pos - 1] || '🏁'} ¡Llegaste {ORD(v.pos)}!<small>{fmtTime(v.finishT)}</small></div>}
           </div>
         ))}

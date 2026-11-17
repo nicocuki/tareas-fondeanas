@@ -9,7 +9,7 @@
 //     la sala como jugador (`screen` = la compu del anfitrión). El anfitrión puede sumarse con el teclado.
 // Cada jugador lleva `screen`: la compu que lo simula y lo dibuja. Los bots los simula la compu del anfitrión.
 //
-// Fases: lobby → vote (cada uno vota una de las 7 pistas o «?») → race → results → (otra votación o la sala de espera).
+// Fases: lobby → vote (cada uno vota una de las pistas o «?») → race → results → (otra votación o la sala de espera).
 import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 import { SKINS, freeSkin, isSkin } from '../wii/skins.js';
 import { RANDOM_PICK, TRACKS } from './tracks.js';

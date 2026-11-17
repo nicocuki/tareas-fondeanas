@@ -151,3 +151,12 @@
 .kp-tilt-right { position: absolute; right: 14px; top: 62px; bottom: 18px; width: 30%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 0.7fr 1.5fr; gap: 12px; }
 .kp-tilt-right .kp-gas { grid-column: 1 / 3; }
 .kp-vote-layer { position: fixed; inset: 0; z-index: 60; overflow-y: auto; padding: 10px; background: rgba(10, 14, 30, 0.96); color: #fff; }
+
+/* Monedas, zonas, planeo */
+.kt-coins { position: absolute; left: 16px; bottom: 62px; display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px; border-radius: 999px; background: rgba(15, 20, 40, 0.7); font: 900 20px var(--font-display); color: #ffe14a; transition: transform 0.15s; }
+.kt-coins i { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff3a0, #ffcc22 55%, #c88a00); box-shadow: inset 0 0 0 2px #a86f00; }
+.kt-coins.is-pop { transform: scale(1.25); }
+.kt-banner-zone { position: absolute; left: 50%; top: 16%; transform: translateX(-50%); padding: 8px 22px; border-radius: 14px; background: rgba(15, 20, 40, 0.75); font: 900 30px var(--font-display); white-space: nowrap; animation: kt-slide 2.5s ease-out forwards; pointer-events: none; }
+.kt-banner-zone.is-lap { color: #ffe14a; font-size: 40px; -webkit-text-stroke: 2px #1d2333; paint-order: stroke; background: rgba(232, 66, 63, 0.85); }
+@keyframes kt-slide { 0% { transform: translate(-150%, 0); opacity: 0; } 12% { transform: translate(-50%, 0); opacity: 1; } 80% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(60%, 0); opacity: 0; } }
+.kt-glide { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); padding: 4px 14px; border-radius: 999px; background: rgba(63, 139, 255, 0.85); font-weight: 800; white-space: nowrap; }

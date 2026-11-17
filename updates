@@ -1166,5 +1166,16 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.67.5 = Juegos Wii: las salas públicas aparecen en la portada
+1.67.5 = Juegos Wii: las salas públicas aparecen en la portada
 - Las salas de Fondo Kart (online) y de Tenis Movido no aparecían en la portada aunque se crearan como públicas. Ahora tienen el botón de sala pública y se listan.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.68.0 = Fondo Kart: tres pistas nuevas, con saltos y planeador
+- Las pistas se rehicieron de cero y por ahora quedan tres, muy distintas y más largas: Valle Ventoso, Volcán Vértigo y Ruta Neón.
+- Ya no son planas: hay subidas, bajadas, puentes, un paso elevado y túneles.
+- Rampas: saltando con derrape hacés una pirueta y salís con turbo. En cada pista hay un salto grande donde se abre el planeador y cruzás volando un río, un lago de lava o un hueco entre azoteas, juntando monedas en el aire.
+- Monedas: cada una te hace un poco más rápido (hasta 10). Si te pegan, perdés tres.
+- Atajos de tierra (conviene un hongo) y zonas con nombre que se anuncian al entrar.
+- Obstáculos que se mueven: vacas que cruzan, péndulos, rocas que ruedan, barras de fuego, géiseres de lava, prensas y autos. En las últimas vueltas aparecen más.
+- Mucha más decoración: molinos, botecitos, público que salta, globos, el humo del volcán, un castillo, edificios con neón y una ruta arcoíris en el cielo.
