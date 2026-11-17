@@ -1233,7 +1233,7 @@ Pedido de Nico: «un juego en la parte de Tareas 3D, dentro hay más juegos, com
 
 - **Los 8 personajes** (`skins.js`, puro): piel, pelo (color y estilo: corto, largo, colita, rodete, rulos, gorra, pelado), remera, pantalón y zapatillas. `freeSkin` da uno libre; en Fondo Kart no se repiten.
 - `character.js` arma el muñeco 3D (el mismo esqueleto que tenía el tenis) con su ropa; `seatPose` lo sienta al volante. `SkinPicker.jsx` dibuja las caras con CSS (sin Three.js), para el celular y las salas de espera.
-- **Salas públicas**: Fondo Kart (online) y Tenis Movido llevan su propio  (no usan ; sin él la marca  nunca se escribía y no salían en la portada). El Kart local no se lista (se entra con el celular) y en el tenis  cuenta también las compus ().
+- **Salas públicas**: Fondo Kart (online) y Tenis Movido llevan su propio `PublicSwitch` (no usan `LobbyLayout`; sin él la marca `publica/` nunca se escribía y no salían en la portada). El Kart local no se lista (se entra con el celular) y en el tenis `summarizeRoom` cuenta también las compus (`screens`).
 - **Un juego nuevo adentro**: una entrada en `INSIDE` de `WiiApp.jsx` (con su captura), `menu: false` en `games.js` y su pantalla en `SCREENS`.
 
 ## Fondo Kart
