@@ -554,7 +554,7 @@ export function createRenderer(canvas) {
     a.rotation.y = info.yaw;
     holdWeapon(a, info.kind, info.r || 0);
     drawTag(a, info.name, info.hp ?? 100, info.shield ?? 0, info.tagColor);
-    a.userData.tag.visible = !info.self;
+    a.userData.tag.visible = !info.self && !info.hideTag;
     animateAvatar(a, info.dt || 0.016, { ...info, t: time });
   }
   const muzzleOf = (id) => {

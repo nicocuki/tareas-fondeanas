@@ -1193,5 +1193,10 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.70.0 = Royale 3D: hasta 100 jugadores
+1.70.0 = Royale 3D: hasta 100 jugadores
 - Ahora podés jugar Royale 3D con hasta 100 jugadores en la misma partida (antes eran 10).
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.70.1 = Royale 3D: sin nombres ni vida sobre los jugadores
+- Ya no se ven el nombre ni la barra de vida arriba de los demás jugadores (Fuego Cruzado no cambia).

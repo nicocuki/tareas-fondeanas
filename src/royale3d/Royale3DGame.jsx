@@ -647,12 +647,12 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
         rr.setBus(!lobby && sim.local && now - m.startsAt / 1000 < sim.route.len / BUS_SPEED + 4 ? { ...busAt(sim.route, now - m.startsAt / 1000), yaw: sim.route.yaw } : null);
         for (const pl of r.players) {
           if (pl.id === me.id) {
-            rr.setAvatar(pl.id, { name: pl.name, color: COLORS[pl.color], skin: pl.color, tagColor: COLORS[pl.color], x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, mode: p.mode, moving: p.moving, speed: p.sprinting ? 8.4 : 5.6, kind: kind, r: held(p)?.r || 0, hp: p.hp, shield: p.shield, dead: p.dead, hidden: p.mode === 'bus', self: true, cast: Boolean(p.cast), recoil: sim.recoil, swing: Math.max(0, 1 - (t - sim.swingAt) / 0.3), dt });
+            rr.setAvatar(pl.id, { hideTag: true, name: pl.name, color: COLORS[pl.color], skin: pl.color, tagColor: COLORS[pl.color], x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, mode: p.mode, moving: p.moving, speed: p.sprinting ? 8.4 : 5.6, kind: kind, r: held(p)?.r || 0, hp: p.hp, shield: p.shield, dead: p.dead, hidden: p.mode === 'bus', self: true, cast: Boolean(p.cast), recoil: sim.recoil, swing: Math.max(0, 1 - (t - sim.swingAt) / 0.3), dt });
             continue;
           }
           const rem = sim.remotes.get(pl.id);
           const am = rem?.snap.am ?? 0;
-          rr.setAvatar(pl.id, rem && pl.alive && !rem.snap.dd ? { name: pl.name, color: COLORS[pl.color], skin: pl.color, tagColor: COLORS[pl.color], x: rem.x, y: rem.y, z: rem.z, yaw: rem.yaw, pitch: rem.pitch, mode: MODE_NAME[am] || 'ground', moving: rem.speed > 0.6, speed: rem.speed, kind: rem.snap.w || undefined, r: rem.snap.r || 0, hp: rem.snap.hp, shield: rem.snap.sd, hidden: am === 1, cast: Boolean(rem.snap.cs), swing: Math.max(0, 1 - (t - rem.swing) / 0.3), dt } : null);
+          rr.setAvatar(pl.id, rem && pl.alive && !rem.snap.dd ? { hideTag: true, name: pl.name, color: COLORS[pl.color], skin: pl.color, tagColor: COLORS[pl.color], x: rem.x, y: rem.y, z: rem.z, yaw: rem.yaw, pitch: rem.pitch, mode: MODE_NAME[am] || 'ground', moving: rem.speed > 0.6, speed: rem.speed, kind: rem.snap.w || undefined, r: rem.snap.r || 0, hp: rem.snap.hp, shield: rem.snap.sd, hidden: am === 1, cast: Boolean(rem.snap.cs), swing: Math.max(0, 1 - (t - rem.swing) / 0.3), dt } : null);
         }
         sim.recoil = Math.max(0, (sim.recoil || 0) - dt * 8);
         rr.syncChests(sim.world.chests.map((c) => ({ ...c, open: Boolean(m.loot?.[c.i]) })));
