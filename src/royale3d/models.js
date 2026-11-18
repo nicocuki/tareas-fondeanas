@@ -193,6 +193,18 @@ export function weaponModel(kind, rarity = 0) {
     case 'minigun':
       for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; add(g, cyl(0.022, 0.8, 6), STEEL, Math.cos(a) * 0.07, Math.sin(a) * 0.07, -0.55, R90, 0, 0); }
       add(g, box(0.2, 0.2, 0.4), 0x3a3f47, 0, 0, 0); add(g, cyl(0.1, 0.1, 10), METAL, 0, 0, -0.2, R90, 0, 0); add(g, box(0.1, 0.1, 0.18), acc, 0, 0.16, 0); add(g, box(0.06, 0.22, 0.08), DARK, 0, -0.22, -0.05); add(g, box(0.2, 0.2, 0.18), 0x2a2e34, 0, -0.1, 0.3); len = 0.95; break;
+    case 'deagle':
+      add(g, box(0.09, 0.13, 0.36), 0x6b7078, 0, 0, -0.1); add(g, box(0.07, 0.07, 0.2), STEEL, 0, 0.02, -0.34); add(g, box(0.07, 0.2, 0.09), DARK, 0, -0.14, 0.04, 0.12, 0, 0); add(g, box(0.095, 0.02, 0.3), acc, 0, 0.075, -0.1); add(g, box(0.03, 0.03, 0.03), STEEL, 0, 0.1, -0.4); len = 0.46; break;
+    case 'tmp':
+      add(g, box(0.08, 0.12, 0.3), METAL, 0, 0, -0.06); add(g, cyl(0.03, 0.22, 8), 0x1a1c20, 0, 0.02, -0.34, R90, 0, 0); add(g, box(0.05, 0.28, 0.07), DARK, 0, -0.2, -0.04); add(g, box(0.06, 0.16, 0.08), DARK, 0, -0.14, 0.1, 0.25, 0, 0); add(g, box(0.04, 0.05, 0.16), STEEL, 0, 0.09, 0.2); add(g, box(0.085, 0.02, 0.22), acc, 0, 0.07, -0.06); len = 0.46; break;
+    case 'carbine':
+      add(g, box(0.08, 0.12, 0.46), METAL, 0, 0, 0); add(g, cyl(0.022, 0.34, 6), STEEL, 0, 0.02, -0.4, R90, 0, 0); add(g, box(0.07, 0.13, 0.24), WOODC, 0, -0.01, 0.34); add(g, box(0.06, 0.2, 0.08), DARK, 0, -0.17, -0.06, 0.15, 0, 0); add(g, box(0.09, 0.09, 0.2), WOODC, 0, -0.01, -0.28); add(g, box(0.04, 0.05, 0.12), STEEL, 0, 0.1, -0.02); add(g, box(0.085, 0.02, 0.34), acc, 0, 0.07, 0.05); len = 0.62; break;
+    case 'pump':
+      add(g, box(0.08, 0.1, 0.34), METAL, 0, 0, 0); add(g, cyl(0.034, 0.85, 8), STEEL, 0, 0.03, -0.58, R90, 0, 0); add(g, cyl(0.03, 0.62, 8), STEEL, 0, -0.03, -0.46, R90, 0, 0); add(g, box(0.1, 0.09, 0.26), 0x3d2a18, 0, -0.04, -0.4); add(g, box(0.07, 0.15, 0.32), 0x3d2a18, 0, -0.03, 0.31, 0.15, 0, 0); add(g, box(0.085, 0.02, 0.32), acc, 0, 0.065, 0); add(g, box(0.03, 0.03, 0.04), 0xffe9a0, 0, 0.09, -0.98); len = 1.0; break;
+    case 'dmr':
+      add(g, box(0.08, 0.12, 0.62), 0x3a4048, 0, 0, 0); add(g, cyl(0.022, 0.62, 6), STEEL, 0, 0.02, -0.55, R90, 0, 0); add(g, box(0.07, 0.14, 0.32), 0x3a4048, 0, -0.01, 0.46); add(g, box(0.06, 0.24, 0.08), DARK, 0, -0.18, -0.03, 0.2, 0, 0); add(g, cyl(0.04, 0.26, 10), DARK, 0, 0.12, -0.04, R90, 0, 0); add(g, cyl(0.052, 0.04, 10), 0x6fb3ff, 0, 0.12, -0.18, R90, 0, 0); add(g, box(0.085, 0.02, 0.5), acc, 0, 0.07, 0.05); add(g, box(0.04, 0.16, 0.04), METAL, 0, -0.1, -0.5, 0.3, 0, 0); len = 1.0; break;
+    case 'crossbow':
+      add(g, box(0.07, 0.1, 0.62), WOODC, 0, 0, -0.1); add(g, box(0.05, 0.04, 0.6), STEEL, 0, 0.07, -0.18); add(g, box(0.78, 0.04, 0.05), 0x2a2e34, 0, 0.02, -0.46); add(g, box(0.3, 0.035, 0.05), 0x2a2e34, -0.5, 0.02, -0.36, 0, 0.55, 0); add(g, box(0.3, 0.035, 0.05), 0x2a2e34, 0.5, 0.02, -0.36, 0, -0.55, 0); add(g, box(0.014, 0.014, 0.4), 0xeeeeee, -0.34, 0.03, -0.26, 0, -0.5, 0); add(g, box(0.014, 0.014, 0.4), 0xeeeeee, 0.34, 0.03, -0.26, 0, 0.5, 0); add(g, box(0.02, 0.02, 0.4), acc, 0, 0.1, -0.3); add(g, box(0.06, 0.16, 0.08), DARK, 0, -0.12, 0.12, 0.2, 0, 0); len = 0.62; break;
     case 'pickaxe':
       add(g, cyl(0.025, 0.85, 6), WOODC, 0, 0, -0.1, R90, 0, 0); add(g, box(0.05, 0.05, 0.55), 0xd04a3a, 0, 0, -0.55, 0, 0, 0); add(g, box(0.05, 0.22, 0.05), 0xd04a3a, 0, -0.11, -0.52); add(g, box(0.05, 0.22, 0.05), 0xd04a3a, 0, 0.11, -0.52); len = 0.8; break;
     default: add(g, box(0.1, 0.1, 0.4), METAL, 0, 0, 0);
@@ -396,19 +408,26 @@ export function holdWeapon(av, kind, rarity) {
   u.weapon = m;
 }
 
-// Anima al personaje. `st`: { mode, moving, speed, pitch, kind (arma en la mano), cast, recoil, t }
+// Anima al personaje. `st`: { mode, moving, speed, sprint, climb, pitch, kind (arma en la mano), cast, recoil, t }
 export function animateAvatar(av, dt, st) {
   const u = av.userData;
   const mode = st.mode;
   u.glider.visible = mode === 'glide';
+  const ground = mode === 'ground';
+  const climb = Boolean(st.climb) && ground;
+  const sprint = Boolean(st.sprint) && st.moving && ground && !climb;
   const speed = st.moving ? st.speed : 0;
-  u.phase += dt * (3 + speed * 1.55);
-  const swing = st.moving ? Math.sin(u.phase) * Math.min(1, 0.45 + speed * 0.1) : 0;
-  const lean = mode === 'fall' ? -1.25 : mode === 'glide' ? 0 : 0;
-  u.lean += (lean - u.lean) * Math.min(1, dt * 7);
+  u.phase += dt * (climb ? 5.5 : sprint ? 13.5 : 3 + speed * 1.55);
+  const stride = sprint ? 1.25 : Math.min(1, 0.45 + speed * 0.1);
+  const swing = st.moving ? Math.sin(u.phase) * stride : 0;
+  const lean = mode === 'fall' ? -1.25 : climb ? -0.1 : sprint ? -0.3 : 0;
+  u.lean += (lean - u.lean) * Math.min(1, dt * 9);
   u.body.rotation.x = u.lean;
-  u.body.position.y = mode === 'fall' ? 0.3 : mode === 'glide' ? 0.15 : 0;
-  const armed = st.kind && mode === 'ground';
+  const bob = sprint ? Math.abs(Math.sin(u.phase)) * 0.09 : st.moving && ground ? Math.abs(Math.sin(u.phase)) * 0.025 : 0;
+  u.body.position.y = mode === 'fall' ? 0.3 : mode === 'glide' ? 0.15 : bob;
+  // El torso gira un poco al correr, con la cabeza contra-girando.
+  u.torso.rotation.y = sprint ? swing * 0.2 : 0;
+  const armed = st.kind && ground;
   const aimArm = Math.PI / 2 + (st.pitch || 0) * 0.9;
   if (mode === 'fall') {
     u.legL.rotation.x = 0.3 + Math.sin(st.t * 14) * 0.15; u.legR.rotation.x = 0.3 - Math.sin(st.t * 14) * 0.15;
@@ -416,20 +435,45 @@ export function animateAvatar(av, dt, st) {
   } else if (mode === 'glide') {
     u.legL.rotation.x = 0.1; u.legR.rotation.x = -0.1;
     u.armL.rotation.set(Math.PI - 0.2, 0, 0.3); u.armR.rotation.set(Math.PI - 0.2, 0, -0.3);
+  } else if (climb) {
+    // Trepando: manos arriba, alternando, y las piernas empujando.
+    const c = Math.sin(u.phase);
+    u.armL.rotation.set(Math.PI - 0.35 + c * 0.5, 0, 0.12); u.armR.rotation.set(Math.PI - 0.35 - c * 0.5, 0, -0.12);
+    u.legL.rotation.x = -0.45 + c * 0.7; u.legR.rotation.x = -0.45 - c * 0.7;
   } else {
     u.legL.rotation.x = swing * 0.9; u.legR.rotation.x = -swing * 0.9;
-    if (armed && st.kind !== 'pickaxe') {
+    if (armed && st.kind !== 'pickaxe' && sprint) {
+      // Corriendo con un arma: el arma baja y los brazos acompañan.
+      u.armR.rotation.set(0.75 + swing * 0.12, 0, -0.1);
+      u.armL.rotation.set(0.95 - swing * 0.1, 0, 0.55);
+    } else if (armed && st.kind !== 'pickaxe') {
       const recoil = (st.recoil || 0) * 0.35;
       u.armR.rotation.set(aimArm + recoil, 0, -0.08);
       u.armL.rotation.set(aimArm - 0.15 + recoil, 0, 0.55);
-    } else if (st.kind === 'pickaxe' && mode === 'ground') {
-      u.armR.rotation.set(0.9 + (st.swing || 0) * -2.1 + swing * 0.2, 0, -0.1);
-      u.armL.rotation.set(-swing * 0.8, 0, 0.05);
+    } else if (st.kind === 'pickaxe' && ground) {
+      u.armR.rotation.set(0.9 + (st.swing || 0) * -2.1 + swing * (sprint ? 0.5 : 0.2), 0, -0.1);
+      u.armL.rotation.set(-swing * (sprint ? 1.3 : 0.8), 0, 0.05);
     } else {
-      u.armL.rotation.set(-swing * 0.8, 0, 0.05); u.armR.rotation.set(swing * 0.8, 0, -0.05);
+      const arms = sprint ? 1.35 : 0.8;
+      u.armL.rotation.set(-swing * arms, 0, 0.05); u.armR.rotation.set(swing * arms, 0, -0.05);
     }
     if (st.cast) { u.armR.rotation.set(1.9, 0, 0); u.armL.rotation.set(1.9, 0, 0); }
   }
-  u.head.rotation.x = mode === 'ground' ? -(st.pitch || 0) * 0.4 : 0;
-  if (u.weapon) u.weapon.visible = mode === 'ground' && !st.cast;
+  u.head.rotation.x = ground && !climb ? -(st.pitch || 0) * 0.4 : 0;
+  u.head.rotation.y = sprint ? -swing * 0.12 : 0;
+  if (u.weapon) u.weapon.visible = ground && !st.cast && !climb;
+}
+
+// Una escalera dibujada con escalones (por abajo se camina como una rampa). Mira hacia +x, como `rampGeo`.
+export function stairsModel(len, width, rise, color) {
+  const g = new THREE.Group();
+  const n = Math.max(3, Math.round(rise / 0.38));
+  const m = matFor(color);
+  for (let i = 0; i < n; i++) {
+    const h = ((i + 1) / n) * rise, d = len / n;
+    const step = new THREE.Mesh(new THREE.BoxGeometry(d, h, width), m);
+    step.position.set(-len / 2 + d * (i + 0.5), h / 2, 0);
+    g.add(step);
+  }
+  return g;
 }

@@ -23,6 +23,13 @@ export const makeId = () => Math.random().toString(36).slice(2, 10);
 export const findPlayer = (room, id) => room?.players.find((p) => p.id === id) || null;
 export const inGame = (room) => room.players.filter((p) => p.inGame);
 export const alive = (room) => inGame(room).filter((p) => p.alive);
+// ¿Ya se agarró esa cosa del piso? (Las de los cofres se anotan con un bit por cosa; las armas tiradas, con un 1.)
+export function isTaken(match, key) {
+  const t = match?.took;
+  if (!t) return false;
+  const c = /^(\d{1,3}):(\d)$/.exec(key);
+  return c ? (((t[c[1]] | 0) >> Number(c[2])) & 1) === 1 : Boolean(t[key]);
+}
 export const stormSpeed = (room) => STORM_SPEEDS[room.match?.storm || room.options.storm] || 1;
 
 export function newRoom(hostId, hostName, avatar, now = Date.now()) {
@@ -78,7 +85,7 @@ function newMatch(next, now, rand) {
     size: next.players.length,
     deaths: [],   // { id, by, w } en el orden en que fueron cayendo
     loot: {},     // cofre -> quién lo abrió
-    took: {},     // cosa del piso -> quién la agarró
+    took: {},     // cofre -> bits de lo que se agarró; arma tirada -> 1 (ver isTaken)
     winner: null,
   };
   next.phase = 'playing';
@@ -177,6 +184,7 @@ export function applyAction(room, action, ctx = {}) {
 
     // Lo que quedó en el piso al abrir un cofre (o un arma que alguien cambió): lo agarra el primero que llega.
     // Las claves son «cofre:número» (el cofre tiene que estar abierto) o «w{n}.{lugar}» (un arma tirada).
+    // Para que entren las de 100 jugadores en la sala, de cada cofre se anota un solo número con un bit por cosa agarrada.
     case 'take': {
       const key = action.key;
       if (next.phase !== 'playing' || !sameMatch || !me?.alive || typeof key !== 'string') return null;
@@ -184,11 +192,14 @@ export function applyAction(room, action, ctx = {}) {
       const chest = /^(\d{1,3}):(\d)$/.exec(key);
       if (chest) {
         if (Number(chest[1]) >= LOOT_LIMIT || Number(chest[2]) >= MAX_PILES || !next.match.loot[chest[1]]) return null;
-      } else if (!/^w\d{1,5}\.\d{1,2}$/.test(key)) return null;
-      if (took[key]) return null;
-      const keys = Object.keys(took);
-      if (keys.length >= MAX_TOOK) delete took[keys[0]];
-      took[key] = me.id;
+        if (isTaken(next.match, key)) return null;
+        took[chest[1]] = (took[chest[1]] | 0) | (1 << Number(chest[2]));
+      } else {
+        if (!/^w\d{1,5}\.\d{1,2}$/.test(key) || took[key]) return null;
+        const dropped = Object.keys(took).filter((k) => k[0] === 'w');
+        if (dropped.length >= MAX_TOOK) delete took[dropped[0]];
+        took[key] = 1;
+      }
       break;
     }
 

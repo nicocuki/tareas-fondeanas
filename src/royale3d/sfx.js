@@ -81,12 +81,19 @@ export const sfx = {
       case 'minigun': noise(0.05, { vol: 0.3 * v, freq: 3000, slide: -1800, pan }); break;
       case 'bazooka': noise(0.45, { vol: 0.75 * v, freq: 900, slide: -600, pan }); tone(110, 0.4, { type: 'sawtooth', vol: 0.2 * v, slide: -70, pan }); break;
       case 'launcher': noise(0.2, { vol: 0.5 * v, freq: 700, slide: -500, pan }); tone(160, 0.14, { type: 'triangle', vol: 0.25 * v, slide: -90, pan }); break;
+      case 'deagle': noise(0.3, { vol: 0.85 * v, freq: 1700, slide: -1250, pan }); tone(105, 0.22, { type: 'square', vol: 0.22 * v, slide: -70, pan }); break;
+      case 'tmp': noise(0.06, { vol: 0.34 * v, freq: 3400, slide: -2200, pan }); break;
+      case 'carbine': noise(0.09, { vol: 0.46 * v, freq: 2600, slide: -1900, pan }); tone(150, 0.07, { type: 'square', vol: 0.09 * v, pan }); break;
+      case 'pump': noise(0.4, { vol: 0.95 * v, freq: 1400, slide: -1050, pan }); tone(85, 0.28, { type: 'sawtooth', vol: 0.22 * v, slide: -55, pan }); tone(240, 0.05, { type: 'square', vol: 0.1 * v, delay: 0.35, pan }); break;
+      case 'dmr': noise(0.38, { vol: 0.8 * v, freq: 1500, slide: -1100, pan }); tone(80, 0.3, { type: 'sawtooth', vol: 0.2 * v, slide: -45, pan }); break;
+      case 'crossbow': tone(520, 0.12, { type: 'triangle', vol: 0.25 * v, slide: -380, pan }); noise(0.12, { vol: 0.2 * v, freq: 900, pan }); break;
       case 'pickaxe': noise(0.09, { vol: 0.25 * v, freq: 600, pan }); break;
       default: noise(0.1, { vol: 0.3 * v, pan });
     }
   },
   explosion(vol = 1, pan = 0) { noise(1.1, { vol: 1 * vol, freq: 700, slide: -560, pan }); tone(60, 0.8, { type: 'sine', vol: 0.5 * vol, slide: -35, pan }); noise(0.35, { vol: 0.5 * vol, freq: 2200, slide: -1800, type: 'highpass', pan }); },
   reload() { tone(420, 0.04, { type: 'square', vol: 0.1 }); tone(300, 0.05, { type: 'square', vol: 0.1, delay: 0.5 }); tone(520, 0.05, { type: 'square', vol: 0.12, delay: 1.0 }); },
+  token() { [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.3, { type: 'triangle', vol: 0.24, delay: i * 0.1 })); noise(0.7, { vol: 0.6, freq: 900, slide: -700 }); tone(70, 0.7, { type: 'sine', vol: 0.5, slide: -30 }); },
   click() { tone(260, 0.03, { type: 'square', vol: 0.12 }); },
   hit(head = false) { tone(head ? 1500 : 900, 0.07, { type: 'triangle', vol: 0.28 }); if (head) tone(2200, 0.09, { type: 'triangle', vol: 0.2, delay: 0.04 }); },
   hurt() { tone(160, 0.14, { type: 'sawtooth', vol: 0.22, slide: -90 }); noise(0.12, { vol: 0.25, freq: 500 }); },
