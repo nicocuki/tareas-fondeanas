@@ -400,3 +400,148 @@ test('cohetes: la sala con 25 jugadores y todo agarrado entra en el tope', () =>
   const size = JSON.stringify(JSON.stringify(room)).length;
   assert.ok(size < 20000, `la sala pesa ${size}`);
 });
+
+// ─── Modos de juego ──────────────────────────────────────────────────────────
+import { MODES, MODE_LIST, STORM_DPS, STORM_START, hasStorm, hasWater, inStorm, modeOf, startKit, stormAt, stormPhases } from '../src/cohetes/modes.js';
+import { ICON_NAMES } from '../src/cohetes/icons.js';
+import { fillCircle } from '../src/cohetes/terrain.js';
+import { ITEM_LIST, STRIKE_BOMBS, teleportTarget, unstick } from '../src/cohetes/sim.js';
+
+test('cohetes: hay ocho modos con zona válida y el anfitrión puede elegir cualquiera', () => {
+  assert.equal(MODE_LIST.length, 8);
+  for (const key of MODE_LIST) {
+    const m = MODES[key];
+    assert.ok(['water', 'storm', 'both'].includes(m.zone), key);
+    assert.ok(m.hp > 0 && m.g > 0 && m.reload > 0 && m.crates > 0 && m.name && m.blurb, key);
+    assert.equal(hasWater(m) || hasStorm(m), true);
+  }
+  assert.equal(modeOf({}).name, MODES.water.name, 'una sala vieja sin modo es Marea alta');
+  assert.equal(modeOf({ mode: 'inventado' }), MODES.water);
+  let room = newRoom('h', 'Host', '🐸');
+  room = applyAction(room, { type: 'join', playerId: 'g', name: 'Guest' });
+  for (const key of MODE_LIST) {
+    const next = applyAction(room, { type: 'setOptions', playerId: 'h', options: { mode: key } });
+    assert.equal(next.options.mode, key);
+  }
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'h', options: { mode: 'inventado' } }), null);
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'g', options: { mode: 'storm' } }), null, 'solo el anfitrión');
+});
+
+test('cohetes: la tormenta cubre todo el mapa al principio, se cierra por fases y cada círculo cabe en el anterior', () => {
+  const W = 2400, H = 1300;
+  for (const seed of [1, 7, 99, 12345]) {
+    const phases = stormPhases(seed, W, H);
+    const first = stormAt(0, seed, W, H);
+    for (const [x, y] of [[0, 0], [W, 0], [0, H], [W, H]]) assert.ok(!inStorm(first, x, y), 'las esquinas empiezan adentro');
+    for (let k = 1; k < phases.length; k++) {
+      const a = phases[k - 1], b = phases[k];
+      assert.ok(b.r <= a.r, `la fase ${k} no es más grande`);
+      assert.ok(Math.hypot(b.x - a.x, b.y - a.y) + b.r <= a.r + 1e-6, `la fase ${k} cabe adentro de la anterior (semilla ${seed})`);
+    }
+    let prev = Infinity;
+    for (let s = 0; s < 400; s += 0.5) {
+      const st = stormAt(s, seed, W, H);
+      assert.ok(st.r <= prev + 1e-6, 'el radio nunca crece');
+      prev = st.r;
+    }
+    assert.ok(stormAt(400, seed, W, H).r < 30, 'al final queda casi nada');
+    assert.equal(stormAt(STORM_START - 1, seed, W, H).r, first.r, 'no se mueve mientras bajan todos');
+    assert.deepEqual(stormAt(55, seed, W, H), stormAt(55, seed, W, H));
+  }
+  assert.equal(STORM_DPS, 10);
+  assert.ok(stormAt(100, 5, W, H, 1.6).r < stormAt(100, 5, W, H, 0.6).r, 'más rápida, más cerrada');
+});
+
+test('cohetes: el arsenal inicial es siempre el mismo para el mismo jugador, sin repetir ni curitas', () => {
+  const kit = startKit(123, 'ana', 3);
+  assert.deepEqual(kit, startKit(123, 'ana', 3));
+  assert.equal(new Set(kit).size, 3);
+  assert.ok(!kit.includes('heal'));
+  assert.notDeepEqual(startKit(123, 'ana', 3), startKit(123, 'beto', 3));
+  assert.deepEqual(startKit(1, 'x', 0), []);
+});
+
+test('cohetes: morir en la tormenta queda anotado y no cuenta como baja de nadie', () => {
+  let room = start(lobby(3));
+  const m = room.match.n, t0 = 1000 + COUNTDOWN_MS;
+  room = applyAction(room, { type: 'died', playerId: 'p1', match: m, w: 'storm' }, { now: t0 });
+  assert.deepEqual(room.match.deaths.at(-1), { id: 'p1', by: null, w: 'storm' });
+  room = applyAction(room, { type: 'died', playerId: 'p2', match: m, w: 'cualquiera' }, { now: t0 });
+  assert.equal(room.match.deaths.at(-1).w, null, 'una causa inventada se descarta');
+});
+
+test('cohetes: cada objeto tiene su ícono dibujado y los nuevos se pueden agarrar de las cajas', () => {
+  for (const w of [...ITEM_LIST, 'airbomb']) assert.ok(ICON_NAMES.includes(w), `falta el ícono de ${w}`);
+  for (const w of ['skull', 'hit', 'wave', 'storm', 'coin', 'crown']) assert.ok(ICON_NAMES.includes(w), w);
+  for (const w of ['teleport', 'turbo', 'shock', 'medkit', 'triple', 'bounce', 'cement', 'strike']) assert.ok(ITEM_LIST.includes(w), w);
+  for (const i of [0, 10, 50]) assert.ok(ITEM_LIST.includes(crateInfo(i, 77, 2000).weapon));
+  assert.ok(crateInfo(5, 77, 2000, 3).at < crateInfo(5, 77, 2000, 10).at, 'con cajas más seguidas, caen antes');
+  assert.equal(STRIKE_BOMBS, 6);
+});
+
+test('cohetes: el teletransporte llega lo más lejos que se pueda en línea recta y no entra en la tierra', () => {
+  const t = emptyWorld(600, 300);
+  const to = teleportTarget(t, { x: 100, y: 100 }, 0, 400);
+  assert.ok(to && Math.abs(to.x - 360) < 3 && to.y === 100, 'sin tope llega al alcance máximo (260)');
+  assert.ok(Math.abs(teleportTarget(t, { x: 100, y: 100 }, 0, 80).x - 180) < 3, 'o hasta donde apuntás');
+  // Con tierra en el destino, aparece del lado libre más lejano.
+  for (let y = 0; y < 300; y++) for (let x = 300; x < 340; x++) t.grid[y * t.W + x] = 1;
+  const p = teleportTarget(t, { x: 100, y: 100 }, 0, 260);
+  assert.ok(p && !overlaps(t, p.x, p.y), 'no queda adentro de la tierra');
+  // Un sólido total: no hay lugar.
+  t.grid.fill(1);
+  assert.equal(teleportTarget(t, { x: 100, y: 100 }, 0, 260), null);
+});
+
+test('cohetes: el rebotador rebota contra la pared y explota después del último rebote', () => {
+  const t = emptyWorld(600, 300);
+  for (let y = 0; y < 300; y++) for (let x = 400; x < 420; x++) t.grid[y * t.W + x] = 1; // una pared
+  const [b] = projectilesFor({ k: 'b', x: 300, y: 150, a: 0, w: 'bounce' }, 'yo');
+  let vxBefore = b.vx, bounced = false, boom = null;
+  for (let i = 0; i < 6 / STEP && !boom; i++) {
+    boom = stepProjectile(b, STEP, t, []);
+    if (!bounced && b.vx < 0) { bounced = true; assert.ok(vxBefore > 0); }
+  }
+  assert.ok(bounced, 'dio la vuelta al pegar');
+  assert.ok(boom || b.done, 'al final explota');
+});
+
+test('cohetes: el cemento no le pega a los tanques, solo explota contra la tierra y rellena', () => {
+  const t = emptyWorld(600, 300);
+  for (let y = 200; y < 300; y++) for (let x = 0; x < 600; x++) t.grid[y * t.W + x] = 1; // piso
+  const [b] = projectilesFor({ k: 'c', x: 100, y: 150, a: 0.4, w: 'cement' }, 'yo');
+  let hit = null;
+  for (let i = 0; i < 6 / STEP && !hit && !b.done; i++) hit = stepProjectile(b, STEP, t, [{ id: 'otro', x: b.x + 1, y: b.y, shield: false }]);
+  assert.ok(hit, 'explotó contra el piso aunque había un tanque en el camino');
+  assert.ok(!solid(t, hit.x, hit.y), 'justo antes de la pared, en el aire');
+  const before = t.grid.reduce((a, v) => a + v, 0);
+  assert.ok(fillCircle(t, hit.x, hit.y, 17));
+  assert.ok(t.grid.reduce((a, v) => a + v, 0) > before, 'agregó tierra');
+  // En el aire no hace nada: se acaba su vida sin explotar.
+  const sky = emptyWorld(600, 3000);
+  const [air] = projectilesFor({ k: 'd', x: 100, y: 1500, a: -Math.PI / 2, w: 'cement' }, 'yo');
+  let boom = null;
+  for (let i = 0; i < 5 / STEP && !air.done; i++) boom = boom || stepProjectile(air, STEP, sky, []);
+  assert.ok(air.done, 'se le acaba la vida');
+  assert.equal(boom, null);
+});
+
+test('cohetes: sacar a un tanque de adentro del cemento lo deja en el aire libre', () => {
+  const t = emptyWorld(300, 300);
+  const p = newTank(150, 150);
+  fillCircle(t, 150, 150, 14);
+  assert.ok(overlaps(t, p.x, p.y));
+  unstick(t, p);
+  assert.ok(!overlaps(t, p.x, p.y));
+});
+
+test('cohetes: la gravedad del modo Luna hace caer más despacio a los tanques y a los cohetes', () => {
+  const t = emptyWorld(600, 600);
+  const a = newTank(100, 50), b = newTank(100, 50);
+  for (let i = 0; i < 0.5 / STEP; i++) { stepTank(a, 0, STEP, t); stepTank(b, 0, STEP, t, { g: MODES.moon.g }); }
+  assert.ok(b.y - 50 < (a.y - 50) * 0.6, 'cae menos');
+  const [r1] = projectilesFor({ k: 'r1', x: 10, y: 100, a: 0, w: 'rocket' }, 'yo');
+  const [r2] = projectilesFor({ k: 'r2', x: 10, y: 100, a: 0, w: 'rocket' }, 'yo');
+  for (let i = 0; i < 0.5 / STEP; i++) { stepProjectile(r1, STEP, t, [], 1); stepProjectile(r2, STEP, t, [], MODES.moon.g); }
+  assert.ok(r2.y - 100 < (r1.y - 100) * 0.6);
+});

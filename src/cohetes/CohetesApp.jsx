@@ -14,6 +14,8 @@ import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
 import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, inGame, makeId, newRoom, ranking, score } from './game.js';
 import { ITEMS, ITEM_LIST } from './sim.js';
+import { MODES, MODE_LIST, modeOf } from './modes.js';
+import Icon from './Icon.jsx';
 import CohetesGame, { ItemIcon } from './CohetesGame.jsx';
 import './cohetes.css';
 import { isKicked } from '../lobby/kick.js';
@@ -93,8 +95,30 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           ))}
         </ul>
       </div>
+      <div className="ck-card">
+        <div className="ck-card-head"><h2>Modo de juego</h2><span>{host ? 'Elegí cómo se juega' : 'Lo elige el anfitrión'}</span></div>
+        <div className="ck-modes" role="radiogroup" aria-label="Modo de juego">
+          {MODE_LIST.map((key) => {
+            const mode = MODES[key];
+            const on = modeOf(room.options) === mode;
+            return (
+              <button key={key} type="button" role="radio" aria-checked={on} disabled={!host} data-opt="mode" data-value={key} className={`ck-modecard${on ? ' is-on' : ''}`} onClick={() => onDispatch({ type: 'setOptions', options: { mode: key } })}>
+                <span className="ck-modecard-top">
+                  <span className="ck-modecard-zone">
+                    {mode.zone !== 'storm' && <Icon name="wave" size={22} />}
+                    {mode.zone !== 'water' && <Icon name="storm" size={22} />}
+                  </span>
+                  <em>{mode.tag}</em>
+                </span>
+                <strong>{mode.name}</strong>
+                <small>{mode.blurb}</small>
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <LobbyOptions canEdit={host}>
-        <OptionField title="Velocidad del agua" hint="Qué tan rápido sube el agua: con más rápida, las partidas son más cortas.">
+        <OptionField title="Velocidad de la zona" hint="Qué tan rápido sube el agua o se cierra la tormenta: con más rápida, las partidas son más cortas.">
           <Segmented name="water" value={room.options.water} disabled={!host} onChange={(v) => onDispatch({ type: 'setOptions', options: { water: v } })}
             choices={[{ value: 0.6, label: 'Lenta' }, { value: 1, label: 'Normal' }, { value: 1.6, label: 'Rápida' }]} />
         </OptionField>
@@ -105,13 +129,13 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <li>Arrancan en <b>dos helicópteros</b>, uno de cada lado: <b>disparás para saltar</b> y bajás en paracaídas donde quieras (en el aire, cada disparo es un impulso con humo que no hace daño).</li>
           <li><kbd>A</kbd> <kbd>D</kbd> (o las flechas) para manejar: el tanque <b>se pega a las paredes y los techos</b>, y cada tecla lo lleva siempre para el mismo lado del tanque. Apuntás con el mouse y disparás con el <b>clic</b> (o <kbd>Espacio</kbd>). Tenés 3 cohetes que se recargan solos.</li>
           <li>Cada tiro te empuja para atrás: <b>disparando para el lado contrario te despegás y salís volando</b>.</li>
-          <li>Los cohetes rompen el terreno. El agua sube: el que se hunde, queda afuera. Gana el último que queda.</li>
-          <li>Juntá monedas 🪙 y agarrá las cajas (hay por el mapa y caen más en paracaídas). Lo que traen se suma a tu inventario: <kbd>1</kbd> es el cohete, que nunca se acaba, y <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> lo que juntaste.</li>
-          <li className="ck-items">{ITEM_LIST.map((w) => <span key={w} title={ITEMS[w].name}><ItemIcon w={w} /> {ITEMS[w].name}</span>)}</li>
+          <li>Los cohetes rompen el terreno. La zona se cierra (el agua que sube o la tormenta, según el modo): el que se hunde o se queda sin vida, queda afuera. Gana el último que queda. Abajo a la izquierda tenés el mapa chico.</li>
+          <li>Juntá monedas <Icon name="coin" size={18} /> y agarrá las cajas (hay por el mapa y caen más en paracaídas). Lo que traen se suma a tu inventario: <kbd>1</kbd> es el cohete, que nunca se acaba, y <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> lo que juntaste.</li>
+          <li className="ck-items">{ITEM_LIST.map((w) => <span key={w} title={ITEMS[w].name}><ItemIcon w={w} size={30} /> {ITEMS[w].name}</span>)}</li>
         </ul>
       </div>
       <div className="ck-start">
-        {host ? <button type="button" className="tf-btn tf-btn-primary ck-start-btn" disabled={!enough} onClick={() => onDispatch({ type: 'start' })}>🚀 ¡A jugar!</button> : <p>Esperando que el anfitrión arranque…</p>}
+        {host ? <button type="button" className="tf-btn tf-btn-primary ck-start-btn" disabled={!enough} onClick={() => onDispatch({ type: 'start' })}>¡A jugar!</button> : <p>Esperando que el anfitrión arranque…</p>}
         {!enough && <p className="ck-hint">Hacen falta al menos {MIN_PLAYERS} jugadores. Pasales el código.</p>}
       </div>
     </LobbyLayout>
@@ -124,19 +148,19 @@ function Final({ room, me, onDispatch, onLeave }) {
   const rank = ranking(room);
   const total = rank.length;
   const winner = findPlayer(room, room.match?.winner);
-  const medals = ['🥇', '🥈', '🥉'];
   return (
     <div className="ck-final">
       <div className="ck-wins">
         {winner ? <><span className="ck-dot" style={{ background: winner.color }} /> <b>{winner.name}</b> GANA</> : 'SE HUNDIERON TODOS'}
       </div>
-      {winner?.id === me.id && <p className="ck-eyebrow">¡Ganaste! 🏆</p>}
+      {winner?.id === me.id && <p className="ck-eyebrow"><Icon name="crown" size={22} /> ¡Ganaste!</p>}
+      <p className="ck-hint">Modo: <b>{modeOf(room.options).name}</b></p>
       <table className="ck-table">
-        <thead><tr><th>#</th><th>Jugador</th><th>💥 Bajas</th><th>🪙 Monedas</th><th>Puntos</th></tr></thead>
+        <thead><tr><th>#</th><th>Jugador</th><th><Icon name="skull" size={18} /> Bajas</th><th><Icon name="coin" size={18} /> Monedas</th><th>Puntos</th></tr></thead>
         <tbody>
           {rank.map((p, i) => (
             <tr key={p.id} className={p.id === me.id ? 'is-me' : ''}>
-              <td>{medals[i] || p.place || i + 1}</td>
+              <td><span className={`ck-medal ck-medal-${i < 3 ? i + 1 : 0}`}>{p.place || i + 1}</span></td>
               <td><span className="ck-dot" style={{ background: p.color }} /> {p.name}</td>
               <td>{p.kills}</td>
               <td>{p.coins}</td>
@@ -148,7 +172,7 @@ function Final({ room, me, onDispatch, onLeave }) {
       <div className="ck-final-actions">
         {host ? (
           <>
-            <button type="button" className="tf-btn tf-btn-primary" onClick={() => onDispatch({ type: 'start' })}>🚀 Otra partida</button>
+            <button type="button" className="tf-btn tf-btn-primary" onClick={() => onDispatch({ type: 'start' })}>Otra partida</button>
             <button type="button" className="tf-btn tf-btn-soft" onClick={() => onDispatch({ type: 'toLobby' })}>Volver a la sala</button>
           </>
         ) : <p className="ck-hint">El anfitrión puede arrancar otra.</p>}

@@ -51,23 +51,41 @@ export const HEAL = 30;          // la curita: +30 % de la vida
 // En los proyectiles: `crater` radio del pozo, `radius` alcance del daño y del empujón, `damage` en el
 // centro, `knock` empujón en el centro.
 export const ITEMS = {
-  rocket: { name: 'Cohete', icon: '🚀', kind: 'shot', speed: 290, gravity: 190, crater: 15, radius: 30, damage: 34, knock: 240, life: 2.4 },
-  nuke: { name: 'Bomba nuclear', icon: '☢️', kind: 'shot', speed: 210, gravity: 120, crater: 44, radius: 88, damage: 96, knock: 420, life: 3.5, big: true },
-  mine: { name: 'Mina', icon: '💣', kind: 'shot', speed: 160, gravity: 260, crater: 24, radius: 40, damage: 55, knock: 300, mine: true, trigger: 20, life: 45 },
-  rapid: { name: 'Ráfaga', icon: '⏩', kind: 'shot', speed: 320, gravity: 190, crater: 8, radius: 18, damage: 15, knock: 120, life: 2, burst: 5, small: true },
-  shield: { name: 'Escudo', icon: '🛡️', kind: 'self' },
-  flak: { name: 'Metralla', icon: '💥', kind: 'shot', speed: 470, gravity: 250, crater: 6, radius: 16, damage: 17, knock: 150, life: 0.32, count: 7, spread: 0.09, small: true },
-  grenade: { name: 'Granadas', icon: '🧨', kind: 'shot', speed: 230, gravity: 300, crater: 14, radius: 28, damage: 26, knock: 210, life: 6, count: 3, spread: 0.2, fuse: 0.35, ball: true },
-  drill: { name: 'Taladro', icon: '🔩', kind: 'shot', speed: 230, gravity: 70, crater: 14, radius: 26, damage: 30, knock: 200, life: 4, drill: 170 },
-  homing: { name: 'Teledirigido', icon: '🎯', kind: 'shot', speed: 190, gravity: 100, crater: 15, radius: 30, damage: 34, knock: 240, homing: true, life: 5 },
-  whirl: { name: 'Remolino', icon: '🌪️', kind: 'zone', length: 95, width: 42, time: 4, push: 520 },
-  jetpack: { name: 'Jetpack', icon: '🎒', kind: 'self' },
-  poison: { name: 'Veneno', icon: '🧪', kind: 'shot', speed: 240, gravity: 300, crater: 0, radius: 0, damage: 0, knock: 0, life: 6, zone: 'poison', ball: true },
-  laser: { name: 'Láser', icon: '⚡', kind: 'charge', speed: 3200, gravity: 0, crater: 6, radius: 18, damage: 100, flat: true, knock: 200, life: 0.22 },
-  smoke: { name: 'Humo', icon: '💨', kind: 'shot', speed: 250, gravity: 300, crater: 0, radius: 0, damage: 0, knock: 0, life: 6, zone: 'smoke', ball: true },
-  heal: { name: 'Curita', icon: '✚', kind: 'self' },
+  rocket: { name: 'Cohete', kind: 'shot', speed: 290, gravity: 190, crater: 15, radius: 30, damage: 34, knock: 240, life: 2.4 },
+  nuke: { name: 'Bomba nuclear', kind: 'shot', speed: 210, gravity: 120, crater: 44, radius: 88, damage: 96, knock: 420, life: 3.5, big: true },
+  mine: { name: 'Mina', kind: 'shot', speed: 160, gravity: 260, crater: 24, radius: 40, damage: 55, knock: 300, mine: true, trigger: 20, life: 45 },
+  rapid: { name: 'Ráfaga', kind: 'shot', speed: 320, gravity: 190, crater: 8, radius: 18, damage: 15, knock: 120, life: 2, burst: 5, small: true },
+  shield: { name: 'Escudo', kind: 'self' },
+  flak: { name: 'Metralla', kind: 'shot', speed: 470, gravity: 250, crater: 6, radius: 16, damage: 17, knock: 150, life: 0.32, count: 7, spread: 0.09, small: true },
+  grenade: { name: 'Granadas', kind: 'shot', speed: 230, gravity: 300, crater: 14, radius: 28, damage: 26, knock: 210, life: 6, count: 3, spread: 0.2, fuse: 0.35, ball: true },
+  drill: { name: 'Taladro', kind: 'shot', speed: 230, gravity: 70, crater: 14, radius: 26, damage: 30, knock: 200, life: 4, drill: 170 },
+  homing: { name: 'Teledirigido', kind: 'shot', speed: 190, gravity: 100, crater: 15, radius: 30, damage: 34, knock: 240, homing: true, life: 5 },
+  whirl: { name: 'Remolino', kind: 'zone', length: 95, width: 42, time: 4, push: 520 },
+  jetpack: { name: 'Jetpack', kind: 'self' },
+  poison: { name: 'Veneno', kind: 'shot', speed: 240, gravity: 300, crater: 0, radius: 0, damage: 0, knock: 0, life: 6, zone: 'poison', ball: true },
+  laser: { name: 'Láser', kind: 'charge', speed: 3200, gravity: 0, crater: 6, radius: 18, damage: 100, flat: true, knock: 200, life: 0.22 },
+  smoke: { name: 'Humo', kind: 'shot', speed: 250, gravity: 300, crater: 0, radius: 0, damage: 0, knock: 0, life: 6, zone: 'smoke', ball: true },
+  heal: { name: 'Curita', kind: 'self' },
+  // Objetos nuevos: movilidad, defensa y control del mapa.
+  teleport: { name: 'Teletransporte', kind: 'self', range: 260 },
+  turbo: { name: 'Turbo', kind: 'self', time: 6, mult: 1.9 },
+  shock: { name: 'Onda de choque', kind: 'self', crater: 0, radius: 80, damage: 6, knock: 560, noSelf: true },
+  medkit: { name: 'Botiquín', kind: 'self', heal: 60 },
+  triple: { name: 'Trío', kind: 'shot', speed: 290, gravity: 190, crater: 12, radius: 26, damage: 26, knock: 200, life: 2.4, count: 3, spread: 0.17 },
+  bounce: { name: 'Rebotador', kind: 'shot', speed: 270, gravity: 150, crater: 16, radius: 32, damage: 36, knock: 250, life: 4.2, bounces: 3 },
+  cement: { name: 'Cemento', kind: 'shot', speed: 240, gravity: 200, crater: 0, radius: 0, damage: 0, knock: 0, life: 3, fill: 17, ball: true, passTanks: true },
+  strike: { name: 'Ataque aéreo', kind: 'shot', speed: 250, gravity: 260, crater: 0, radius: 0, damage: 0, knock: 0, life: 4, ball: true, flare: true },
+  // Lo que cae de un ataque aéreo (no se agarra de una caja).
+  airbomb: { name: 'Ataque aéreo', kind: 'shot', speed: 160, gravity: 130, crater: 19, radius: 38, damage: 38, knock: 280, life: 5 },
 };
-export const ITEM_LIST = ['nuke', 'mine', 'rapid', 'shield', 'flak', 'grenade', 'drill', 'homing', 'whirl', 'jetpack', 'poison', 'laser', 'smoke', 'heal'];
+export const ITEM_LIST = ['nuke', 'mine', 'rapid', 'shield', 'flak', 'grenade', 'drill', 'homing', 'whirl', 'jetpack', 'poison', 'laser', 'smoke', 'heal',
+  'teleport', 'turbo', 'shock', 'medkit', 'triple', 'bounce', 'cement', 'strike'];
+export const STRIKE_DELAY = 0.9;   // segundos entre la bengala y la primera bomba
+export const STRIKE_BOMBS = 6;
+export const STRIKE_GAP = 0.22;
+export const STRIKE_SPREAD = 62;   // las bombas caen repartidas a lo ancho
+export const STRIKE_HEIGHT = 380;  // de qué altura arrancan
+export const TELEPORT_RANGE = 260;
 // Zonas que quedan en el mapa: el veneno lastima a todos los que están adentro (también al que lo tiró).
 export const ZONES = {
   poison: { radius: 46, time: 6, dps: 12 },
@@ -93,9 +111,9 @@ export function useItem(inv, slot) {
 
 // ─── Tanque ──────────────────────────────────────────────────────────────────
 // `mode`: 'ship' (en el helicóptero), 'chute' (en paracaídas) o 'tank' (manejando o volando).
-export function newTank(x, y, mode = 'tank') {
+export function newTank(x, y, mode = 'tank', hp = HP) {
   return {
-    x, y, vx: 0, vy: 0, nx: 0, ny: -1, stuck: false, mode, hp: HP, dead: false,
+    x, y, vx: 0, vy: 0, nx: 0, ny: -1, stuck: false, mode, hp, maxHp: hp, dead: false, turboUntil: 0,
     inv: [null, null, null], sel: 0, shots: MAX_AMMO, reloadAt: 0, readyAt: 0, lastBy: null, lastW: 'rocket', lastHitAt: -99, treads: 0,
     shieldUntil: 0, jetUntil: 0, jetA: 0, chargeUntil: 0, burst: 0, burstAt: 0,
   };
@@ -141,6 +159,32 @@ function pushOut(t, p) {
   }
 }
 
+// Lo saca de adentro de la tierra (después de que apareció cemento encima).
+export function unstick(t, p) {
+  if (!overlaps(t, p.x, p.y)) return;
+  for (let r = 2; r <= 70; r += 2) {
+    for (let k = 0; k < 16; k++) {
+      // Primero hacia arriba, que es donde suele haber aire.
+      const a = -Math.PI / 2 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8);
+      const x = p.x + Math.cos(a) * r, y = p.y + Math.sin(a) * r;
+      if (!overlaps(t, x, y)) { p.x = x; p.y = y; return; }
+    }
+  }
+}
+
+// A dónde llega un teletransporte: el punto libre más lejano en línea recta hacia donde apunta, hasta `dist`
+// (y hasta el alcance). Atraviesa paredes. null si no hay lugar.
+export function teleportTarget(t, from, angle, dist, max = TELEPORT_RANGE) {
+  const want = Math.min(max, Math.max(0, dist));
+  let best = null;
+  for (let d = 12; d <= want; d += 2) {
+    const x = from.x + Math.cos(angle) * d, y = from.y + Math.sin(angle) * d;
+    if (x < TANK_R || x > t.W - TANK_R || y < 0 || y > t.H - 10) break;
+    if (!overlaps(t, x, y, TANK_R + 1)) best = { x, y };
+  }
+  return best;
+}
+
 // Un empujón (retroceso, explosión): si es fuerte, lo despega de la superficie.
 export function push(p, vx, vy) {
   if (p.mode !== 'tank') return;
@@ -170,8 +214,8 @@ export function chuteBoost(p, angle) {
   p.vy += -Math.sin(angle) * CHUTE_BOOST;
 }
 
-// Un paso del tanque propio. `dir`: −1, 0 o 1 (A/D).
-export function stepTank(p, dir, dt, t) {
+// Un paso del tanque propio. `dir`: −1, 0 o 1 (A/D). `mods`: { g: gravedad, drive: velocidad } según el modo y el turbo.
+export function stepTank(p, dir, dt, t, mods = null) {
   if (p.mode === 'ship') return;
   if (p.mode === 'chute') {
     // Suave: el impulso de un «disparo» se va apagando solo, sin cortarse de golpe.
@@ -182,7 +226,7 @@ export function stepTank(p, dir, dt, t) {
   }
   if (p.stuck) {
     // Siempre sobre la tangente con el mismo signo: D va para la derecha *del tanque*.
-    const sp = dir * DRIVE;
+    const sp = dir * DRIVE * (mods?.drive ?? 1);
     let step = sp * dt;
     while (Math.abs(step) > 1e-6) {
       const d = Math.sign(step) * Math.min(1, Math.abs(step));
@@ -208,7 +252,7 @@ export function stepTank(p, dir, dt, t) {
   }
   // Volando: gravedad y lo que traiga del empujón; se pega a lo primero que toca.
   p.vx *= 1 - Math.min(1, dt * 0.3);
-  p.vy = Math.min(MAX_FALL, p.vy + GRAVITY * dt);
+  p.vy = Math.min(MAX_FALL, p.vy + GRAVITY * (mods?.g ?? 1) * dt);
   if (moveFree(t, p, dt)) stick(t, p);
   // Mientras vuela, el tanque se va enderezando.
   p.nx += (0 - p.nx) * Math.min(1, dt * 3);
@@ -249,10 +293,10 @@ export function muzzle(p, angle) {
 }
 
 // Cargador: cuántos cohetes hay ahora (se recargan de a uno).
-export function reload(p, now) {
-  if (p.shots >= MAX_AMMO) { p.reloadAt = now + RELOAD; return; }
-  while (p.shots < MAX_AMMO && now >= p.reloadAt) { p.shots += 1; p.reloadAt += RELOAD; }
-  if (p.shots >= MAX_AMMO) p.reloadAt = now + RELOAD;
+export function reload(p, now, per = RELOAD) {
+  if (p.shots >= MAX_AMMO) { p.reloadAt = now + per; return; }
+  while (p.shots < MAX_AMMO && now >= p.reloadAt) { p.shots += 1; p.reloadAt += per; }
+  if (p.shots >= MAX_AMMO) p.reloadAt = now + per;
 }
 
 // Jetpack: empuja para el lado contrario al que apunta; apuntando vertical, a un cuarto de la fuerza.
@@ -321,7 +365,7 @@ export function inWhirl(z, x, y) {
 // Un paso de un proyectil. `targets`: tanques a los que puede pegarle [{ id, x, y, shield }]. Un escudo
 // lo devuelve (y desde ahí es del dueño del escudo). Devuelve { x, y } si explotó. El taladro deja en
 // `b.tunnels` los puntos por donde cavó.
-export function stepProjectile(b, dt, t, targets = []) {
+export function stepProjectile(b, dt, t, targets = [], g = 1) {
   const w = ITEMS[b.w] || ITEMS.rocket;
   b.age += dt;
   if (b.stuck) {
@@ -350,13 +394,13 @@ export function stepProjectile(b, dt, t, targets = []) {
       b.vy = Math.sin(now + turn) * sp;
     }
   }
-  if (b.age > w.life) return boom(b);
-  b.vy += w.gravity * dt;
+  if (b.age > w.life) { if (w.fill) { b.done = true; return null; } return boom(b); } // el cemento en el aire no hace nada
+  b.vy += w.gravity * g * dt;
   const dist = Math.hypot(b.vx, b.vy) * dt;
   const n = Math.max(1, Math.ceil(dist / 1.5));
   for (let i = 0; i < n; i++) {
     const nx = b.x + (b.vx * dt) / n, ny = b.y + (b.vy * dt) / n;
-    for (const tk of targets) {
+    for (const tk of w.passTanks ? [] : targets) {
       const d = Math.hypot(nx - tk.x, ny - tk.y);
       if (tk.shield && d < SHIELD_R && !b.reflectedBy) {
         // El escudo lo devuelve por donde vino.
@@ -377,6 +421,18 @@ export function stepProjectile(b, dt, t, targets = []) {
         if (b.dug - b.lastDig >= DRILL_STEP || !b.lastDig) { b.lastDig = b.dug || 0.01; b.tunnels.push({ x: nx, y: ny }); }
         b.x = nx; b.y = ny;
         continue;
+      }
+      if (w.fill) return boom(b); // explota en el aire pegado a la pared (el último punto sin tierra)
+      if (w.bounces && (b.bn || 0) < w.bounces) {
+        // Rebota contra la pared: refleja la velocidad con la normal de la superficie.
+        const n = surfaceNormal(t, nx, ny, 4);
+        if (n) {
+          const dot = b.vx * n.x + b.vy * n.y;
+          if (dot < 0) { b.vx = (b.vx - 2 * dot * n.x) * 0.82; b.vy = (b.vy - 2 * dot * n.y) * 0.82; }
+          b.bn = (b.bn || 0) + 1;
+          b.bounced = b.age;
+          return null;
+        }
       }
       if (w.mine) { b.stuck = true; b.age = 0; return null; }
       if (w.fuse) { b.stuck = true; b.fuseAt = b.age + w.fuse; return null; }
@@ -402,7 +458,7 @@ function boom(b) {
 }
 
 // Explosión que viaja por la red: { k, x, y, w, o }. Cuánto daño y empujón le hace a un tanque.
-export function blastOn(p, ex) {
+export function blastOn(p, ex, knockMul = 1) {
   const w = ITEMS[ex.w] || ITEMS.rocket;
   if (!w.radius) return null;
   const d = Math.hypot(p.x - ex.x, p.y - ex.y);
@@ -410,14 +466,14 @@ export function blastOn(p, ex) {
   const f = 1 - d / w.radius;
   const nx = d > 0.01 ? (p.x - ex.x) / d : 0;
   const ny = d > 0.01 ? (p.y - ex.y) / d : -1;
-  return { damage: w.flat ? w.damage : w.damage * (0.4 + 0.6 * f), vx: nx * w.knock * f * KNOCK, vy: (ny * w.knock * f - 40 * f) * KNOCK };
+  return { damage: w.flat ? w.damage : w.damage * (0.4 + 0.6 * f), vx: nx * w.knock * f * KNOCK * knockMul, vy: (ny * w.knock * f - 40 * f) * KNOCK * knockMul };
 }
 
 // ─── Monedas y cajas ─────────────────────────────────────────────────────────
 export const MAX_COINS = 80;
 export const CRATE_EVERY = 10;     // segundos entre cajas que caen en paracaídas
-export const MAX_DROPS = 40;       // cajas que caen (índices 0 a 39)
-export const MAP_ITEMS = 8;        // cajas que ya están en el mapa al empezar (índices 40 a 47); no vuelven a aparecer
+export const MAX_DROPS = 90;       // cajas que caen (índices 0 a 89)
+export const MAP_ITEMS = 8;        // cajas que ya están en el mapa al empezar (índices 90 a 97); no vuelven a aparecer
 export const MAX_CRATES = MAX_DROPS + MAP_ITEMS;
 
 // Monedas en fila adentro de los huecos (como en el original), solo donde hay aire.
@@ -438,9 +494,9 @@ export function coinSpots(t, seed) {
 }
 
 // La caja que cae i: cuándo (segundos de partida), dónde y qué trae. Baja en paracaídas desde arriba.
-export function crateInfo(i, seed, W) {
+export function crateInfo(i, seed, W, every = CRATE_EVERY) {
   const rand = seeded((seed ^ 0xc2a7e) + i * 7919);
-  return { at: 14 + i * CRATE_EVERY, x: 140 + rand() * (W - 280), weapon: ITEM_LIST[Math.floor(rand() * ITEM_LIST.length)] };
+  return { at: 14 + i * every, x: 140 + rand() * (W - 280), weapon: ITEM_LIST[Math.floor(rand() * ITEM_LIST.length)] };
 }
 
 // Recintos cerrados: aire que no se conecta con el de afuera, así que para entrar hay que romper la roca.

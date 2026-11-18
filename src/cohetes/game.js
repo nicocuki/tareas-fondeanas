@@ -6,6 +6,7 @@
 // tiempo real por otro lado (CohetesGame.jsx): cada pantalla es dueña de su tanque y avisa acá
 // cuando muere (`died`), igual que en A los Tiros.
 import { ITEMS, MAX_COINS, MAX_CRATES } from './sim.js';
+import { DEFAULT_MODE, MODE_LIST } from './modes.js';
 import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
 export const GAME_TYPE = 'cohetes';
@@ -20,8 +21,10 @@ export const COLORS = [
   '#3a3f4b', '#b8e05a', '#ff5470', '#6ad1ff', '#a0522d', '#ffd8a8', '#7cfc9a',
 ];
 
-export const DEFAULT_OPTIONS = { water: 1 };
-export const OPTION_VALUES = { water: [0.6, 1, 1.6] };
+// `mode`: el modo de juego (ver modes.js). `water`: la velocidad de la zona (el agua que sube o la tormenta que se cierra).
+export const DEFAULT_OPTIONS = { mode: DEFAULT_MODE, water: 1 };
+export const OPTION_VALUES = { mode: MODE_LIST, water: [0.6, 1, 1.6] };
+export const DEATH_CAUSES = ['storm']; // morir sin que nadie te mate, además de hundirte
 
 export const cleanName = (name) => String(name || '').trim().slice(0, 16);
 export const makeId = () => Math.random().toString(36).slice(2, 10);
@@ -78,7 +81,8 @@ function checkEnd(room) {
 function kill(room, target, byId, weapon) {
   target.alive = false;
   target.place = alive(room).length + 1; // los que siguen vivos van adelante
-  room.match.deaths.push({ id: target.id, by: byId || null, w: byId && ITEMS[weapon] ? weapon : null });
+  const w = byId && ITEMS[weapon] ? weapon : DEATH_CAUSES.includes(weapon) ? weapon : null;
+  room.match.deaths.push({ id: target.id, by: byId || null, w });
   const by = byId && byId !== target.id ? findPlayer(room, byId) : null;
   if (by?.inGame) by.kills += 1;
 }

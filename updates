@@ -1182,7 +1182,7 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.69.0 = Fondo Kart: dos pistas más, atajos que sirven y mirar para atrás
+1.69.0 = Fondo Kart: dos pistas más, atajos que sirven y mirar para atrás
 - Pistas nuevas: Playa Coral (dunas, faro, muelle, planeo sobre la bahía, cangrejos, pelotas y olas) y Pico Nevado (subida entre pinos con bolas de nieve que ruedan, cueva de hielo, planeo desde la cumbre y un lago congelado con pingüinos). Ahora son cinco.
 - Ruta Neón rehecha de cero: avenida con arcos de neón, paso elevado, salto recto entre azoteas, la ruta del cielo y un barrio con atajo. Ya no hay partes donde te caés sin querer.
 - Los atajos ahora son de asfalto (se va a la velocidad de siempre), cortan una vuelta larga de verdad y tienen un acelerador.
@@ -1190,3 +1190,13 @@ LATEST 1.69.0 = Fondo Kart: dos pistas más, atajos que sirven y mirar para atr�
 - Volcán Vértigo mucho más lleno: antorchas, columnas de roca, cascadas de lava, burbujas, chispas, murciélagos, la puerta del castillo y un dragón que escupe fuego.
 - Después de girar por un golpe, el kart queda mirando para donde iba.
 - Mirar para atrás: tecla Q (o el botón 👀 ATRÁS en el celular). Mientras mirás para atrás, el ítem sale para atrás (y la cáscara se tira para adelante).
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.70.0 = Cohete Royale: ocho modos, tormenta, objetos nuevos y íconos propios
+- Ocho modos de juego que elige el anfitrión en la sala: Marea alta (el clásico), Tormenta, Frenesí (cajas cada 3 s y recarga el doble de rápida), Arsenal (arrancás con tres objetos), Luna (poca gravedad), Titanes (200 de vida), Cristal (40 de vida y explosiones que mandan lejos) y Apocalipsis (tormenta y agua a la vez).
+- La tormenta: un círculo que cierra el mapa desde los bordes hacia el medio, por fases (se ve el próximo círculo marcado). No mata al toque: saca 10 de vida por segundo mientras estés afuera. Tiene nubes, rayos, lluvia y un cartel con cuánto falta para que se cierre.
+- Mapa chico abajo a la izquierda con la zona (agua o tormenta), tu tanque y los demás.
+- Ocho objetos nuevos: Teletransporte, Turbo, Onda de choque, Botiquín (+60), Trío, Rebotador, Cemento (rellena de tierra y sirve para taparte o hacer puentes) y Ataque aéreo (una bengala marca el lugar y caen seis bombas). Ahora son 22.
+- Los objetos tienen íconos dibujados con chapa de color y relieve, y las cajas muestran lo que traen flotando arriba. Se terminaron los emojis en la partida, el HUD y la sala.
+- Los modos cambian la vida, la gravedad, la recarga y cada cuánto caen cajas, y la barra de vida muestra el número.

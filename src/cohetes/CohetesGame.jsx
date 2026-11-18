@@ -13,16 +13,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
-import { carve, decorations, makeTerrain, solid, waterY } from './terrain.js';
+import { carve, decorations, fillCircle, makeTerrain, solid, waterY } from './terrain.js';
 import {
   CHUTE_GAP, DEPLOY_AFTER, DRILL_R, HEAL, HP, ITEMS, JET_MAX, JET_TIME, KILL_CREDIT, LASER_CHARGE, MAX_AMMO, MAX_DROPS, RECOIL, RELOAD, SHIELD_TIME,
-  SHOT_GAP, SLOTS, STEP, ZONES, addItem, blastOn, chuteBoost, coinSpots, crateInfo, inWhirl, jetForce, mapItems, muzzle, newTank, projectilesFor, push,
-  reload, shipAt, shipFor, stepProjectile, stepTank, thrust, turret, useItem, zoneFromShot,
+  SHOT_GAP, SLOTS, STEP, STRIKE_BOMBS, STRIKE_DELAY, STRIKE_GAP, STRIKE_HEIGHT, STRIKE_SPREAD, ZONES, addItem, blastOn, chuteBoost, coinSpots, crateInfo,
+  inWhirl, jetForce, mapItems, muzzle, newTank, overlaps, projectilesFor, push, reload, shipAt, shipFor, stepProjectile, stepTank, teleportTarget, thrust,
+  turret, unstick, useItem, zoneFromShot,
 } from './sim.js';
+import { STORM_DPS, hasStorm, hasWater, inStorm, modeOf, startKit, stormAt } from './modes.js';
 import {
-  burst, drawArrow, drawBadges, drawCoin, drawCrate, drawDecorations, drawEffects, drawLabel, drawLaserAim, drawProjectile, drawShip, drawSky,
-  drawTank, drawTerrain, drawWater, drawZones, makeTerrainView, puff, repaint, setWorld,
+  burst, drawArrow, drawBadges, drawCoin, drawCrate, drawDecorations, drawEffects, drawLabel, drawLaserAim, drawMinimap, drawProjectile, drawShip, drawSky,
+  drawStorm, drawTank, drawTerrain, drawWater, drawZones, makeTerrainView, puff, repaint, setWorld,
 } from './render.js';
+import Icon from './Icon.jsx';
 import { alive as alivePlayers, findPlayer, inGame } from './game.js';
 
 const SEND_EVERY = 1 / 30;
@@ -33,12 +36,11 @@ const VIEW_W = 430;          // cuánto mundo entra a lo ancho
 const ITEM_GAP = 0.4;        // entre usar un objeto y el siguiente
 const KEYS = { left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], shoot: ['Space'] };
 // Cuánto empuja para atrás cada arma al dispararla (sobre RECOIL).
-const KICK = { rocket: 1, nuke: 1.5, rapid: 0.35, flak: 1.2, laser: 0.6, whirl: 0.3 };
+const KICK = { rocket: 1, nuke: 1.5, rapid: 0.35, flak: 1.2, laser: 0.6, whirl: 0.3, triple: 0.9, bounce: 0.9, cement: 0.5, strike: 0.4 };
 const round1 = (v) => Math.round(v * 10) / 10;
 
-export function ItemIcon({ w }) {
-  if (w === 'heal') return <span className="ck-heal">✚</span>;
-  return <span>{ITEMS[w]?.icon || '🚀'}</span>;
+export function ItemIcon({ w, size = 22 }) {
+  return <Icon name={w || 'rocket'} size={size} />;
 }
 
 export default function CohetesGame({ room, me, code, offset, onDispatch }) {
@@ -50,16 +52,17 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
   roomRef.current = room;
   const dispatchRef = useRef(onDispatch);
   dispatchRef.current = onDispatch;
-  const [hud, setHud] = useState({ hp: HP, inv: [null, null, null], sel: 0, shots: MAX_AMMO, reloadF: 0, charge: 0, jet: 0, dead: false, mode: 'ship', elapsed: -5 });
+  const [hud, setHud] = useState({ hp: HP, maxHp: HP, zone: null, inStorm: false, turbo: 0, inv: [null, null, null], sel: 0, shots: MAX_AMMO, reloadF: 0, charge: 0, jet: 0, dead: false, mode: 'ship', elapsed: -5 });
   const [hits, setHits] = useState([]);
   const [notice, setNotice] = useState('');
   const [killLabel, setKillLabel] = useState('');
+  const mode = modeOf(room.options);
 
   const sim = useRef(null);
   if (!sim.current) {
     sim.current = {
       n: 0, t: null, view: null, deco: [], coinSpots: [], crates: new Map(), zones: new Map(), local: null, remotes: new Map(), lastSeen: new Map(),
-      projectiles: new Map(), seen: new Set(), myShots: [], myBooms: [], effects: [], particles: [], shake: 0, seq: 0,
+      projectiles: new Map(), seen: new Set(), myShots: [], myBooms: [], strikes: [], mode: modeOf(null), mods: { g: 1 }, aimDist: 260, effects: [], particles: [], shake: 0, seq: 0,
       input: { left: false, right: false, shoot: false }, pressed: false, mouse: { x: 0, y: 0, in: false }, angle: -Math.PI / 2, shootHeld: false,
       badges: [], hitEvents: [], hitDirty: false, sentAt: 0, serverAt: 0, deathSent: false, pendingCoins: new Set(), pendingCrates: new Set(), goneSent: new Set(), hudKey: '', mountedAt: 0,
     };
@@ -80,10 +83,15 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     s.coinSpots = coinSpots(s.t, m.seed);
     s.crates = new Map(mapItems(s.t, m.seed).map((c) => [c.i, { x: c.x, y: c.y, falling: false, weapon: c.weapon, float: true }]));
     s.zones = new Map();
-    s.local = newTank(0, 0, 'ship');
+    s.mode = modeOf(room.options);
+    s.mods = { g: s.mode.g };
+    s.local = newTank(0, 0, 'ship', s.mode.hp);
+    for (const w of startKit(m.seed, me.id, s.mode.kit)) s.local.inv = addItem(s.local.inv, w) || s.local.inv;
+    s.strikes = [];
     s.ship = shipFor(m.order, me.id);
     s.remotes.clear(); s.lastSeen.clear(); s.projectiles.clear(); s.seen.clear();
     s.myShots = []; s.myBooms = []; s.effects = []; s.particles = []; s.badges = []; s.hitEvents = []; s.hitDirty = true;
+    s.storm = null; s.inStorm = false;
     s.deathSent = false; s.pendingCoins.clear(); s.pendingCrates.clear(); s.goneSent.clear();
     s.mountedAt = performance.now() / 1000;
   }, [matchN]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -113,7 +121,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       // Llega tarde: se adelanta hasta ahora (solo se ve; explota cuando llega su `ex`).
       if (owner !== me.id) {
         const late = Math.min(0.5, Math.max(0, now - shot.t));
-        for (let k = 0; k < late && !b.done; k += STEP) stepProjectile(b, STEP, s.t, []);
+        for (let k = 0; k < late && !b.done; k += STEP) stepProjectile(b, STEP, s.t, [], s.mods.g);
       }
       if (!b.done) s.projectiles.set(b.k, b);
     }
@@ -155,6 +163,15 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       const box = carve(s.t, ex.x, ex.y, w.crater);
       if (box) repaint(s.view, s.t, box);
     }
+    if (w.fill) {
+      // Cemento: rellena de tierra alrededor de donde pegó (si me tapa, me saca para afuera).
+      const box = fillCircle(s.t, ex.x, ex.y, w.fill);
+      if (box) repaint(s.view, s.t, box);
+      if (s.local && !s.local.dead && s.local.mode === 'tank' && overlaps(s.t, s.local.x, s.local.y)) { unstick(s.t, s.local); s.local.stuck = false; s.local.vx = 0; s.local.vy = 0; }
+      burst(s.particles, ex.x, ex.y, { n: 18, speed: 50, life: 0.7, colors: ['#e8c79d', '#b0875a', '#8a6a44'] });
+    }
+    if (w.flare) s.zones.set(ex.k, { kind: 'strike', x: ex.x, y: ex.y, until: (ex.t || now) + STRIKE_DELAY + STRIKE_BOMBS * STRIKE_GAP + 1.2, o: ex.o });
+    if (ex.w === 'shock') s.effects.push({ ring: true, x: ex.x, y: ex.y, r: w.radius, age: 0 });
     if (w.zone) s.zones.set(ex.k, { kind: w.zone, x: ex.x, y: ex.y, until: (ex.t || now) + ZONES[w.zone].time, o: ex.o });
     if (ex.w === 'laser' && ex.sx != null) s.effects.push({ beam: true, x0: ex.sx, y0: ex.sy, x: ex.x, y: ex.y, age: 0 });
     if (w.radius) {
@@ -166,7 +183,8 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     registerHits(s, ex, w);
     const p = s.local;
     if (!p || p.dead || p.mode !== 'tank') return;
-    const hit = blastOn(p, ex);
+    if (w.noSelf && ex.o === me.id) return;
+    const hit = blastOn(p, ex, s.mode.knock);
     if (!hit) return;
     // La explosión del tiro propio empuja menos: si no, un tiro al piso te mandaba al cielo.
     const own = ex.o === me.id ? 0.7 : 1;
@@ -200,6 +218,10 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       if (!prev || snap.t > prev.snap.t) {
         if (prev && !prev.snap.d && snap.d) burst(s.particles, snap.x, snap.y, { n: 40, colors: ['#ffe066', '#ff5a4f', '#555', '#fff'], speed: 140, life: 1 });
         const jump = !prev || prev.snap.m !== snap.m || Math.hypot(snap.x - prev.x, snap.y - prev.y) > 60;
+        // Se teletransportó: chispas violetas donde estaba y donde apareció.
+        if (prev && jump && prev.snap.m === 'tank' && snap.m === 'tank' && !snap.d) {
+          for (const at of [prev, snap]) burst(s.particles, at.x, at.y, { n: 22, colors: ['#e5ccff', '#b86bff', '#ffffff'], speed: 70, life: 0.6 });
+        }
         s.remotes.set(id, { snap, x: jump ? snap.x : prev.x, y: jump ? snap.y : prev.y, treads: (prev?.treads || 0) + Math.hypot(snap.x - (prev?.snap.x ?? snap.x), snap.y - (prev?.snap.y ?? snap.y)) });
       }
       const now = serverNow();
@@ -224,6 +246,8 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     let last = performance.now() / 1000;
     let acc = 0;
     let cam = { x: 0, y: 0, scale: 2, w: 1, h: 1 };
+    // El agua: sube en los modos con agua; en los de tormenta se queda en su nivel de abajo (caerse sigue siendo morir).
+    const waterLevel = (r, elapsed) => (hasWater(s.mode) ? waterY(Math.max(0, elapsed), s.t.H, r.options.water) : waterY(0, s.t.H));
 
     // Apuntar: del tanque al mouse (en el mundo). También al hacer clic, antes del paso que dispara.
     function aim() {
@@ -233,6 +257,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       const wy = (s.mouse.y * s.dpr - c0.h / 2) / c0.scale + c0.y;
       const c = turret(p);
       s.angle = Math.atan2(wy - c.y, wx - c.x);
+      s.aimDist = Math.hypot(wx - c.x, wy - c.y);
     }
     s.aim = aim;
 
@@ -261,7 +286,24 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         return;
       }
       const item = ITEMS[w];
-      if (w === 'rapid') { p.burst = item.burst; p.burstAt = now; }
+      if (w === 'teleport') {
+        const from = turret(p);
+        const dest = teleportTarget(s.t, from, s.angle, s.aimDist);
+        if (!dest || Math.hypot(dest.x - from.x, dest.y - from.y) < 20) { flash('No hay lugar ahí'); return; }
+        burst(s.particles, p.x, p.y, { n: 22, colors: ['#e5ccff', '#b86bff', '#ffffff'], speed: 70, life: 0.6 });
+        Object.assign(p, { x: dest.x, y: dest.y, vx: 0, vy: 0, stuck: false, nx: 0, ny: -1 });
+        burst(s.particles, p.x, p.y, { n: 22, colors: ['#e5ccff', '#b86bff', '#ffffff'], speed: 70, life: 0.6 });
+        s.shake = Math.max(s.shake, 0.25);
+      } else if (w === 'turbo') p.turboUntil = now + item.time;
+      else if (w === 'medkit') {
+        p.hp = Math.min(p.maxHp, p.hp + item.heal);
+        burst(s.particles, p.x, p.y, { n: 18, colors: ['#2ecf8a', '#ffffff'], speed: 50 });
+        flash(`+${item.heal} de vida`);
+      } else if (w === 'shock') {
+        const ex = { k: `${me.id}:${m.n}:${s.seq++}`, x: round1(p.x), y: round1(p.y), w: 'shock', o: me.id, t: now };
+        s.myBooms.push(ex);
+        explode(s, ex, now);
+      } else if (w === 'rapid') { p.burst = item.burst; p.burstAt = now; }
       else if (w === 'shield') p.shieldUntil = now + SHIELD_TIME;
       else if (w === 'jetpack') { p.jetUntil = now + JET_TIME; p.jetA = s.angle; }
       else if (item.kind === 'charge') p.chargeUntil = now + LASER_CHARGE;
@@ -313,8 +355,9 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
               if (z.o && z.o !== me.id) { p.lastBy = z.o; p.lastW = 'poison'; p.lastHitAt = now; }
             }
           }
-          stepTank(p, dir, STEP, s.t);
-          reload(p, now);
+          stepTank(p, dir, STEP, s.t, { g: s.mods.g, drive: now < p.turboUntil ? ITEMS.turbo.mult : 1 });
+          reload(p, now, RELOAD * s.mode.reload);
+          if (now < p.turboUntil && p.mode === 'tank' && Math.random() < 0.5) burst(s.particles, p.x - p.nx * 2, p.y - p.ny * 2, { n: 1, colors: ['#ffd23f', '#ff8a22'], speed: 24, life: 0.35 });
           if (!shoot) s.shootHeld = false;
           if (p.mode === 'tank' && shoot && !s.shootHeld && now >= p.readyAt && !p.chargeUntil && !p.burst) use(p, m, now);
           // En paracaídas, el «disparo» es un impulso sin daño que saca humo (se puede mantener apretado).
@@ -334,15 +377,22 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
           // Láser: cuando termina de cargar, sale.
           if (p.chargeUntil && now >= p.chargeUntil) { p.chargeUntil = 0; emit(p, m, now, 'laser'); }
         }
+        // La tormenta: no mata al toque, pero saca vida todo el tiempo que estés afuera del círculo.
+        s.inStorm = false;
+        if (hasStorm(s.mode) && elapsed > 0 && p.mode !== 'ship') {
+          s.storm = stormAt(elapsed, m.seed, s.t.W, s.t.H, r.options.water);
+          if (inStorm(s.storm, p.x, p.y)) { s.inStorm = true; p.hp -= STORM_DPS * STEP; p.stormTick = now; }
+        }
         // Agua o sin vida: afuera.
-        const level = waterY(Math.max(0, elapsed), s.t.H, r.options.water);
+        const level = waterLevel(r, elapsed);
         if (elapsed > 0 && p.mode !== 'ship' && (p.y > level || p.hp <= 0)) {
           p.dead = true;
           burst(s.particles, p.x, p.y, { n: 46, colors: ['#ffe066', '#ff5a4f', '#555', '#fff'], speed: 150, life: 1 });
           if (!s.deathSent && mine?.alive) {
             s.deathSent = true;
             const recent = p.lastBy && now - p.lastHitAt < KILL_CREDIT;
-            dispatchRef.current({ type: 'died', match: m.n, by: recent ? p.lastBy : null, w: recent ? p.lastW : null });
+            const byStorm = !recent && p.hp <= 0 && now - (p.stormTick ?? -99) < 0.5;
+            dispatchRef.current({ type: 'died', match: m.n, by: recent ? p.lastBy : null, w: recent ? p.lastW : byStorm ? 'storm' : null });
           }
         }
         // Monedas.
@@ -360,7 +410,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       // Cajas: las que caen en paracaídas cada tanto, y las piezas sueltas que flotan en recintos cerrados del mapa
       // (`float`: no caen aunque rompas la roca, hay que ir a buscarlas).
       for (let i = 0; i < MAX_DROPS; i++) {
-        const info = crateInfo(i, m.seed, s.t.W);
+        const info = crateInfo(i, m.seed, s.t.W, s.mode.crates);
         if (info.at > elapsed) break;
         if (!s.crates.has(i) && !m.crates[i]) s.crates.set(i, { x: info.x, y: -20, falling: true, weapon: info.weapon, drop: true });
       }
@@ -376,9 +426,9 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         dispatchRef.current({ type: 'crate', match: m.n, i }).then((res) => {
           if (res?.committed && res.room?.match?.crates?.[i] === me.id) {
             if (heal) {
-              p.hp = Math.min(HP, p.hp + HEAL);
+              p.hp = Math.min(p.maxHp, p.hp + HEAL);
               burst(s.particles, p.x, p.y, { n: 16, colors: ['#ff4d5e', '#ffffff'], speed: 50 });
-              flash(`✚ +${HEAL}`);
+              flash(`+${HEAL} de vida`);
               return;
             }
             const inv = addItem(p.inv, c.weapon);
@@ -403,7 +453,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         const mineShot = b.by === me.id;
         // Uno devuelto por un escudo ya puede pegarle al que lo tiró (y no al del escudo).
         const targets = !mineShot ? [] : b.reflectedBy ? [...others, ...(self ? [self] : [])].filter((tk) => tk.id !== b.reflectedBy) : others;
-        const hit = stepProjectile(b, STEP, s.t, targets);
+        const hit = stepProjectile(b, STEP, s.t, targets, s.mods.g);
         if (mineShot) {
           for (const tn of b.tunnels) {
             const ex = { k: `${b.k}#${s.seq++}`, x: round1(tn.x), y: round1(tn.y), w: 'drillseg', o: me.id, t: now };
@@ -416,8 +466,23 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
             if (b.w === 'laser') { ex.sx = b.sx; ex.sy = b.sy; }
             s.myBooms.push(ex);
             explode(s, ex, now);
+            // La bengala del ataque aéreo: unos instantes después caen las bombas desde arriba, repartidas.
+            if (b.w === 'strike') {
+              for (let i = 0; i < STRIKE_BOMBS; i++) {
+                const off = (i - (STRIKE_BOMBS - 1) / 2) * (STRIKE_SPREAD / (STRIKE_BOMBS - 1)) * 2 + (((i * 37) % 11) - 5) * 1.5;
+                s.strikes.push({ at: now + STRIKE_DELAY + i * STRIKE_GAP, x: round1(hit.x + off), y: round1(Math.max(-30, hit.y - STRIKE_HEIGHT)) });
+              }
+            }
           }
         } else b.tunnels.length = 0;
+      }
+      // Las bombas del ataque aéreo que ya les toca caer (las tiro yo, así que explotan donde yo decida).
+      while (s.strikes.length && now >= s.strikes[0].at) {
+        const st = s.strikes.shift();
+        const shot = { k: `${me.id}:${m.n}:${s.seq++}`, t: now, x: st.x, y: st.y, a: 1.571, w: 'airbomb' };
+        s.seen.add(shot.k);
+        addShot(s, shot, me.id, now);
+        s.myShots.push(shot);
       }
       for (const [k, b] of s.projectiles) if (b.done) s.projectiles.delete(k);
       for (const [k, z] of s.zones) if (now > z.until + 1) s.zones.delete(k);
@@ -451,7 +516,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         s.myBooms = s.myBooms.filter((e) => now - e.t < EVENT_KEEP);
         const snap = {
           n: m.n, t: now, x: round1(p.x), y: round1(p.y), vx: Math.round(p.vx), vy: Math.round(p.vy), nx: Math.round(p.nx * 100) / 100,
-          ny: Math.round(p.ny * 100) / 100, m: p.mode, a: Math.round(s.angle * 100) / 100, hp: Math.max(0, Math.round(p.hp)), d: p.dead ? 1 : 0,
+          ny: Math.round(p.ny * 100) / 100, m: p.mode, a: Math.round(s.angle * 100) / 100, hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, tu: now < p.turboUntil ? 1 : 0, d: p.dead ? 1 : 0,
           sd: p.shieldUntil > now ? round1(p.shieldUntil) : 0, bo: p.boostAt || 0, jt: now < p.jetUntil ? 1 : 0, ch: p.chargeUntil ? 1 : 0, sh: s.myShots, ex: s.myBooms,
         };
         s.mesh?.broadcast(snap);
@@ -475,10 +540,13 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       const reloadF = p.shots < MAX_AMMO ? Math.round(Math.max(0, Math.min(1, 1 - (p.reloadAt - now) / RELOAD)) * 10) / 10 : 0;
       const charge = p.chargeUntil ? Math.round(Math.min(1, 1 - (p.chargeUntil - now) / LASER_CHARGE) * 10) / 10 : 0;
       const jet = now < p.jetUntil ? Math.round(((p.jetUntil - now) / JET_TIME) * 40) / 40 : 0;
-      const key = [Math.round(p.hp), JSON.stringify(p.inv), p.sel, p.shots, reloadF, charge, jet, p.dead, p.mode, Math.ceil(-elapsed), elapsed > 25 && elapsed < 32].join('|');
+      const turbo = now < p.turboUntil ? Math.round(((p.turboUntil - now) / ITEMS.turbo.time) * 40) / 40 : 0;
+      const st = s.storm && elapsed > 0 ? s.storm : null;
+      const zone = st ? { shrinking: st.shrinking, left: Math.ceil(st.left), final: !st.next } : null;
+      const key = [Math.round(p.hp), p.maxHp, JSON.stringify(p.inv), p.sel, p.shots, reloadF, charge, jet, turbo, p.dead, p.mode, Math.ceil(-elapsed), elapsed > 25 && elapsed < 32, !!s.inStorm, zone && `${zone.shrinking}${zone.left}${zone.final}`].join('|');
       if (key !== s.hudKey) {
         s.hudKey = key;
-        setHud({ hp: Math.max(0, Math.round(p.hp)), inv: p.inv, sel: p.sel, shots: p.shots, reloadF, charge, jet, dead: p.dead, mode: p.mode, elapsed });
+        setHud({ hp: Math.max(0, Math.round(p.hp)), maxHp: p.maxHp, zone, inStorm: !!s.inStorm, turbo, inv: p.inv, sel: p.sel, shots: p.shots, reloadF, charge, jet, dead: p.dead, mode: p.mode, elapsed });
       }
       // Eventos de golpe (arriba a la derecha): duran unos segundos.
       const nowS = performance.now() / 1000;
@@ -518,7 +586,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       s.dpr = dpr;
       aim();
 
-      const level = waterY(Math.max(0, elapsed), s.t.H, r.options.water);
+      const level = waterLevel(r, elapsed);
       drawSky(ctx, shaken, now, theme);
       drawTerrain(ctx, shaken, s.view);
       setWorld(ctx, shaken);
@@ -533,14 +601,15 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         if (!v || v.snap.d || v.snap.m === 'ship') continue;
         drawTank(ctx, { x: v.x, y: v.y, nx: v.snap.nx, ny: v.snap.ny, treads: v.treads }, pl.color, v.snap.a, { chute: v.snap.m === 'chute', shield: (v.snap.sd || 0) > now, now });
         if (v.snap.jt) burst(s.particles, v.x, v.y, { n: 1, colors: ['#ffb347', '#ff6a2a'], speed: 30, life: 0.3 });
+        if (v.snap.tu && Math.random() < 0.5) burst(s.particles, v.x, v.y, { n: 1, colors: ['#ffd23f', '#ff8a22'], speed: 24, life: 0.35 });
         if (v.snap.ch) drawLaserAim(ctx, turret(v), v.snap.a, 0.5);
-        drawLabel(ctx, v, pl.name, v.snap.hp, false);
+        drawLabel(ctx, v, pl.name, (v.snap.hp / (v.snap.mh || HP)) * 100, false);
       }
       const mine = findPlayer(r, me.id);
       if (!p.dead && mine && p.mode !== 'ship') {
         drawTank(ctx, p, mine.color, s.angle, { hurt: (p.hurtUntil || 0) > performance.now() / 1000, chute: p.mode === 'chute', shield: p.shieldUntil > now, now });
         if (p.chargeUntil) drawLaserAim(ctx, muzzle(p, s.angle), s.angle, 1 - (p.chargeUntil - now) / LASER_CHARGE);
-        drawLabel(ctx, p, mine.name, p.hp, true);
+        drawLabel(ctx, p, mine.name, (p.hp / p.maxHp) * 100, true);
         s.badges = s.badges.filter((b) => performance.now() / 1000 - b.at < 0.6);
         drawBadges(ctx, p, s.badges, performance.now() / 1000);
         // Flecha roja hacia el enemigo más cercano.
@@ -559,11 +628,21 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       drawEffects(ctx, s.effects, s.particles, dt);
       drawZones(ctx, s.zones.values(), now, true);
       drawWater(ctx, shaken, level, now, theme);
+      if (s.storm && elapsed > 0 && hasStorm(s.mode)) drawStorm(ctx, shaken, s.storm, now);
       // En el helicóptero: un anillo que marca dónde estás, como en el original.
       if (p.mode === 'ship' && !p.dead) {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.4;
         ctx.beginPath(); ctx.arc(p.x, p.y - 12, 11, 0, Math.PI * 2); ctx.stroke();
+      }
+      // Mapa chico: la zona (agua o tormenta), mi tanque y los demás.
+      if (p.mode !== 'ship') {
+        const others = [];
+        for (const pl of alivePlayers(r)) {
+          const v = pl.id !== me.id && s.remotes.get(pl.id);
+          if (v && !v.snap.d && v.snap.m !== 'ship') others.push({ x: v.x, y: v.y, color: pl.color });
+        }
+        drawMinimap(ctx, { ...cam, dpr }, s.view, s.t, { me: p.dead ? null : p, others, storm: hasStorm(s.mode) && elapsed > 0 ? s.storm : null, level: hasWater(s.mode) ? level : null, theme });
       }
     }
 
@@ -618,7 +697,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
   const myDeath = deaths.find((d) => d.id === me.id);
   const myKiller = myDeath?.by ? findPlayer(room, myDeath.by) : null;
   return (
-    <div className="ck-stage" ref={wrapRef}>
+    <div className={`ck-stage${hud.inStorm && !hud.dead ? ' is-storm' : ''}`} ref={wrapRef}>
       <canvas
         ref={canvasRef}
         className="ck-canvas"
@@ -629,19 +708,27 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         onContextMenu={(e) => e.preventDefault()}
       />
       <div className="ck-top">
-        <span title="Monedas"><b className="ck-coin" /> {mine?.coins || 0}</span>
-        <span title="Bajas"><b className="ck-skull">☠</b> {mine?.kills || 0}</span>
+        <span title="Monedas"><Icon name="coin" size={18} /> {mine?.coins || 0}</span>
+        <span title="Bajas"><Icon name="skull" size={18} /> {mine?.kills || 0}</span>
+        <span className="ck-mode" title={mode.blurb} data-mode={room.options.mode || 'water'}>{mode.name}</span>
       </div>
+      {hud.zone && !hud.dead && (
+        <p className={`ck-zone${hud.zone.shrinking ? ' is-closing' : ''}`} data-zone>
+          <Icon name="storm" size={20} />
+          {hud.zone.final ? 'La tormenta cerró' : hud.zone.shrinking ? `Cerrándose… ${hud.zone.left} s` : `Se cierra en ${hud.zone.left} s`}
+        </p>
+      )}
+      {hud.inStorm && !hud.dead && <p className="ck-stormhit" data-in-storm>Estás en la tormenta: −10 por segundo. ¡Volvé al círculo!</p>}
       <div className="ck-remaining" data-left><small>Tanques<br />quedan</small><strong>{left}</strong></div>
       <ul className="ck-feed">
         {hits.map((h) => (
-          <li key={h.k} className="is-hit" data-hit>🎯 Le pegaste a <b>{h.name}</b> <ItemIcon w={h.w} /> −{Math.round(h.dmg)}</li>
+          <li key={h.k} className="is-hit" data-hit><Icon name="hit" size={16} /> Le pegaste a <b>{h.name}</b> <ItemIcon w={h.w} size={16} /> −{Math.round(h.dmg)}</li>
         ))}
         {feed.map((f) => (
-          <li key={f.k}>{f.by ? <>{f.by} <ItemIcon w={f.w || 'rocket'} /> {f.victim}</> : <>{f.victim} 🌊</>}</li>
+          <li key={f.k}>{f.by ? <>{f.by} <ItemIcon w={f.w || 'rocket'} size={16} /> {f.victim}</> : <>{f.victim} <Icon name={f.w === 'storm' ? 'storm' : 'wave'} size={16} /></>}</li>
         ))}
       </ul>
-      {killLabel && <p className="ck-killed">☠ {killLabel}</p>}
+      {killLabel && <p className="ck-killed"><Icon name="skull" size={22} /> {killLabel}</p>}
       {!hud.dead && (
         <div className="ck-bottom">
           <div className="ck-ammo" aria-label={`${hud.shots} cohetes`}>
@@ -650,31 +737,32 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
             ))}
           </div>
           {hud.charge > 0 && <div className="ck-charge"><i style={{ width: `${hud.charge * 100}%` }} /></div>}
-          {hud.jet > 0 && <div className="ck-jet" data-jet><span>🎒</span><div><i style={{ width: `${hud.jet * 100}%` }} /></div></div>}
+          {hud.jet > 0 && <div className="ck-jet" data-jet><Icon name="jetpack" size={20} /><div><i style={{ width: `${hud.jet * 100}%` }} /></div></div>}
+          {hud.turbo > 0 && <div className="ck-jet ck-turbo" data-turbo><Icon name="turbo" size={20} /><div><i style={{ width: `${hud.turbo * 100}%` }} /></div></div>}
           <div className="ck-slots">
             {Array.from({ length: SLOTS }, (_, i) => {
               const item = i === 0 ? { w: 'rocket' } : hud.inv[i - 1];
               return (
                 <button key={i} type="button" className={`ck-slot${hud.sel === i ? ' is-sel' : ''}${item ? '' : ' is-empty'}`} onClick={() => select(i)} title={item ? ITEMS[item.w].name : 'Vacía'} data-slot={i + 1}>
                   <small>{i + 1}</small>
-                  {item && <ItemIcon w={item.w} />}
+                  {item && <ItemIcon w={item.w} size={40} />}
                   {item?.n > 1 && <b>{item.n}</b>}
                 </button>
               );
             })}
           </div>
-          <div className="ck-hp"><i style={{ width: `${hud.hp}%` }} /></div>
+          <div className="ck-hp"><i style={{ width: `${Math.min(100, (hud.hp / hud.maxHp) * 100)}%` }} className={hud.hp / hud.maxHp < 0.35 ? 'is-low' : ''} /><small>{hud.hp}</small></div>
         </div>
       )}
       {notice && <p className="ck-notice">{notice}</p>}
       {hud.elapsed < 0 && <div className="ck-countdown"><small>¡PREPARATE!</small>{Math.ceil(-hud.elapsed)}</div>}
       {hud.mode === 'ship' && hud.elapsed >= 0 && !hud.dead && <div className="ck-deploy">⌃<br />Disparo para saltar</div>}
-      {hud.elapsed > 25 && hud.elapsed < 32 && !hud.dead && <p className="ck-warning">🌊 ¡El agua empieza a subir!</p>}
+      {hud.elapsed > 25 && hud.elapsed < 32 && !hud.dead && <p className="ck-warning"><Icon name={mode.zone === 'water' ? 'wave' : 'storm'} size={20} /> {mode.zone === 'water' ? '¡El agua empieza a subir!' : mode.zone === 'storm' ? '¡La tormenta empieza a cerrarse!' : '¡La tormenta y el agua empiezan a avanzar!'}</p>}
       {hud.dead && mine && (
         <div className="ck-eliminated">
           <div className="ck-elim-text">
             <strong>¡ELIMINADO!</strong>
-            <span>{myKiller ? <>por <b>{myKiller.name}</b> con <ItemIcon w={myDeath.w || 'rocket'} /></> : 'Te hundiste'}</span>
+            <span>{myKiller ? <>por <b>{myKiller.name}</b> con <ItemIcon w={myDeath.w || 'rocket'} size={22} /></> : myDeath?.w === 'storm' ? 'Te llevó la tormenta' : 'Te hundiste'}</span>
           </div>
           <div className="ck-elim-place"><strong>{mine.place || left + 1}</strong><small>de {total}</small></div>
         </div>

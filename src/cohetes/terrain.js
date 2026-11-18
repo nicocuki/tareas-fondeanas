@@ -546,6 +546,21 @@ export function carve(t, cx, cy, r) {
   return { x0, y0, x1, y1 };
 }
 
+// Rellena un círculo con tierra (el cemento). Devuelve el rectángulo tocado, o null si no tocó nada.
+export function fillCircle(t, cx, cy, r) {
+  const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(t.W - 1, Math.ceil(cx + r));
+  const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(t.H - 1, Math.ceil(cy + r));
+  if (x0 > x1 || y0 > y1 || r <= 0) return null;
+  const r2 = r * r;
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+      if (dx * dx + dy * dy <= r2) t.grid[y * t.W + x] = 1;
+    }
+  }
+  return { x0, y0, x1, y1 };
+}
+
 // La primera tierra de arriba para abajo en la columna x, desde `from` (H si no hay).
 export function surfaceY(t, x, from = 0) {
   const cx = Math.max(0, Math.min(t.W - 1, Math.floor(x)));

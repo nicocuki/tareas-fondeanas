@@ -9,7 +9,8 @@
 // En los dos, el borde también aparece en los cráteres (se calcula con la distancia al aire). El terreno
 // es una imagen de un píxel por casilla que se agranda sin suavizar. Se dibuja en unidades del mundo:
 // `cam` = { x, y, scale, w, h }.
-import { ITEMS, MUZZLE, SHIELD_R, TANK_R, ZONES, turret } from './sim.js';
+import { ITEMS, MUZZLE, SHIELD_R, STRIKE_DELAY, TANK_R, ZONES, turret } from './sim.js';
+import { drawIcon, iconSprite } from './icons.js';
 
 // ─── Terreno ─────────────────────────────────────────────────────────────────
 const EARTH = { edge: [61, 240, 110], band: [86, 48, 26], checks: [[176, 110, 58], [150, 88, 44], [196, 128, 70], [132, 76, 38]] };
@@ -613,11 +614,12 @@ export function drawLaserAim(ctx, from, angle, f) {
   ctx.setLineDash([]);
 }
 
+const TRAILS = { laser: '255,80,120', poison: '120,240,90', bounce: '255,143,208', strike: '255,90,46', airbomb: '255,150,60', cement: '190,150,100', triple: '70,208,192' };
 export function drawProjectile(ctx, b) {
   const w = ITEMS[b.w] || ITEMS.rocket;
   if (b.trail.length >= 4) {
     const grad = ctx.createLinearGradient(b.trail[0], b.trail[1], b.x, b.y);
-    const col = b.w === 'laser' ? '255,80,120' : b.w === 'poison' ? '120,240,90' : '90,230,255';
+    const col = TRAILS[b.w] || '90,230,255';
     grad.addColorStop(0, `rgba(${col},0)`);
     grad.addColorStop(1, `rgba(${col},0.95)`);
     ctx.strokeStyle = grad;
@@ -632,16 +634,16 @@ export function drawProjectile(ctx, b) {
   ctx.save();
   ctx.translate(b.x, b.y);
   if (w.mine || w.ball) {
-    ctx.fillStyle = b.w === 'poison' ? '#5bdc4a' : b.w === 'smoke' ? '#9aa3ad' : w.mine ? '#2b2d33' : '#3f6b34';
+    ctx.fillStyle = b.w === 'poison' ? '#5bdc4a' : b.w === 'smoke' ? '#9aa3ad' : b.w === 'cement' ? '#b0875a' : b.w === 'strike' ? '#ff5a2e' : w.mine ? '#2b2d33' : '#3f6b34';
     ctx.beginPath(); ctx.arc(0, 0, w.ball ? 2.2 : 2.8, 0, Math.PI * 2); ctx.fill();
     if (w.mine) { ctx.fillStyle = Math.sin(b.age * 10) > 0 ? '#ff3b30' : '#5a1512'; ctx.beginPath(); ctx.arc(0, -1.6, 1, 0, Math.PI * 2); ctx.fill(); }
   } else if (b.w !== 'laser') {
     ctx.rotate(Math.atan2(b.vy, b.vx));
-    const len = w.big ? 9 : w.small ? 3.2 : 5;
+    const len = w.big ? 9 : w.small ? 3.2 : b.w === 'airbomb' ? 6.5 : 5;
     const r = w.big ? 2.4 : w.small ? 1 : 1.4;
     ctx.fillStyle = w.big ? '#3a3d45' : '#ffffff';
     ctx.beginPath(); ctx.roundRect(-len / 2, -r, len, r * 2, r); ctx.fill();
-    ctx.fillStyle = b.w === 'drill' ? '#c9ced8' : '#35d7ff';
+    ctx.fillStyle = b.w === 'drill' ? '#c9ced8' : b.w === 'bounce' ? '#ff8fd0' : b.w === 'airbomb' ? '#ff5a2e' : '#35d7ff';
     ctx.fillRect(-len / 2, -r, 1.4, r * 2);
   }
   ctx.restore();
@@ -673,6 +675,19 @@ export function drawZones(ctx, zones, now, top) {
         ctx.fillStyle = `rgba(${200 + (i % 3) * 15},${200 + (i % 3) * 15},${205 + (i % 3) * 15},${0.92 * fade})`;
         ctx.beginPath(); ctx.arc(z.x + Math.cos(a + now * 0.1) * d, z.y + Math.sin(a + now * 0.1) * d, r * 0.42, 0, Math.PI * 2); ctx.fill();
       }
+    } else if (z.kind === 'strike' && !top) {
+      // La bengala marca el lugar: un blanco que se cierra hasta que caen las bombas.
+      const k = Math.max(0, Math.min(1, 1 - (z.until - now) / (STRIKE_DELAY + 1.4)));
+      const r = 30 * (1 - k * 0.35);
+      ctx.strokeStyle = `rgba(255,90,46,${0.9 * fade})`; ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.arc(z.x, z.y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([3, 3]); ctx.lineDashOffset = -now * 20;
+      ctx.beginPath(); ctx.arc(z.x, z.y, r * 0.5, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(z.x - r - 4, z.y); ctx.lineTo(z.x + r + 4, z.y); ctx.moveTo(z.x, z.y - r - 4); ctx.lineTo(z.x, z.y + r + 4); ctx.stroke();
+      const flare = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, 14);
+      flare.addColorStop(0, `rgba(255,230,160,${0.9 * fade})`); flare.addColorStop(1, 'rgba(255,90,46,0)');
+      ctx.fillStyle = flare; ctx.beginPath(); ctx.arc(z.x, z.y, 14, 0, Math.PI * 2); ctx.fill();
     } else if (z.kind === 'whirl' && !top) {
       // Un tornado en forma de embudo: angosto donde sale y ancho adelante, con vientos que giran en espiral,
       // restos que vuelan y un anillo que gira en la boca.
@@ -736,16 +751,7 @@ function drawLoose(ctx, c, now) {
     const a = i * (Math.PI / 2) + now * 0.9, r0 = 9, r1 = 12.5 + pulse * 2;
     ctx.beginPath(); ctx.moveTo(c.x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(c.x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.stroke();
   }
-  if (c.weapon === 'heal') {
-    ctx.fillStyle = '#ff4d5e'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.roundRect(c.x - 1.7, y - 5, 3.4, 10, 0.8); ctx.roundRect(c.x - 5, y - 1.7, 10, 3.4, 0.8); ctx.fill(); ctx.stroke();
-    return;
-  }
-  ctx.font = '11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#fff';
-  ctx.fillText(ITEMS[c.weapon]?.icon || '🚀', c.x, y + 0.5);
+  drawIcon(ctx, c.weapon, c.x, y, 8);
 }
 
 export function drawCrate(ctx, c, now) {
@@ -761,6 +767,11 @@ export function drawCrate(ctx, c, now) {
   ctx.strokeStyle = '#6b7280';
   ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(x + 1.5, y + 1.5); ctx.lineTo(x + 8, y + 8.5); ctx.moveTo(x + 8, y + 1.5); ctx.lineTo(x + 1.5, y + 8.5); ctx.stroke();
+  // Lo que trae, flotando arriba para que se vea de lejos (como una insignia de color).
+  if (c.weapon) {
+    const bob = Math.sin(now * 2.4 + c.x * 0.13) * 1.3;
+    ctx.drawImage(iconSprite(c.weapon, 48), c.x - 6.5, y - 15 + bob, 13, 13);
+  }
   // Destellos.
   ctx.strokeStyle = `rgba(160,235,255,${0.5 + Math.sin(now * 6 + c.x) * 0.4})`;
   ctx.lineWidth = 0.6;
@@ -802,7 +813,7 @@ export function puff(list, x, y, angle, n = 9) {
   }
 }
 
-// Íconos sobre mi tanque durante medio segundo: 🎯 cuando le pego a alguien y 💀 cuando lo elimino.
+// Íconos sobre mi tanque durante medio segundo: la mira cuando le pego a alguien y la calavera cuando lo elimino.
 export function drawBadges(ctx, p, badges, t) {
   for (const kind of ['hit', 'kill']) {
     let b = null;
@@ -817,10 +828,7 @@ export function drawBadges(ctx, p, badges, t) {
     ctx.translate(p.x, p.y - 27 - f * 10 - (kind === 'kill' ? 7 : 0));
     ctx.rotate(Math.sin(f * 16) * 0.28 * (1 - f));
     ctx.scale(pop, pop);
-    ctx.font = `${kind === 'kill' ? 15 : 12}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(kind === 'kill' ? '💀' : '🎯', 0, 0);
+    drawIcon(ctx, kind === 'kill' ? 'skull' : 'hit', 0, 0, kind === 'kill' ? 8 : 6.5);
     ctx.restore();
   }
 }
@@ -828,7 +836,12 @@ export function drawBadges(ctx, p, badges, t) {
 export function drawEffects(ctx, effects, particles, dt) {
   for (const e of effects) {
     const f = e.age / 0.35;
-    if (e.beam) {
+    if (e.ring) {
+      ctx.strokeStyle = `rgba(190,225,255,${0.9 * (1 - f)})`;
+      ctx.lineWidth = 3 * (1 - f) + 0.6;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (0.15 + f * 0.85), 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = `rgba(120,170,255,${0.22 * (1 - f)})`; ctx.fill();
+    } else if (e.beam) {
       ctx.strokeStyle = `rgba(255,90,130,${1 - f})`;
       ctx.lineWidth = 3 * (1 - f) + 0.5;
       ctx.beginPath(); ctx.moveTo(e.x0, e.y0); ctx.lineTo(e.x, e.y); ctx.stroke();
@@ -852,4 +865,102 @@ export function drawEffects(ctx, effects, particles, dt) {
     if (p.round) { ctx.beginPath(); ctx.arc(p.x, p.y, sz / 2, 0, Math.PI * 2); ctx.fill(); } else ctx.fillRect(p.x - sz / 2, p.y - sz / 2, sz, sz);
   }
   ctx.globalAlpha = 1;
+}
+
+// ─── La tormenta ─────────────────────────────────────────────────────────────
+// Todo lo que queda afuera del círculo se tiñe de violeta, con nubes que giran y rayos; el borde brilla y, mientras
+// espera, se marca el círculo que viene. `storm` = { x, y, r, next, shrinking }. Se dibuja en el mundo (después del terreno).
+const STORM_RAYS = Array.from({ length: 6 }, (_, i) => ({ a: hash(i, 21) * Math.PI * 2, p: hash(i, 22) * 7, s: 0.6 + hash(i, 23) }));
+export function drawStorm(ctx, cam, storm, now) {
+  setWorld(ctx, cam);
+  const vx0 = cam.x - cam.w / 2 / cam.scale - 40, vx1 = cam.x + cam.w / 2 / cam.scale + 40;
+  const vy0 = cam.y - cam.h / 2 / cam.scale - 40, vy1 = cam.y + cam.h / 2 / cam.scale + 40;
+  const { x, y, r } = storm;
+  // Afuera del círculo: un velo violeta (regla par-impar: el rectángulo menos el círculo).
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(vx0, vy0, vx1 - vx0, vy1 - vy0);
+  ctx.arc(x, y, r, 0, Math.PI * 2, true);
+  ctx.clip('evenodd');
+  const veil = ctx.createRadialGradient(x, y, Math.max(1, r), x, y, r + 260);
+  veil.addColorStop(0, 'rgba(120,40,200,0.58)'); veil.addColorStop(1, 'rgba(46,10,96,0.8)');
+  ctx.fillStyle = veil;
+  ctx.fillRect(vx0, vy0, vx1 - vx0, vy1 - vy0);
+  // Nubes que giran alrededor del ojo de la tormenta.
+  for (let i = 0; i < 26; i++) {
+    const a = now * (0.12 + (i % 4) * 0.03) + i * 2.399, d = r + 10 + ((i * 53) % 220) + Math.sin(now * 0.8 + i) * 8;
+    const cx = x + Math.cos(a) * d, cy = y + Math.sin(a) * d;
+    if (cx < vx0 - 80 || cx > vx1 + 80 || cy < vy0 - 80 || cy > vy1 + 80) continue;
+    ctx.fillStyle = `rgba(${170 + (i % 3) * 20},${120 + (i % 4) * 14},255,${0.1 + (i % 3) * 0.04})`;
+    ctx.beginPath(); ctx.arc(cx, cy, 34 + (i % 5) * 9, 0, Math.PI * 2); ctx.fill();
+  }
+  // Lluvia que cae en diagonal.
+  ctx.strokeStyle = 'rgba(214,196,255,0.42)'; ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  const gx0 = Math.floor(vx0 / 22) * 22;
+  for (let gx = gx0; gx < vx1; gx += 22) {
+    const off = ((now * 220 + hash(gx, 3) * 300) % 300);
+    const gy = vy0 + off - 60 + hash(gx, 5) * 40;
+    for (let gy2 = gy; gy2 < vy1; gy2 += 300) { ctx.moveTo(gx, gy2); ctx.lineTo(gx - 5, gy2 + 14); }
+  }
+  ctx.stroke();
+  ctx.restore();
+  // Rayos que de vez en cuando caen sobre el borde.
+  for (const ray of STORM_RAYS) {
+    const phase = (now * 0.35 * ray.s + ray.p) % 4;
+    if (phase > 0.18) continue;
+    const a = ray.a + Math.floor(now * 0.35 * ray.s + ray.p) * 1.7, bx = x + Math.cos(a) * (r + 30), by = y + Math.sin(a) * (r + 30);
+    if (bx < vx0 || bx > vx1) continue;
+    ctx.strokeStyle = `rgba(255,248,200,${1 - phase / 0.18})`; ctx.lineWidth = 1.6; ctx.lineJoin = 'miter';
+    ctx.beginPath(); ctx.moveTo(bx, by - 260);
+    for (let k = 1; k <= 6; k++) ctx.lineTo(bx + Math.sin(k * 7.7 + a * 9) * 14, by - 260 + k * 43);
+    ctx.stroke();
+  }
+  // El borde: un anillo que pulsa (más fuerte mientras se cierra).
+  const pulse = 0.55 + 0.45 * Math.sin(now * (storm.shrinking ? 9 : 3));
+  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = `rgba(255,120,255,${0.45 + pulse * 0.45})`;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  // El círculo que viene (cuando todavía no se cierra): línea blanca punteada.
+  if (storm.next && !storm.shrinking) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.1;
+    ctx.setLineDash([8, 7]); ctx.lineDashOffset = -now * 14;
+    ctx.beginPath(); ctx.arc(storm.next.x, storm.next.y, storm.next.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]); ctx.lineDashOffset = 0;
+  }
+}
+
+// Mapa chico abajo a la izquierda: el terreno, la zona (agua o tormenta), mi tanque y los demás. En pantalla (no en el mundo).
+export function drawMinimap(ctx, cam, view, t, { me, others = [], storm = null, level = null, theme }) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const dpr = cam.dpr || 1;
+  const w = Math.round(Math.min(240, cam.w * 0.26) ), h = Math.round(w * t.H / t.W);
+  const x0 = Math.round(14 * dpr), y0 = cam.h - h - Math.round(50 * dpr);
+  const k = w / t.W;
+  ctx.fillStyle = 'rgba(10,8,22,0.62)';
+  ctx.beginPath(); ctx.roundRect(x0 - 4, y0 - 4, w + 8, h + 8, 8); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(x0, y0, w, h, 5); ctx.clip();
+  const sky = SKIES[theme] || SKIES.tierra;
+  ctx.fillStyle = sky.stops[1]; ctx.fillRect(x0, y0, w, h);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(view.canvas, x0, y0, w, h);
+  if (level != null) { ctx.fillStyle = 'rgba(80,170,255,0.5)'; ctx.fillRect(x0, y0 + level * k, w, h - level * k); }
+  if (storm) {
+    ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.arc(x0 + storm.x * k, y0 + storm.y * k, storm.r * k, 0, Math.PI * 2, true);
+    ctx.fillStyle = 'rgba(140,50,230,0.6)'; ctx.fill('evenodd');
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(x0 + storm.x * k, y0 + storm.y * k, storm.r * k, 0, Math.PI * 2); ctx.stroke();
+    if (storm.next && !storm.shrinking) {
+      ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(x0 + storm.next.x * k, y0 + storm.next.y * k, storm.next.r * k, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+  for (const o of others) { ctx.fillStyle = o.color; ctx.strokeStyle = '#17121f'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x0 + o.x * k, y0 + o.y * k, 2.6 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+  if (me) {
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#17121f'; ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.arc(x0 + me.x * k, y0 + me.y * k, 3.6 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
 }
