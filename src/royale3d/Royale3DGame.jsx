@@ -9,19 +9,21 @@
 // la foto para que todas rompan lo mismo; las explosiones las decide la del dueño y cada pantalla calcula el daño de su jugador.
 // Entre amigos alcanza; no es a prueba de trampas.
 import React, { useEffect, useRef, useState } from 'react';
+import { ACTIONS, loadBinds, keyLabel, rebind, saveBinds, DEFAULT_BINDS } from './keys.js';
+import { iconURL, tokenURL } from './icons.js';
 import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { BUS_SPEED, DROP_ALT, DROP_FALL, MAX_DROPS, PREGAME, STORM_PHASES, busAt, busRoute, chestOf, dropInfo, makeWorld, spawnPoint, stormAt, stormCenters } from './map.js';
 import {
-  BLASTS, BUILD_GAP, BUILD_KINDS, BUILD_KIND_BY_CODE, GRENADE_FUSE, GRENADE_GAP, ITEMS, ITEM_LIST, LAUNCHER_FUSE, MAX_WOOD, OPEN_RANGE, OPEN_TIME, PICK_RANGE, RARITIES, SLOTS, STEP, WEAPONS,
-  WOOD_BREAK, WOOD_HIT, aimPoint, aimShot, blastOn, blastSolids, boardBus, buildProblem, cameraFor, canShoot, finishCast, finishReload, floorAt, grenadeFor, groundItems, held, hurt, jumpOff,
-  lookDir, magOf, newPlayer, openGlider, pelletDirs, pickAction, pickUp, pieceAt, pieceFor, placePiece, resolveShot, rocketFor, selectSlot, startCast, startReload, statsOf, stepAir,
-  stepGrenade, stepGround, stepRocket,
+  BLASTS, BUILD_GAP, BUILD_KINDS, BUILD_KIND_BY_CODE, GRENADE_FUSE, GRENADE_GAP, ITEMS, LAUNCHER_FUSE, MAX_HP, MAX_SHIELD, MAX_WOOD, OPEN_RANGE, OPEN_TIME, PICK_RANGE, RARITIES, SLOTS, STEP, WEAPONS,
+  WOOD_BREAK, WOOD_HIT, aimPoint, aimShot, blastOn, blastSolids, boardBus, buildProblem, cameraFor, canShoot, countOf, finishCast, finishReload, floorAt, grenadeFor, groundItems, held, hurt, jumpOff,
+  lookDir, magOf, moveSlot, newPlayer, openGlider, pelletDirs, pickAction, pickUp, pieceAt, pieceFor, pirateTokenAt, placePiece, resolveShot, rocketFor, selectSlot, startCast, startReload, statsOf, stepAir,
+  stepGrenade, stepGround, stepRocket, useOne,
 } from './sim.js';
 import * as SIM from './sim.js';
 import { sfx, setSound, soundOn } from './sfx.js';
-import { COLORS, alive as alivePlayers, findPlayer, stormSpeed } from './game.js';
+import { COLORS, alive as alivePlayers, findPlayer, isTaken, stormSpeed } from './game.js';
 
 const SEND_EVERY = 1 / 30;
 const SERVER_EVERY = 1 / 15;
@@ -30,11 +32,11 @@ const GONE_AFTER = 12;      // sin fotos de alguien, el anfitrión lo da por mue
 const LAST_HIT_S = 8;       // cuánto tiempo después de un golpe cuenta como «lo mató»
 const SENS = 0.0022;
 const KEYS = { f: ['KeyW', 'ArrowUp'], b: ['KeyS', 'ArrowDown'], l: ['KeyA', 'ArrowLeft'], r: ['KeyD', 'ArrowRight'], jump: ['Space'], sprint: ['ShiftLeft', 'ShiftRight'], use: ['KeyE'] };
+const TOKEN_STORE = 'tf:royale3d:tokens';
 const MODE_CODE = { ground: 0, bus: 1, fall: 2, glide: 3 };
 const MODE_NAME = ['ground', 'bus', 'fall', 'glide'];
 const r2 = (v) => Math.round(v * 100) / 100;
 const r1 = (v) => Math.round(v * 10) / 10;
-const WEAPON_ICON = { pickaxe: '⛏️', pistol: '🔫', revolver: '🔫', smg: '🔫', shotgun: '💥', rifle: '🔫', burst: '🎯', sniper: '🎯', bazooka: '🚀', launcher: '💣', minigun: '⚙️' };
 const fmt = (s) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.floor(Math.max(0, s) % 60)).padStart(2, '0')}`;
 
 export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
@@ -51,13 +53,22 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
   const match = room.match;
   const [sound, setSoundState] = useState(soundOn());
   const [bigMap, setBigMap] = useState(false);
-  const [hud, setHud] = useState({ hp: 100, shield: 0, inv: [], sel: 0, items: {}, wood: 0, loading: true, mode: 'ground', count: 0, storm: null, prompt: null, cast: null, toast: '', hurt: 0, lobby: true });
+  const [invOpen, setInvOpen] = useState(false);
+  const [swapFrom, setSwapFrom] = useState(null);
+  const [panel, setPanel] = useState(false);
+  const [binds, setBinds] = useState(() => loadBinds());
+  const [capture, setCapture] = useState(null);
+  const [keyError, setKeyError] = useState('');
+  const [token, setToken] = useState(0);
+  const [hud, setHud] = useState({ hp: 100, shield: 0, inv: [], sel: 0, stamina: 100, exhausted: false, wood: 0, loading: true, mode: 'ground', count: 0, storm: null, prompt: null, cast: null, toast: '', hurt: 0, lobby: true });
   const sim = useRef({
     input: { f: false, b: false, l: false, r: false, jump: false, sprint: false, use: false, fire: false }, edges: { jump: false, fire: false, use: false },
     aim: false, reload: false, remotes: new Map(), seen: new Set(), lastSeen: new Map(), goneSent: new Set(), hits: 0, k: 0, dropN: 0,
     myShots: [], myRk: [], myGr: [], myEx: [], myBd: [], myDw: [], dw: new Map(), rockets: new Map(), grenades: new Map(), floaters: [], pending: new Set(),
     sentAt: 0, serverAt: 0, watch: null, groundCache: new Map(), dropCache: new Map(), scene: null, toastAt: 0, announced: new Set(), opening: null, swingAt: -9, kickPitch: 0,
   }).current;
+  sim.binds = binds;
+  sim.capture = capture;
   const serverNow = () => (Date.now() + offsetRef.current) / 1000;
   const matchN = match?.n;
 
@@ -213,6 +224,50 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
     return res;
   }
 
+  // El token pirata (1 de cada 200 cofres): una pantalla de festejo con explosión.
+  function showToken() {
+    try { localStorage.setItem(TOKEN_STORE, String((Number(localStorage.getItem(TOKEN_STORE)) || 0) + 1)); } catch { /* sin almacenamiento */ }
+    sfx.token();
+    setToken(Date.now());
+  }
+
+  // El inventario (Tab): se suelta el mouse para arrastrar las cosas de lugar.
+  function setInventory(open) {
+    sim.invOpen = open;
+    setInvOpen(open);
+    setSwapFrom(null);
+    if (open) { Object.keys(sim.input).forEach((k) => { sim.input[k] = false; }); sim.aim = false; try { document.exitPointerLock?.(); } catch { /* nada */ } } else lock();
+  }
+  function setSettings(open) {
+    sim.panel = open;
+    setPanel(open);
+    setCapture(null); sim.capture = null; setKeyError('');
+    if (open) { Object.keys(sim.input).forEach((k) => { sim.input[k] = false; }); sim.aim = false; try { document.exitPointerLock?.(); } catch { /* nada */ } } else lock();
+  }
+  function swapSlots(a, b) {
+    const p = sim.local;
+    if (p && moveSlot(p, a, b)) { sfx.click(); setHud((h) => ({ ...h, inv: p.inv.map(invView), sel: p.sel })); }
+    setSwapFrom(null);
+  }
+  function throwAway(slot) {
+    const p = sim.local, g = p?.inv[slot];
+    if (!g?.w || slot < 1) return;
+    dropWeapon(g);
+    p.inv[slot] = null;
+    if (p.sel === slot) p.sel = 0;
+    sfx.click();
+    setHud((h) => ({ ...h, inv: p.inv.map(invView), sel: p.sel }));
+  }
+  // Qué se muestra de cada lugar del inventario.
+  const invView = (g) => (g ? (g.it ? { it: g.it, n: g.n, max: ITEMS[g.it].max } : { w: g.w, r: g.r, mag: g.mag, max: g.w === 'pickaxe' ? 0 : magOf(g) }) : null);
+  sim.showToken = showToken; // para manejar la partida desde un navegador automatizado
+  sim.onCapture = (code) => {
+    const res = rebind(sim.binds, sim.capture, code);
+    if (res.error) { setKeyError(res.error); return; }
+    saveBinds(res.binds); setBinds(res.binds); sim.binds = res.binds;
+    setCapture(null); sim.capture = null; setKeyError('');
+  };
+
   // ─── Cosas del piso ────────────────────────────────────────────────────────
   const speedOf = (m) => stormSpeed({ match: m, options: roomRef.current.options });
   function chestItems(i, ch) {
@@ -227,9 +282,9 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
       const i = Number(key);
       const ch = chestOf(sim.world, i, speedOf(m));
       if (!ch) continue;
-      for (const it of chestItems(i, ch)) if (!m.took?.[it.key]) list.push(it);
+      for (const it of chestItems(i, ch)) if (!isTaken(m, it.key)) list.push(it);
     }
-    for (const [key, d] of sim.dw) if (!m.took?.[key]) list.push({ key, kind: d.w, r: d.r, mag: d.mag, n: 1, x: d.x, y: d.y, z: d.z });
+    for (const [key, d] of sim.dw) if (!isTaken(m, key)) list.push({ key, kind: d.w, r: d.r, mag: d.mag, n: 1, x: d.x, y: d.y, z: d.z });
     return list;
   }
   function dropsView(now) {
@@ -268,7 +323,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
     sim.pending.add(it.key);
     dispatchRef.current({ type: 'take', match: sim.n, key: it.key }).then((res) => {
       sim.pending.delete(it.key);
-      if (!(res?.committed && res.room?.match?.took?.[it.key] === me.id)) return;
+      if (!(res?.committed && isTaken(res.room?.match, it.key))) return;
       const out = pickUp(p, it);
       if (!out) return;
       sfx.pickup();
@@ -323,7 +378,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
       if (p.mode === 'fall' || p.mode === 'glide') {
         if (e.jump && p.mode === 'fall') { openGlider(p); sfx.glider(); }
         e.jump = false;
-        if (stepAir(p, input, STEP, sim.world) === 'landed') { sfx.land(); selectSlot(p, 0); sim.toast('¡A buscar cofres! Mantené E cerca de uno'); }
+        if (stepAir(p, input, STEP, sim.world) === 'landed') { sfx.land(); selectSlot(p, 0); sim.toast('¡A buscar cofres! Mantené E cerca de uno · Espacio contra una pared para trepar'); }
         return;
       }
     }
@@ -339,8 +394,11 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
     } else if (gun) {
       const auto = WEAPONS[gun.w].auto;
       if ((input.fire && (auto || e.fire)) || (p.burstLeft > 0 && now >= p.burstAt)) tryFire(now);
-    }
+    } else if (p.inv[p.sel]?.it && e.fire) useStack(p.inv[p.sel].it, now);
     e.fire = false;
+    // Estamina agotada: un aviso.
+    if (p.exhausted && !sim.wasExhausted) sim.toast('Sin estamina: descansá un momento');
+    sim.wasExhausted = p.exhausted;
     // La tormenta.
     if (!lobby) {
       const sTime = t - PREGAME;
@@ -379,7 +437,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
     p.hp = 0; p.dead = true; p.cast = null;
     const by = p.lastBy && now - p.lastHitAt < LAST_HIT_S ? p.lastBy : null;
     // Suelta las armas que tenía.
-    for (let i = 1; i < SLOTS; i++) if (p.inv[i]) dropWeapon(p.inv[i], p.x + Math.cos(i * 1.6) * 1.4, p.z + Math.sin(i * 1.6) * 1.4);
+    for (let i = 1; i < SLOTS; i++) if (p.inv[i]?.w) dropWeapon(p.inv[i], p.x + Math.cos(i * 1.6) * 1.4, p.z + Math.sin(i * 1.6) * 1.4);
     dispatchRef.current({ type: 'died', match: sim.n, by, w: by ? p.lastW : 'storm' });
     sfx.lose();
     sim.r?.explosion({ x: p.x, y: p.y + 1, z: p.z }, 1.2);
@@ -493,8 +551,8 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
 
   function throwGrenade(now) {
     const p = sim.local;
-    if (p.mode !== 'ground' || p.items.grenade <= 0 || now < p.grenadeAt || p.cast) return;
-    p.items.grenade -= 1;
+    if (p.mode !== 'ground' || countOf(p, 'grenade') <= 0 || now < p.grenadeAt || p.cast) return;
+    useOne(p, 'grenade');
     p.grenadeAt = now + GRENADE_GAP;
     const { o, d } = aimShot(sim.world, p, aimOpts());
     const k = ++sim.k;
@@ -502,6 +560,15 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
     const ev = { k, t: serverNow(), w: 'grenade', o: [r2(hand.x), r2(hand.y), r2(hand.z)], v: [r2(d.x * 15), r2(d.y * 15 + 4.5), r2(d.z * 15)], f: GRENADE_FUSE };
     sim.myGr.push(ev);
     sim.grenades.set(`${me.id}:${k}`, grenadeFor(ev, me.id));
+  }
+
+  // Clic con una pila de consumibles en la mano: la granada se tira y lo demás se usa (tarda un rato; si te pegan, se corta).
+  function useStack(kind, now) {
+    const p = sim.local;
+    if (p.mode !== 'ground') return;
+    if (kind === 'grenade') { throwGrenade(now); return; }
+    if (startCast(p, kind, now)) { p.build = null; sfx.click(); return; }
+    if (!p.cast) sim.toast(ITEMS[kind].heal ? 'Ya tenés la vida llena' : p.shield >= MAX_SHIELD ? 'Ya tenés el escudo lleno' : 'No se puede usar ahora');
   }
 
   // E: agarrar lo que tengas cerca o (manteniendo apretado) abrir un cofre.
@@ -523,6 +590,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
     for (const dr of sim.dropsCache || []) if (dr.landed) consider(dr);
     if (item) {
       const wname = WEAPONS[item.kind] ? `${WEAPONS[item.kind].name} ${RARITIES[item.r || 0].name.toLowerCase()}` : `${ITEMS[item.kind]?.name} x${item.n}`;
+      void MAX_HP;
       const how = pickAction(p, item);
       sim.prompt = { text: how === 'swap' ? `E · Cambiar por ${wname}` : how === 'full' ? `${wname} (no entra)` : `E · Agarrar ${wname}`, color: WEAPONS[item.kind] ? RARITIES[item.r || 0].color : '#fff' };
       if (sim.edges.use) tryPickup(item);
@@ -534,7 +602,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
         sim.prompt.progress = Math.min(1, k);
         if (k >= 1 && !sim.opening.sent) {
           sim.opening.sent = true;
-          dispatchRef.current({ type: 'loot', match: sim.n, i: chest.i }).then((res) => { if (res?.committed && res.room?.match?.loot?.[chest.i] === me.id) { sfx.chest(); sim.toast(chest.drop ? '¡Cofre del cielo!' : '¡Cofre abierto!'); } });
+          dispatchRef.current({ type: 'loot', match: sim.n, i: chest.i }).then((res) => { if (res?.committed && res.room?.match?.loot?.[chest.i] === me.id) { sfx.chest(); sim.toast(chest.drop ? '¡Cofre del cielo!' : '¡Cofre abierto!'); if (pirateTokenAt(sim.seed, chest.i)) showToken(); } });
         }
       } else sim.opening = null;
     } else sim.opening = null;
@@ -571,7 +639,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
       const lobby = sim.scene === 'lobby';
       const sTime = now - m.startsAt / 1000 - PREGAME;
       const storm = lobby ? null : stormAt(m.seed, Math.max(0, sTime), speedOf(m), sim.centers);
-      for (const [key, d] of sim.dw) if (m.took?.[key]) sim.dw.delete(key);
+      for (const [key] of sim.dw) if (isTaken(m, key)) sim.dw.delete(key);
 
       // Piezas fantasma para construir.
       sim.piece = null; sim.pieceProblem = null;
@@ -594,7 +662,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
         const gun = held(p);
         const snap = {
           n: m.n, ph: lobby ? 0 : 1, t: now, x: r2(p.x), y: r2(p.y), z: r2(p.z), yw: r2(p.yaw), pt: r2(p.pitch), hp: Math.round(p.hp), sd: Math.round(p.shield), am: MODE_CODE[p.mode] ?? 0,
-          mv: p.moving ? 1 : 0, dd: p.dead ? 1 : 0, w: gun?.w || '', r: gun?.r || 0, cs: p.cast ? 1 : 0,
+          mv: p.moving ? 1 : 0, cl: p.climbing ? 1 : 0, dd: p.dead ? 1 : 0, w: gun?.w || '', r: gun?.r || 0, cs: p.cast ? 1 : 0,
           ...(sim.myShots.length ? { sh: sim.myShots } : {}), ...(sim.myRk.length ? { rk: sim.myRk } : {}), ...(sim.myGr.length ? { gr: sim.myGr } : {}), ...(sim.myEx.length ? { ex: sim.myEx } : {}),
           ...(sim.myBd.length ? { bd: sim.myBd } : {}), ...(sim.myDw.length ? { dw: sim.myDw } : {}),
         };
@@ -647,12 +715,12 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
         rr.setBus(!lobby && sim.local && now - m.startsAt / 1000 < sim.route.len / BUS_SPEED + 4 ? { ...busAt(sim.route, now - m.startsAt / 1000), yaw: sim.route.yaw } : null);
         for (const pl of r.players) {
           if (pl.id === me.id) {
-            rr.setAvatar(pl.id, { name: pl.name, color: COLORS[pl.color], skin: pl.color, tagColor: COLORS[pl.color], x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, mode: p.mode, moving: p.moving, speed: p.sprinting ? 8.4 : 5.6, kind: kind, r: held(p)?.r || 0, hp: p.hp, shield: p.shield, dead: p.dead, hidden: p.mode === 'bus', self: true, cast: Boolean(p.cast), recoil: sim.recoil, swing: Math.max(0, 1 - (t - sim.swingAt) / 0.3), dt });
+            rr.setAvatar(pl.id, { hideTag: true, name: pl.name, color: COLORS[pl.color], skin: pl.color, tagColor: COLORS[pl.color], x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, mode: p.mode, moving: p.moving, speed: p.sprinting ? 8.4 : 5.6, kind: kind, r: held(p)?.r || 0, sprint: p.sprinting, climb: p.climbing, hp: p.hp, shield: p.shield, dead: p.dead, hidden: p.mode === 'bus', self: true, cast: Boolean(p.cast), recoil: sim.recoil, swing: Math.max(0, 1 - (t - sim.swingAt) / 0.3), dt });
             continue;
           }
           const rem = sim.remotes.get(pl.id);
           const am = rem?.snap.am ?? 0;
-          rr.setAvatar(pl.id, rem && pl.alive && !rem.snap.dd ? { name: pl.name, color: COLORS[pl.color], skin: pl.color, tagColor: COLORS[pl.color], x: rem.x, y: rem.y, z: rem.z, yaw: rem.yaw, pitch: rem.pitch, mode: MODE_NAME[am] || 'ground', moving: rem.speed > 0.6, speed: rem.speed, kind: rem.snap.w || undefined, r: rem.snap.r || 0, hp: rem.snap.hp, shield: rem.snap.sd, hidden: am === 1, cast: Boolean(rem.snap.cs), swing: Math.max(0, 1 - (t - rem.swing) / 0.3), dt } : null);
+          rr.setAvatar(pl.id, rem && pl.alive && !rem.snap.dd ? { hideTag: true, name: pl.name, color: COLORS[pl.color], skin: pl.color, tagColor: COLORS[pl.color], x: rem.x, y: rem.y, z: rem.z, yaw: rem.yaw, pitch: rem.pitch, mode: MODE_NAME[am] || 'ground', moving: rem.speed > 0.6 || Boolean(rem.snap.cl), speed: rem.speed, sprint: rem.speed > 7.1, climb: Boolean(rem.snap.cl), kind: rem.snap.w || undefined, r: rem.snap.r || 0, hp: rem.snap.hp, shield: rem.snap.sd, hidden: am === 1, cast: Boolean(rem.snap.cs), swing: Math.max(0, 1 - (t - rem.swing) / 0.3), dt } : null);
         }
         sim.recoil = Math.max(0, (sim.recoil || 0) - dt * 8);
         rr.syncChests(sim.world.chests.map((c) => ({ ...c, open: Boolean(m.loot?.[c.i]) })));
@@ -690,7 +758,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
         hudAt = t;
         const st = storm;
         setHud({
-          hp: Math.max(0, Math.ceil(p.hp)), shield: Math.ceil(p.shield), inv: p.inv.map((g) => (g ? { w: g.w, r: g.r, mag: g.mag, max: g.w === 'pickaxe' ? 0 : magOf(g) } : null)), sel: p.sel, items: { ...p.items }, wood: p.wood, build: p.build, lvl: p.lvl,
+          hp: Math.max(0, Math.ceil(p.hp)), shield: Math.ceil(p.shield), inv: p.inv.map(invView), sel: p.sel, stamina: Math.round(p.stamina), exhausted: p.exhausted, climbing: p.climbing, wood: p.wood, build: p.build, lvl: p.lvl,
           mode: p.mode, dead: p.dead, loading: !sim.r, lobby, count: Math.max(0, countdown), reloading: now < p.reloadUntil, reloadK: p.reloadUntil ? 1 - (p.reloadUntil - now) / Math.max(0.1, statsOf(held(p) || { w: 'pistol' }).reload) : 0,
           cast: p.cast ? { kind: p.cast.kind, k: (now - p.cast.from) / (p.cast.until - p.cast.from) } : null, prompt: sim.prompt, scoped: Boolean(scoped), hit: sim.hits, hitHead: sim.hitHead,
           toast: performance.now() - sim.toastAt < 2600 ? sim.toastText : '', hurt: sim.hurtFlash || 0, outside: Boolean(sim.outside && !p.dead), locked: document.pointerLockElement === canvasRef.current,
@@ -715,6 +783,15 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
     const isField = (t) => t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
     const down = (e) => {
       if (isField(e.target)) return;
+      // Asignando una tecla nueva (panel de controles).
+      if (sim.capture) {
+        e.preventDefault();
+        if (e.code === 'Escape') { sim.capture = null; setCapture(null); setKeyError(''); } else if (!e.repeat) sim.onCapture?.(e.code);
+        return;
+      }
+      const b = sim.binds;
+      if (e.code === b.inventory) { if (!e.repeat && !sim.panel && sim.local && !sim.local.dead) setInventory(!sim.invOpen); e.preventDefault(); return; }
+      if (sim.invOpen || sim.panel) { if (e.code === 'Escape') { if (sim.invOpen) setInventory(false); else setSettings(false); } return; }
       const named = Object.entries(KEYS).find(([, codes]) => codes.includes(e.code));
       const p = sim.local;
       let used = true;
@@ -723,17 +800,13 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
         if (!sim.input[named[0]] && named[0] === 'use') sim.edges.use = true;
         sim.input[named[0]] = true;
       } else if (!p) used = false;
-      else if (e.code === 'KeyR') sim.reload = true;
+      else if (e.code === b.reload) sim.reload = true;
       else if (e.code.startsWith('Digit') && +e.code[5] >= 1 && +e.code[5] <= SLOTS) { if (selectSlot(p, +e.code[5] - 1)) sfx.click(); }
-      else if (e.code === 'KeyQ' || e.code === 'KeyF' || e.code === 'KeyH' || e.code === 'KeyJ') {
-        const kind = ITEM_LIST.find((k) => ITEMS[k].key === e.code.slice(3));
-        if (kind && startCast(p, kind, serverNow())) { p.build = null; sfx.click(); }
-      } else if (e.code === 'KeyG') { if (!e.repeat) throwGrenade(serverNow()); }
-      else if (e.code === 'KeyZ' || e.code === 'KeyX' || e.code === 'KeyC') {
-        const kind = e.code === 'KeyZ' ? 'wall' : e.code === 'KeyX' ? 'floor' : 'ramp';
+      else if (e.code === b.wall || e.code === b.floor || e.code === b.ramp) {
+        const kind = e.code === b.wall ? 'wall' : e.code === b.floor ? 'floor' : 'ramp';
         if (!e.repeat && p.mode === 'ground') { p.build = p.build === kind ? null : kind; sfx.click(); }
-      } else if (e.code === 'KeyV') { if (!e.repeat) p.lvl = (p.lvl + 1) % 3; }
-      else if (e.code === 'KeyM') { if (!e.repeat) setBigMap((v) => !v); }
+      } else if (e.code === b.level) { if (!e.repeat) p.lvl = (p.lvl + 1) % 3; }
+      else if (e.code === b.map) { if (!e.repeat) setBigMap((v) => !v); }
       else used = false;
       if (used) e.preventDefault();
     };
@@ -777,6 +850,11 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!token) return undefined;
+    const t = setTimeout(() => setToken(0), 7000);
+    return () => clearTimeout(t);
+  }, [token]);
   const lock = () => { try { canvasRef.current?.requestPointerLock?.(); } catch {} };
   const toggleSound = () => { const next = !sound; setSound(next); setSoundState(next); };
   const mine = findPlayer(room, me.id);
@@ -786,6 +864,10 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
   const st = hud.storm;
   const stormText = !st ? '' : st.pre ? `La tormenta empieza en ${fmt(st.preLeft)}` : st.final ? 'Zona final' : st.shrinking ? `La tormenta se cierra · ${fmt(st.next)}` : `Se cierra en ${fmt(st.next)}`;
   const gun = hud.inv[hud.sel];
+  // Lo que se ve dentro de un lugar del inventario: el ícono dibujado, el nombre y la munición o la cantidad.
+  const slotView = (g) => (!g ? null : g.it
+    ? <><img className="r3-ico" src={iconURL(g.it)} alt="" draggable={false} /><em>{ITEMS[g.it].name}</em><u>x{g.n}</u></>
+    : <><img className="r3-ico" src={iconURL(g.w, RARITIES[g.r || 0].color)} alt="" draggable={false} /><em>{WEAPONS[g.w].name}</em>{g.max > 0 && <u>{hud.lobby ? '∞' : `${g.mag}/${g.max}`}</u>}</>);
 
   return (
     <div className={`r3-stage${hud.scoped ? ' is-scoped' : ''}`} data-royale3d data-mode={hud.mode}>
@@ -801,10 +883,11 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
         <span className="r3-pill" data-alive>👥 {aliveCount}</span>
         <span className="r3-pill">🎯 {hud.kills}</span>
         {!hud.lobby && <span className={`r3-pill r3-storm${st && st.shrinking ? ' is-shrinking' : ''}`} data-storm>🌀 {stormText}</span>}
+        <button type="button" className="r3-pill r3-btn" onClick={() => setSettings(!panel)} data-act="controls">Teclas</button>
         <button type="button" className="r3-pill r3-btn" onClick={toggleSound} aria-label="Sonido">{sound ? '🔊' : '🔇'}</button>
       </div>
       <div className="r3-feed" data-feed>
-        {feed.map((d, i) => <p key={`${d.id}-${i}`}>{d.by ? <><b>{nameOf(d.by)}</b> {d.w && WEAPON_ICON[d.w] ? WEAPON_ICON[d.w] : '→'} <b>{nameOf(d.id)}</b></> : d.w === 'storm' ? <>🌀 <b>{nameOf(d.id)}</b> cayó en la tormenta</> : <><b>{nameOf(d.id)}</b> quedó afuera</>}</p>)}
+        {feed.map((d, i) => <p key={`${d.id}-${i}`}>{d.by ? <><b>{nameOf(d.by)}</b> {d.w && iconURL(d.w) ? <img className="r3-feed-ico" src={iconURL(d.w)} alt="" /> : '→'} <b>{nameOf(d.id)}</b></> : d.w === 'storm' ? <>🌀 <b>{nameOf(d.id)}</b> cayó en la tormenta</> : <><b>{nameOf(d.id)}</b> quedó afuera</>}</p>)}
       </div>
       <canvas ref={miniRef} className="r3-mini" width="170" height="170" aria-label="Mapa" />
       <div className="r3-hint-m">M · mapa grande</div>
@@ -812,6 +895,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
       <div className="r3-bars">
         <div className="r3-bar r3-shield"><i style={{ width: `${hud.shield}%` }} /><span>{hud.shield}</span></div>
         <div className="r3-bar r3-hp" data-hp={hud.hp}><i style={{ width: `${hud.hp}%` }} /><span>{hud.hp}</span></div>
+        <div className={`r3-bar r3-stamina${hud.exhausted ? ' is-out' : ''}`} data-stamina={hud.stamina}><i style={{ width: `${hud.stamina}%` }} /><span>{hud.climbing ? 'Trepando' : 'Estamina'}</span></div>
         <div className="r3-wood" data-wood={hud.wood}>🪵 {hud.wood}{hud.build ? <b> · {BUILD_KINDS[hud.build].name}{hud.lvl ? ` (piso +${hud.lvl})` : ''}</b> : null}</div>
       </div>
 
@@ -819,19 +903,16 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
         {Array.from({ length: SLOTS }, (_, i) => {
           const g = hud.inv[i];
           return (
-            <div key={i} className={`r3-slot${hud.sel === i && !hud.build ? ' is-sel' : ''}${g ? '' : ' is-empty'}`} style={g ? { '--rc': RARITIES[g.r || 0].color } : undefined} data-slot={i}>
+            <div key={i} className={`r3-slot${hud.sel === i && !hud.build ? ' is-sel' : ''}${g ? '' : ' is-empty'}`} style={g?.w ? { '--rc': RARITIES[g.r || 0].color } : undefined} data-slot={i}>
               <small>{i + 1}</small>
-              {g && <><span className="r3-ico">{WEAPON_ICON[g.w]}</span><em>{WEAPONS[g.w].name}</em>{g.max > 0 && <u>{hud.lobby ? '∞' : `${g.mag}/${g.max}`}</u>}</>}
+              {slotView(g)}
             </div>
           );
         })}
       </div>
-      <div className="r3-items" data-items>
-        {['bandage', 'medkit', 'shield', 'bigshield', 'grenade'].map((k) => <span key={k} className={hud.items[k] ? '' : 'is-none'} title={ITEMS[k].name}>{ITEMS[k].icon} <b>{hud.items[k] || 0}</b><kbd>{ITEMS[k].key}</kbd></span>)}
-      </div>
-      <div className="r3-build-keys"><kbd>Z</kbd> pared <kbd>X</kbd> piso <kbd>C</kbd> rampa <kbd>V</kbd> altura</div>
+      <div className="r3-build-keys"><kbd>{keyLabel(binds.wall)}</kbd> pared <kbd>{keyLabel(binds.floor)}</kbd> piso <kbd>{keyLabel(binds.ramp)}</kbd> rampa <kbd>{keyLabel(binds.level)}</kbd> altura <kbd>{keyLabel(binds.inventory)}</kbd> inventario</div>
 
-      {hud.cast && <div className="r3-cast"><span>{ITEMS[hud.cast.kind].icon} {ITEMS[hud.cast.kind].name}…</span><i style={{ width: `${Math.min(100, hud.cast.k * 100)}%` }} /></div>}
+      {hud.cast && <div className="r3-cast"><span><img className="r3-cast-ico" src={iconURL(hud.cast.kind)} alt="" /> {ITEMS[hud.cast.kind].name}…</span><i style={{ width: `${Math.min(100, hud.cast.k * 100)}%` }} /></div>}
       {hud.reloading && gun && <div className="r3-reload"><i style={{ width: `${Math.min(100, hud.reloadK * 100)}%` }} /><span>Recargando</span></div>}
       {hud.piece && !hud.piece.ok && <div className="r3-warn">{hud.piece.why}</div>}
       {hud.prompt && <div className="r3-prompt" style={hud.prompt.color ? { color: hud.prompt.color } : undefined} data-prompt>{hud.prompt.text}{hud.prompt.progress != null && <i style={{ width: `${hud.prompt.progress * 100}%` }} />}</div>}
@@ -844,7 +925,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
       {!hud.loading && hud.mode === 'fall' && <div className="r3-center r3-bus"><b>Caída libre · {hud.alt} m</b><small>W picada · Espacio abre el planeador (se abre solo cerca del piso)</small></div>}
       {!hud.loading && hud.mode === 'glide' && <div className="r3-center r3-bus"><b>Planeando · {hud.alt} m</b><small>Elegí dónde aterrizar: mirá el mapa (M)</small></div>}
       {!hud.loading && !hud.lobby && hud.count === 0 && !hud.locked && !hud.dead && (
-        <button type="button" className={`r3-center r3-lock${hud.mode === 'ground' ? '' : ' r3-lock-low'}`} onClick={lock}>Hacé clic para jugar<small>WASD moverte · mouse apuntar · clic disparar · clic derecho apuntar · Espacio saltar · Shift correr · E agarrar / abrir · R recargar · 1–5 armas · Esc soltar el mouse</small></button>
+        <button type="button" className={`r3-center r3-lock${hud.mode === 'ground' ? '' : ' r3-lock-low'}`} onClick={lock}>Hacé clic para jugar<small>WASD moverte · Shift correr (gasta estamina) · Espacio contra una pared para trepar · mouse apuntar · clic disparar o usar · clic derecho apuntar · E agarrar / abrir · {keyLabel(binds.reload)} recargar · 1–6 lugares · {keyLabel(binds.inventory)} inventario · Esc soltar el mouse</small></button>
       )}
       {!hud.loading && hud.lobby && !hud.locked && <button type="button" className="r3-center r3-lock r3-lock-low" onClick={lock}>Hacé clic para tomar el mouse y probar tu pistola<small>En la isla de espera no se lastima a nadie · WASD · clic dispara · clic derecho apunta</small></button>}
       {hud.dead && <div className="r3-center r3-dead" data-dead>Quedaste afuera<small>Mirás a alguien que sigue en pie…</small></div>}
@@ -855,6 +936,70 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
           <small>M o clic para cerrar · círculo violeta: tormenta · blanco: próxima zona · 📦: cofre del cielo</small>
         </div>
       )}
+      {invOpen && (
+        <div className="r3-inv" data-inventory>
+          <div className="r3-inv-card">
+            <h3>Inventario <small>Arrastrá con el clic para cambiar de lugar · {keyLabel(binds.inventory)} o Esc para cerrar</small></h3>
+            <div className="r3-inv-grid">
+              {Array.from({ length: SLOTS }, (_, i) => {
+                const g = hud.inv[i];
+                const fixed = i === 0;
+                return (
+                  <div
+                    key={i}
+                    className={`r3-inv-slot${g ? '' : ' is-empty'}${hud.sel === i ? ' is-sel' : ''}${swapFrom === i ? ' is-pick' : ''}${fixed ? ' is-fixed' : ''}`}
+                    style={g?.w ? { '--rc': RARITIES[g.r || 0].color } : undefined}
+                    data-inv-slot={i}
+                    draggable={Boolean(g) && !fixed}
+                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; }}
+                    onDragOver={(e) => { if (!fixed) e.preventDefault(); }}
+                    onDrop={(e) => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (!fixed && Number.isInteger(from)) swapSlots(from, i); }}
+                    onClick={() => { if (fixed) return; if (swapFrom === null) { if (g) setSwapFrom(i); } else swapSlots(swapFrom, i); }}
+                  >
+                    <small>{i + 1}</small>
+                    {fixed && !g ? null : slotView(g)}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="r3-inv-drop" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (Number.isInteger(from)) throwAway(from); }}>Arrastrá un arma hasta acá para tirarla</div>
+            <button type="button" className="r3-inv-close" onClick={() => setInventory(false)}>Cerrar</button>
+          </div>
+        </div>
+      )}
+
+      {panel && (
+        <div className="r3-inv" data-controls>
+          <div className="r3-inv-card r3-keys">
+            <h3>Controles <small>Hacé clic en una acción y apretá la tecla nueva (Esc cancela)</small></h3>
+            {ACTIONS.map((a) => (
+              <button type="button" key={a.id} className={`r3-key-row${capture === a.id ? ' is-capturing' : ''}`} data-bind={a.id} onClick={() => { setKeyError(''); setCapture(a.id); sim.capture = a.id; }}>
+                <span>{a.label}</span>
+                <kbd>{capture === a.id ? 'Apretá una tecla…' : keyLabel(binds[a.id])}</kbd>
+              </button>
+            ))}
+            {keyError && <p className="r3-key-error">{keyError}</p>}
+            <p className="r3-key-note">Fijas: WASD moverte · Shift correr · Espacio saltar o trepar · E agarrar y abrir · 1–6 lugares.</p>
+            <div className="r3-key-actions">
+              <button type="button" onClick={() => { saveBinds({ ...DEFAULT_BINDS }); setBinds({ ...DEFAULT_BINDS }); sim.binds = { ...DEFAULT_BINDS }; setKeyError(''); }}>Restaurar</button>
+              <button type="button" className="is-main" onClick={() => setSettings(false)}>Listo</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {token ? (
+        <div className="r3-token" key={token} data-token onClick={() => setToken(0)}>
+          <div className="r3-token-flash" />
+          <div className="r3-token-chest"><img src={iconURL('chest')} alt="" /></div>
+          <div className="r3-token-burst" aria-hidden="true">
+            {Array.from({ length: 34 }, (_, i) => <i key={i} className={i % 3 ? 'is-gold' : 'is-wood'} style={{ '--a': `${(i * 360) / 34}deg`, '--d': `${140 + (i % 6) * 38}px`, '--sz': `${6 + (i % 4) * 3}px` }} />)}
+          </div>
+          <img className="r3-token-coin" src={tokenURL()} alt="Token pirata" />
+          <h2>¡Desbloqueaste el token pirata!</h2>
+          <p>No sirve para nada, pero lo conseguiste.</p>
+        </div>
+      ) : null}
       <span hidden>{mine?.name}</span>
     </div>
   );

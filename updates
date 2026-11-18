@@ -1193,7 +1193,33 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-1.70.0 = Cohete Royale: ocho modos, tormenta, objetos nuevos y íconos propios
+1.70.0 = Royale 3D: hasta 100 jugadores
+- Ahora podés jugar Royale 3D con hasta 100 jugadores en la misma partida (antes eran 10).
+
+--------------------------------------------------------------------------------------------------------------------
+
+1.70.1 = Royale 3D: sin nombres ni vida sobre los jugadores
+- Ya no se ven el nombre ni la barra de vida arriba de los demás jugadores (Fuego Cruzado no cambia).
+
+--------------------------------------------------------------------------------------------------------------------
+
+1.71.0 = Royale 3D: isla del doble de grande, más ciudades, trepar, estamina, inventario con Tab y token pirata
+- La isla ahora tiene el doble de superficie y 25 lugares: tres ciudades (Ciudad Fondo, Metrópolis Mate y Ciudad Costanera), Torres Tortuga, Puerto Pinchila y más barrios, pueblos, villas, fábricas, estaciones, peñascos y muelles.
+- Las escaleras de los edificios ahora funcionan y se ven: se dibujaban mal (como rampas de otro tamaño, así que no coincidían con donde se camina) y ahora llevan escalones. Hay edificios y torres de varios pisos con escalera adentro y un cofre arriba.
+- Trepar paredes: con W y Espacio contra una pared subís por ella y pasás por encima del borde (edificios, torres, contenedores y lo que construyas). Gasta estamina.
+- Estamina: correr con Shift la gasta (dura unos 18 segundos) y vuelve si descansás. Si se acaba, no corrés ni trepás hasta recuperar un poco. Hay una barra abajo a la izquierda.
+- Correr se ve mucho mejor: el personaje se inclina, rebota, gira el torso, bombea los brazos y baja el arma. También hay una animación de trepar.
+- Inventario único: ahora hay 6 lugares (el pico en el 1 y cinco más) donde van las armas, las vendas, los botiquines, los escudos y las granadas. Eligís con el número y usás con el clic. Se sacaron las teclas Q, F, H, J y G.
+- Con Tab abrís el inventario y arrastrás las cosas con el clic para cambiarlas de lugar (o las tirás). Los lugares son más grandes.
+- Armas dibujadas, sin emojis: íconos hechos a mano para cada arma y objeto, tanto en los lugares como en la lista de bajas.
+- Seis armas nuevas (ahora son 17): pistola pesada, pistola ametralladora, carabina, escopeta de corredera, fusil de precisión y ballesta.
+- Teclas personalizables: el botón «Teclas» de la partida deja cambiar las de construcción (pared, piso, rampa y altura) y también recargar, el mapa y el inventario. Se guardan en tu navegador.
+- Token pirata: una de cada 200 veces que abrís un cofre, explota el cofre y aparece el token pirata con un cartel: «No sirve para nada, pero lo conseguiste».
+- Cambios por dentro: los cofres de la isla pasaron de ~95 a ~200, así que los del cielo arrancan en el 400, y lo agarrado de cada cofre se anota con un solo número para que las partidas de 100 jugadores entren en la sala.
+
+--------------------------------------------------------------------------------------------------------------------
+
+1.72.0 = Cohete Royale: ocho modos, tormenta, objetos nuevos y íconos propios
 - Ocho modos de juego que elige el anfitrión en la sala: Marea alta (el clásico), Tormenta, Frenesí (cajas cada 3 s y recarga el doble de rápida), Arsenal (arrancás con tres objetos), Luna (poca gravedad), Titanes (200 de vida), Cristal (40 de vida y explosiones que mandan lejos) y Apocalipsis (tormenta y agua a la vez).
 - La tormenta: un círculo que cierra el mapa desde los bordes hacia el medio, por fases (se ve el próximo círculo marcado). No mata al toque: saca 10 de vida por segundo mientras estés afuera. Tiene nubes, rayos, lluvia y un cartel con cuánto falta para que se cierre.
 - Mapa chico abajo a la izquierda con la zona (agua o tormenta), tu tanque y los demás.
@@ -1203,7 +1229,7 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.71.0 = Cohete Royale: modo por equipos
+LATEST 1.73.0 = Cohete Royale: modo por equipos
 - Nueva opción «Equipos» en la sala: todos contra todos o 2 equipos (rojo y azul). Cada uno elige el suyo (el anfitrión puede pasar a otros) y, si quedan dispares, al empezar pasan al otro los últimos que entraron.
 - Los compañeros no se hacen daño (los cohetes los atraviesan, aunque las explosiones los empujan igual) y las bajas a un compañero no suman. Gana el último equipo en pie.
 - En la partida: banderita y nombre del color del equipo, cuántos quedan de cada uno, el mapa chico con los colores del equipo y la flecha roja solo apunta a rivales.

@@ -4,11 +4,11 @@ import {
   BUS_ALT, BUS_SPEED, DROP_BASE, ISLAND_R, LOOT_LIMIT, STORM_PHASES, WADE_MIN, busAt, busRoute, chestOf, dropInfo, makeWorld, spawnPoint, stormAt, stormCenters,
 } from '../src/royale3d/map.js';
 import {
-  GRENADE_FUSE, MAX_HP, RARITIES, SLOTS, STEP, WEAPONS, WEAPON_LIST, BUILD_KINDS, aimShot, blastOn, blastSolids, boardBus, buildProblem, canShoot, chestContents, finishCast,
+  GRENADE_FUSE, MAX_HP, MAX_STAMINA, PIRATE_ODDS, RARITIES, SLOTS, STEP, WEAPONS, WEAPON_LIST, BUILD_KINDS, countOf, moveSlot, pirateTokenAt, aimShot, blastOn, blastSolids, boardBus, buildProblem, canShoot, chestContents, finishCast,
   floorAt, grenadeFor, groundItems, held, hurt, jumpOff, newPlayer, openGlider, pelletDirs, pickAction, pickUp, pieceAt, pieceFor, placePiece, rayCast, rayPlayers, resolveShot, rocketFor,
   selectSlot, startCast, statsOf, stepAir, stepGrenade, stepGround, stepRocket, swapSlot,
 } from '../src/royale3d/sim.js';
-import { MAX_PLAYERS, alive, applyAction, newRoom, ranking, score, startProblem } from '../src/royale3d/game.js';
+import { MAX_PLAYERS, alive, applyAction, isTaken, newRoom, ranking, score, startProblem } from '../src/royale3d/game.js';
 
 const SEED = 424242;
 const world = makeWorld(SEED);
@@ -25,13 +25,13 @@ test('royale3d: la isla sale de la semilla (igual cada vez) y tiene tierra en el
   assert.ok(world.height(ISLAND_R + 12, 0) < WADE_MIN, 'más allá de la costa es mar abierto');
 });
 
-test('royale3d: están los catorce lugares con nombre, separados, y hay cofres de los tres tipos', () => {
+test('royale3d: están los veinticinco lugares con nombre (varias ciudades), separados, y hay cofres de los tres tipos', () => {
   for (const seed of [1, 42, SEED, 99999]) {
     const w = makeWorld(seed);
-    assert.deepEqual(w.places.map((p) => p.id).sort(), ['arboleada', 'cover', 'frontera', 'judia', 'muelle', 'penasco', 'polvorin', 'puente', 'villa'].concat(['barrio', 'ciudad', 'estacion', 'fabrica', 'pueblo']).sort());
+    assert.deepEqual(w.places.map((p) => p.id).sort(), ['arboleada', 'cover', 'frontera', 'judia', 'muelle', 'penasco', 'polvorin', 'puente', 'villa'].concat(['barrio', 'ciudad', 'estacion', 'fabrica', 'pueblo', 'barrio2', 'costanera', 'estacion2', 'fabrica2', 'metropolis', 'muelle2', 'penasco2', 'pueblo2', 'puerto', 'torres', 'villa2']).sort());
     for (let i = 0; i < w.places.length; i++) for (let j = i + 1; j < w.places.length; j++) {
       const a = w.places[i], b = w.places[j];
-      if (a.id === 'muelle' || b.id === 'muelle') continue;
+      if (a.id.startsWith('muelle') || b.id.startsWith('muelle')) continue;
       assert.ok(Math.hypot(a.x - b.x, a.z - b.z) > (a.r + b.r) * 0.8, `${a.id} y ${b.id} se pisan en la semilla ${seed}`);
     }
     assert.ok(w.chests.length >= 30, `cofres: ${w.chests.length}`);
@@ -75,14 +75,16 @@ test('royale3d: los sólidos se rompen (los que tienen vida), se sacan de la gri
 
 // ─── Moverse ─────────────────────────────────────────────────────────────────
 test('royale3d: caminar avanza, correr avanza más y no se entra al mar profundo', () => {
-  const p = ground(0, 0, 0);
+  const flat = clean(9);
+  const lay = (x, z, yaw = 0) => { const p = newPlayer(x, 0, z, yaw); p.y = floorAt(flat, x, z, 80); p.grounded = true; return p; };
+  const p = lay(0, 8, 0);
   const z0 = p.z;
-  walk(p, { f: true }, 1);
+  walk(p, { f: true }, 1, flat);
   const walked = Math.abs(p.z - z0);
   assert.ok(walked > 4 && walked < 7);
-  const q = ground(0, 0, 0);
-  walk(q, { f: true, sprint: true }, 1);
-  assert.ok(Math.abs(q.z) > walked * 1.3);
+  const q = lay(0, 8, 0);
+  walk(q, { f: true, sprint: true }, 1, flat);
+  assert.ok(Math.abs(q.z - 8) > walked * 1.3);
   const swim = ground(60, 0, Math.PI / 2 * 3); // mirando a +x
   walk(swim, { f: true }, 60);
   assert.ok(world.height(swim.x, swim.z) >= WADE_MIN - 0.3, 'se frenó en la orilla');
@@ -158,8 +160,8 @@ test('royale3d: saltar del bus, caer, abrir el planeador y aterrizar en tierra f
 });
 
 // ─── Armas y rarezas ─────────────────────────────────────────────────────────
-test('royale3d: hay once armas y cinco rarezas, y cuanto más rara, mejor', () => {
-  assert.equal(WEAPON_LIST.length, 10);
+test('royale3d: hay diecisiete armas y cinco rarezas, y cuanto más rara, mejor', () => {
+  assert.equal(WEAPON_LIST.length, 16);
   assert.equal(RARITIES.length, 5);
   for (const w of WEAPON_LIST) {
     const prev = statsOf({ w, r: 0 });
@@ -279,12 +281,12 @@ test('royale3d: la granada rebota, se frena y explota a los 2 segundos', () => {
 // ─── Curarse, cofres y botín ─────────────────────────────────────────────────
 test('royale3d: curarse tarda, se corta si te pegan y no pasa de 100', () => {
   const p = ground(0, 0);
-  p.hp = 50; p.items.medkit = 2; p.items.shield = 1;
+  p.hp = 50; p.inv[1] = { it: 'medkit', n: 2 }; p.inv[2] = { it: 'shield', n: 1 };
   assert.ok(startCast(p, 'medkit', 0));
   assert.equal(finishCast(p, 1), null, 'todavía no');
   hurt(p, 5, 'x', 'pistol', 1);
   assert.equal(p.cast, null, 'se cortó');
-  assert.equal(p.items.medkit, 2, 'y no se gastó');
+  assert.equal(countOf(p, 'medkit'), 2, 'y no se gastó');
   startCast(p, 'medkit', 2);
   assert.equal(finishCast(p, 6), 'medkit');
   assert.equal(p.hp, 45 + 70 > MAX_HP ? MAX_HP : 115);
@@ -292,6 +294,7 @@ test('royale3d: curarse tarda, se corta si te pegan y no pasa de 100', () => {
   assert.ok(!startCast(p, 'medkit', 7), 'con la vida llena no hace falta');
   startCast(p, 'shield', 8); finishCast(p, 10);
   assert.equal(p.shield, 25);
+  assert.equal(p.inv[2], null, 'al gastarse la última, el lugar queda libre');
 });
 
 test('royale3d: el daño se come primero el escudo', () => {
@@ -310,7 +313,7 @@ test('royale3d: el contenido de un cofre sale de la semilla; los de más arriba 
   for (let i = 0; i < 400; i++) for (const g of chestContents(SEED, i, 1).weapons) assert.ok(g.r >= (WEAPONS[g.w].minR || 0), 'respeta la rareza mínima');
   let seen = new Set();
   for (let i = 0; i < 600; i++) for (const g of [...chestContents(SEED, i, 1).weapons, ...chestContents(SEED, i, 2).weapons, ...chestContents(SEED, i, 3).weapons]) seen.add(g.w);
-  assert.equal(seen.size, 10, 'salen las diez armas');
+  assert.equal(seen.size, 16, 'salen las dieciséis armas');
   const drop = chestContents(SEED, DROP_BASE, 3, { medkit: 1, bigshield: 1, grenade: 2 });
   assert.ok(drop.items.medkit >= 1 && drop.items.bigshield >= 1 && drop.items.grenade >= 2);
 });
@@ -325,8 +328,8 @@ test('royale3d: lo que deja un cofre en el piso está alrededor de él y con cla
 
 test('royale3d: agarrar armas: entran hasta llenar, después se cambia la de la mano, y el pico no se toca', () => {
   const p = ground(0, 0);
-  for (let i = 0; i < 4; i++) assert.equal(pickUp(p, { kind: 'smg', r: i, n: 1 }).dropped, null);
-  assert.equal(p.inv.filter(Boolean).length, 5);
+  for (let i = 0; i < 5; i++) assert.equal(pickUp(p, { kind: 'smg', r: i % 4, n: 1 }).dropped, null);
+  assert.equal(p.inv.filter(Boolean).length, 6);
   assert.equal(pickAction(p, { kind: 'rifle', r: 2, n: 1 }), 'swap');
   const slot = swapSlot(p);
   assert.ok(slot >= 1, 'nunca el pico');
@@ -334,10 +337,85 @@ test('royale3d: agarrar armas: entran hasta llenar, después se cambia la de la 
   assert.equal(out.dropped.w, 'smg');
   assert.equal(p.inv[0].w, 'pickaxe');
   assert.equal(p.inv[slot].w, 'rifle');
-  // Consumibles hasta su tope.
-  p.items.bandage = 14;
-  assert.equal(pickUp(p, { kind: 'bandage', n: 5 }).name.includes('x1'), true);
+  // Con todos los lugares ocupados por armas, un consumible no entra.
   assert.equal(pickAction(p, { kind: 'bandage', n: 1 }), 'full');
+});
+
+test('royale3d: los consumibles van en los mismos lugares que las armas: se apilan hasta su tope y la mano queda vacía', () => {
+  const p = ground(0, 0);
+  assert.equal(SLOTS, 6);
+  assert.equal(pickUp(p, { kind: 'bandage', n: 10 }).name, 'Vendas x10');
+  assert.equal(pickUp(p, { kind: 'bandage', n: 9 }).name, 'Vendas x9');
+  assert.equal(countOf(p, 'bandage'), 15 + 4, 'el tope de la pila es 15: lo que sobra va a otro lugar');
+  assert.equal(p.inv.filter((g) => g?.it === 'bandage').length, 2);
+  selectSlot(p, 1);
+  assert.equal(held(p), null, 'una pila en la mano no es un arma');
+  assert.equal(canShoot(p, 99), false);
+  for (let i = 0; i < 2; i++) pickUp(p, { kind: 'pistol', r: i, n: 1 });
+  assert.equal(pickAction(p, { kind: 'rifle', r: 0, n: 1 }), 'take');
+  pickUp(p, { kind: 'rifle', r: 0, n: 1 });
+  assert.equal(pickAction(p, { kind: 'burst', r: 0, n: 1 }), 'swap', 'sin lugar, se cambia un arma (nunca una pila ni el pico)');
+  assert.ok(p.inv[swapSlot(p)].w && swapSlot(p) >= 1);
+});
+
+test('royale3d: moveSlot cambia de lugar dos cosas, sigue a la que está en la mano y no toca el pico', () => {
+  const p = ground(0, 0);
+  pickUp(p, { kind: 'pistol', r: 0, n: 1 });
+  pickUp(p, { kind: 'medkit', n: 2 });
+  selectSlot(p, 1);
+  assert.ok(moveSlot(p, 1, 2));
+  assert.equal(p.inv[2].w, 'pistol');
+  assert.equal(p.inv[1].it, 'medkit');
+  assert.equal(p.sel, 2, 'la mano sigue al arma');
+  assert.equal(moveSlot(p, 0, 1), false);
+  assert.equal(moveSlot(p, 1, 1), false);
+  assert.equal(p.inv[0].w, 'pickaxe');
+});
+
+test('royale3d: correr gasta estamina (dura unos 18 s), agotado no se corre y descansando vuelve', () => {
+  const flat = clean(9);
+  const p = newPlayer(0, flat.height(0, 8), 8, 0); p.grounded = true;
+  // La isla de pruebas es chica: cada segundo se vuelve al punto de partida.
+  const second = () => { p.x = 0; p.z = 8; walk(p, { f: true, sprint: true }, 1, flat); };
+  for (let i = 0; i < 5; i++) second();
+  assert.ok(p.stamina < MAX_STAMINA - 25 && p.stamina > MAX_STAMINA - 30, `a los 5 s: ${p.stamina}`);
+  for (let i = 0; i < 12; i++) second();
+  assert.ok(p.stamina > 0 && !p.exhausted, `a los 17 s todavía queda: ${p.stamina}`);
+  for (let i = 0; i < 3; i++) second();
+  assert.equal(p.exhausted, true);
+  p.x = 0; p.z = 8; const z = p.z; walk(p, { f: true, sprint: true }, 1, flat);
+  assert.ok(Math.abs(p.z - z) < 6.5, 'agotado camina, no corre');
+  walk(p, {}, 6, flat);
+  assert.ok(p.stamina > 25 && p.exhausted === false, `volvió: ${p.stamina}`);
+});
+
+test('royale3d: se trepa una pared con W y Espacio, gastando estamina, y se pasa por encima del borde', () => {
+  const flat = clean(9);
+  flat.addBox(-3, 3, -2.2, -1.8, flat.height(0, -2) - 1, flat.height(0, -2) + 6, { mat: 'wood', hp: 0 });
+  const top = flat.height(0, -2) + 6;
+  const p = newPlayer(0, flat.height(0, 0), 0, 0); p.grounded = true;
+  const s0 = p.stamina;
+  let climbed = false;
+  for (let i = 0; i < 60 * 4; i++) { stepGround(p, { f: true, jump: true }, STEP, flat); if (p.climbing) climbed = true; if (climbed && !p.climbing) break; }
+  assert.ok(climbed, 'empezó a trepar');
+  assert.ok(p.y >= top - 0.1, `llegó arriba: ${p.y} de ${top}`);
+  assert.ok(p.z < -1.8, 'y quedó parado arriba de la pared');
+  assert.ok(p.stamina < s0 - 10);
+  // Sin Espacio no trepa, y sin estamina tampoco.
+  const q = newPlayer(0, flat.height(0, 0), 0, 0); q.grounded = true;
+  walk(q, { f: true }, 3, flat);
+  assert.ok(q.y < flat.height(0, 0) + 0.5, 'sin Espacio no trepa');
+  const r = newPlayer(0, flat.height(0, 0), 0, 0); r.grounded = true; r.stamina = 0; r.exhausted = true;
+  walk(r, { f: true, jump: true }, 0.8, flat);
+  assert.ok(r.y < top - 1 && !r.climbing, 'agotado no trepa');
+});
+
+test('royale3d: el token pirata sale en uno de cada doscientos cofres, siempre el mismo para la misma semilla', () => {
+  let n = 0;
+  for (let i = 0; i < 20000; i++) if (pirateTokenAt(SEED, i)) n++;
+  assert.ok(n > 60 && n < 140, `salió ${n} veces en 20.000 (esperado ~100)`);
+  assert.equal(pirateTokenAt(SEED, 77), pirateTokenAt(SEED, 77));
+  assert.equal(PIRATE_ODDS, 200);
 });
 
 // ─── Construir ───────────────────────────────────────────────────────────────
@@ -428,11 +506,11 @@ function playing(n = 3) {
   return applyAction(lobbyOf(n), { type: 'start', playerId: 'h' }, { now: 5000, rand: () => 0.3 });
 }
 
-test('royale3d: hacen falta 2 jugadores, hasta 10, y solo el anfitrión arranca', () => {
+test('royale3d: hacen falta 2 jugadores, hasta 100, y solo el anfitrión arranca', () => {
   assert.ok(startProblem(lobbyOf(1)));
   assert.equal(applyAction(lobbyOf(1), { type: 'start', playerId: 'h' }), null);
   assert.equal(applyAction(lobbyOf(3), { type: 'start', playerId: 'p1' }), null);
-  assert.equal(MAX_PLAYERS, 10);
+  assert.equal(MAX_PLAYERS, 100);
   assert.equal(lobbyOf(MAX_PLAYERS).players.length, MAX_PLAYERS);
   assert.equal(applyAction(lobbyOf(MAX_PLAYERS), { type: 'join', playerId: 'x', name: 'Extra' }), null);
   const room = playing(3);
@@ -459,7 +537,8 @@ test('royale3d: los cofres los abre el primero que llega y cada cosa del piso la
   assert.equal(applyAction(room, { type: 'loot', playerId: 'p2', match: m, i: LOOT_LIMIT }), null);
   assert.equal(applyAction(room, { type: 'loot', playerId: 'p2', match: m + 1, i: 4 }), null, 'de otra partida no');
   room = applyAction(room, { type: 'take', playerId: 'p2', match: m, key: '3:0' });
-  assert.equal(room.match.took['3:0'], 'p2');
+  assert.ok(isTaken(room.match, '3:0'));
+  assert.ok(!isTaken(room.match, '3:1'), 'cada cosa del cofre es aparte');
   assert.equal(applyAction(room, { type: 'take', playerId: 'p1', match: m, key: '3:0' }), null);
   assert.ok(applyAction(room, { type: 'take', playerId: 'p1', match: m, key: 'w12.3' }), 'las armas tiradas se agarran por su clave');
   assert.equal(applyAction(room, { type: 'take', playerId: 'p1', match: m, key: 'cualquiera' }), null);
@@ -531,4 +610,52 @@ test('royale3d: Ciudad Fondo tiene calles, edificios de dos pisos con rampa y co
       assert.ok(high, 'cada entrepiso tiene su cofre');
     }
   }
+});
+
+test('royale3d: una partida de 100 jugadores con todos los cofres abiertos, todo agarrado y 99 bajas entra en la sala (30.000 caracteres)', () => {
+  const rid = (i) => `id${String(i).padStart(6, '0')}`;
+  let room = newRoom(rid(0), 'N'.repeat(16), '🐸', 1000);
+  for (let i = 1; i < MAX_PLAYERS; i++) room = applyAction(room, { type: 'join', playerId: rid(i), name: 'M'.repeat(16), avatar: '🐸' });
+  assert.equal(room.players.length, 100);
+  room = applyAction(room, { type: 'start', playerId: rid(0) }, { now: 5000, rand: () => 0.3 });
+  const m = room.match.n;
+  for (let i = 0; i < 300; i++) room = applyAction(room, { type: 'loot', playerId: rid(i % 100), match: m, i }) || room;
+  for (let i = 0; i < 8; i++) room = applyAction(room, { type: 'loot', playerId: rid(i), match: m, i: DROP_BASE + i }) || room;
+  for (let i = 0; i < 300; i++) for (let k = 0; k < 6; k++) room = applyAction(room, { type: 'take', playerId: rid((i + k) % 100), match: m, key: `${i}:${k}` }) || room;
+  for (let i = 0; i < 400; i++) room = applyAction(room, { type: 'take', playerId: rid(i % 100), match: m, key: `w${i + 1}.${i % 9}` }) || room;
+  assert.equal(Object.keys(room.match.loot).length, 308);
+  for (let i = 1; i < 100; i++) room = applyAction(room, { type: 'died', playerId: rid(i), match: m, by: rid((i + 1) % 100), w: 'crossbow' }, { now: room.match.startsAt + 10 }) || room;
+  assert.equal(room.phase, 'final');
+  assert.ok(JSON.stringify(room).length < 29500, `la sala pesa ${JSON.stringify(room).length}`);
+});
+
+// ─── Escaleras y construcciones nuevas ───────────────────────────────────────
+test('royale3d: todas las escaleras de edificios y torres se suben caminando por abajo, y las torres llegan al último piso', () => {
+  for (const seed of [3, 7, SEED, 4242]) {
+    const w = makeWorld(seed);
+    const stairs = w.solids.filter((s) => s.k === 'ramp' && s.stairs);
+    assert.ok(stairs.length >= 16, `escaleras: ${stairs.length}`);
+    for (const r of stairs) {
+      const dir = [[1, 0], [0, 1], [-1, 0], [0, -1]][r.dir];
+      const len = r.dir % 2 === 0 ? r.x1 - r.x0 : r.z1 - r.z0;
+      const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2;
+      const p = newPlayer(cx - dir[0] * (len / 2 + 1.2), r.y0, cz - dir[1] * (len / 2 + 1.2), Math.atan2(-dir[0], -dir[1]));
+      p.grounded = true;
+      for (let i = 0; i < 60 * 4; i++) stepGround(p, { f: true }, STEP, w);
+      assert.ok(p.y > r.y0 + r.rise - 0.6, `la escalera de ${Math.round(cx)},${Math.round(cz)} (semilla ${seed}) no se sube: y ${p.y.toFixed(2)} de ${(r.y0 + r.rise).toFixed(2)}`);
+    }
+    // Cada torre tiene un cofre en su último piso.
+    const torres = w.places.find((p) => p.id === 'torres');
+    const high = w.chests.filter((c) => Math.hypot(c.x - torres.x, c.z - torres.z) < torres.r && c.y > torres.y + 7);
+    assert.ok(high.length >= 3, `cofres en lo alto de las torres: ${high.length}`);
+  }
+});
+
+test('royale3d: hay varias ciudades y la isla es el doble de grande que antes', () => {
+  const w = makeWorld(SEED);
+  const cities = w.places.filter((p) => ['ciudad', 'metropolis', 'costanera'].includes(p.id));
+  assert.equal(cities.length, 3);
+  assert.ok(ISLAND_R >= 230 && ISLAND_R ** 2 >= 165 ** 2 * 1.9, 'el doble de superficie');
+  assert.ok(w.chests.length < DROP_BASE, 'los cofres del mapa no pisan los números de los del cielo');
+  for (const c of cities) assert.ok(w.streets.some((st) => Math.hypot(st.x - c.x, st.z - c.z) < c.r));
 });

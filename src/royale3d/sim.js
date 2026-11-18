@@ -14,7 +14,15 @@ export const WALK = 5.6;
 export const SPRINT = 8.4;
 export const JUMP_V = 7.4;
 export const GRAVITY = 22;
-export const SLOTS = 5;           // el 0 es siempre el pico; del 1 al 4, las armas
+export const SLOTS = 6;           // el 0 es siempre el pico; del 1 al 5, armas y consumibles (cada pila de vendas, botiquines, etc. ocupa un lugar)
+export const MAX_STAMINA = 100;
+export const SPRINT_DRAIN = 5.5;  // por segundo corriendo: dura ~18 s
+export const CLIMB_DRAIN = 9;     // por segundo trepando: ~11 s
+export const STAMINA_REGEN = 14;  // por segundo descansando
+export const REGEN_DELAY = 0.9;   // segundos sin gastar antes de que empiece a volver
+export const EXHAUST_BACK = 25;   // agotado: no se corre ni se trepa hasta recuperar esto
+export const CLIMB_V = 3.4;       // m/s al trepar
+export const PIRATE_ODDS = 200;   // 1 de cada tantos cofres trae el token pirata
 export const COUNTDOWN_MS = 15000; // la isla de espera: se camina y se prueba la pistola antes de subir al bus
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -43,6 +51,12 @@ export const WEAPONS = {
   sniper: { name: 'Francotirador', dmg: 95, pellets: 1, rate: 1.4, mag: 4, reload: 3, spread: 0.0008, range: 420, auto: false, hs: 2.4, kick: 0.07, zoom: 2.6, scope: true, minR: 2 },
   bazooka: { name: 'Bazooka', dmg: 0, pellets: 1, rate: 1.8, mag: 1, reload: 3.3, spread: 0.006, range: 220, auto: false, hs: 1, kick: 0.05, rocket: true, speed: 46, blast: 'rocket', minR: 2 },
   launcher: { name: 'Lanzagranadas', dmg: 0, pellets: 1, rate: 0.7, mag: 6, reload: 3.2, spread: 0.01, range: 160, auto: false, hs: 1, kick: 0.03, grenade: true, speed: 24, blast: 'launcher', minR: 1 },
+  deagle: { name: 'Pistola pesada', dmg: 38, pellets: 1, rate: 0.42, mag: 7, reload: 1.9, spread: 0.008, range: 140, auto: false, hs: 2, kick: 0.04 },
+  tmp: { name: 'Pistola ametralladora', dmg: 9, pellets: 1, rate: 0.058, mag: 28, reload: 1.5, spread: 0.05, range: 60, auto: true, hs: 1.5, kick: 0.006 },
+  carbine: { name: 'Carabina', dmg: 17, pellets: 1, rate: 0.09, mag: 25, reload: 1.9, spread: 0.022, range: 130, auto: true, hs: 1.7, kick: 0.008 },
+  pump: { name: 'Escopeta de corredera', dmg: 16, pellets: 10, rate: 1.15, mag: 5, reload: 3.1, spread: 0.065, range: 40, auto: false, hs: 1.4, kick: 0.065, falloff: 10 },
+  dmr: { name: 'Fusil de precisión', dmg: 52, pellets: 1, rate: 0.42, mag: 10, reload: 2.6, spread: 0.0025, range: 300, auto: false, hs: 2.2, kick: 0.04, zoom: 1.8, scope: true, minR: 1 },
+  crossbow: { name: 'Ballesta', dmg: 80, pellets: 1, rate: 1.0, mag: 1, reload: 1.8, spread: 0.0015, range: 200, auto: false, hs: 2.3, kick: 0.03, minR: 1 },
   minigun: { name: 'Minigun', dmg: 7, pellets: 1, rate: 0.045, mag: 120, reload: 4.8, spread: 0.055, range: 110, auto: true, hs: 1.4, kick: 0.004, heavy: true, minR: 3 },
 };
 export const WEAPON_LIST = Object.keys(WEAPONS).filter((k) => !WEAPONS[k].melee);
@@ -68,13 +82,13 @@ export const GRENADE_FUSE = 2.1;
 export const LAUNCHER_FUSE = 1.5;
 export const GRENADE_GAP = 0.7;
 
-// Consumibles: se usan con una tecla y tardan un rato en hacer efecto (si te pegan, se corta).
+// Consumibles: van en los mismos lugares que las armas (una pila por lugar). Se eligen con su número y se usan con el clic; tardan un rato en hacer efecto (si te pegan, se corta).
 export const ITEMS = {
-  bandage: { name: 'Vendas', key: 'Q', cast: 1.2, max: 15, heal: 15, icon: '🩹' },
-  medkit: { name: 'Botiquín', key: 'F', cast: 3.2, max: 5, heal: 70, icon: '🧰' },
-  shield: { name: 'Escudo chico', key: 'H', cast: 1.8, max: 6, shield: 25, icon: '🧪' },
-  bigshield: { name: 'Escudo grande', key: 'J', cast: 3.2, max: 3, shield: 60, icon: '💙' },
-  grenade: { name: 'Granada', key: 'G', max: 8, icon: '💣' },
+  bandage: { name: 'Vendas', cast: 1.2, max: 15, heal: 15 },
+  medkit: { name: 'Botiquín', cast: 3.2, max: 5, heal: 70 },
+  shield: { name: 'Escudo chico', cast: 1.8, max: 6, shield: 25 },
+  bigshield: { name: 'Escudo grande', cast: 3.2, max: 3, shield: 60 },
+  grenade: { name: 'Granada', max: 8 },
 };
 export const ITEM_LIST = Object.keys(ITEMS);
 
@@ -82,13 +96,24 @@ export const ITEM_LIST = Object.keys(ITEMS);
 export function newPlayer(x, y, z, yaw = 0) {
   return {
     x, y, z, vy: 0, yaw, pitch: 0, hp: MAX_HP, shield: 0, dead: false, mode: 'ground', grounded: true, moving: false, sprinting: false,
-    inv: [{ w: 'pickaxe', r: 0, mag: 1 }, null, null, null, null], sel: 0, wood: 0, build: null, lvl: 0, knock: { x: 0, y: 0, z: 0 },
-    items: { bandage: 0, medkit: 0, shield: 0, bigshield: 0, grenade: 0 },
+    inv: [{ w: 'pickaxe', r: 0, mag: 1 }, null, null, null, null, null], sel: 0, wood: 0, build: null, lvl: 0, knock: { x: 0, y: 0, z: 0 },
+    stamina: MAX_STAMINA, staminaWait: 0, exhausted: false, climbing: false, climbDir: null, climbTop: 0,
     nextShot: 0, reloadUntil: 0, burstLeft: 0, burstAt: 0, cast: null, grenadeAt: 0, buildAt: 0,
     lastBy: null, lastW: null, lastHitAt: 0, hurtUntil: 0, walked: 0, vx: 0, vz: 0, glide: false, aboard: false,
   };
 }
-export const held = (p) => p.inv[p.sel];
+// El arma que tenés en la mano (si el lugar elegido es una pila de consumibles, la mano está vacía).
+export const held = (p) => { const g = p.inv[p.sel]; return g && g.w ? g : null; };
+// Consumibles: una pila `{ it, n }` por lugar.
+export const stackSlot = (p, kind) => p.inv.findIndex((g, i) => i > 0 && g?.it === kind);
+export const countOf = (p, kind) => p.inv.reduce((n, g) => n + (g?.it === kind ? g.n : 0), 0);
+// Cambia de lugar dos cosas del inventario (el pico, en el 0, no se mueve).
+export function moveSlot(p, a, b) {
+  if (a === b || a < 1 || b < 1 || a >= SLOTS || b >= SLOTS) return false;
+  [p.inv[a], p.inv[b]] = [p.inv[b], p.inv[a]];
+  if (p.sel === a) p.sel = b; else if (p.sel === b) p.sel = a;
+  return true;
+}
 
 // Daño: primero se gasta el escudo. Si te pegan, se corta lo que estabas usando.
 export function hurt(p, amount, by, weapon, now) {
@@ -127,10 +152,10 @@ export function selectSlot(p, slot) {
   return true;
 }
 
-// Empieza a usar un consumible. Devuelve false si no hay o no hace falta.
+// Empieza a usar un consumible (el que tengas en una pila). Devuelve false si no hay o no hace falta.
 export function startCast(p, kind, now) {
   const it = ITEMS[kind];
-  if (!it?.cast || p.cast || p.items[kind] <= 0) return false;
+  if (!it?.cast || p.cast || stackSlot(p, kind) < 0) return false;
   if (it.heal && p.hp >= MAX_HP) return false;
   if (it.shield && p.shield >= MAX_SHIELD) return false;
   p.cast = { kind, from: now, until: now + it.cast };
@@ -140,10 +165,18 @@ export function finishCast(p, now) {
   if (!p.cast || now < p.cast.until) return null;
   const kind = p.cast.kind, it = ITEMS[kind];
   p.cast = null;
-  p.items[kind] -= 1;
+  useOne(p, kind);
   if (it.heal) p.hp = Math.min(MAX_HP, p.hp + it.heal);
   if (it.shield) p.shield = Math.min(MAX_SHIELD, p.shield + it.shield);
   return kind;
+}
+// Gasta uno de la pila; si era el último, el lugar queda libre y la mano vuelve al pico.
+export function useOne(p, kind) {
+  const at = stackSlot(p, kind);
+  if (at < 0) return false;
+  p.inv[at].n -= 1;
+  if (p.inv[at].n <= 0) { p.inv[at] = null; if (p.sel === at) p.sel = 0; }
+  return true;
 }
 
 // ─── Piso, choques y movimiento ──────────────────────────────────────────────
@@ -227,14 +260,75 @@ function wishDir(p, input) {
   return { x: (-sy * fwd + cy * side) / len, z: (-cy * fwd - sy * side) / len, fwd };
 }
 
+// ¿Hay una pared (una caja sólida) justo adelante que se pueda trepar? Devuelve { s, top } o null.
+const tmpC = [];
+export function wallAhead(w, p, dx, dz) {
+  const reach = PLAYER_R + 0.28;
+  const x = p.x + dx * reach, z = p.z + dz * reach;
+  w.near(x - 0.1, z - 0.1, x + 0.1, z + 0.1, tmpC);
+  let top = -Infinity, found = null;
+  for (const s of tmpC) {
+    if (s.k !== 'box') continue;
+    if (x < s.x0 - 0.05 || x > s.x1 + 0.05 || z < s.z0 - 0.05 || z > s.z1 + 0.05) continue;
+    if (s.y1 <= p.y + STEP_H + 0.1 || s.y0 >= p.y + PLAYER_H) continue;
+    if (s.y1 > top) { top = s.y1; found = s; }
+  }
+  return found ? { s: found, top } : null;
+}
+
+// Trepar: contra una pared, con W y Espacio apretados, se sube por ella (gasta estamina) hasta el borde y ahí se pasa por encima.
+// Devuelve true si este paso lo ocupó la trepada.
+function tryClimb(p, input, dir, dt, w) {
+  if (p.exhausted || p.stamina <= 0 || p.cast) { p.climbing = false; return false; }
+  let d = p.climbDir;
+  if (!p.climbing) {
+    if (!(input.jump && dir && dir.fwd > 0)) return false;
+    d = { x: dir.x, z: dir.z };
+  } else if (!input.jump) { p.climbing = false; return false; }
+  const wall = wallAhead(w, p, d.x, d.z);
+  if (!p.climbing) {
+    if (!wall) return false;
+    p.climbing = true; p.climbDir = d; p.climbTop = wall.top;
+  } else if (wall) p.climbTop = Math.max(p.climbTop, wall.top);
+  else if (p.climbTop - p.y > 1.2) { p.climbing = false; return false; } // se acabó la pared antes de llegar arriba
+  p.stamina = Math.max(0, p.stamina - CLIMB_DRAIN * dt);
+  p.staminaWait = REGEN_DELAY;
+  if (p.stamina <= 0) { p.exhausted = true; p.climbing = false; return false; }
+  p.moving = false; p.sprinting = false; p.grounded = false; p.vy = 0;
+  p.knock.x = 0; p.knock.z = 0;
+  p.y += CLIMB_V * dt;
+  if (p.y >= p.climbTop - 0.7) {
+    // Llegó al borde: se pasa por encima, hacia adelante hasta encontrar piso a esa altura.
+    const top = p.climbTop;
+    for (let k = 0.3; k <= 1.6; k += 0.2) {
+      const nx = p.x + d.x * k, nz = p.z + d.z * k;
+      if (!inWorld(w, nx, nz)) break;
+      if (floorAt(w, nx, nz, top, 0.05) >= top - 0.05) {
+        // Un poco más adentro del borde, así no queda colgando de la punta.
+        const ex = p.x + d.x * (k + 0.25), ez = p.z + d.z * (k + 0.25);
+        const deeper = inWorld(w, ex, ez) && floorAt(w, ex, ez, top, 0.05) >= top - 0.05;
+        p.x = deeper ? ex : nx; p.z = deeper ? ez : nz; p.y = floorAt(w, p.x, p.z, top, 0.05); p.grounded = true;
+        break;
+      }
+    }
+    p.climbing = false;
+  }
+  return true;
+}
+
 // Un paso de movimiento a pie. `input`: { f, b, l, r, jump, sprint }.
 export function stepGround(p, input, dt, w) {
   const dir = wishDir(p, input);
   p.moving = Boolean(dir);
+  if (tryClimb(p, input, dir, dt, w)) return;
   const shallow = w.height(p.x, p.z) < 0.15;
-  let speed = (input.sprint && dir?.fwd > 0 && !p.cast ? SPRINT : WALK) * (shallow ? 0.7 : 1) * (p.cast ? 0.55 : 1) * (held(p)?.w === 'minigun' && input.fire ? 0.55 : 1);
+  const canSprint = !p.exhausted && p.stamina > 0;
+  let speed = (input.sprint && dir?.fwd > 0 && !p.cast && canSprint ? SPRINT : WALK) * (shallow ? 0.7 : 1) * (p.cast ? 0.55 : 1) * (held(p)?.w === 'minigun' && input.fire ? 0.55 : 1);
   p.sprinting = speed >= SPRINT - 0.01;
   if (p.reloadUntil) speed *= 0.93;
+  // Estamina: correr la gasta; si no, vuelve de a poco después de un rato.
+  if (p.sprinting) { p.stamina = Math.max(0, p.stamina - SPRINT_DRAIN * dt); p.staminaWait = REGEN_DELAY; } else if (p.staminaWait > 0) p.staminaWait -= dt; else p.stamina = Math.min(MAX_STAMINA, p.stamina + STAMINA_REGEN * dt);
+  if (p.stamina <= 0) p.exhausted = true; else if (p.exhausted && p.stamina >= EXHAUST_BACK) p.exhausted = false;
   const air = p.grounded ? 1 : 0.75;
   const x0 = p.x, z0 = p.z;
   slide(p, ((dir?.x || 0) * speed * air + p.knock.x) * dt, ((dir?.z || 0) * speed * air + p.knock.z) * dt, w);
@@ -585,12 +679,12 @@ export const OPEN_TIME = 0.9;   // segundos manteniendo E
 export const OPEN_RANGE = 2.3;  // a qué distancia se abre
 export const PICK_RANGE = 2.2;  // a qué distancia se agarra algo del piso
 export const MAX_PILES = 8;     // un cofre deja a lo sumo dos armas y cinco pilas
-export const MAX_TOOK = 260;    // tope de lo anotado en la sala (por el límite de 30.000 caracteres)
+export const MAX_TOOK = 200;    // tope de armas tiradas anotadas en la sala (por el límite de 30.000 caracteres)
 
 const WEAPON_POOLS = {
-  1: [['pistol', 14], ['revolver', 7], ['smg', 14], ['shotgun', 12], ['rifle', 7], ['burst', 5], ['launcher', 1.5], ['sniper', 0.8]],
-  2: [['smg', 10], ['shotgun', 12], ['rifle', 14], ['burst', 10], ['revolver', 8], ['sniper', 4], ['launcher', 4], ['bazooka', 2.5], ['minigun', 0.8]],
-  3: [['rifle', 12], ['burst', 10], ['sniper', 10], ['bazooka', 8], ['launcher', 7], ['minigun', 5], ['shotgun', 8], ['smg', 5]],
+  1: [['pistol', 14], ['revolver', 7], ['smg', 14], ['shotgun', 12], ['rifle', 7], ['burst', 5], ['launcher', 1.5], ['sniper', 0.8], ['tmp', 10], ['deagle', 4], ['carbine', 8], ['pump', 8]],
+  2: [['smg', 10], ['shotgun', 12], ['rifle', 14], ['burst', 10], ['revolver', 8], ['sniper', 4], ['launcher', 4], ['bazooka', 2.5], ['minigun', 0.8], ['carbine', 10], ['pump', 8], ['deagle', 6], ['dmr', 6], ['crossbow', 3], ['tmp', 6]],
+  3: [['rifle', 12], ['burst', 10], ['sniper', 10], ['bazooka', 8], ['launcher', 7], ['minigun', 5], ['shotgun', 8], ['smg', 5], ['dmr', 10], ['crossbow', 7], ['carbine', 8], ['deagle', 6], ['pump', 6]],
 };
 const RARITY_WEIGHTS = { 1: [58, 28, 11, 3, 0], 2: [28, 34, 24, 11, 3], 3: [6, 22, 34, 25, 13] };
 const ITEM_POOL = [['bandage', 14], ['medkit', 7], ['shield', 12], ['bigshield', 5], ['grenade', 9]];
@@ -639,22 +733,26 @@ export function groundItems(seed, ch) {
 }
 
 // El lugar del arma que se cambia al agarrar otra con el inventario lleno: la que tenés en la mano o, si tenés
-// el pico, la peor de las otras. El pico no se toca nunca.
+// otra cosa, la peor de las armas. El pico y los consumibles no se tocan nunca. Devuelve null si no hay arma para cambiar.
 export function swapSlot(p) {
-  if (p.sel >= 1 && p.sel < SLOTS && p.inv[p.sel]) return p.sel;
+  if (p.sel >= 1 && p.sel < SLOTS && p.inv[p.sel]?.w) return p.sel;
   let worst = null;
   const score = (g) => (g.r || 0) * 10 + WEAPON_LIST.indexOf(g.w) * 0.1;
-  for (let i = 1; i < SLOTS; i++) if (p.inv[i] && (worst === null || score(p.inv[i]) < score(p.inv[worst]))) worst = i;
+  for (let i = 1; i < SLOTS; i++) if (p.inv[i]?.w && (worst === null || score(p.inv[i]) < score(p.inv[worst]))) worst = i;
   return worst;
 }
+
+const hasFree = (p) => p.inv.some((g, i) => i > 0 && !g);
 
 // Qué pasa si agarrás `item`: 'take' (entra), 'swap' (cambia el arma de la mano) o 'full' (no entra).
 export function pickAction(p, item) {
   if (isWeapon(item.kind)) {
-    if (p.inv.some((g) => g && g.w === item.kind && (g.r || 0) >= (item.r || 0))) return p.inv.some((g, i) => i && !g) ? 'take' : 'full';
-    return p.inv.some((g, i) => i && !g) ? 'take' : swapSlot(p) === null ? 'full' : 'swap';
+    if (p.inv.some((g) => g && g.w === item.kind && (g.r || 0) >= (item.r || 0))) return hasFree(p) ? 'take' : 'full';
+    return hasFree(p) ? 'take' : swapSlot(p) === null ? 'full' : 'swap';
   }
-  return p.items[item.kind] < ITEMS[item.kind].max ? 'take' : 'full';
+  const at = stackSlot(p, item.kind);
+  if (at >= 0 && p.inv[at].n < ITEMS[item.kind].max) return 'take';
+  return hasFree(p) ? 'take' : 'full';
 }
 
 // Agarra `item`. Devuelve null si no entra o { name, dropped }: `dropped` es el arma que tenías y que tiene que quedar en el piso.
@@ -662,9 +760,15 @@ export function pickUp(p, item) {
   const how = pickAction(p, item);
   if (how === 'full') return null;
   if (!isWeapon(item.kind)) {
-    const before = p.items[item.kind];
-    p.items[item.kind] = Math.min(ITEMS[item.kind].max, before + item.n);
-    return { name: `${ITEMS[item.kind].name} x${p.items[item.kind] - before}`, dropped: null };
+    const max = ITEMS[item.kind].max;
+    let left = item.n, added = 0;
+    const at = stackSlot(p, item.kind);
+    if (at >= 0) { const put = Math.min(left, max - p.inv[at].n); p.inv[at].n += put; left -= put; added += put; }
+    if (left > 0) {
+      const free = p.inv.findIndex((g, i) => i > 0 && !g);
+      if (free >= 0) { const put = Math.min(left, max); p.inv[free] = { it: item.kind, n: put }; added += put; }
+    }
+    return { name: `${ITEMS[item.kind].name} x${added}`, dropped: null };
   }
   const entry = { w: item.kind, r: item.r || 0, mag: item.mag ?? magOf({ w: item.kind, r: item.r || 0 }) };
   const label = `${WEAPONS[item.kind].name} ${RARITIES[entry.r].name.toLowerCase()}`;
@@ -676,6 +780,9 @@ export function pickUp(p, item) {
   p.reloadUntil = 0;
   return { name: label, dropped };
 }
+
+// Un cofre trae el token pirata una de cada `PIRATE_ODDS` veces. Sale de la semilla y del número del cofre: el que lo abre lo sabe sin que viaje nada.
+export const pirateTokenAt = (seed, i) => rng((seed ^ 0x3c6ef372) + Math.imul(i, 40503))() < 1 / PIRATE_ODDS;
 
 // ─── Madera y construcción ───────────────────────────────────────────────────
 // Un solo material: madera. Cualquier cosa que rompas (con el pico, a tiros o con explosiones) te da. Con madera armás

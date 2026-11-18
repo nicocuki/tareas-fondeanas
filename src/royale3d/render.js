@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { noise, segDist } from './map.js';
 import { RARITIES } from './sim.js';
 import {
-  TIER_COLORS, animateAvatar, avatarModel, beam, boxGeo, busModel, chestModel, dropModel, drawTag, holdWeapon, itemModel, mat, matFor, rampGeo, ring, texture, weaponModel,
+  TIER_COLORS, animateAvatar, avatarModel, beam, boxGeo, busModel, chestModel, dropModel, drawTag, holdWeapon, itemModel, mat, matFor, rampGeo, ring, stairsModel, texture, weaponModel,
 } from './models.js';
 
 const SKY_TOP = new THREE.Color(0x3c8fe0);
@@ -40,7 +40,7 @@ export function terrainColor(w, x, z, h, out) {
 }
 
 function buildTerrain(w) {
-  const half = w.worldR + 16, step = w.kind === 'lobby' ? 1 : 1.5;
+  const half = w.worldR + 16, step = w.kind === 'lobby' ? 1 : w.worldR > 250 ? 1.9 : 1.5;
   const n = Math.round((half * 2) / step);
   const geo = new THREE.PlaneGeometry(half * 2, half * 2, n, n);
   geo.rotateX(-R90);
@@ -343,7 +343,9 @@ export function createRenderer(canvas) {
         m = g;
       }
     } else if (s.k === 'ramp') {
-      m = new THREE.Mesh(rampGeo(s.x1 - s.x0, s.z1 - s.z0, s.rise), matFor('build'));
+      // El largo de la rampa va para donde sube (x si dir es 0 o 2, z si es 1 o 3) y el ancho para el otro lado.
+      const along = s.dir % 2 === 0 ? s.x1 - s.x0 : s.z1 - s.z0, across = s.dir % 2 === 0 ? s.z1 - s.z0 : s.x1 - s.x0;
+      m = s.stairs ? stairsModel(along, across, s.rise, 'wood') : new THREE.Mesh(rampGeo(along, across, s.rise), matFor('build'));
       m.position.set((s.x0 + s.x1) / 2, s.y0, (s.z0 + s.z1) / 2);
       m.rotation.y = -s.dir * R90;
     }
@@ -554,7 +556,7 @@ export function createRenderer(canvas) {
     a.rotation.y = info.yaw;
     holdWeapon(a, info.kind, info.r || 0);
     drawTag(a, info.name, info.hp ?? 100, info.shield ?? 0, info.tagColor);
-    a.userData.tag.visible = !info.self;
+    a.userData.tag.visible = !info.self && !info.hideTag;
     animateAvatar(a, info.dt || 0.016, { ...info, t: time });
   }
   const muzzleOf = (id) => {
@@ -671,7 +673,7 @@ export function createRenderer(canvas) {
     const key = `${piece.kind}:${(d.x1 - d.x0).toFixed(2)}:${(d.y1 ?? d.y0 + d.rise) - d.y0}:${(d.z1 - d.z0).toFixed(2)}`;
     if (!ghostMesh || ghostKey !== key) {
       if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geometry.dispose(); }
-      const geo = d.k === 'ramp' ? rampGeo(d.x1 - d.x0, d.z1 - d.z0, d.rise) : new THREE.BoxGeometry(d.x1 - d.x0, d.y1 - d.y0, d.z1 - d.z0);
+      const geo = d.k === 'ramp' ? rampGeo(d.dir % 2 === 0 ? d.x1 - d.x0 : d.z1 - d.z0, d.dir % 2 === 0 ? d.z1 - d.z0 : d.x1 - d.x0, d.rise) : new THREE.BoxGeometry(d.x1 - d.x0, d.y1 - d.y0, d.z1 - d.z0);
       ghostMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.42, depthWrite: false, fog: false }));
       ghostMesh.renderOrder = 8;
       scene.add(ghostMesh);
