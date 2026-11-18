@@ -545,3 +545,28 @@ test('cohetes: la gravedad del modo Luna hace caer más despacio a los tanques y
   for (let i = 0; i < 0.5 / STEP; i++) { stepProjectile(r1, STEP, t, [], 1); stepProjectile(r2, STEP, t, [], MODES.moon.g); }
   assert.ok(r2.y - 100 < (r1.y - 100) * 0.6);
 });
+
+// ─── Equipos ─────────────────────────────────────────────────────────────────
+test('cohetes: por equipos se reparten parejo, se rebalancea al empezar y gana el último equipo en pie', () => {
+  let room = newRoom('p0', 'P0', '🐸');
+  for (let i = 1; i < 5; i++) room = applyAction(room, { type: 'join', playerId: `p${i}`, name: `P${i}` });
+  assert.deepEqual(room.players.map((p) => p.team), [0, 1, 0, 1, 0], 'entran alternados');
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'p0', options: { teams: 3 } }), null);
+  room = applyAction(room, { type: 'setOptions', playerId: 'p0', options: { teams: 2 } });
+  for (const id of ['p1', 'p3']) room = applyAction(room, { type: 'setTeam', playerId: id, team: 0 });
+  assert.equal(applyAction(room, { type: 'setTeam', playerId: 'p1', target: 'p2', team: 1 }), null, 'solo el anfitrión mueve a otro');
+  room = applyAction(room, { type: 'start', playerId: 'p0' }, { now: 1000 });
+  const count = (t) => room.players.filter((p) => p.team === t).length;
+  assert.ok(Math.abs(count(0) - count(1)) <= 1, 'quedaron parejos');
+  assert.equal(room.match.teams, true);
+  const m = room.match.n, t0 = 1000 + COUNTDOWN_MS;
+  const team1 = room.players.filter((p) => p.team === 1).map((p) => p.id);
+  const team0 = room.players.filter((p) => p.team === 0).map((p) => p.id);
+  // Una baja a un compañero no suma.
+  room = applyAction(room, { type: 'died', playerId: team0[0], match: m, by: team0[1] }, { now: t0 });
+  assert.equal(findPlayer(room, team0[1]).kills, 0);
+  for (const id of team0.slice(1)) room = applyAction(room, { type: 'died', playerId: id, match: m, by: team1[0] }, { now: t0 });
+  assert.equal(room.phase, 'final');
+  assert.equal(room.match.winTeam, 1);
+  assert.ok(team1.every((id) => findPlayer(room, id).place === 1), 'todo el equipo ganador es primero');
+});

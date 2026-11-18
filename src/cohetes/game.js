@@ -22,8 +22,10 @@ export const COLORS = [
 ];
 
 // `mode`: el modo de juego (ver modes.js). `water`: la velocidad de la zona (el agua que sube o la tormenta que se cierra).
-export const DEFAULT_OPTIONS = { mode: DEFAULT_MODE, water: 1 };
-export const OPTION_VALUES = { mode: MODE_LIST, water: [0.6, 1, 1.6] };
+// `teams`: 0 = todos contra todos, 2 = dos equipos (rojo y azul).
+export const DEFAULT_OPTIONS = { mode: DEFAULT_MODE, water: 1, teams: 0 };
+export const OPTION_VALUES = { mode: MODE_LIST, water: [0.6, 1, 1.6], teams: [0, 2] };
+export const TEAMS = [{ name: 'Rojo', color: '#e5484d' }, { name: 'Azul', color: '#3d8fe0' }];
 export const DEATH_CAUSES = ['storm']; // morir sin que nadie te mate, además de hundirte
 
 export const cleanName = (name) => String(name || '').trim().slice(0, 16);
@@ -31,6 +33,10 @@ export const makeId = () => Math.random().toString(36).slice(2, 10);
 export const findPlayer = (room, id) => room?.players.find((p) => p.id === id) || null;
 export const inGame = (room) => room.players.filter((p) => p.inGame);
 export const alive = (room) => inGame(room).filter((p) => p.alive);
+// ¿Se juega por equipos? (la partida en curso lo guarda; en la sala, la opción). Compañeros: mismo equipo y no uno mismo.
+export const teamsOn = (room) => (room.match && room.phase !== 'lobby' ? Boolean(room.match.teams) : room.options?.teams === 2);
+export const sameTeam = (room, a, b) => Boolean(teamsOn(room) && a && b && a.id !== b.id && a.team === b.team);
+const smallerTeam = (players) => (players.filter((p) => p.team === 0).length <= players.filter((p) => p.team === 1).length ? 0 : 1);
 
 export function newRoom(hostId, hostName, avatar, now = Date.now()) {
   return {
@@ -38,15 +44,15 @@ export function newRoom(hostId, hostName, avatar, now = Date.now()) {
     phase: 'lobby',
     hostId,
     options: { ...DEFAULT_OPTIONS },
-    players: [newPlayer(hostId, hostName, avatar, COLORS[0])],
+    players: [newPlayer(hostId, hostName, avatar, COLORS[0], 0)],
     match: null,
     createdAt: now,
     updatedAt: now,
   };
 }
 
-function newPlayer(id, name, avatar, color) {
-  return { id, name: cleanName(name), avatar: avatar || '🐸', color, inGame: false, alive: false, kills: 0, coins: 0, place: 0 };
+function newPlayer(id, name, avatar, color, team = 0) {
+  return { id, name: cleanName(name), avatar: avatar || '🐸', color, team, inGame: false, alive: false, kills: 0, coins: 0, place: 0 };
 }
 
 const freeColor = (room) => COLORS.find((c) => !room.players.some((p) => p.color === c)) || COLORS[room.players.length % COLORS.length];
@@ -72,6 +78,15 @@ export function ranking(room) {
 function checkEnd(room) {
   if (room.phase !== 'playing') return;
   const left = alive(room);
+  if (room.match.teams) {
+    // Por equipos: termina cuando queda un solo equipo con vivos; todos los suyos salen primeros.
+    if (new Set(left.map((p) => p.team)).size > 1) return;
+    for (const p of left) { p.place = 1; p.alive = false; }
+    room.phase = 'final';
+    room.match.winner = left[0]?.id || null;
+    room.match.winTeam = left[0] ? left[0].team : null;
+    return;
+  }
   if (left.length > 1) return;
   if (left[0]) { left[0].place = 1; left[0].alive = false; }
   room.phase = 'final';
@@ -84,7 +99,7 @@ function kill(room, target, byId, weapon) {
   const w = byId && ITEMS[weapon] ? weapon : DEATH_CAUSES.includes(weapon) ? weapon : null;
   room.match.deaths.push({ id: target.id, by: byId || null, w });
   const by = byId && byId !== target.id ? findPlayer(room, byId) : null;
-  if (by?.inGame) by.kills += 1;
+  if (by?.inGame && !(room.match.teams && by.team === target.team)) by.kills += 1;
 }
 
 export function applyAction(room, action, ctx = {}) {
@@ -112,7 +127,7 @@ export function applyAction(room, action, ctx = {}) {
       }
       if (next.players.length >= MAX_PLAYERS || !cleanName(action.name)) return null;
       // El que entra con la partida empezada mira hasta la próxima (inGame: false).
-      next.players.push(newPlayer(action.playerId, action.name, action.avatar, freeColor(next)));
+      next.players.push(newPlayer(action.playerId, action.name, action.avatar, freeColor(next), smallerTeam(next.players)));
       break;
     }
 
@@ -135,8 +150,26 @@ export function applyAction(room, action, ctx = {}) {
       break;
     }
 
+    // En la sala cada uno elige su equipo (el anfitrión también puede mover a otro).
+    case 'setTeam': {
+      if (action.target && !host) return null;
+      const who = action.target ? findPlayer(next, action.target) : me;
+      if (next.phase !== 'lobby' || !who || ![0, 1].includes(action.team)) return null;
+      who.team = action.team;
+      break;
+    }
+
     case 'start': {
       if (!host || !['lobby', 'final'].includes(next.phase) || next.players.length < MIN_PLAYERS) return null;
+      const teams = next.options.teams === 2;
+      if (teams) {
+        // Parejos: si un equipo le lleva más de uno al otro, pasan los últimos que entraron.
+        for (const p of [...next.players].reverse()) {
+          const a = next.players.filter((q) => q.team === 0).length, b = next.players.length - a;
+          if (Math.abs(a - b) <= 1) break;
+          if (p.team === (a > b ? 0 : 1)) p.team = a > b ? 1 : 0;
+        }
+      }
       for (const p of next.players) Object.assign(p, { inGame: true, alive: true, kills: 0, coins: 0, place: 0 });
       next.match = {
         n: (next.match?.n || 0) + 1,
@@ -147,6 +180,8 @@ export function applyAction(room, action, ctx = {}) {
         deaths: [],
         coins: {},
         crates: {},
+        teams,
+        winTeam: null,
         winner: null,
       };
       next.phase = 'playing';

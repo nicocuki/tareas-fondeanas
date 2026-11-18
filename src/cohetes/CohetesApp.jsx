@@ -12,7 +12,7 @@ import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
 import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
-import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, applyAction, cleanName, findPlayer, inGame, makeId, newRoom, ranking, score } from './game.js';
+import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, TEAMS, applyAction, cleanName, findPlayer, inGame, makeId, newRoom, ranking, score, teamsOn } from './game.js';
 import { ITEMS, ITEM_LIST } from './sim.js';
 import { MODES, MODE_LIST, modeOf } from './modes.js';
 import Icon from './Icon.jsx';
@@ -81,6 +81,7 @@ function Entry({ onCreate, onJoin, onSpectate, busy, error, onBack }) {
 function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   const enough = room.players.length >= MIN_PLAYERS;
+  const teams = teamsOn(room);
   return (
     <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Cohete Royale · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
       <div className="ck-card">
@@ -95,6 +96,20 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           ))}
         </ul>
       </div>
+      {teams && (
+        <div className="ck-card">
+          <div className="ck-card-head"><h2>Equipos</h2><span>Elegí el tuyo; si quedan dispares, los últimos que entraron pasan al otro</span></div>
+          <div className="ck-teams">
+            {TEAMS.map((t, i) => (
+              <div key={t.name} className="ck-team" style={{ '--tc': t.color }} data-team={i}>
+                <h3>Equipo {t.name} <span>{room.players.filter((p) => p.team === i).length}</span></h3>
+                <ul>{room.players.filter((p) => p.team === i).map((p) => <li key={p.id}><span>{p.avatar} {p.name}</span>{host && p.id !== me.id && <button type="button" className="tf-btn tf-btn-soft" onClick={() => onDispatch({ type: 'setTeam', target: p.id, team: 1 - i })}>Pasar</button>}</li>)}</ul>
+                {findPlayer(room, me.id)?.team !== i && <button type="button" className="tf-btn tf-btn-soft tf-btn-block" data-act="team" onClick={() => onDispatch({ type: 'setTeam', team: i })}>Pasarme a este equipo</button>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="ck-card">
         <div className="ck-card-head"><h2>Modo de juego</h2><span>{host ? 'Elegí cómo se juega' : 'Lo elige el anfitrión'}</span></div>
         <div className="ck-modes" role="radiogroup" aria-label="Modo de juego">
@@ -121,6 +136,10 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         <OptionField title="Velocidad de la zona" hint="Qué tan rápido sube el agua o se cierra la tormenta: con más rápida, las partidas son más cortas.">
           <Segmented name="water" value={room.options.water} disabled={!host} onChange={(v) => onDispatch({ type: 'setOptions', options: { water: v } })}
             choices={[{ value: 0.6, label: 'Lenta' }, { value: 1, label: 'Normal' }, { value: 1.6, label: 'Rápida' }]} />
+        </OptionField>
+        <OptionField title="Equipos" hint="Dos equipos (rojo y azul): los compañeros no se hacen daño y gana el último equipo en pie.">
+          <Segmented name="teams" value={room.options.teams || 0} disabled={!host} onChange={(v) => onDispatch({ type: 'setOptions', options: { teams: v } })}
+            choices={[{ value: 0, label: 'Todos contra todos' }, { value: 2, label: '2 equipos' }]} />
         </OptionField>
       </LobbyOptions>
       <div className="ck-card ck-controls">
@@ -151,9 +170,11 @@ function Final({ room, me, onDispatch, onLeave }) {
   return (
     <div className="ck-final">
       <div className="ck-wins">
-        {winner ? <><span className="ck-dot" style={{ background: winner.color }} /> <b>{winner.name}</b> GANA</> : 'SE HUNDIERON TODOS'}
+        {room.match?.teams
+          ? (room.match.winTeam != null ? <><span className="ck-dot" style={{ background: TEAMS[room.match.winTeam].color }} /> EQUIPO <b>{TEAMS[room.match.winTeam].name.toUpperCase()}</b> GANA</> : 'SE ELIMINARON TODOS')
+          : winner ? <><span className="ck-dot" style={{ background: winner.color }} /> <b>{winner.name}</b> GANA</> : 'SE HUNDIERON TODOS'}
       </div>
-      {winner?.id === me.id && <p className="ck-eyebrow"><Icon name="crown" size={22} /> ¡Ganaste!</p>}
+      {(room.match?.teams ? findPlayer(room, me.id)?.team === room.match.winTeam && room.match.winTeam != null : winner?.id === me.id) && <p className="ck-eyebrow"><Icon name="crown" size={22} /> ¡Ganaste!</p>}
       <p className="ck-hint">Modo: <b>{modeOf(room.options).name}</b></p>
       <table className="ck-table">
         <thead><tr><th>#</th><th>Jugador</th><th><Icon name="skull" size={18} /> Bajas</th><th><Icon name="coin" size={18} /> Monedas</th><th>Puntos</th></tr></thead>
@@ -161,7 +182,7 @@ function Final({ room, me, onDispatch, onLeave }) {
           {rank.map((p, i) => (
             <tr key={p.id} className={p.id === me.id ? 'is-me' : ''}>
               <td><span className={`ck-medal ck-medal-${i < 3 ? i + 1 : 0}`}>{p.place || i + 1}</span></td>
-              <td><span className="ck-dot" style={{ background: p.color }} /> {p.name}</td>
+              <td><span className="ck-dot" style={{ background: room.match?.teams ? TEAMS[p.team || 0].color : p.color }} /> {p.name}</td>
               <td>{p.kills}</td>
               <td>{p.coins}</td>
               <td><strong>{score(p, total)}</strong></td>

@@ -26,7 +26,7 @@ import {
   drawStorm, drawTank, drawTerrain, drawWater, drawZones, makeTerrainView, puff, repaint, setWorld,
 } from './render.js';
 import Icon from './Icon.jsx';
-import { alive as alivePlayers, findPlayer, inGame } from './game.js';
+import { TEAMS, alive as alivePlayers, findPlayer, inGame, sameTeam, teamsOn } from './game.js';
 
 const SEND_EVERY = 1 / 30;
 const SERVER_EVERY = 1 / 15;
@@ -57,6 +57,10 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
   const [notice, setNotice] = useState('');
   const [killLabel, setKillLabel] = useState('');
   const mode = modeOf(room.options);
+  const byTeams = teamsOn(room);
+  // ¿Es compañero mío? No se lastiman entre sí (los empujones sí valen).
+  const ally = (id) => sameTeam(roomRef.current, findPlayer(roomRef.current, me.id), findPlayer(roomRef.current, id));
+  const teamColor = (id) => (teamsOn(roomRef.current) ? TEAMS[findPlayer(roomRef.current, id)?.team ?? 0].color : null);
 
   const sim = useRef(null);
   if (!sim.current) {
@@ -133,7 +137,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     if (ex.o !== me.id || !w.radius) return;
     const t = performance.now() / 1000;
     for (const pl of alivePlayers(roomRef.current)) {
-      if (pl.id === me.id) continue;
+      if (pl.id === me.id || ally(pl.id)) continue;
       const v = s.remotes.get(pl.id);
       if (!v || v.snap.d || v.snap.m !== 'tank') continue;
       const hit = blastOn({ x: v.x, y: v.y }, ex);
@@ -190,7 +194,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     const own = ex.o === me.id ? 0.7 : 1;
     push(p, hit.vx * own, hit.vy * own);
     s.shake = Math.max(s.shake, Math.min(1, hit.damage / 40));
-    if (ex.o !== me.id) {
+    if (ex.o !== me.id && !ally(ex.o)) {
       p.hp -= hit.damage;
       p.lastBy = ex.o;
       p.lastW = ex.w;
@@ -350,7 +354,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
             if (now > z.until) continue;
             if (z.kind === 'whirl' && p.mode === 'tank' && inWhirl(z, p.x, p.y)) thrust(p, Math.cos(z.a) * ITEMS.whirl.push, Math.sin(z.a) * ITEMS.whirl.push, STEP);
             // El veneno lastima a todos los que están adentro, también al que lo tiró.
-            if (z.kind === 'poison' && Math.hypot(p.x - z.x, p.y - z.y) < ZONES.poison.radius) {
+            if (z.kind === 'poison' && !(z.o && ally(z.o)) && Math.hypot(p.x - z.x, p.y - z.y) < ZONES.poison.radius) {
               p.hp -= ZONES.poison.dps * STEP;
               if (z.o && z.o !== me.id) { p.lastBy = z.o; p.lastW = 'poison'; p.lastHitAt = now; }
             }
@@ -440,7 +444,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       // Proyectiles: los míos deciden dónde explotan; los de otros solo se ven.
       const others = [];
       for (const pl of alivePlayers(r)) {
-        if (pl.id === me.id) continue;
+        if (pl.id === me.id || ally(pl.id)) continue;
         const v = s.remotes.get(pl.id);
         if (v && !v.snap.d && v.snap.m === 'tank') others.push({ id: pl.id, x: v.x, y: v.y, shield: (v.snap.sd || 0) > now });
       }
@@ -599,23 +603,23 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         if (pl.id === me.id) continue;
         const v = s.remotes.get(pl.id);
         if (!v || v.snap.d || v.snap.m === 'ship') continue;
-        drawTank(ctx, { x: v.x, y: v.y, nx: v.snap.nx, ny: v.snap.ny, treads: v.treads }, pl.color, v.snap.a, { chute: v.snap.m === 'chute', shield: (v.snap.sd || 0) > now, now });
+        drawTank(ctx, { x: v.x, y: v.y, nx: v.snap.nx, ny: v.snap.ny, treads: v.treads }, pl.color, v.snap.a, { chute: v.snap.m === 'chute', shield: (v.snap.sd || 0) > now, now, team: teamColor(pl.id) });
         if (v.snap.jt) burst(s.particles, v.x, v.y, { n: 1, colors: ['#ffb347', '#ff6a2a'], speed: 30, life: 0.3 });
         if (v.snap.tu && Math.random() < 0.5) burst(s.particles, v.x, v.y, { n: 1, colors: ['#ffd23f', '#ff8a22'], speed: 24, life: 0.35 });
         if (v.snap.ch) drawLaserAim(ctx, turret(v), v.snap.a, 0.5);
-        drawLabel(ctx, v, pl.name, (v.snap.hp / (v.snap.mh || HP)) * 100, false);
+        drawLabel(ctx, v, pl.name, (v.snap.hp / (v.snap.mh || HP)) * 100, false, teamColor(pl.id));
       }
       const mine = findPlayer(r, me.id);
       if (!p.dead && mine && p.mode !== 'ship') {
-        drawTank(ctx, p, mine.color, s.angle, { hurt: (p.hurtUntil || 0) > performance.now() / 1000, chute: p.mode === 'chute', shield: p.shieldUntil > now, now });
+        drawTank(ctx, p, mine.color, s.angle, { hurt: (p.hurtUntil || 0) > performance.now() / 1000, chute: p.mode === 'chute', shield: p.shieldUntil > now, now, team: teamColor(me.id) });
         if (p.chargeUntil) drawLaserAim(ctx, muzzle(p, s.angle), s.angle, 1 - (p.chargeUntil - now) / LASER_CHARGE);
-        drawLabel(ctx, p, mine.name, (p.hp / p.maxHp) * 100, true);
+        drawLabel(ctx, p, mine.name, (p.hp / p.maxHp) * 100, true, teamColor(me.id));
         s.badges = s.badges.filter((b) => performance.now() / 1000 - b.at < 0.6);
         drawBadges(ctx, p, s.badges, performance.now() / 1000);
         // Flecha roja hacia el enemigo más cercano.
         let near = null, nd = Infinity;
         for (const pl of alivePlayers(r)) {
-          const v = pl.id !== me.id && s.remotes.get(pl.id);
+          const v = pl.id !== me.id && !ally(pl.id) && s.remotes.get(pl.id);
           if (!v || v.snap.d || v.snap.m === 'ship') continue;
           const d = Math.hypot(v.x - p.x, v.y - p.y);
           if (d < nd) { nd = d; near = v; }
@@ -640,7 +644,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         const others = [];
         for (const pl of alivePlayers(r)) {
           const v = pl.id !== me.id && s.remotes.get(pl.id);
-          if (v && !v.snap.d && v.snap.m !== 'ship') others.push({ x: v.x, y: v.y, color: pl.color });
+          if (v && !v.snap.d && v.snap.m !== 'ship') others.push({ x: v.x, y: v.y, color: teamColor(pl.id) || pl.color });
         }
         drawMinimap(ctx, { ...cam, dpr }, s.view, s.t, { me: p.dead ? null : p, others, storm: hasStorm(s.mode) && elapsed > 0 ? s.storm : null, level: hasWater(s.mode) ? level : null, theme });
       }
@@ -719,6 +723,11 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         </p>
       )}
       {hud.inStorm && !hud.dead && <p className="ck-stormhit" data-in-storm>Estás en la tormenta: −10 por segundo. ¡Volvé al círculo!</p>}
+      {byTeams && (
+        <div className="ck-teamcount" data-teams>
+          {TEAMS.map((t, i) => <span key={t.name} style={{ background: t.color }} title={`Equipo ${t.name}`}>{alivePlayers(room).filter((pl) => pl.team === i).length}</span>)}
+        </div>
+      )}
       <div className="ck-remaining" data-left><small>Tanques<br />quedan</small><strong>{left}</strong></div>
       <ul className="ck-feed">
         {hits.map((h) => (

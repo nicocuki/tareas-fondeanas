@@ -1193,10 +1193,18 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.70.0 = Cohete Royale: ocho modos, tormenta, objetos nuevos y íconos propios
+1.70.0 = Cohete Royale: ocho modos, tormenta, objetos nuevos y íconos propios
 - Ocho modos de juego que elige el anfitrión en la sala: Marea alta (el clásico), Tormenta, Frenesí (cajas cada 3 s y recarga el doble de rápida), Arsenal (arrancás con tres objetos), Luna (poca gravedad), Titanes (200 de vida), Cristal (40 de vida y explosiones que mandan lejos) y Apocalipsis (tormenta y agua a la vez).
 - La tormenta: un círculo que cierra el mapa desde los bordes hacia el medio, por fases (se ve el próximo círculo marcado). No mata al toque: saca 10 de vida por segundo mientras estés afuera. Tiene nubes, rayos, lluvia y un cartel con cuánto falta para que se cierre.
 - Mapa chico abajo a la izquierda con la zona (agua o tormenta), tu tanque y los demás.
 - Ocho objetos nuevos: Teletransporte, Turbo, Onda de choque, Botiquín (+60), Trío, Rebotador, Cemento (rellena de tierra y sirve para taparte o hacer puentes) y Ataque aéreo (una bengala marca el lugar y caen seis bombas). Ahora son 22.
 - Los objetos tienen íconos dibujados con chapa de color y relieve, y las cajas muestran lo que traen flotando arriba. Se terminaron los emojis en la partida, el HUD y la sala.
 - Los modos cambian la vida, la gravedad, la recarga y cada cuánto caen cajas, y la barra de vida muestra el número.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.71.0 = Cohete Royale: modo por equipos
+- Nueva opción «Equipos» en la sala: todos contra todos o 2 equipos (rojo y azul). Cada uno elige el suyo (el anfitrión puede pasar a otros) y, si quedan dispares, al empezar pasan al otro los últimos que entraron.
+- Los compañeros no se hacen daño (los cohetes los atraviesan, aunque las explosiones los empujan igual) y las bajas a un compañero no suman. Gana el último equipo en pie.
+- En la partida: banderita y nombre del color del equipo, cuántos quedan de cada uno, el mapa chico con los colores del equipo y la flecha roja solo apunta a rivales.
+- Se combina con cualquiera de los ocho modos.

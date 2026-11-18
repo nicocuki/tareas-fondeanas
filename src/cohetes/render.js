@@ -469,7 +469,7 @@ const shadeRgb = (hex, f) => {
 
 // El tanquecito: orugas abajo, cúpula arriba y el caño hacia `angle`. Gira con la superficie
 // (`nx`, `ny` = hacia dónde es «arriba» para el tanque).
-export function drawTank(ctx, p, color, angle, { hurt = false, chute = false, shield = false, now = 0 } = {}) {
+export function drawTank(ctx, p, color, angle, { hurt = false, chute = false, shield = false, now = 0, team = null } = {}) {
   const up = Math.atan2(p.nx ?? 0, -(p.ny ?? -1));
   const c = turret(p);
   // Caño (atrás del cuerpo).
@@ -495,6 +495,12 @@ export function drawTank(ctx, p, color, angle, { hurt = false, chute = false, sh
   for (let i = 0; i < 4; i++) {
     const x = -TANK_R + 1.6 + (((i * 3.3 + (p.treads || 0) * 0.5) % 11) + 11) % 11;
     ctx.beginPath(); ctx.arc(x, 1.7, 1.1, 0, Math.PI * 2); ctx.fill();
+  }
+  // Equipo: una banderita del color del equipo arriba de la cúpula.
+  if (team) {
+    ctx.strokeStyle = '#1d2a33'; ctx.lineWidth = 0.7;
+    ctx.beginPath(); ctx.moveTo(-3, -5.6); ctx.lineTo(-3, -12); ctx.stroke();
+    ctx.fillStyle = team; ctx.beginPath(); ctx.moveTo(-3, -12); ctx.lineTo(3.4, -10.2 + Math.sin(now * 6) * 0.4); ctx.lineTo(-3, -8.2); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
   ctx.restore();
   if (chute) drawChute(ctx, p.x, p.y - 4);
@@ -589,7 +595,7 @@ export function drawShip(ctx, ship, now, past = null) {
   ctx.restore();
 }
 
-export function drawLabel(ctx, p, name, hp, mine) {
+export function drawLabel(ctx, p, name, hp, mine, team = null) {
   const y = p.y - 13;
   ctx.font = '800 5px Inter, sans-serif';
   ctx.textAlign = 'center';
@@ -597,7 +603,7 @@ export function drawLabel(ctx, p, name, hp, mine) {
   ctx.lineWidth = 1.4;
   ctx.strokeStyle = 'rgba(0,0,0,0.75)';
   ctx.strokeText(name, p.x, y);
-  ctx.fillStyle = mine ? '#ffffff' : '#e8e8ff';
+  ctx.fillStyle = team || (mine ? '#ffffff' : '#e8e8ff');
   ctx.fillText(name, p.x, y);
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.fillRect(p.x - 7, y + 1, 14, 1.8);
