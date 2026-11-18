@@ -1189,7 +1189,7 @@ pero el juego copia a Bomberman (de Konami/Hudson): entre amigos está bien; si 
 ## Royale 3D
 
 Pedido de Nico: «un Fortnite 3D en su máxima expresión» con todo lo de Pixel Royale y más armas y rarezas; primer juego de la vidriera **«Tareas 3D»** de la portada.
-De 2 a 10, solo compu (teclado y mouse). `id`: `royale3d` (`?juego=royale3d`, `gameType: 'royale3d'`, raíz `royale3d/` en `ROOTS`, efímera: fotos y señalización).
+De 2 a 100, solo compu (teclado y mouse). `id`: `royale3d` (`?juego=royale3d`, `gameType: 'royale3d'`, raíz `royale3d/` en `ROOTS`, efímera: fotos y señalización).
 
 - **La vidriera «Tareas 3D»**: un juego con `section: '3d'` en `games.js` sale en la vidriera de la portada (`GAMES_3D`, ver *Diseño*), hoy Juegos Wii (con Fondo Kart y Tenis Movido adentro), Pista Loca, Fuego Cruzado, Royale 3D y La Timba.
   El menú lateral lo sigue listando con los demás. **Un juego 3D nuevo** lleva `section: '3d'` (y `badge: 'Beta'` mientras lo sea).

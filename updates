@@ -1182,7 +1182,7 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.69.0 = Fondo Kart: dos pistas más, atajos que sirven y mirar para atrás
+1.69.0 = Fondo Kart: dos pistas más, atajos que sirven y mirar para atrás
 - Pistas nuevas: Playa Coral (dunas, faro, muelle, planeo sobre la bahía, cangrejos, pelotas y olas) y Pico Nevado (subida entre pinos con bolas de nieve que ruedan, cueva de hielo, planeo desde la cumbre y un lago congelado con pingüinos). Ahora son cinco.
 - Ruta Neón rehecha de cero: avenida con arcos de neón, paso elevado, salto recto entre azoteas, la ruta del cielo y un barrio con atajo. Ya no hay partes donde te caés sin querer.
 - Los atajos ahora son de asfalto (se va a la velocidad de siempre), cortan una vuelta larga de verdad y tienen un acelerador.
@@ -1190,3 +1190,8 @@ LATEST 1.69.0 = Fondo Kart: dos pistas más, atajos que sirven y mirar para atr�
 - Volcán Vértigo mucho más lleno: antorchas, columnas de roca, cascadas de lava, burbujas, chispas, murciélagos, la puerta del castillo y un dragón que escupe fuego.
 - Después de girar por un golpe, el kart queda mirando para donde iba.
 - Mirar para atrás: tecla Q (o el botón 👀 ATRÁS en el celular). Mientras mirás para atrás, el ítem sale para atrás (y la cáscara se tira para adelante).
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.70.0 = Royale 3D: hasta 100 jugadores
+- Ahora podés jugar Royale 3D con hasta 100 jugadores en la misma partida (antes eran 10).

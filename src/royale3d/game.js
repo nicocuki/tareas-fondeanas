@@ -9,7 +9,7 @@ import { LOOT_LIMIT, STORM_SPEEDS } from './map.js';
 import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
 export const GAME_TYPE = 'royale3d';
-export const MAX_PLAYERS = 10;
+export const MAX_PLAYERS = 100;
 export const MIN_PLAYERS = 2;
 
 export const COLORS = ['#ff5a5f', '#4aa0ff', '#5ed36b', '#ffd23f', '#c46bff', '#ff9a3c', '#3fe0d0', '#ff7ac8', '#a5e04a', '#e9edf2'];
