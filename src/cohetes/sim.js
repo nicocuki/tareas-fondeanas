@@ -19,7 +19,10 @@ export const DRIVE = 52;         // velocidad manejando
 export const MAX_FALL = 270;
 export const CHUTE_FALL = 17;    // caída con paracaídas (lenta, para disfrutar el viaje)
 export const CHUTE_SIDE = 46;
-export const CHUTE_BOOST = 100; // el «disparo» en paracaídas: un impulso sin daño que saca humo
+export const CHUTE_BOOST = 55;  // el «disparo» en paracaídas: un impulso sin daño que saca humo
+export const CHUTE_SHOTS = 3;   // impulsos que tenés desde que salís del helicóptero (después solo caés)
+export const CHUTE_MAX = 40;    // velocidad máxima que se puede alcanzar con los impulsos (no se acumulan sin tope)
+export const CHUTE_MAX_UP = 28; // y para arriba, menos todavía: no te quedás volando fuera del juego
 export const CHUTE_GAP = 0.3;   // entre un impulso y el siguiente
 export const RECOIL = 115;       // empujón para atrás al disparar: así se mueve por el aire
 export const KNOCK = 0.75;       // cuánto empujan las explosiones (sobre lo de cada arma)
@@ -209,9 +212,15 @@ export function thrust(p, ax, ay, dt, max = Infinity) {
 
 // El «disparo» en paracaídas: un impulso para el lado contrario al que apunta, sin proyectil ni daño.
 export function chuteBoost(p, angle) {
-  if (p.mode !== 'chute') return;
+  if (p.mode !== 'chute' || !(p.chuteShots > 0)) return false;
+  p.chuteShots -= 1;
   p.vx += -Math.cos(angle) * CHUTE_BOOST;
   p.vy += -Math.sin(angle) * CHUTE_BOOST;
+  // Tope: el impulso no se suma sin límite, ni en total ni hacia arriba.
+  const sp = Math.hypot(p.vx, p.vy);
+  if (sp > CHUTE_MAX) { p.vx *= CHUTE_MAX / sp; p.vy *= CHUTE_MAX / sp; }
+  if (p.vy < -CHUTE_MAX_UP) p.vy = -CHUTE_MAX_UP;
+  return true;
 }
 
 // Un paso del tanque propio. `dir`: −1, 0 o 1 (A/D). `mods`: { g: gravedad, drive: velocidad } según el modo y el turbo.

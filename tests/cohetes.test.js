@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { COUNTDOWN_MS, MAX_PLAYERS, applyAction, findPlayer, newRoom, ranking } from '../src/cohetes/game.js';
 import { THEMES, themeFor, carve, decorations, makeTerrain, solid, surfaceY, waterY } from '../src/cohetes/terrain.js';
 import {
-  CHUTE_FALL, DRILL_R, ITEMS, JET_MAX, JET_TIME, MAX_COINS, MAX_CRATES, MAX_DROPS, SHIP_TIME, STEP, addItem, blastOn, chuteBoost, coinSpots, crateInfo, enclosedPockets, jetForce,
+  CHUTE_FALL, CHUTE_MAX, CHUTE_MAX_UP, CHUTE_SHOTS, DRILL_R, ITEMS, JET_MAX, JET_TIME, MAX_COINS, MAX_CRATES, MAX_DROPS, SHIP_TIME, STEP, addItem, blastOn, chuteBoost, coinSpots, crateInfo, enclosedPockets, jetForce,
   mapItems, newTank, overlaps, projectilesFor, push, shipAt, shipFor, stepProjectile, stepTank, thrust, useItem,
 } from '../src/cohetes/sim.js';
 
@@ -295,6 +295,7 @@ test('cohetes: el jetpack dura más, empuja fuerte hasta un tope de velocidad y 
 test('cohetes: en paracaídas, el «disparo» es un impulso suave que se apaga solo y sin daño', () => {
   const t = emptyWorld(400, 3000);
   const p = newTank(200, 200, 'chute');
+  p.chuteShots = CHUTE_SHOTS;
   run(t, p, 1);
   assert.ok(Math.abs(p.vy - CHUTE_FALL) < 4, 'cae despacio');
   const y0 = p.y;
@@ -308,6 +309,17 @@ test('cohetes: en paracaídas, el «disparo» es un impulso suave que se apaga s
   chuteBoost(tank, 0);
   assert.equal(tank.vx, 0, 'solo vale en paracaídas');
   assert.equal(p.hp, 100, 'no lastima');
+});
+
+test('cohetes: en paracaídas hay 3 impulsos como máximo y no se acumulan sin tope', () => {
+  const p = newTank(200, 200, 'chute');
+  p.chuteShots = CHUTE_SHOTS;
+  let used = 0;
+  for (let i = 0; i < 10; i++) if (chuteBoost(p, Math.PI / 2)) used++; // todos seguidos, apuntando para abajo
+  assert.equal(used, 3, 'solo 3 impulsos');
+  assert.ok(Math.hypot(p.vx, p.vy) <= CHUTE_MAX + 1e-9, 'tope de velocidad');
+  assert.ok(p.vy >= -CHUTE_MAX_UP - 1e-9, 'tope hacia arriba');
+  assert.equal(chuteBoost(newTank(0, 0, 'chute'), 0), false, 'sin impulsos cargados no hace nada');
 });
 
 test('cohetes: el helicóptero se mueve sin quiebres (altura e inclinación suaves)', () => {

@@ -15,7 +15,7 @@ import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { carve, decorations, fillCircle, makeTerrain, solid, waterY } from './terrain.js';
 import {
-  CHUTE_GAP, DEPLOY_AFTER, DRILL_R, HEAL, HP, ITEMS, JET_MAX, JET_TIME, KILL_CREDIT, LASER_CHARGE, MAX_AMMO, MAX_DROPS, RECOIL, RELOAD, SHIELD_TIME,
+  CHUTE_GAP, CHUTE_SHOTS, DEPLOY_AFTER, DRILL_R, HEAL, HP, ITEMS, JET_MAX, JET_TIME, KILL_CREDIT, LASER_CHARGE, MAX_AMMO, MAX_DROPS, RECOIL, RELOAD, SHIELD_TIME,
   SHOT_GAP, SLOTS, STEP, STRIKE_BOMBS, STRIKE_DELAY, STRIKE_GAP, STRIKE_HEIGHT, STRIKE_SPREAD, ZONES, addItem, blastOn, chuteBoost, coinSpots, crateInfo,
   inWhirl, jetForce, mapItems, muzzle, newTank, overlaps, projectilesFor, push, reload, shipAt, shipFor, stepProjectile, stepTank, teleportTarget, thrust,
   turret, unstick, useItem, zoneFromShot,
@@ -337,7 +337,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
           const wantOut = shoot && elapsed >= DEPLOY_AFTER && !s.shootHeld;
           // Si no saltaste, te tira solo antes de que baje hasta el agua.
           if (wantOut || ship.f > 0.75) {
-            p.mode = 'chute'; p.vx = 0; p.vy = 0;
+            p.mode = 'chute'; p.vx = 0; p.vy = 0; p.chuteShots = CHUTE_SHOTS;
             // El que entra (o recarga la página) con los helicópteros ya idos cae adentro del mapa.
             p.x = Math.max(80, Math.min(s.t.W - 80, p.x));
             s.shootHeld = true;
@@ -366,11 +366,12 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
           if (p.mode === 'tank' && shoot && !s.shootHeld && now >= p.readyAt && !p.chargeUntil && !p.burst) use(p, m, now);
           // En paracaídas, el «disparo» es un impulso sin daño que saca humo (se puede mantener apretado).
           if (p.mode === 'chute' && shoot && !s.shootHeld && now >= p.readyAt) {
-            chuteBoost(p, s.angle);
-            p.readyAt = now + CHUTE_GAP;
-            p.boostAt = round1(now);
-            const mz = muzzle(p, s.angle);
-            puff(s.particles, mz.x, mz.y, s.angle);
+            if (chuteBoost(p, s.angle)) {
+              p.readyAt = now + CHUTE_GAP;
+              p.boostAt = round1(now);
+              const mz = muzzle(p, s.angle);
+              puff(s.particles, mz.x, mz.y, s.angle);
+            }
           }
           // Ráfaga: cinco cohetitos seguidos, apenas abiertos.
           if (p.burst > 0 && now >= p.burstAt) {
@@ -550,7 +551,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       const key = [Math.round(p.hp), p.maxHp, JSON.stringify(p.inv), p.sel, p.shots, reloadF, charge, jet, turbo, p.dead, p.mode, Math.ceil(-elapsed), elapsed > 25 && elapsed < 32, !!s.inStorm, zone && `${zone.shrinking}${zone.left}${zone.final}`].join('|');
       if (key !== s.hudKey) {
         s.hudKey = key;
-        setHud({ hp: Math.max(0, Math.round(p.hp)), maxHp: p.maxHp, zone, inStorm: !!s.inStorm, turbo, inv: p.inv, sel: p.sel, shots: p.shots, reloadF, charge, jet, dead: p.dead, mode: p.mode, elapsed });
+        setHud({ hp: Math.max(0, Math.round(p.hp)), maxHp: p.maxHp, zone, inStorm: !!s.inStorm, turbo, inv: p.inv, sel: p.sel, shots: p.shots, reloadF, charge, jet, dead: p.dead, mode: p.mode, elapsed, chuteShots: p.chuteShots || 0 });
       }
       // Eventos de golpe (arriba a la derecha): duran unos segundos.
       const nowS = performance.now() / 1000;
@@ -765,6 +766,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       )}
       {notice && <p className="ck-notice">{notice}</p>}
       {hud.elapsed < 0 && <div className="ck-countdown"><small>¡PREPARATE!</small>{Math.ceil(-hud.elapsed)}</div>}
+      {hud.mode === 'chute' && !hud.dead && <div className="ck-deploy">Impulsos de paracaídas: {hud.chuteShots} / {CHUTE_SHOTS}</div>}
       {hud.mode === 'ship' && hud.elapsed >= 0 && !hud.dead && <div className="ck-deploy">⌃<br />Disparo para saltar</div>}
       {hud.elapsed > 25 && hud.elapsed < 32 && !hud.dead && <p className="ck-warning"><Icon name={mode.zone === 'water' ? 'wave' : 'storm'} size={20} /> {mode.zone === 'water' ? '¡El agua empieza a subir!' : mode.zone === 'storm' ? '¡La tormenta empieza a cerrarse!' : '¡La tormenta y el agua empiezan a avanzar!'}</p>}
       {hud.dead && mine && (
