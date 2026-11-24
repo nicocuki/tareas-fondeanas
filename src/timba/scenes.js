@@ -180,9 +180,34 @@ OUTSIDE.blocks = [OUTSIDE.limo, OUTSIDE.fountain, rect(560, -905, 440, 10), rect
   ...[300, 700, 1900, 2300].map((x) => rect(x, -40, 24, 24))];
 OUTSIDE.limoDoor = { x: OUTSIDE.limo.x + 90, y: OUTSIDE.limo.y - 20 };
 
+// ─── El desierto ─────────────────────────────────────────────────────────────
+// Adonde los lleva la limusina si vuelven sin la cuota: arena hasta el horizonte, un pozo enorme en el medio y tipos armados
+// alrededor, apuntando al pozo. Queda un pasillo del lado de la limusina. Al pisar el pozo, se cae (`pit`) y se termina.
+const DESERT_PIT = rect(800, -800, 800, 800);
+const DESERT_C = { x: DESERT_PIT.x + DESERT_PIT.w / 2, y: DESERT_PIT.y + DESERT_PIT.h / 2 };
+// Los tipos con armas, en un arco de 290° alrededor del pozo (el sur, `+y`, queda libre: por ahí se llega) y dos más a los lados del pasillo.
+const DESERT_GUNMEN = [
+  ...Array.from({ length: 11 }, (_, i) => {
+    const a = ((125 + i * 29) * Math.PI) / 180;
+    return { x: Math.round(DESERT_C.x + Math.cos(a) * 640), y: Math.round(DESERT_C.y + Math.sin(a) * 640) };
+  }),
+  { x: DESERT_C.x - 230, y: 330 }, { x: DESERT_C.x + 230, y: 330 },
+];
+const DESERT = {
+  kind: 'street', w: 2400,
+  pit: DESERT_PIT,
+  gunmen: DESERT_GUNMEN,
+  areas: [rect(40, -1300, 2320, 2100)],
+  spawn: { x: DESERT_C.x, y: 700 },
+};
+DESERT.levels = [];
+DESERT.stairs = [];
+DESERT.blocks = DESERT_GUNMEN.map(({ x, y }) => rect(x - 18, y - 18, 36, 36));
+
 export const SCENES = {
   wait: WAIT,
   outside: OUTSIDE,
+  desert: DESERT,
   elevator: {
     kind: 'room', w: 420, h: 360,
     areas: [rect(40, 40, 340, 260), rect(150, 296, 120, 40)],
@@ -211,7 +236,7 @@ function floorScene(n) {
 for (let n = 1; n <= FLOOR_COUNT; n++) SCENES[`f${n}`] = floorScene(n);
 
 // Dentro de la limusina (`limo` en la sala de espera, `back` en la puerta del casino) se está en la escena de afuera.
-export const sceneKey = (loc) => (loc === 'limo' ? 'wait' : loc === 'back' ? 'outside' : loc);
+export const sceneKey = (loc) => (loc === 'limo' ? 'wait' : loc === 'back' ? 'outside' : loc === 'pit' ? 'desert' : loc);
 
 // Dónde aparece un jugador al entrar a una escena (`i` = su número, para que no se amontonen).
 export function spawnPoint(loc, i = 0) {
@@ -304,6 +329,7 @@ export function doorFor(loc, p, floor) {
   const sc = SCENES[loc];
   if (loc === 'outside' && p.y < -1220 && Math.abs(p.x - sc.doorX) < 90) return 'elevator';
   if (loc === 'elevator' && p.y > sc.door.y && p.x > sc.door.x && p.x < sc.door.x + sc.door.w) return locOfFloor(floor);
+  if (loc === 'desert' && p.x > sc.pit.x + 60 && p.x < sc.pit.x + sc.pit.w - 60 && p.y > sc.pit.y + 60 && p.y < sc.pit.y + sc.pit.h - 60) return 'pit';
   if (floorOfLoc(loc) !== null && p.x < 52 && p.y > sc.door.y && p.y < sc.door.y + sc.door.w) return 'elevator';
   return null;
 }

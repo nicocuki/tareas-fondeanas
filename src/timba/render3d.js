@@ -115,6 +115,7 @@ export function createTimba3D(canvas, { color }) {
       eyeH = eyeH === null || Math.abs(eyeH - floorH) > 1.5 ? floorH : eyeH + (floorH - eyeH) * Math.min(1, f.dt * 12);
       camera.position.copy(world(f.me.x, f.me.y, eyeH + EYE + (f.me.moving ? Math.abs(Math.sin(f.time * 9)) * 0.035 : 0)));
     }
+    if (f.drop) camera.position.y -= f.drop; // cayéndose por el pozo
     shake = f.env.moving ? 0.012 : shake * 0.9;
     if (shake > 0.001) { camera.position.x += (Math.random() - 0.5) * shake; camera.position.y += (Math.random() - 0.5) * shake; }
     camera.rotation.set(f.me.pitch, f.me.yaw, 0, 'YXZ');

@@ -217,7 +217,7 @@ function Final({ room, me, onDispatch, onLeave }) {
   return (
     <div className="tb-final">
       <div className={`tb-wins${last.won ? '' : ' is-lost'}`}>{last.won ? '¡LO LOGRARON!' : 'GAME OVER'}</div>
-      <p className="tb-eyebrow">{last.won ? `¡Superaron los ${TOTAL_DAYS} días y pagaron todas las cuotas!` :`Llegaron hasta el día ${last.n}, pero juntaron ${fmtMoney(last.money)} y la cuota era ${fmtMoney(last.quota)}.`}</p>
+      <p className="tb-eyebrow">{last.won ? `¡Superaron los ${TOTAL_DAYS} días y pagaron todas las cuotas!` :`Llegaron hasta el día ${last.n}, pero juntaron ${fmtMoney(last.money)} y la cuota era ${fmtMoney(last.quota)}. La limusina los dejó en el desierto y no les quedó otra que tirarse al pozo.`}</p>
       <table className="tb-table">
         <thead><tr><th>#</th><th>Jugador</th><th>Ganó / perdió</th></tr></thead>
         <tbody>

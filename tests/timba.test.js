@@ -5,7 +5,7 @@ import {
   DUCKS, LIMITS, NAMES, ROULETTE_WHEEL, WHEEL, betLimits, crapsStep, isSpot, quickBet, raceDucks, roulettePays, slotsEval, spinWheel, validDice,
 } from '../src/timba/games.js';
 import {
-  DAY_MS, ELEV_MS, HOME_MS, LIMO_MS, RESULT_MS, ROULETTE_MS, START_MONEY, WHEEL_SPIN_MS, applyAction, findPlayer, fmtMoney, newRoom,
+  DAY_MS, ELEV_MS, DESERT_MS, FALL_MS, HOME_MS, LIMO_MS, RESULT_MS, ROULETTE_MS, START_MONEY, WHEEL_SPIN_MS, applyAction, findPlayer, fmtMoney, newRoom,
 } from '../src/timba/game.js';
 import { QUOTA_MULTIPLIERS, TOTAL_DAYS, quotaFor } from '../src/timba/quota.js';
 import { FLOOR_COUNT, FLOOR_LOOKS, floorOfLoc, floorsOfDay, locOfFloor, lookOfFloor, topFloor } from '../src/timba/casinos.js';
@@ -549,7 +549,7 @@ test('timba: la cuota es la caja al empezar el día por el multiplicador, redond
   for (let d = 1; d <= TOTAL_DAYS; d++) assert.equal(quotaFor(d, 2000), Math.round(2000 * QUOTA_MULTIPLIERS[d - 1]));
 });
 
-test('timba: si vuelven con menos de la cuota es game over y el anfitrión puede empezar otra', () => {
+test('timba: si vuelven con menos de la cuota los llevan a un desierto y es game over al tirarse todos al pozo', () => {
   let room = atFloor1(2);
   room.money = 900;
   room = act(room, 'a', { type: 'tick' }, room.day.endsAt);
@@ -557,8 +557,18 @@ test('timba: si vuelven con menos de la cuota es game over y el anfitrión puede
   room = backOutside(room);
   for (const id of ids(room)) room = act(room, id, { type: 'loc', to: 'back' });
   room = act(room, 'b', { type: 'tick' }, room.trip.at + HOME_MS);
-  assert.equal(room.phase, 'ended');
+  assert.equal(room.phase, 'playing', 'todavía no terminó: están en el desierto');
   assert.equal(room.day.last.lost, true);
+  assert.ok(room.players.every((p) => p.loc === 'desert'));
+  assert.equal(act(room, 'a', { type: 'loc', to: 'wait' }), null, 'del desierto no se vuelve');
+  assert.equal(act(room, 'a', { type: 'tick' }, room.desert.at + 1000), null, 'el reloj todavía no los empuja');
+  room = act(room, 'a', { type: 'loc', to: 'pit' });
+  assert.equal(room.phase, 'playing', 'falta que se tire el otro');
+  room = act(room, 'b', { type: 'loc', to: 'pit' });
+  assert.equal(room.phase, 'playing', 'se ve la caída antes del cartel');
+  assert.equal(act(room, 'a', { type: 'tick' }, room.desert.fellAt + 1000), null);
+  room = act(room, 'a', { type: 'tick' }, room.desert.fellAt + FALL_MS);
+  assert.equal(room.phase, 'ended');
   assert.equal(act(room, 'b', { type: 'start' }), null, 'solo el anfitrión');
   const again = act(room, 'a', { type: 'start' });
   assert.equal(again.phase, 'playing');
@@ -908,4 +918,19 @@ test('archivo: una partida que no estaba en juego no sirve', () => {
   const room = atFloor1(2);
   assert.match(roomProblem({ ...room, phase: 'ended' }), /no estaba en juego/);
   assert.equal(roomProblem(room), null);
+});
+
+test('timba: en el desierto, si nadie se tira, el reloj los empuja al pozo', () => {
+  let room = atFloor1(2);
+  room.money = 900;
+  room = act(room, 'a', { type: 'tick' }, room.day.endsAt);
+  clock = room.day.endsAt + 1;
+  room = backOutside(room);
+  for (const id of ids(room)) room = act(room, id, { type: 'loc', to: 'back' });
+  room = act(room, 'b', { type: 'tick' }, room.trip.at + HOME_MS);
+  room = act(room, 'a', { type: 'tick' }, room.desert.at + DESERT_MS);
+  assert.ok(room.players.every((p) => p.loc === 'pit'));
+  room = act(room, 'a', { type: 'tick' }, room.desert.fellAt + FALL_MS);
+  assert.equal(room.phase, 'ended');
+  assert.equal(room.day.last.lost, true);
 });

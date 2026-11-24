@@ -12,7 +12,7 @@ export const FILE_KIND = 'tareas-fondeanas/timba';
 export const FILE_VERSION = 1;
 const MAX_FILE_CHARS = 200_000;
 const SALT = 'tf-timba-guardado-1';
-const LOCS = new Set(['wait', 'limo', 'outside', 'back', 'elevator', ...Array.from({ length: FLOOR_COUNT }, (_, i) => `f${i + 1}`)]);
+const LOCS = new Set(['wait', 'limo', 'outside', 'back', 'desert', 'pit', 'elevator', ...Array.from({ length: FLOOR_COUNT }, (_, i) => `f${i + 1}`)]);
 
 export const signature = (text) => hash53(SALT, text);
 

@@ -498,6 +498,97 @@ function buildOutside() {
   };
 }
 
+// ─── El desierto ─────────────────────────────────────────────────────────────
+// Arena hasta el horizonte con un sol rojo bajo, cactus y rocas, un pozo enorme en el medio (hueco de verdad, con paredes
+// que bajan y fondo negro) y tipos de traje y sombrero apuntándole con pistolas a quien se acerque. Solo dibujo.
+function cactus(h = 2.4) {
+  const g = new THREE.Group();
+  const green = toon(0x3f8f4a);
+  g.add(cyl(0.22, 0.26, h, green, 0, h / 2, 0, 10), ball(0.22, green, 0, h, 0, 10));
+  for (const side of [-1, 1]) {
+    const y = h * (0.45 + (side > 0 ? 0.15 : 0));
+    g.add(cyl(0.12, 0.12, 0.5, green, side * 0.4, y, 0, 8).rotateZ(R90), cyl(0.12, 0.12, 0.7, green, side * 0.62, y + 0.35, 0, 8), ball(0.12, green, side * 0.62, y + 0.7, 0, 8));
+  }
+  return g;
+}
+
+function buildDesert() {
+  const sc = SCENES.desert;
+  const g = new THREE.Group();
+  const sand = toon(0xe0b070);
+  const pit = sc.pit;
+  g.add(sky('#8a2a2a', '#e8803a', '#ffd28a'));
+  // el sol, grande y bajo
+  const sun = ball(7, new THREE.MeshBasicMaterial({ color: 0xffe0a0, fog: false }), -60, 22, -105, 20);
+  g.add(sun);
+  // la arena, en cuatro pedazos alrededor del hueco
+  const far = 4000;
+  g.add(floorRect({ x: -far, y: -far, w: sc.w + 2 * far, h: far + pit.y }, sand, 0));
+  g.add(floorRect({ x: -far, y: pit.y + pit.h, w: sc.w + 2 * far, h: far + 1500 }, sand, 0));
+  g.add(floorRect({ x: -far, y: pit.y, w: far + pit.x, h: pit.h }, sand, 0));
+  g.add(floorRect({ x: pit.x + pit.w, y: pit.y, w: far + sc.w - pit.x - pit.w, h: pit.h }, sand, 0));
+  // dunas lejanas
+  for (const [x, z, r, sx] of [[-30, -60, 18, 2.4], [40, -70, 22, 2.8], [-70, 20, 20, 2.2], [80, 30, 16, 2.6], [10, -95, 26, 3], [-60, -90, 20, 2.5]]) {
+    const d = ball(r, sand, x, -r * 0.55, z, 14);
+    d.scale.set(sx, 1, 1.4);
+    g.add(d);
+  }
+  // el pozo: paredes que bajan y un fondo negro (la niebla lo traga)
+  const wall = toon(0x4a2e18);
+  const px = (pit.x + pit.w / 2) * U; const pz = (pit.y + pit.h / 2) * U;
+  const pw = pit.w * U; const ph = pit.h * U; const depth = 60;
+  g.add(box(pw, depth, 0.3, wall, px, -depth / 2, pz - ph / 2 - 0.15), box(pw, depth, 0.3, wall, px, -depth / 2, pz + ph / 2 + 0.15));
+  g.add(box(0.3, depth, ph, wall, px - pw / 2 - 0.15, -depth / 2, pz), box(0.3, depth, ph, wall, px + pw / 2 + 0.15, -depth / 2, pz));
+  const bottom = plane(pw + 4, ph + 4, new THREE.MeshBasicMaterial({ color: 0x000000 }), px, -depth, pz);
+  bottom.rotation.x = -R90;
+  g.add(bottom);
+  // un borde de piedras alrededor del hueco
+  for (let i = 0; i < 36; i++) {
+    const a = (i / 36) * Math.PI * 2;
+    const rx = Math.cos(a); const rz = Math.sin(a);
+    const k = 1 / Math.max(Math.abs(rx), Math.abs(rz));
+    const rock = ball(0.3 + ((i * 7) % 5) * 0.06, toon(0x8a6a4a), px + rx * k * (pw / 2 + 0.45), 0.1, pz + rz * k * (ph / 2 + 0.45), 7);
+    rock.scale.set(1.3, 0.6, 1);
+    g.add(rock);
+  }
+  // cactus y rocas desparramados (lejos del camino)
+  const cacti = [];
+  for (const [x, y, h] of [[200, 300, 2.6], [420, -300, 3], [2000, 400, 2.4], [2200, -200, 3.2], [300, -1100, 2.8], [2100, -1150, 2.6], [650, 650, 2.2], [1750, 640, 2.5], [150, -700, 3.4], [2250, -600, 2.9]]) {
+    const c = cactus(h);
+    c.position.set(x * U, 0, y * U);
+    c.rotation.y = x;
+    g.add(c);
+    cacti.push(c);
+  }
+  for (const [x, y, r] of [[500, 100, 0.7], [1900, 100, 0.9], [350, -500, 0.8], [2050, -900, 1], [900, 720, 0.5], [1500, 740, 0.6]]) {
+    const rock = ball(r, toon(0x9a7a56), x * U, r * 0.3, y * U, 8);
+    rock.scale.set(1.4, 0.7, 1.1);
+    g.add(rock);
+  }
+  // los tipos armados
+  const crowd = [];
+  sc.gunmen.forEach((m, i) => {
+    const hat = ['top', 'fez', 'cap'][i % 3];
+    const man = blob([0x2c2c38, 0x3a2a2a, 0x24303a][i % 3], { hat, bow: i % 2 === 0, scale: 1.05 });
+    const wx = m.x * U; const wz = m.y * U;
+    man.position.set(wx, 0, wz);
+    man.rotation.y = Math.atan2(px - wx, pz - wz);
+    // las gafas y la pistola, apuntando al pozo
+    man.add(box(0.36, 0.07, 0.04, toon(0x0a0a10), 0, 0.99, 0.3));
+    man.add(box(0.07, 0.1, 0.07, toon(0x2a2a30), 0.2, 0.7, 0.35), box(0.06, 0.07, 0.4, toon(0x1a1a22), 0.2, 0.75, 0.55));
+    g.add(man);
+    crowd.push({ man, phase: i * 0.7 });
+  });
+  const lights = [new THREE.HemisphereLight(0xffd0a0, 0x8a5a3a, 2.2), new THREE.DirectionalLight(0xffa860, 1.6)];
+  lights[1].position.set(-30, 18, -35);
+  return {
+    group: g, lights, fog: [0xe8a060, 40, 170], buttons: [],
+    update(t) {
+      for (const c of crowd) animateBlob(c.man, t, false, c.phase);
+    },
+  };
+}
+
 // ─── El ascensor ─────────────────────────────────────────────────────────────
 // Bronce y madera, alfombra roja, el botones en la esquina y la botonera con los pisos en la pared de la derecha.
 function buildElevator(st0) {
@@ -847,6 +938,7 @@ function buildFloor(n) {
 export function buildPlace(key, st) {
   if (key === 'wait') return buildWait();
   if (key === 'outside') return buildOutside();
+  if (key === 'desert') return buildDesert();
   if (key === 'elevator') return buildElevator(st);
   return buildFloor(Number(key.slice(1)));
 }

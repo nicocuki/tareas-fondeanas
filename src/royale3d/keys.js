@@ -7,6 +7,7 @@ export const ACTIONS = [
   { id: 'ramp', label: 'Construir rampa', def: 'KeyC' },
   { id: 'level', label: 'Subir de altura al construir', def: 'KeyV' },
   { id: 'reload', label: 'Recargar', def: 'KeyR' },
+  { id: 'drop', label: 'Tirar lo que tenés en la mano', def: 'KeyQ' },
   { id: 'map', label: 'Mapa grande', def: 'KeyM' },
   { id: 'inventory', label: 'Inventario', def: 'Tab' },
 ];

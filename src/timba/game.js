@@ -36,6 +36,8 @@ export const DAY_MS = 5 * 60 * 1000; // lo que dura cada día en el casino
 export const LIMO_MS = 5200;         // la limusina cierra la puerta y se va
 export const ELEV_MS = 2600;         // el ascensor sube o baja
 export const HOME_MS = 4500;         // la vuelta a casa al terminar el día
+export const FALL_MS = 3000;         // lo que se ve la caída por el pozo antes del cartel de GAME OVER
+export const DESERT_MS = 120000;     // en el desierto, si nadie se tira solo, los empujan al pozo pasado este tiempo
 export const RESULT_MS = 2200;       // cuánto se ven los resultados de una mano antes de poder apostar de nuevo
 export const SLOTS_MS = 2800;        // lo que tarda en girar la tragamonedas
 export const WHEEL_SPIN_MS = 4200;   // cada giro de la rueda de la fortuna
@@ -65,6 +67,7 @@ export function newRoom(hostId, hostName, avatar, now = Date.now()) {
     day: { n: 1, quota: START_QUOTA, endsAt: 0, over: false, last: null },
     elev: { floor: 0 },
     trip: null,
+    desert: null,
     tb: {},
     net: {},
     createdAt: now,
@@ -83,9 +86,11 @@ export function roomFromSave(saved, seatId, dayLeft = 0, now = Date.now(), rand 
   room.hostId = seat.id;
   closeTables(room, now, rand);
   room.trip = null;
+  room.desert = null;
   for (const p of room.players) {
     if (p.loc === 'limo') p.loc = 'wait'; // la limusina que no llegó a salir
     else if (p.loc === 'back') p.loc = 'outside';
+    else if (p.loc === 'desert' || p.loc === 'pit') p.loc = 'outside'; // el desierto no se retoma: se vuelve a la puerta del casino
     p.by = p.id === seat.id ? p.id : null;
   }
   room.resumeLeft = Math.max(0, Math.floor(dayLeft));
@@ -99,13 +104,19 @@ const freeColor = (room) => COLORS.find((c) => !room.players.some((p) => p.color
 
 function resetRun(next) {
   Object.assign(next, {
-    run: (next.run || 0) + 1, money: START_MONEY, tickets: START_TICKETS, trip: null,
+    run: (next.run || 0) + 1, money: START_MONEY, tickets: START_TICKETS, trip: null, desert: null,
     day: { n: 1, quota: START_QUOTA, endsAt: 0, over: false, last: null }, elev: { floor: 0 }, tb: {}, net: {},
   });
   for (const p of next.players) p.loc = 'wait';
 }
 
 export const allAt = (room, loc) => room.players.length > 0 && room.players.every((p) => p.loc === loc);
+
+// Cuando todos se tiraron al pozo, empieza la caída y, pasado `FALL_MS`, termina la partida (el cartel de GAME OVER).
+function endInPit(next, now) {
+  if (!next.desert || next.desert.fellAt || !allAt(next, 'pit')) return;
+  next.desert.fellAt = now;
+}
 
 function startTrip(next, kind, to, now) {
   next.trip = { kind, to, at: now, ms: kind === 'limo' ? LIMO_MS : kind === 'home' ? HOME_MS : ELEV_MS };
@@ -195,6 +206,8 @@ function removePlayer(next, id, now, rand) {
   next.players = next.players.filter((p) => p.id !== id);
   if (!next.players.length) return;
   if (next.hostId === id) next.hostId = next.players[0].id;
+  // Si ya estaban todos en el pozo menos el que se fue, se termina.
+  if (next.phase === 'playing' && next.desert) { endInPit(next, now); return; }
   // Si ya estaban todos arriba de la limusina menos el que se fue, se van.
   if (next.phase !== 'playing' || next.trip) return;
   if (!next.day.over && allAt(next, 'limo')) startTrip(next, 'limo', 'outside', now);
@@ -295,6 +308,7 @@ export function applyAction(room, action, ctx = {}) {
         || (from === 'limo' && to === 'wait')
         || (from === 'outside' && to === 'back' && next.day.endsAt > 0)
         || (from === 'back' && to === 'outside')
+        || (from === 'desert' && to === 'pit')                                           // tirarse al pozo
         || (from === here && to === 'elevator')                                          // entrar al ascensor, desde la puerta del casino o desde un piso
         || (from === 'elevator' && to === here && (!next.day.over || here === 'outside')); // salir; con el día terminado solo se abre en el lobby
       if (!ok) return null;
@@ -302,6 +316,7 @@ export function applyAction(room, action, ctx = {}) {
       me.loc = to;
       if (to === 'limo' && allAt(next, 'limo')) startTrip(next, 'limo', 'outside', now);
       if (to === 'back' && allAt(next, 'back')) startTrip(next, 'home', 'wait', now);
+      if (to === 'pit') endInPit(next, now);
       break;
     }
 
@@ -341,9 +356,25 @@ export function applyAction(room, action, ctx = {}) {
             next.elev.floor = 0;
             for (const p of next.players) p.loc = 'wait';
           } else {
+            // No juntaron la cuota: la limusina no los lleva a casa sino a un desierto, con un pozo enorme y tipos armados.
+            // La partida termina cuando todos se tiran al pozo.
             next.day.last = { n: day.n, money, quota: day.quota, lost: true };
-            next.phase = 'ended';
+            next.desert = { at: now };
+            next.elev.floor = 0;
+            for (const p of next.players) p.loc = 'desert';
           }
+        }
+      } else if (next.desert) {
+        const { at, fellAt } = next.desert;
+        if (fellAt) {
+          if (now < fellAt + FALL_MS) return null;
+          next.desert = null;
+          next.phase = 'ended';
+        } else {
+          // Si nadie se decide a tirarse, pasado un rato los empujan.
+          if (now < at + DESERT_MS) return null;
+          for (const p of next.players) p.loc = 'pit';
+          endInPit(next, now);
         }
       } else if (next.day.endsAt && !next.day.over && now >= next.day.endsAt) {
         closeTables(next, now, rand);

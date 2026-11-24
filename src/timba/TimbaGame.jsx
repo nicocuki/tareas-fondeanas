@@ -16,7 +16,7 @@ import { crashMultAt } from './newgames.js';
 import './tbgame.css';
 import { floorOfLoc, topFloor, floorsOfDay, locOfFloor } from './casinos.js';
 import { TOTAL_DAYS } from './quota.js';
-import { DAY_MS, dayLeftMs, findPlayer, fmtClock, fmtMoney, tableOfPlayer } from './game.js';
+import { DAY_MS, DESERT_MS, FALL_MS, dayLeftMs, findPlayer, fmtClock, fmtMoney, tableOfPlayer } from './game.js';
 
 const ABOARD = ['limo', 'back']; // arriba de la limusina (de ida o de vuelta)
 const SEND_EVERY = 1 / 15;
@@ -41,6 +41,7 @@ function landing(loc, prev, index) {
   if (loc === 'outside' && prev === 'elevator') return { x: sc.doorX + k, y: -1150, yaw: Math.PI };
   if (loc === 'outside') return { ...base, yaw: 0.25 };                        // recién bajados de la limusina, mirando al casino
   if (loc === 'wait' && prev === 'limo') return { x: sc.limoDoor.x + k, y: sc.limoDoor.y - 60, yaw: 0 };
+  if (loc === 'desert') return { ...base, yaw: 0 };                           // bajan de la limusina mirando al pozo
   if (loc === 'wait') return { ...base, yaw: Math.PI * 0.8 };                  // en el jardín, mirando a la calle
   if (floorOfLoc(loc) !== null) return { x: 120 + (index % 2) * 22, y: sc.spawn.y + k, yaw: -Math.PI / 2 };
   if (loc === 'elevator') return { x: 210 + k, y: floorOfLoc(prev) !== null || prev === 'outside' ? 250 : 200, yaw: 0 };
@@ -123,7 +124,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       setClock((c) => c + 1);
       const r = roomRef.current;
       const now = serverNow();
-      const due = (r.trip && now >= r.trip.at + r.trip.ms + 120) || (!r.trip && r.day.endsAt && !r.day.over && now >= r.day.endsAt);
+      const due = (r.desert && (r.desert.fellAt ? now >= r.desert.fellAt + FALL_MS + 120 : now >= r.desert.at + DESERT_MS + 120)) || (r.trip && now >= r.trip.at + r.trip.ms + 120) || (!r.trip && r.day.endsAt && !r.day.over && now >= r.day.endsAt);
       if (due && now - s.tickAt > 1500) { s.tickAt = now; dispatchRef.current({ type: 'tick' }); }
       // mi mesa: la tirada que terminó de girar se cobra; el cohete que chocó se anota
       const [, t] = tableOfPlayer(r, me.id);
@@ -257,7 +258,9 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
 
       // Cambió el lugar: aparezco donde corresponde y se hace un fundido.
       if (s.loc !== loc) {
-        if (!aboard) {
+        if (loc === 'pit') {
+          s.pitAt = s.time; // se tiró: la cámara cae sin moverse de lugar
+        } else if (!aboard) {
           const sp = landing(loc, s.loc, index);
           s.p = { ...s.p, x: sp.x, y: sp.y, yaw: sp.yaw, pitch: -0.08, moving: false };
         } else {
@@ -267,11 +270,12 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
         }
         s.loc = loc;
         s.pendingAt = 0;
-        s.fade = 1;
+        s.fade = loc === 'pit' ? 0 : 1;
       }
+      const fall = loc === 'pit' ? Math.max(0, s.time - s.pitAt) : 0; // segundos cayendo
 
       // Girar con las flechas y caminar (con el ascensor andando o una ventana abierta, no).
-      const frozen = Boolean(modalRef.current) || Boolean(r.trip) || aboard;
+      const frozen = Boolean(modalRef.current) || Boolean(r.trip) || aboard || loc === 'pit';
       s.p.yaw += ((s.input.turnL ? 1 : 0) - (s.input.turnR ? 1 : 0)) * 2.2 * dt;
       const f = (s.input.fwd ? 1 : 0) - (s.input.back ? 1 : 0);
       const st = (s.input.right ? 1 : 0) - (s.input.left ? 1 : 0);
@@ -305,7 +309,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       if (!frozen && !r.trip && performance.now() - s.pendingAt > 900) {
         const to = doorFor(loc, s.p, r.elev.floor);
         const here = locOfFloor(r.elev.floor);
-        const allowed = to && ((loc === 'elevator' && (!r.day.over || here === 'outside') && to === here) || (to === 'elevator' && loc === here));
+        const allowed = to && (loc === 'desert' || (loc === 'elevator' && (!r.day.over || here === 'outside') && to === here) || (to === 'elevator' && loc === here));
         if (allowed) { s.pendingAt = performance.now(); dispatchRef.current({ type: 'loc', to }); }
       }
 
@@ -327,7 +331,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       const boardLoc = key === 'outside' ? 'back' : 'limo';
       const seated = r.players.filter((pl) => pl.loc === boardLoc).map((pl) => pl.id);
       for (const pl of r.players) {
-        if (pl.id === me.id || sceneKey(pl.loc) !== key) continue;
+        if (pl.id === me.id || sceneKey(pl.loc) !== key || pl.loc === 'pit') continue; // el que cayó al pozo ya no está
         if (ABOARD.includes(pl.loc)) { others.push({ id: pl.id, name: pl.name, color: pl.color, seat: seated.indexOf(pl.id), x: 0, y: 0, yaw: 0, moving: false }); continue; }
         const v = s.remotes.get(pl.id);
         if (!v || v.snap.sc !== key) continue;
@@ -348,7 +352,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       const elevTrip = trip?.kind === 'elev';
       const labelOf = (fl) => (fl === 0 ? 'L' : String(fl));
       const fadeOut = limoTrip ? Math.max(0, Math.min(1, (pr - 0.72) / 0.28)) : 0;
-      if (fadeRef.current) fadeRef.current.style.opacity = String(Math.max(s.fade, fadeOut));
+      if (fadeRef.current) fadeRef.current.style.opacity = String(Math.max(s.fade, fadeOut, Math.min(1, (fall - 0.4) / 1.2)));
       const inElev = r.players.filter((pl) => pl.loc === 'elevator').length;
       const env = {
         limoGo: limoTrip ? Math.max(0, Math.min(1, (pr - 0.22) / 0.78)) : 0,
@@ -360,7 +364,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
       };
       s.r3d.frame({
         key, loc, me: s.p, seat: aboard ? Math.max(0, seated.indexOf(me.id)) : null, others, room: r, myId: me.id, uiFor, now, time: s.time, dt, env,
-        hidden, frozen: Boolean(modalRef.current) || aboard,
+        hidden, frozen: Boolean(modalRef.current) || aboard, drop: 9 * fall * fall,
       });
 
       // Lo que estás por tocar (para el cartelito del medio).
@@ -425,7 +429,7 @@ export default function TimbaGame({ room, me, code, offset, onDispatch }) {
   const boardLoc = loc === 'back' ? 'back' : 'limo';
   const aboard = room.players.filter((p) => p.loc === boardLoc).length;
   const inElev = room.players.filter((p) => p.loc === 'elevator').length;
-  const showDay = room.day.endsAt && loc !== 'wait' && loc !== 'limo';
+  const showDay = room.day.endsAt && !['wait', 'limo', 'desert', 'pit'].includes(loc);
   const dayPassed = room.day.last && !room.day.last.lost && room.day.n > seenDay && loc === 'wait' && !trip;
   const tripText = trip?.kind === 'limo' ? 'Rumbo al casino' : trip?.kind === 'home' ? 'Volviendo a casa' : trip ? (trip.to === 0 ? 'Bajando a la planta baja' : `Subiendo al piso ${trip.to}`) : '';
   const quota = room.day.quota;
@@ -520,6 +524,8 @@ function labelFor(btn) {
 
 // Qué conviene hacer ahora, según dónde estás (la línea amarilla de arriba).
 function goalText(room, loc, aboard, inElev, done) {
+  if (loc === 'desert') return 'No juntaron la cuota… Caminá hasta el pozo y tirate (tienen que tirarse todos)';
+  if (loc === 'pit') return `Cayendo… esperando a los demás (${room.players.filter((p) => p.loc === 'pit').length}/${room.players.length})`;
   if (loc === 'wait') return aboard ? `Subí a la limusina con los demás (${aboard}/${room.players.length} a bordo)` : 'Cruzá a la calle hasta la limusina negra y tocá E en su puerta de atrás';
   if (loc === 'outside') return room.day.endsAt ? 'Subí la escalinata y entrá al casino, o volvé a casa en la limusina' : 'Cruzá la plaza, subí la escalinata y entrá por la puerta giratoria';
   if (loc === 'elevator') {

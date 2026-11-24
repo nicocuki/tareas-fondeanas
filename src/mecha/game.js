@@ -6,7 +6,7 @@ import { BONUS_LETTERS, matchesSyllable, normalizeWord } from './words.js';
 import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
 export const GAME_TYPE = 'la-mecha';
-export const MAX_PLAYERS = 16;
+export const MAX_PLAYERS = 40;
 export const MIN_PLAYERS = 2;
 export const MAX_USED = 800;     // palabras ya usadas que se recuerdan (tope del tamaño de la sala)
 export const MAX_LOG = 14;

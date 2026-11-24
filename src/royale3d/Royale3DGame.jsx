@@ -174,7 +174,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
     for (const ev of snap.dw || []) {
       if (sim.dw.has(ev.key) || sim.seen.has(`${id}:w${ev.key}`)) continue;
       sim.seen.add(`${id}:w${ev.key}`);
-      sim.dw.set(ev.key, { w: ev.w, r: ev.r, mag: ev.mg, x: ev.x, y: ev.y, z: ev.z });
+      sim.dw.set(ev.key, { w: ev.w, it: ev.it, n: ev.n, r: ev.r, mag: ev.mg, x: ev.x, y: ev.y, z: ev.z });
     }
     void rem;
   }
@@ -251,9 +251,10 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
   }
   function throwAway(slot) {
     const p = sim.local, g = p?.inv[slot];
-    if (!g?.w || slot < 1) return;
+    if (!g || slot < 1 || (!g.w && !g.it)) return;
     dropWeapon(g);
     p.inv[slot] = null;
+    p.reloadUntil = 0;
     if (p.sel === slot) p.sel = 0;
     sfx.click();
     setHud((h) => ({ ...h, inv: p.inv.map(invView), sel: p.sel }));
@@ -284,7 +285,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
       if (!ch) continue;
       for (const it of chestItems(i, ch)) if (!isTaken(m, it.key)) list.push(it);
     }
-    for (const [key, d] of sim.dw) if (!isTaken(m, key)) list.push({ key, kind: d.w, r: d.r, mag: d.mag, n: 1, x: d.x, y: d.y, z: d.z });
+    for (const [key, d] of sim.dw) if (!isTaken(m, key)) list.push({ key, kind: d.it || d.w, r: d.r, mag: d.mag, n: d.n || 1, x: d.x, y: d.y, z: d.z });
     return list;
   }
   function dropsView(now) {
@@ -310,9 +311,11 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
     const key = `w${++sim.dropN}.${Math.floor(Math.random() * 9)}`;
     const ang = Math.random() * Math.PI * 2;
     const px = x ?? p.x + Math.cos(ang) * 1.2, pz = z ?? p.z + Math.sin(ang) * 1.2;
-    const item = { key, w: entry.w, r: entry.r || 0, mg: entry.mag, x: r1(px), y: r2(floorAt(sim.world, px, pz, p.y + 2)), z: r1(pz), t: serverNow() };
+    const base = { key, x: r1(px), y: r2(floorAt(sim.world, px, pz, p.y + 2)), z: r1(pz), t: serverNow() };
+    // Una pila de consumibles (`it`, `n`) o un arma (`w`, `r`, `mg`).
+    const item = entry.it ? { ...base, it: entry.it, n: entry.n } : { ...base, w: entry.w, r: entry.r || 0, mg: entry.mag };
     sim.myDw.push(item);
-    sim.dw.set(key, { w: item.w, r: item.r, mag: item.mg, x: item.x, y: item.y, z: item.z });
+    sim.dw.set(key, { w: item.w, it: item.it, n: item.n, r: item.r, mag: item.mg, x: item.x, y: item.y, z: item.z });
   }
 
   function tryPickup(it) {
@@ -801,6 +804,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
         sim.input[named[0]] = true;
       } else if (!p) used = false;
       else if (e.code === b.reload) sim.reload = true;
+      else if (e.code === b.drop) { if (!e.repeat && p.mode === 'ground' && !p.dead) throwAway(p.sel); }
       else if (e.code.startsWith('Digit') && +e.code[5] >= 1 && +e.code[5] <= SLOTS) { if (selectSlot(p, +e.code[5] - 1)) sfx.click(); }
       else if (e.code === b.wall || e.code === b.floor || e.code === b.ramp) {
         const kind = e.code === b.wall ? 'wall' : e.code === b.floor ? 'floor' : 'ramp';
@@ -925,7 +929,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
       {!hud.loading && hud.mode === 'fall' && <div className="r3-center r3-bus"><b>Caída libre · {hud.alt} m</b><small>W picada · Espacio abre el planeador (se abre solo cerca del piso)</small></div>}
       {!hud.loading && hud.mode === 'glide' && <div className="r3-center r3-bus"><b>Planeando · {hud.alt} m</b><small>Elegí dónde aterrizar: mirá el mapa (M)</small></div>}
       {!hud.loading && !hud.lobby && hud.count === 0 && !hud.locked && !hud.dead && (
-        <button type="button" className={`r3-center r3-lock${hud.mode === 'ground' ? '' : ' r3-lock-low'}`} onClick={lock}>Hacé clic para jugar<small>WASD moverte · Shift correr (gasta estamina) · Espacio contra una pared para trepar · mouse apuntar · clic disparar o usar · clic derecho apuntar · E agarrar / abrir · {keyLabel(binds.reload)} recargar · 1–6 lugares · {keyLabel(binds.inventory)} inventario · Esc soltar el mouse</small></button>
+        <button type="button" className={`r3-center r3-lock${hud.mode === 'ground' ? '' : ' r3-lock-low'}`} onClick={lock}>Hacé clic para jugar<small>WASD moverte · Shift correr (gasta estamina) · Espacio contra una pared para trepar · mouse apuntar · clic disparar o usar · clic derecho apuntar · E agarrar / abrir · {keyLabel(binds.reload)} recargar · {keyLabel(binds.drop)} tirar · 1–6 lugares · {keyLabel(binds.inventory)} inventario · Esc soltar el mouse</small></button>
       )}
       {!hud.loading && hud.lobby && !hud.locked && <button type="button" className="r3-center r3-lock r3-lock-low" onClick={lock}>Hacé clic para tomar el mouse y probar tu pistola<small>En la isla de espera no se lastima a nadie · WASD · clic dispara · clic derecho apunta</small></button>}
       {hud.dead && <div className="r3-center r3-dead" data-dead>Quedaste afuera<small>Mirás a alguien que sigue en pie…</small></div>}
@@ -937,9 +941,9 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
         </div>
       )}
       {invOpen && (
-        <div className="r3-inv" data-inventory>
-          <div className="r3-inv-card">
-            <h3>Inventario <small>Arrastrá con el clic para cambiar de lugar · {keyLabel(binds.inventory)} o Esc para cerrar</small></h3>
+        <div className="r3-inv" data-inventory onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (Number.isInteger(from)) throwAway(from); }}>
+          <div className="r3-inv-card" onDrop={(e) => e.stopPropagation()}>
+            <h3>Inventario <small>Arrastrá para cambiar de lugar o soltá afuera para tirar · {keyLabel(binds.drop)} tira lo que tenés en la mano · {keyLabel(binds.inventory)} o Esc para cerrar</small></h3>
             <div className="r3-inv-grid">
               {Array.from({ length: SLOTS }, (_, i) => {
                 const g = hud.inv[i];
@@ -962,7 +966,7 @@ export default function Royale3DGame({ room, me, code, offset, onDispatch }) {
                 );
               })}
             </div>
-            <div className="r3-inv-drop" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (Number.isInteger(from)) throwAway(from); }}>Arrastrá un arma hasta acá para tirarla</div>
+            <div className="r3-inv-drop" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (Number.isInteger(from)) throwAway(from); }}>Arrastrá un arma o una pila hasta acá (o afuera del cuadro) para tirarla</div>
             <button type="button" className="r3-inv-close" onClick={() => setInventory(false)}>Cerrar</button>
           </div>
         </div>

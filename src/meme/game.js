@@ -4,7 +4,7 @@
 import { isKicked, kickTarget, markKicked } from '../lobby/kick.js';
 
 export const GAME_TYPE = 'meme';
-export const MAX_PLAYERS = 12;
+export const MAX_PLAYERS = 30;
 export const MIN_PLAYERS = 2;
 export const MAX_TEXT = 80;
 export const MAX_BOXES = 5;

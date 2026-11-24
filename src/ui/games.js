@@ -387,9 +387,9 @@ export const GAMES = [
     onColor: '#ffffff',
     tagline: 'Memes en vivo y a votar',
     description: 'Te toca una plantilla, le ponés el texto más gracioso que se te ocurra y después todos votan. Con modo «todos el mismo meme».',
-    players: '2 a 12',
+    players: '2 a 30',
     min: 2,
-    max: 12,
+    max: 30,
     duration: '10–20 min',
     input: 'Cualquier pantalla',
     howTo: [
@@ -477,9 +477,9 @@ export const GAMES = [
     onColor: '#2a1205',
     tagline: 'Escribí antes de que explote',
     description: 'La bomba pasa de mano en mano con unas letras. Escribí una palabra que las tenga antes de que se termine la mecha… y que no te explote a vos.',
-    players: '2 a 16',
+    players: '2 a 40',
     min: 2,
-    max: 16,
+    max: 40,
     duration: '5–10 min',
     input: 'Teclado o celular',
     howTo: [
