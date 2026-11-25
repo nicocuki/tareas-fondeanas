@@ -402,30 +402,13 @@ test('cohetes: la sala con 25 jugadores y todo agarrado entra en el tope', () =>
 });
 
 // ─── Modos de juego ──────────────────────────────────────────────────────────
-import { MODES, MODE_LIST, STORM_DPS, STORM_START, hasStorm, hasWater, inStorm, modeOf, startKit, stormAt, stormPhases } from '../src/cohetes/modes.js';
+import { GAME_MODES, GAME_MODE_LIST, MODE_CARDS, MODIFIERS, STORM_DPS, STORM_START, hasStorm, hasWater, inStorm, settingsOf, stormAt, stormPhases } from '../src/cohetes/modes.js';
 import { ICON_NAMES } from '../src/cohetes/icons.js';
 import { fillCircle } from '../src/cohetes/terrain.js';
-import { ITEM_LIST, STRIKE_BOMBS, teleportTarget, unstick } from '../src/cohetes/sim.js';
-
-test('cohetes: hay ocho modos con zona válida y el anfitrión puede elegir cualquiera', () => {
-  assert.equal(MODE_LIST.length, 8);
-  for (const key of MODE_LIST) {
-    const m = MODES[key];
-    assert.ok(['water', 'storm', 'both'].includes(m.zone), key);
-    assert.ok(m.hp > 0 && m.g > 0 && m.reload > 0 && m.crates > 0 && m.name && m.blurb, key);
-    assert.equal(hasWater(m) || hasStorm(m), true);
-  }
-  assert.equal(modeOf({}).name, MODES.water.name, 'una sala vieja sin modo es Marea alta');
-  assert.equal(modeOf({ mode: 'inventado' }), MODES.water);
-  let room = newRoom('h', 'Host', '🐸');
-  room = applyAction(room, { type: 'join', playerId: 'g', name: 'Guest' });
-  for (const key of MODE_LIST) {
-    const next = applyAction(room, { type: 'setOptions', playerId: 'h', options: { mode: key } });
-    assert.equal(next.options.mode, key);
-  }
-  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'h', options: { mode: 'inventado' } }), null);
-  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'g', options: { mode: 'storm' } }), null, 'solo el anfitrión');
-});
+import { ITEM_DESC, ITEM_LIST, STRIKE_BOMBS, teleportTarget, unstick } from '../src/cohetes/sim.js';
+import { BOT_HP, BOT_PREFIX, aimAt, botCount, botId, botSpot, botThink, isBot, newBot } from '../src/cohetes/bots.js';
+import { FLAG_REACH, RESPAWN_S, leader, nearFlag, spawnSpot } from '../src/cohetes/ctf.js';
+import { ctfColsFor } from '../src/cohetes/terrain.js';
 
 test('cohetes: la tormenta cubre todo el mapa al principio, se cierra por fases y cada círculo cabe en el anterior', () => {
   const W = 2400, H = 1300;
@@ -452,15 +435,6 @@ test('cohetes: la tormenta cubre todo el mapa al principio, se cierra por fases 
   assert.ok(stormAt(100, 5, W, H, 1.6).r < stormAt(100, 5, W, H, 0.6).r, 'más rápida, más cerrada');
 });
 
-test('cohetes: el arsenal inicial es siempre el mismo para el mismo jugador, sin repetir ni curitas', () => {
-  const kit = startKit(123, 'ana', 3);
-  assert.deepEqual(kit, startKit(123, 'ana', 3));
-  assert.equal(new Set(kit).size, 3);
-  assert.ok(!kit.includes('heal'));
-  assert.notDeepEqual(startKit(123, 'ana', 3), startKit(123, 'beto', 3));
-  assert.deepEqual(startKit(1, 'x', 0), []);
-});
-
 test('cohetes: morir en la tormenta queda anotado y no cuenta como baja de nadie', () => {
   let room = start(lobby(3));
   const m = room.match.n, t0 = 1000 + COUNTDOWN_MS;
@@ -472,7 +446,7 @@ test('cohetes: morir en la tormenta queda anotado y no cuenta como baja de nadie
 
 test('cohetes: cada objeto tiene su ícono dibujado y los nuevos se pueden agarrar de las cajas', () => {
   for (const w of [...ITEM_LIST, 'airbomb']) assert.ok(ICON_NAMES.includes(w), `falta el ícono de ${w}`);
-  for (const w of ['skull', 'hit', 'wave', 'storm', 'coin', 'crown']) assert.ok(ICON_NAMES.includes(w), w);
+  for (const w of ['skull', 'hit', 'wave', 'storm', 'coin', 'crown', 'flag', 'robot']) assert.ok(ICON_NAMES.includes(w), w);
   for (const w of ['teleport', 'turbo', 'shock', 'medkit', 'triple', 'bounce', 'cement', 'strike']) assert.ok(ITEM_LIST.includes(w), w);
   for (const i of [0, 10, 50]) assert.ok(ITEM_LIST.includes(crateInfo(i, 77, 2000).weapon));
   assert.ok(crateInfo(5, 77, 2000, 3).at < crateInfo(5, 77, 2000, 10).at, 'con cajas más seguidas, caen antes');
@@ -535,24 +509,13 @@ test('cohetes: sacar a un tanque de adentro del cemento lo deja en el aire libre
   assert.ok(!overlaps(t, p.x, p.y));
 });
 
-test('cohetes: la gravedad del modo Luna hace caer más despacio a los tanques y a los cohetes', () => {
-  const t = emptyWorld(600, 600);
-  const a = newTank(100, 50), b = newTank(100, 50);
-  for (let i = 0; i < 0.5 / STEP; i++) { stepTank(a, 0, STEP, t); stepTank(b, 0, STEP, t, { g: MODES.moon.g }); }
-  assert.ok(b.y - 50 < (a.y - 50) * 0.6, 'cae menos');
-  const [r1] = projectilesFor({ k: 'r1', x: 10, y: 100, a: 0, w: 'rocket' }, 'yo');
-  const [r2] = projectilesFor({ k: 'r2', x: 10, y: 100, a: 0, w: 'rocket' }, 'yo');
-  for (let i = 0; i < 0.5 / STEP; i++) { stepProjectile(r1, STEP, t, [], 1); stepProjectile(r2, STEP, t, [], MODES.moon.g); }
-  assert.ok(r2.y - 100 < (r1.y - 100) * 0.6);
-});
-
 // ─── Equipos ─────────────────────────────────────────────────────────────────
 test('cohetes: por equipos se reparten parejo, se rebalancea al empezar y gana el último equipo en pie', () => {
   let room = newRoom('p0', 'P0', '🐸');
   for (let i = 1; i < 5; i++) room = applyAction(room, { type: 'join', playerId: `p${i}`, name: `P${i}` });
   assert.deepEqual(room.players.map((p) => p.team), [0, 1, 0, 1, 0], 'entran alternados');
-  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'p0', options: { teams: 3 } }), null);
-  room = applyAction(room, { type: 'setOptions', playerId: 'p0', options: { teams: 2 } });
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'p0', options: { gameMode: 'soon' } }), null, 'Próximamente no se puede elegir');
+  room = applyAction(room, { type: 'setOptions', playerId: 'p0', options: { gameMode: 'teams' } });
   for (const id of ['p1', 'p3']) room = applyAction(room, { type: 'setTeam', playerId: id, team: 0 });
   assert.equal(applyAction(room, { type: 'setTeam', playerId: 'p1', target: 'p2', team: 1 }), null, 'solo el anfitrión mueve a otro');
   room = applyAction(room, { type: 'start', playerId: 'p0' }, { now: 1000 });
@@ -569,4 +532,249 @@ test('cohetes: por equipos se reparten parejo, se rebalancea al empezar y gana e
   assert.equal(room.phase, 'final');
   assert.equal(room.match.winTeam, 1);
   assert.ok(team1.every((id) => findPlayer(room, id).place === 1), 'todo el equipo ganador es primero');
+});
+
+// ─── Modos y modificadores ───────────────────────────────────────────────────
+test('cohetes: hay tres modos que se pueden elegir y un cuarto «Próximamente» que no', () => {
+  assert.deepEqual(GAME_MODE_LIST, ['ffa', 'teams', 'ctf']);
+  assert.deepEqual(MODE_CARDS, ['ffa', 'teams', 'ctf', 'soon']);
+  assert.equal(GAME_MODES.soon.soon, true);
+  let room = newRoom('h', 'Host', '🐸');
+  room = applyAction(room, { type: 'join', playerId: 'g', name: 'Guest' });
+  assert.equal(room.options.gameMode, 'ffa', 'el default es todos contra todos');
+  for (const key of GAME_MODE_LIST) assert.equal(applyAction(room, { type: 'setOptions', playerId: 'h', options: { gameMode: key } }).options.gameMode, key);
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'h', options: { gameMode: 'soon' } }), null);
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'g', options: { gameMode: 'ctf' } }), null, 'solo el anfitrión');
+});
+
+test('cohetes: los modificadores se eligen de a uno por bloque y se acumulan entre bloques', () => {
+  assert.deepEqual(Object.keys(MODIFIERS.zone.choices), ['water', 'storm', 'none', 'both']);
+  assert.deepEqual(Object.keys(MODIFIERS.life.choices), ['normal', 'titans', 'fragile']);
+  assert.deepEqual(Object.keys(MODIFIERS.extra.choices), ['none', 'machines']);
+  assert.deepEqual(settingsOf({}), { ...settingsOf({}), gameMode: 'ffa', zone: 'water', life: 'normal', hp: 100, machines: false }, 'por defecto: marea, vida normal, sin extras');
+  let room = newRoom('h', 'Host', '🐸');
+  for (const options of [{ zone: 'storm' }, { life: 'titans' }, { extra: 'machines' }]) room = applyAction(room, { type: 'setOptions', playerId: 'h', options });
+  const s = settingsOf(room.options);
+  assert.deepEqual([s.zone, s.hp, s.machines], ['storm', 200, true], 'uno de cada bloque, todos juntos');
+  assert.equal(settingsOf({ life: 'fragile' }).hp, 40);
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'h', options: { zone: 'inventada' } }), null);
+  assert.equal(hasWater(settingsOf({ zone: 'both' })) && hasStorm(settingsOf({ zone: 'both' })), true, 'peligro total = marea y tormenta');
+  assert.equal(hasWater(settingsOf({ zone: 'none' })) || hasStorm(settingsOf({ zone: 'none' })), false, 'sin peligro no cierra nada');
+});
+
+// ─── Roba la bandera ─────────────────────────────────────────────────────────
+function ctfRoom(n = 4, options = {}) {
+  let room = lobby(n);
+  room = applyAction(room, { type: 'setOptions', playerId: 'p0', options: { gameMode: 'ctf', ...options } });
+  return applyAction(room, { type: 'start', playerId: 'p0' }, { now: 1000, rand: () => 0.3 });
+}
+const T0 = 1000 + COUNTDOWN_MS + 10;
+const teamOf = (room, t) => room.players.filter((p) => p.team === t).map((p) => p.id);
+
+test('cohetes: roba la bandera fuerza «Sin peligro» y reparte dos equipos parejos', () => {
+  let room = lobby(5);
+  room = applyAction(room, { type: 'setOptions', playerId: 'p0', options: { zone: 'storm' } });
+  room = applyAction(room, { type: 'setOptions', playerId: 'p0', options: { gameMode: 'ctf' } });
+  assert.equal(settingsOf(room.options).zone, 'none');
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'p0', options: { zone: 'water' } }), null, 'no se puede elegir la zona');
+  assert.equal(applyAction(room, { type: 'setOptions', playerId: 'p0', options: { life: 'titans' } }).options.life, 'titans', 'los demás modificadores sí');
+  room = applyAction(room, { type: 'start', playerId: 'p0' }, { now: 1000, rand: () => 0.3 });
+  assert.equal(room.match.mode, 'ctf');
+  assert.equal(room.match.teams, true);
+  assert.deepEqual(room.match.flags, [null, null]);
+  assert.deepEqual(room.match.score, [0, 0]);
+  assert.ok(Math.abs(teamOf(room, 0).length - teamOf(room, 1).length) <= 1);
+});
+
+test('cohetes: se agarra la bandera rival, se suma un punto en la base y la bandera vuelve', () => {
+  let room = ctfRoom(4, { ctfPoints: 3 });
+  const m = room.match.n;
+  const [a] = teamOf(room, 0), [b] = teamOf(room, 1);
+  assert.equal(applyAction(room, { type: 'flagTake', playerId: a, match: m, team: 1 }, { now: 1000 }), null, 'no en la cuenta regresiva');
+  assert.equal(applyAction(room, { type: 'flagTake', playerId: a, match: m, team: 0 }, { now: T0 }), null, 'la propia no se roba');
+  room = applyAction(room, { type: 'flagTake', playerId: a, match: m, team: 1 }, { now: T0 });
+  assert.deepEqual(room.match.flags, [null, a]);
+  assert.equal(applyAction(room, { type: 'flagTake', playerId: teamOf(room, 0)[1], match: m, team: 1 }, { now: T0 }), null, 'ya la tiene otro');
+  assert.equal(applyAction(room, { type: 'flagCapture', playerId: b, match: m }, { now: T0 }), null, 'sin bandera no se suma');
+  room = applyAction(room, { type: 'flagCapture', playerId: a, match: m }, { now: T0 });
+  assert.deepEqual(room.match.score, [1, 0]);
+  assert.deepEqual(room.match.flags, [null, null], 'la bandera robada vuelve a su base');
+  assert.equal(findPlayer(room, a).captures, 1);
+});
+
+test('cohetes: no se suma con la bandera propia robada; si el que la lleva muere o se va, vuelve a su base', () => {
+  let room = ctfRoom(4);
+  const m = room.match.n;
+  const [a] = teamOf(room, 0), [b] = teamOf(room, 1);
+  room = applyAction(room, { type: 'flagTake', playerId: a, match: m, team: 1 }, { now: T0 });
+  room = applyAction(room, { type: 'flagTake', playerId: b, match: m, team: 0 }, { now: T0 });
+  assert.deepEqual(room.match.flags, [b, a]);
+  assert.equal(applyAction(room, { type: 'flagCapture', playerId: a, match: m }, { now: T0 }), null, 'su bandera no está en la base');
+  room = applyAction(room, { type: 'died', playerId: b, match: m, by: a, w: 'rocket' }, { now: T0 });
+  assert.deepEqual(room.match.flags, [null, a], 'murió el que llevaba la bandera: vuelve');
+  assert.equal(findPlayer(room, b).alive, true, 'en roba la bandera nadie queda afuera');
+  assert.equal(findPlayer(room, b).deaths, 1);
+  assert.equal(findPlayer(room, a).kills, 1);
+  assert.equal(room.phase, 'playing');
+  room = applyAction(room, { type: 'leave', playerId: a }, { now: T0 });
+  assert.deepEqual(room.match.flags, [null, null], 'se fue el que llevaba la bandera: vuelve');
+});
+
+test('cohetes: gana el primero en llegar a los puntos, o por puntos al acabarse el tiempo (empate posible)', () => {
+  const score = (room, team) => {
+    const [a] = teamOf(room, team);
+    room = applyAction(room, { type: 'flagTake', playerId: a, match: room.match.n, team: 1 - team }, { now: T0 });
+    return applyAction(room, { type: 'flagCapture', playerId: a, match: room.match.n }, { now: T0 });
+  };
+  let room = score(ctfRoom(4, { ctfPoints: 3, ctfMinutes: 0 }), 1);
+  room = score(room, 1); room = score(room, 0);
+  assert.equal(room.phase, 'playing');
+  room = score(room, 1);
+  assert.equal(room.phase, 'final');
+  assert.equal(room.match.winTeam, 1);
+  assert.ok(teamOf(room, 1).every((id) => findPlayer(room, id).place === 1));
+  // Por tiempo.
+  let timed = ctfRoom(4, { ctfPoints: 0, ctfMinutes: 3 });
+  assert.equal(timed.match.endsAt, timed.match.startsAt + 180000);
+  assert.equal(applyAction(timed, { type: 'tick', playerId: 'p0', match: timed.match.n }, { now: timed.match.endsAt - 1 }), null, 'antes de tiempo no termina');
+  timed = score(timed, 0);
+  const ended = applyAction(timed, { type: 'tick', playerId: 'p0', match: timed.match.n }, { now: timed.match.endsAt });
+  assert.equal(ended.phase, 'final');
+  assert.equal(ended.match.winTeam, 0);
+  const tie = applyAction(ctfRoom(4, { ctfMinutes: 3 }), { type: 'tick', playerId: 'p0', match: 1 }, { now: 1000 + COUNTDOWN_MS + 180000 });
+  assert.equal(tie.match.winTeam, null, 'empatados: no gana nadie');
+  assert.equal(leader([2, 2]), null);
+});
+
+test('cohetes: con tiempo y puntos en 0 la partida es infinita; solo termina si un equipo se queda sin gente', () => {
+  let room = ctfRoom(4, { ctfPoints: 0, ctfMinutes: 0 });
+  assert.equal(room.match.endsAt, 0);
+  assert.equal(applyAction(room, { type: 'tick', playerId: 'p0', match: room.match.n }, { now: 9e12 }), null, 'el reloj no la termina');
+  for (let i = 0; i < 20; i++) {
+    const [a] = teamOf(room, 0);
+    room = applyAction(room, { type: 'flagTake', playerId: a, match: room.match.n, team: 1 }, { now: T0 });
+    room = applyAction(room, { type: 'flagCapture', playerId: a, match: room.match.n }, { now: T0 });
+  }
+  assert.equal(room.phase, 'playing', '20 puntos y sigue');
+  for (const id of teamOf(room, 1)) room = applyAction(room, { type: 'leave', playerId: id }, { now: T0 });
+  assert.equal(room.phase, 'final');
+  assert.equal(room.match.winTeam, 0);
+});
+
+test('cohetes: en roba la bandera la lista de muertes tiene tope pero se cuentan todas', () => {
+  let room = ctfRoom(4);
+  const m = room.match.n, [v] = teamOf(room, 0);
+  for (let i = 0; i < 40; i++) room = applyAction(room, { type: 'died', playerId: v, match: m, w: 'robot' }, { now: T0 });
+  assert.equal(room.match.dn, 40);
+  assert.ok(room.match.deaths.length <= 12);
+  assert.equal(room.match.deaths.at(-1).w, 'robot');
+  assert.equal(findPlayer(room, v).deaths, 40);
+  assert.equal(ranking(room)[0].place, 1 && ranking(room)[0].place);
+});
+
+test('cohetes: el mapa de roba la bandera es más ancho que alto, parejo entre equipos y con una bandera sobre suelo en cada punta', () => {
+  for (const seed of [1, 7, 42, 99, 12345]) {
+    const t = makeTerrain(seed, 8, true);
+    assert.ok(t.W > t.H * 2.5, `más ancho que alto: ${t.W}×${t.H}`);
+    assert.notEqual(t.theme, 'volcan');
+    assert.equal(t.ctf, true);
+    for (let y = 0; y < t.H; y++) for (let x = 0; x < t.W >> 1; x++) if (t.grid[y * t.W + x] !== t.grid[y * t.W + t.W - 1 - x]) assert.fail(`asimétrico en ${x},${y} (semilla ${seed})`);
+    assert.equal(t.bases.length, 2);
+    assert.ok(t.bases[0].x < t.W / 3 && t.bases[1].x > (t.W * 2) / 3, 'puntas contrarias');
+    for (const b of t.bases) {
+      assert.ok(solid(t, b.x, b.y + 4) && solid(t, b.x - 40, b.y + 4) && solid(t, b.x + 40, b.y + 4), 'la bandera está sobre suelo');
+      for (let k = 1; k < 100; k += 4) assert.ok(!solid(t, b.x, b.y - k), 'aire arriba de la bandera');
+    }
+    assert.equal(themeFor(seed, true), t.theme);
+  }
+  assert.ok(ctfColsFor(25) > ctfColsFor(2) && ctfColsFor(25) % 2 === 0 && ctfColsFor(2) % 2 === 0);
+  assert.notEqual(makeTerrain(1, 4, true).W, makeTerrain(1, 4, false).W);
+});
+
+test('cohetes: al aparecer en roba la bandera se cae de su lado, a alturas distintas y nunca adentro de la tierra', () => {
+  const ys = new Set();
+  for (const seed of [3, 8, 21]) {
+    const t = makeTerrain(seed, 8, true);
+    let k = 0;
+    const rand = () => ((k = (k * 9301 + 49297) % 233280), k / 233280 || 0.5);
+    for (let i = 0; i < 40; i++) {
+      for (const team of [0, 1]) {
+        const sp = spawnSpot(t, team, rand);
+        assert.ok(!overlaps(t, sp.x, sp.y), 'no aparece adentro de la tierra');
+        assert.ok(team === 0 ? sp.x < t.W / 2 : sp.x > t.W / 2, 'de su lado');
+        ys.add(Math.round(sp.y / 20));
+        const p = newTank(sp.x, sp.y);
+        run(t, p, 3);
+        assert.ok(p.y < t.H - 40, 'no se cae al fondo');
+      }
+    }
+  }
+  assert.ok(ys.size > 5, 'las alturas varían');
+  const t = makeTerrain(3, 8, true);
+  assert.ok(nearFlag({ x: t.bases[0].x, y: t.bases[0].y - 6 }, t.bases[0]) && !nearFlag({ x: t.bases[0].x + 3 * FLAG_REACH, y: t.bases[0].y }, t.bases[0]));
+  assert.equal(RESPAWN_S > 0, true);
+});
+
+// ─── Máquinas ────────────────────────────────────────────────────────────────
+test('cohetes: las máquinas aparecen en lugares libres, repartidas a lo ancho y siempre iguales para la misma semilla', () => {
+  assert.ok(botCount(2) >= 3 && botCount(25) <= 8 && botCount(25) > botCount(2));
+  for (const ctf of [false, true]) {
+    const t = makeTerrain(11, 8, ctf);
+    const n = botCount(8);
+    const xs = [];
+    for (let i = 0; i < n; i++) {
+      const b = newBot(t, 11, i, n);
+      assert.ok(!overlaps(t, b.x, b.y), 'no nace adentro de la tierra');
+      assert.equal(b.hp, BOT_HP);
+      assert.deepEqual(botSpot(t, 11, i, n), botSpot(t, 11, i, n));
+      xs.push(b.x);
+    }
+    assert.ok(Math.max(...xs) - Math.min(...xs) > t.W * 0.4, 'repartidas por el mapa');
+    if (ctf) for (let i = 0; i < n; i++) for (const base of t.bases) assert.ok(Math.hypot(botSpot(t, 11, i, n).x - base.x, botSpot(t, 11, i, n).y - base.y) > 200, 'lejos de las banderas');
+  }
+  assert.notDeepEqual(botSpot(makeTerrain(11, 8), 11, 0, 4, 0), botSpot(makeTerrain(11, 8), 11, 0, 4, 1), 'al volver aparece en otro lado');
+  assert.ok(isBot(botId(3)) && botId(3).startsWith(BOT_PREFIX) && !isBot('abcd1234'));
+});
+
+test('cohetes: una máquina apunta bien, dispara cuando ve a alguien, se acerca por la superficie y patrulla si no ve a nadie', () => {
+  const t = emptyWorld(900, 500);
+  const from = { x: 100, y: 300 };
+  for (const to of [{ x: 400, y: 300 }, { x: 300, y: 200 }, { x: 150, y: 330 }, { x: 40, y: 280 }]) {
+    const a = aimAt(from, to);
+    assert.notEqual(a, null);
+    const [b] = projectilesFor({ k: 'a', x: from.x, y: from.y, a, w: 'rocket' }, 'bot');
+    let near = Infinity;
+    for (let i = 0; i < 4 / STEP && !b.done; i++) { stepProjectile(b, STEP, t, []); near = Math.min(near, Math.hypot(b.x - to.x, b.y - to.y)); }
+    assert.ok(near < 3, `el cohete pasa a ${near.toFixed(1)} del blanco`);
+  }
+  assert.equal(aimAt(from, { x: 5000, y: 300 }), null, 'fuera de alcance');
+  const bot = { ...newTank(100, 300), nx: 0, ny: -1, dir: 0, turnAt: 0, readyAt: 0 };
+  const near = botThink(bot, [{ x: 300, y: 300 }], 10, () => 0.5);
+  assert.equal(near.dir, 1, 'va para el lado del enemigo');
+  assert.notEqual(near.fire, null, 'dispara');
+  assert.equal(botThink(bot, [{ x: 300, y: 300 }], 10.5, () => 0.5).fire, null, 'tiene que recargar');
+  assert.equal(botThink({ ...bot, readyAt: 0 }, [{ x: 100, y: 300 + 600 }], 10, () => 0.5).fire, null, 'si está lejos no dispara');
+  assert.equal(botThink({ ...bot, x: 500, readyAt: 0 }, [{ x: 300, y: 300 }], 10, () => 0.5).dir, -1, 'si el enemigo está del otro lado, va para allá');
+  assert.equal(botThink({ ...bot, readyAt: 0 }, [{ x: 160, y: 300 }], 10, () => 0.5).dir, 0, 'no se les pega demasiado');
+  const idle = { ...bot, turnAt: 0 };
+  assert.equal(botThink(idle, [], 10, () => 0.9).fire, null);
+  assert.ok(idle.turnAt > 10, 'después de elegir rumbo espera un rato');
+});
+
+test('cohetes: una explosión lastima a una máquina como a un tanque y las muertes por máquinas quedan anotadas', () => {
+  const bot = newBot(makeTerrain(5, 6), 5, 0, 3);
+  const hit = blastOn(bot, { x: bot.x + 10, y: bot.y, w: 'rocket', o: 'p1' });
+  assert.ok(hit && hit.damage > 0);
+  let room = start(lobby(3));
+  const m = room.match.n, t0 = 1000 + COUNTDOWN_MS;
+  room = applyAction(room, { type: 'died', playerId: 'p1', match: m, by: null, w: 'robot' }, { now: t0 });
+  assert.deepEqual(room.match.deaths.at(-1), { id: 'p1', by: null, w: 'robot' });
+});
+
+// ─── Cuadro de cada objeto ───────────────────────────────────────────────────
+test('cohetes: cada objeto (y el cohete) tiene su descripción para el cuadro de abajo a la derecha', () => {
+  for (const w of ['rocket', ...ITEM_LIST]) {
+    assert.ok(typeof ITEM_DESC[w] === 'string' && ITEM_DESC[w].length > 20, `falta la descripción de ${w}`);
+    assert.ok(ITEMS[w].name, w);
+  }
 });

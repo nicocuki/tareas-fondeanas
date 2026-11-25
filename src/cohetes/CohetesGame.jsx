@@ -9,24 +9,28 @@
 // pantalla del que tiró, que ve el escudo en la foto del otro (`sd`).
 //
 // Al empezar, cada uno va en uno de los dos helicópteros: con un tiro salta y baja en paracaídas.
+// Roba la bandera no tiene helicópteros: cada uno aparece de su lado a una altura al azar y, si lo eliminan, reaparece.
+// Las máquinas (modificador) las corre la pantalla del anfitrión y viajan en su foto (`bt`).
 import React, { useEffect, useRef, useState } from 'react';
 import { backend } from '../storage.js';
 import { everyFrame } from '../ticker.js';
 import { createMesh } from '../futbol/p2p.js';
 import { carve, decorations, fillCircle, makeTerrain, solid, waterY } from './terrain.js';
+import { BOT_DRIVE, BOT_HP, BOT_RESPAWN, botCount, botId, isBot, botThink, newBot } from './bots.js';
+import { RESPAWN_S, nearFlag, spawnSpot } from './ctf.js';
 import {
-  CHUTE_GAP, DEPLOY_AFTER, DRILL_R, HEAL, HP, ITEMS, JET_MAX, JET_TIME, KILL_CREDIT, LASER_CHARGE, MAX_AMMO, MAX_DROPS, RECOIL, RELOAD, SHIELD_TIME,
+  CHUTE_GAP, DEPLOY_AFTER, DRILL_R, HEAL, HP, ITEMS, ITEM_DESC, JET_MAX, JET_TIME, KILL_CREDIT, LASER_CHARGE, MAX_AMMO, MAX_DROPS, RECOIL, RELOAD, SHIELD_TIME,
   SHOT_GAP, SLOTS, STEP, STRIKE_BOMBS, STRIKE_DELAY, STRIKE_GAP, STRIKE_HEIGHT, STRIKE_SPREAD, ZONES, addItem, blastOn, chuteBoost, coinSpots, crateInfo,
   inWhirl, jetForce, mapItems, muzzle, newTank, overlaps, projectilesFor, push, reload, shipAt, shipFor, stepProjectile, stepTank, teleportTarget, thrust,
   turret, unstick, useItem, zoneFromShot,
 } from './sim.js';
-import { STORM_DPS, hasStorm, hasWater, inStorm, modeOf, startKit, stormAt } from './modes.js';
+import { STORM_DPS, hasStorm, hasWater, inStorm, settingsOf, stormAt } from './modes.js';
 import {
-  burst, drawArrow, drawBadges, drawCoin, drawCrate, drawDecorations, drawEffects, drawLabel, drawLaserAim, drawMinimap, drawProjectile, drawShip, drawSky,
+  burst, drawArrow, drawBadges, drawBase, drawCoin, drawCrate, drawDecorations, drawEffects, drawFlag, drawLabel, drawLaserAim, drawMinimap, drawProjectile, drawShip, drawSky,
   drawStorm, drawTank, drawTerrain, drawWater, drawZones, makeTerrainView, puff, repaint, setWorld,
 } from './render.js';
 import Icon from './Icon.jsx';
-import { TEAMS, alive as alivePlayers, findPlayer, inGame, sameTeam, teamsOn } from './game.js';
+import { TEAMS, alive as alivePlayers, findPlayer, inGame, isCtf, sameTeam, teamsOn } from './game.js';
 
 const SEND_EVERY = 1 / 30;
 const SERVER_EVERY = 1 / 15;
@@ -34,6 +38,7 @@ const EVENT_KEEP = 2;        // segundos que un disparo o una explosión siguen 
 const GONE_AFTER = 12;       // sin fotos de alguien, el anfitrión lo da por muerto
 const VIEW_W = 430;          // cuánto mundo entra a lo ancho
 const ITEM_GAP = 0.4;        // entre usar un objeto y el siguiente
+const FLAG_COOLDOWN = 0.6;   // segundos entre un aviso de bandera y el siguiente (no repetir mientras la sala contesta)
 const KEYS = { left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], shoot: ['Space'] };
 // Cuánto empuja para atrás cada arma al dispararla (sobre RECOIL).
 const KICK = { rocket: 1, nuke: 1.5, rapid: 0.35, flak: 1.2, laser: 0.6, whirl: 0.3, triple: 0.9, bounce: 0.9, cement: 0.5, strike: 0.4 };
@@ -52,12 +57,13 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
   roomRef.current = room;
   const dispatchRef = useRef(onDispatch);
   dispatchRef.current = onDispatch;
-  const [hud, setHud] = useState({ hp: HP, maxHp: HP, zone: null, inStorm: false, turbo: 0, inv: [null, null, null], sel: 0, shots: MAX_AMMO, reloadF: 0, charge: 0, jet: 0, dead: false, mode: 'ship', elapsed: -5 });
+  const [hud, setHud] = useState({ ctfLeft: null, respawn: 0, hp: HP, maxHp: HP, zone: null, inStorm: false, turbo: 0, inv: [null, null, null], sel: 0, shots: MAX_AMMO, reloadF: 0, charge: 0, jet: 0, dead: false, mode: 'ship', elapsed: -5 });
   const [hits, setHits] = useState([]);
   const [notice, setNotice] = useState('');
   const [killLabel, setKillLabel] = useState('');
-  const mode = modeOf(room.options);
+  const mode = settingsOf(room.options);
   const byTeams = teamsOn(room);
+  const ctf = isCtf(room);
   // ¿Es compañero mío? No se lastiman entre sí (los empujones sí valen).
   const ally = (id) => sameTeam(roomRef.current, findPlayer(roomRef.current, me.id), findPlayer(roomRef.current, id));
   const teamColor = (id) => (teamsOn(roomRef.current) ? TEAMS[findPlayer(roomRef.current, id)?.team ?? 0].color : null);
@@ -66,7 +72,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
   if (!sim.current) {
     sim.current = {
       n: 0, t: null, view: null, deco: [], coinSpots: [], crates: new Map(), zones: new Map(), local: null, remotes: new Map(), lastSeen: new Map(),
-      projectiles: new Map(), seen: new Set(), myShots: [], myBooms: [], strikes: [], mode: modeOf(null), mods: { g: 1 }, aimDist: 260, effects: [], particles: [], shake: 0, seq: 0,
+      projectiles: new Map(), seen: new Set(), myShots: [], myBooms: [], strikes: [], mode: settingsOf(null), mods: { g: 1 }, ctf: false, bots: null, hostBots: false, botViews: new Map(), flagAt: 0, tickAt: 0, aimDist: 260, effects: [], particles: [], shake: 0, seq: 0,
       input: { left: false, right: false, shoot: false }, pressed: false, mouse: { x: 0, y: 0, in: false }, angle: -Math.PI / 2, shootHeld: false,
       badges: [], hitEvents: [], hitDirty: false, sentAt: 0, serverAt: 0, deathSent: false, pendingCoins: new Set(), pendingCrates: new Set(), goneSent: new Set(), hudKey: '', mountedAt: 0,
     };
@@ -81,16 +87,21 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
     if (!m) return;
     const s = sim.current;
     s.n = m.n;
-    s.t = makeTerrain(m.seed, m.size);
+    s.ctf = m.mode === 'ctf';
+    s.t = makeTerrain(m.seed, m.size, s.ctf);
     s.view = makeTerrainView(s.t);
     s.deco = decorations(s.t, m.seed);
     s.coinSpots = coinSpots(s.t, m.seed);
     s.crates = new Map(mapItems(s.t, m.seed).map((c) => [c.i, { x: c.x, y: c.y, falling: false, weapon: c.weapon, float: true }]));
     s.zones = new Map();
-    s.mode = modeOf(room.options);
-    s.mods = { g: s.mode.g };
-    s.local = newTank(0, 0, 'ship', s.mode.hp);
-    for (const w of startKit(m.seed, me.id, s.mode.kit)) s.local.inv = addItem(s.local.inv, w) || s.local.inv;
+    s.mode = settingsOf(room.options);
+    s.mods = { g: 1 };
+    if (s.ctf) {
+      // Sin helicópteros: aparece de su lado, a una altura al azar.
+      const sp = spawnSpot(s.t, findPlayer(room, me.id)?.team ?? 0, Math.random);
+      s.local = newTank(sp.x, sp.y, 'tank', s.mode.hp);
+    } else s.local = newTank(0, 0, 'ship', s.mode.hp);
+    s.bots = null; s.botViews.clear(); s.flagAt = 0; s.tickAt = 0;
     s.strikes = [];
     s.ship = shipFor(m.order, me.id);
     s.remotes.clear(); s.lastSeen.clear(); s.projectiles.clear(); s.seen.clear();
@@ -102,9 +113,10 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
 
   // Cuando alguien que eliminé aparece en la lista: «Eliminaste a X».
   const deaths = room.match?.deaths || [];
+  const deathCount = room.match?.dn ?? deaths.length; // en roba la bandera la lista guarda solo las últimas
   const seenDeaths = useRef(0);
   useEffect(() => {
-    for (const d of deaths.slice(seenDeaths.current)) {
+    for (const d of deaths.slice(Math.max(0, deaths.length - (deathCount - seenDeaths.current)))) {
       if (d.by === me.id && d.id !== me.id) {
         const text = `Eliminaste a ${findPlayer(room, d.id)?.name || '¿?'}`;
         setKillLabel(text);
@@ -112,9 +124,25 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         sim.current.badges.push({ kind: 'kill', at: performance.now() / 1000 });
       }
     }
-    seenDeaths.current = deaths.length;
-  }, [deaths.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    seenDeaths.current = deathCount;
+  }, [deathCount]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { seenDeaths.current = 0; }, [matchN]);
+
+  // Avisos de roba la bandera: quién la robó, cuándo vuelve y los puntos.
+  const flagsKey = room.match?.flags?.join('|') || '';
+  const scoreKey = room.match?.score?.join('-') || '';
+  const prevCtf = useRef({ flags: [null, null], score: [0, 0], n: 0 });
+  useEffect(() => {
+    const m = room.match;
+    if (!m?.flags) return;
+    const prev = prevCtf.current.n === m.n ? prevCtf.current : { flags: [null, null], score: [0, 0], n: m.n };
+    for (const i of [0, 1]) {
+      if (m.score[i] > prev.score[i]) flash(`¡Punto para el equipo ${TEAMS[i].name.toLowerCase()}!`);
+      else if (m.flags[i] && !prev.flags[i]) flash(`${findPlayer(room, m.flags[i])?.name || '¿?'} robó la bandera ${TEAMS[i].name.toLowerCase()}`);
+      else if (!m.flags[i] && prev.flags[i]) flash(`La bandera ${TEAMS[i].name.toLowerCase()} volvió a su base`);
+    }
+    prevCtf.current = { flags: [...m.flags], score: [...m.score], n: m.n };
+  }, [flagsKey, scoreKey, matchN]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Un disparo (mío o de otro): sus proyectiles, o el remolino que deja.
   function addShot(s, shot, owner, now) {
@@ -185,10 +213,17 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       burst(s.particles, ex.x, ex.y, { n: 14, speed: 50, colors: ex.w === 'poison' ? ['#7cf05a', '#c8ff9a'] : ['#d9dde3', '#aab2bd'] });
     }
     registerHits(s, ex, w);
+    // Las máquinas las lastima la explosión de cualquiera de los jugadores; la vida la lleva la pantalla del anfitrión.
+    if (s.hostBots && s.bots && w.radius && !isBot(ex.o)) {
+      for (const b of s.bots) {
+        const hitB = !b.dead && blastOn(b, ex);
+        if (hitB) { b.hp -= hitB.damage; push(b, hitB.vx * 0.7, hitB.vy * 0.7); }
+      }
+    }
     const p = s.local;
     if (!p || p.dead || p.mode !== 'tank') return;
     if (w.noSelf && ex.o === me.id) return;
-    const hit = blastOn(p, ex, s.mode.knock);
+    const hit = blastOn(p, ex);
     if (!hit) return;
     // La explosión del tiro propio empuja menos: si no, un tiro al piso te mandaba al cielo.
     const own = ex.o === me.id ? 0.7 : 1;
@@ -232,9 +267,18 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       for (const shot of snap.sh || []) {
         if (s.seen.has(shot.k)) continue;
         s.seen.add(shot.k);
-        addShot(s, shot, id, now);
+        addShot(s, shot, shot.o || id, now); // `o`: los tiros de una máquina los manda el anfitrión, pero son de ella
       }
       for (const ex of snap.ex || []) explode(s, ex, now);
+      // Las máquinas: las manda el anfitrión.
+      if (snap.bt && id === roomRef.current.hostId) {
+        for (const [i, x, y, nx, ny, a, hp, d] of snap.bt) {
+          const bid = botId(i), v = s.botViews.get(bid);
+          if (d && v && !v.d) burst(s.particles, v.x, v.y, { n: 36, colors: ['#ffe066', '#ff5a4f', '#9aa6b5', '#fff'], speed: 120, life: 0.9 });
+          const jump = !v || Math.hypot(x - v.tx, y - v.ty) > 60;
+          s.botViews.set(bid, { x: jump ? x : v.x, y: jump ? y : v.y, tx: x, ty: y, nx, ny, a, hp, d, treads: (v?.treads || 0) + (v ? Math.hypot(x - v.tx, y - v.ty) : 0) });
+        }
+      }
     };
     const mesh = createMesh({ signaling: chan.signaling, myId: me.id, onMessage: onSnap });
     s.mesh = mesh;
@@ -317,16 +361,62 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       p.readyAt = now + ITEM_GAP;
     }
 
+    // Roba la bandera: el que murió vuelve a aparecer de su lado, a una altura al azar.
+    function respawnTank() {
+      const team = findPlayer(roomRef.current, me.id)?.team ?? 0;
+      const sp = spawnSpot(s.t, team, Math.random);
+      s.local = newTank(sp.x, sp.y, 'tank', s.mode.hp);
+      s.deathSent = false;
+      burst(s.particles, sp.x, sp.y, { n: 22, colors: ['#e5ccff', '#b86bff', '#ffffff'], speed: 70, life: 0.6 });
+    }
+
+    // Las máquinas: las corre solo el anfitrión (las demás pantallas las ven en su foto).
+    const botTargets = () => {
+      const list = [];
+      const me0 = s.local;
+      if (me0 && !me0.dead && me0.mode !== 'ship') list.push({ id: me.id, x: me0.x, y: me0.y });
+      for (const [id, v] of s.remotes) if (!v.snap.d && v.snap.m !== 'ship' && findPlayer(roomRef.current, id)?.inGame) list.push({ id, x: v.x, y: v.y });
+      return list;
+    };
+    function stepBots(r, m, now, elapsed) {
+      s.hostBots = Boolean(s.mode.machines && r.hostId === me.id && elapsed > 0);
+      if (!s.hostBots) { if (r.hostId !== me.id) s.bots = null; return; }
+      const n = botCount(m.size);
+      if (!s.bots) s.bots = Array.from({ length: n }, (_, i) => newBot(s.t, m.seed, i, n));
+      const targets = botTargets();
+      const level = waterLevel(r, elapsed);
+      s.bots.forEach((b, i) => {
+        if (b.dead) { if (now >= b.respawnAt) s.bots[i] = newBot(s.t, m.seed, i, n, b.round + 1); return; }
+        const th = botThink(b, targets, now);
+        stepTank(b, th.dir, STEP, s.t, { g: 1, drive: BOT_DRIVE });
+        if (th.fire != null) {
+          const mz = muzzle(b, th.fire);
+          const shot = { k: `${b.id}:${m.n}:${s.seq++}`, t: now, x: round1(mz.x), y: round1(mz.y), a: Math.round(th.fire * 1000) / 1000, w: 'rocket', o: b.id };
+          s.seen.add(shot.k);
+          addShot(s, shot, b.id, now);
+          s.myShots.push(shot);
+        }
+        if (b.hp <= 0 || b.y > level) {
+          b.dead = true; b.respawnAt = now + BOT_RESPAWN;
+          burst(s.particles, b.x, b.y, { n: 36, colors: ['#ffe066', '#ff5a4f', '#9aa6b5', '#fff'], speed: 120, life: 0.9 });
+        }
+      });
+    }
+
     function step(now) {
       const r = roomRef.current;
       const m = r.match;
+      if (m && s.t && s.ctf && s.local?.dead && now >= s.local.respawnAt) respawnTank();
       const p = s.local;
       if (!m || !p || !s.t) return;
       const elapsed = now - m.startsAt / 1000;
       const mine = findPlayer(r, me.id);
       // Un clic cortito (que empieza y termina entre dos pasos) también cuenta como un tiro.
-      const shoot = s.input.shoot || s.pressed;
+      // En roba la bandera, durante la cuenta regresiva nadie dispara ni maneja.
+      const frozen = s.ctf && elapsed < 0;
+      const shoot = (s.input.shoot || s.pressed) && !frozen;
       s.pressed = false;
+      stepBots(r, m, now, elapsed);
 
       if (!p.dead) {
         if (p.mode === 'ship') {
@@ -343,7 +433,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
             s.shootHeld = true;
           }
         } else {
-          const dir = (s.input.right ? 1 : 0) - (s.input.left ? 1 : 0);
+          const dir = frozen ? 0 : (s.input.right ? 1 : 0) - (s.input.left ? 1 : 0);
           // Jetpack y remolinos: empujan mientras duran.
           if (p.mode === 'tank' && now < p.jetUntil) {
             const f = jetForce(p.jetA);
@@ -360,7 +450,7 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
             }
           }
           stepTank(p, dir, STEP, s.t, { g: s.mods.g, drive: now < p.turboUntil ? ITEMS.turbo.mult : 1 });
-          reload(p, now, RELOAD * s.mode.reload);
+          reload(p, now, RELOAD);
           if (now < p.turboUntil && p.mode === 'tank' && Math.random() < 0.5) burst(s.particles, p.x - p.nx * 2, p.y - p.ny * 2, { n: 1, colors: ['#ffd23f', '#ff8a22'], speed: 24, life: 0.35 });
           if (!shoot) s.shootHeld = false;
           if (p.mode === 'tank' && shoot && !s.shootHeld && now >= p.readyAt && !p.chargeUntil && !p.burst) use(p, m, now);
@@ -391,12 +481,14 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         const level = waterLevel(r, elapsed);
         if (elapsed > 0 && p.mode !== 'ship' && (p.y > level || p.hp <= 0)) {
           p.dead = true;
+          p.respawnAt = now + RESPAWN_S;
           burst(s.particles, p.x, p.y, { n: 46, colors: ['#ffe066', '#ff5a4f', '#555', '#fff'], speed: 150, life: 1 });
           if (!s.deathSent && mine?.alive) {
             s.deathSent = true;
             const recent = p.lastBy && now - p.lastHitAt < KILL_CREDIT;
+            const byBot = recent && isBot(p.lastBy); // lo eliminó una máquina: no es un jugador, así que va como causa
             const byStorm = !recent && p.hp <= 0 && now - (p.stormTick ?? -99) < 0.5;
-            dispatchRef.current({ type: 'died', match: m.n, by: recent ? p.lastBy : null, w: recent ? p.lastW : byStorm ? 'storm' : null });
+            dispatchRef.current({ type: 'died', match: m.n, by: recent && !byBot ? p.lastBy : null, w: byBot ? 'robot' : recent ? p.lastW : byStorm ? 'storm' : null });
           }
         }
         // Monedas.
@@ -409,12 +501,23 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
             }
           });
         }
+        // Roba la bandera: al llegar a la del otro equipo la agarrás; con ella, al tocar la tuya (si está en su base) sumás un punto.
+        if (s.ctf && elapsed > 0 && p.mode === 'tank' && !p.dead && mine && m.flags && now - s.flagAt > FLAG_COOLDOWN) {
+          const my = mine.team, en = 1 - my;
+          if (m.flags[en] == null && !m.flags.includes(me.id) && nearFlag(p, s.t.bases[en])) {
+            s.flagAt = now;
+            dispatchRef.current({ type: 'flagTake', match: m.n, team: en });
+          } else if (m.flags[en] === me.id && m.flags[my] == null && nearFlag(p, s.t.bases[my])) {
+            s.flagAt = now;
+            dispatchRef.current({ type: 'flagCapture', match: m.n });
+          }
+        }
       }
 
       // Cajas: las que caen en paracaídas cada tanto, y las piezas sueltas que flotan en recintos cerrados del mapa
       // (`float`: no caen aunque rompas la roca, hay que ir a buscarlas).
       for (let i = 0; i < MAX_DROPS; i++) {
-        const info = crateInfo(i, m.seed, s.t.W, s.mode.crates);
+        const info = crateInfo(i, m.seed, s.t.W);
         if (info.at > elapsed) break;
         if (!s.crates.has(i) && !m.crates[i]) s.crates.set(i, { x: info.x, y: -20, falling: true, weapon: info.weapon, drop: true });
       }
@@ -449,14 +552,24 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         if (v && !v.snap.d && v.snap.m === 'tank') others.push({ id: pl.id, x: v.x, y: v.y, shield: (v.snap.sd || 0) > now });
       }
       const self = !p.dead && p.mode === 'tank' ? { id: me.id, x: p.x, y: p.y, shield: p.shieldUntil > now } : null;
+      // Las máquinas también son blanco de mis tiros; y los tiros de una máquina (que juzga el anfitrión) le pueden pegar a cualquiera.
+      const botPts = s.hostBots && s.bots ? s.bots.filter((b) => !b.dead) : [...s.botViews.values()].filter((v) => !v.d);
+      const botTargetsNow = botPts.map((v, i) => ({ id: v.id || `${botId(i)}~`, x: v.x, y: v.y, shield: false }));
+      const everyone = [];
+      for (const pl of inGame(r)) {
+        const v = pl.id !== me.id && s.remotes.get(pl.id);
+        if (v && !v.snap.d && v.snap.m === 'tank') everyone.push({ id: pl.id, x: v.x, y: v.y, shield: (v.snap.sd || 0) > now });
+      }
+      if (self) everyone.push(self);
       for (const b of s.projectiles.values()) {
         // En los remolinos, los proyectiles también se aceleran para ese lado.
         for (const z of s.zones.values()) {
           if (z.kind === 'whirl' && now < z.until && inWhirl(z, b.x, b.y)) { b.vx += Math.cos(z.a) * 500 * STEP; b.vy += Math.sin(z.a) * 500 * STEP; }
         }
-        const mineShot = b.by === me.id;
+        const botShot = isBot(b.by) && s.hostBots;
+        const mineShot = b.by === me.id || botShot;
         // Uno devuelto por un escudo ya puede pegarle al que lo tiró (y no al del escudo).
-        const targets = !mineShot ? [] : b.reflectedBy ? [...others, ...(self ? [self] : [])].filter((tk) => tk.id !== b.reflectedBy) : others;
+        const targets = !mineShot ? [] : botShot ? everyone.filter((tk) => tk.id !== b.reflectedBy) : b.reflectedBy ? [...others, ...(self ? [self] : [])].filter((tk) => tk.id !== b.reflectedBy) : [...others, ...botTargetsNow];
         const hit = stepProjectile(b, STEP, s.t, targets, s.mods.g);
         if (mineShot) {
           for (const tn of b.tunnels) {
@@ -513,6 +626,14 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         v.y += (ty - v.y) * k;
       }
 
+      for (const v of s.botViews.values()) { const k = Math.min(1, dt * 12); v.x += (v.tx - v.x) * k; v.y += (v.ty - v.y) * k; }
+
+      // Roba la bandera: se acabó el tiempo (lo avisa cualquier pantalla; la sala deja pasar a una).
+      if (s.ctf && m.endsAt && now * 1000 >= m.endsAt && r.phase === 'playing' && now - s.tickAt > 1) {
+        s.tickAt = now;
+        dispatchRef.current({ type: 'tick', match: m.n });
+      }
+
       // Mandar la foto.
       if (now - s.sentAt >= SEND_EVERY) {
         s.sentAt = now;
@@ -523,6 +644,8 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
           ny: Math.round(p.ny * 100) / 100, m: p.mode, a: Math.round(s.angle * 100) / 100, hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, tu: now < p.turboUntil ? 1 : 0, d: p.dead ? 1 : 0,
           sd: p.shieldUntil > now ? round1(p.shieldUntil) : 0, bo: p.boostAt || 0, jt: now < p.jetUntil ? 1 : 0, ch: p.chargeUntil ? 1 : 0, sh: s.myShots, ex: s.myBooms,
         };
+        // Las máquinas viajan en la foto del anfitrión: [número, x, y, nx, ny, ángulo, vida, ¿destruida?].
+        if (s.hostBots && s.bots) snap.bt = s.bots.map((b) => [b.i, round1(b.x), round1(b.y), Math.round(b.nx * 100) / 100, Math.round(b.ny * 100) / 100, Math.round(b.aim * 100) / 100, Math.max(0, Math.round(b.hp)), b.dead ? 1 : 0]);
         s.mesh?.broadcast(snap);
         const players = inGame(r).filter((pl) => pl.id !== me.id);
         const needServer = !s.mesh || players.some((pl) => !s.mesh.isOpen(pl.id));
@@ -547,10 +670,12 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       const turbo = now < p.turboUntil ? Math.round(((p.turboUntil - now) / ITEMS.turbo.time) * 40) / 40 : 0;
       const st = s.storm && elapsed > 0 ? s.storm : null;
       const zone = st ? { shrinking: st.shrinking, left: Math.ceil(st.left), final: !st.next } : null;
-      const key = [Math.round(p.hp), p.maxHp, JSON.stringify(p.inv), p.sel, p.shots, reloadF, charge, jet, turbo, p.dead, p.mode, Math.ceil(-elapsed), elapsed > 25 && elapsed < 32, !!s.inStorm, zone && `${zone.shrinking}${zone.left}${zone.final}`].join('|');
+      const ctfLeft = s.ctf && m.endsAt ? Math.max(0, Math.ceil(m.endsAt / 1000 - now)) : null;
+      const respawn = s.ctf && p.dead ? Math.max(0, Math.ceil(p.respawnAt - now)) : 0;
+      const key = [ctfLeft, respawn, Math.round(p.hp), p.maxHp, JSON.stringify(p.inv), p.sel, p.shots, reloadF, charge, jet, turbo, p.dead, p.mode, Math.ceil(-elapsed), elapsed > 25 && elapsed < 32, !!s.inStorm, zone && `${zone.shrinking}${zone.left}${zone.final}`].join('|');
       if (key !== s.hudKey) {
         s.hudKey = key;
-        setHud({ hp: Math.max(0, Math.round(p.hp)), maxHp: p.maxHp, zone, inStorm: !!s.inStorm, turbo, inv: p.inv, sel: p.sel, shots: p.shots, reloadF, charge, jet, dead: p.dead, mode: p.mode, elapsed });
+        setHud({ ctfLeft, respawn, hp: Math.max(0, Math.round(p.hp)), maxHp: p.maxHp, zone, inStorm: !!s.inStorm, turbo, inv: p.inv, sel: p.sel, shots: p.shots, reloadF, charge, jet, dead: p.dead, mode: p.mode, elapsed });
       }
       // Eventos de golpe (arriba a la derecha): duran unos segundos.
       const nowS = performance.now() / 1000;
@@ -596,9 +721,16 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       setWorld(ctx, shaken);
       drawDecorations(ctx, shaken, s.deco, s.t, now);
       drawZones(ctx, s.zones.values(), now, false);
+      // Roba la bandera: las bases y las banderas que están en su lugar (las que se llevan van arriba de quien las lleva).
+      if (s.ctf && s.t.bases) {
+        for (const i of [0, 1]) {
+          drawBase(ctx, s.t.bases[i], TEAMS[i].color, now);
+          if (!m.flags?.[i]) drawFlag(ctx, s.t.bases[i].x, s.t.bases[i].y, TEAMS[i].color, now);
+        }
+      }
       s.coinSpots.forEach((c, i) => { if (!m.coins[i] && !s.pendingCoins.has(i)) drawCoin(ctx, c, now); });
       for (const c of s.crates.values()) drawCrate(ctx, c, now);
-      for (let kk = 0; kk < 2; kk++) { const ship = shipAt(elapsed, s.t.W, s.t.H, kk); if (!ship.gone) drawShip(ctx, ship, now, (back) => shipAt(elapsed - back, s.t.W, s.t.H, kk)); }
+      if (!s.ctf) for (let kk = 0; kk < 2; kk++) { const ship = shipAt(elapsed, s.t.W, s.t.H, kk); if (!ship.gone) drawShip(ctx, ship, now, (back) => shipAt(elapsed - back, s.t.W, s.t.H, kk)); }
       for (const pl of alivePlayers(r)) {
         if (pl.id === me.id) continue;
         const v = s.remotes.get(pl.id);
@@ -608,12 +740,23 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         if (v.snap.tu && Math.random() < 0.5) burst(s.particles, v.x, v.y, { n: 1, colors: ['#ffd23f', '#ff8a22'], speed: 24, life: 0.35 });
         if (v.snap.ch) drawLaserAim(ctx, turret(v), v.snap.a, 0.5);
         drawLabel(ctx, v, pl.name, (v.snap.hp / (v.snap.mh || HP)) * 100, false, teamColor(pl.id));
+        const carried = m.flags?.indexOf(pl.id);
+        if (carried >= 0) drawFlag(ctx, v.x - 3, v.y + 2, TEAMS[carried].color, now, true);
+      }
+      // Las máquinas: las del anfitrión, o lo que él manda.
+      const machines = s.hostBots && s.bots ? s.bots.filter((b) => !b.dead).map((b) => ({ x: b.x, y: b.y, nx: b.nx, ny: b.ny, treads: b.treads, a: b.aim, hp: b.hp }))
+        : [...s.botViews.values()].filter((v) => !v.d).map((v) => ({ x: v.x, y: v.y, nx: v.nx, ny: v.ny, treads: v.treads, a: v.a, hp: v.hp }));
+      for (const b of machines) {
+        drawTank(ctx, b, '#8a95a3', b.a, { now, robot: true });
+        drawLabel(ctx, b, '', (b.hp / BOT_HP) * 100, false, null);
       }
       const mine = findPlayer(r, me.id);
       if (!p.dead && mine && p.mode !== 'ship') {
         drawTank(ctx, p, mine.color, s.angle, { hurt: (p.hurtUntil || 0) > performance.now() / 1000, chute: p.mode === 'chute', shield: p.shieldUntil > now, now, team: teamColor(me.id) });
         if (p.chargeUntil) drawLaserAim(ctx, muzzle(p, s.angle), s.angle, 1 - (p.chargeUntil - now) / LASER_CHARGE);
         drawLabel(ctx, p, mine.name, (p.hp / p.maxHp) * 100, true, teamColor(me.id));
+        const myFlag = m.flags?.indexOf(me.id);
+        if (myFlag >= 0) drawFlag(ctx, p.x - 3, p.y + 2, TEAMS[myFlag].color, now, true);
         s.badges = s.badges.filter((b) => performance.now() / 1000 - b.at < 0.6);
         drawBadges(ctx, p, s.badges, performance.now() / 1000);
         // Flecha roja hacia el enemigo más cercano.
@@ -646,7 +789,17 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
           const v = pl.id !== me.id && s.remotes.get(pl.id);
           if (v && !v.snap.d && v.snap.m !== 'ship') others.push({ x: v.x, y: v.y, color: teamColor(pl.id) || pl.color });
         }
-        drawMinimap(ctx, { ...cam, dpr }, s.view, s.t, { me: p.dead ? null : p, others, storm: hasStorm(s.mode) && elapsed > 0 ? s.storm : null, level: hasWater(s.mode) ? level : null, theme });
+        for (const b of machines) others.push({ x: b.x, y: b.y, color: '#9aa6b5', square: true });
+        // Las banderas en el mapa chico: en su base, o donde está quien la lleva.
+        const flags = [];
+        if (s.ctf && s.t.bases) {
+          for (const i of [0, 1]) {
+            const carrier = m.flags?.[i];
+            const at = !carrier ? s.t.bases[i] : carrier === me.id ? p : s.remotes.get(carrier);
+            if (at) flags.push({ x: at.x, y: at.y, color: TEAMS[i].color });
+          }
+        }
+        drawMinimap(ctx, { ...cam, dpr }, s.view, s.t, { me: p.dead ? null : p, others, storm: hasStorm(s.mode) && elapsed > 0 ? s.storm : null, level: hasWater(s.mode) ? level : null, theme, flags });
       }
     }
 
@@ -695,11 +848,19 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
   const left = alivePlayers(room).length;
   const total = inGame(room).length;
   const mine = findPlayer(room, me.id);
-  const feed = deaths.slice(-6).reverse().map((d) => ({
-    k: d.id, by: d.by ? findPlayer(room, d.by)?.name : null, w: d.w, victim: findPlayer(room, d.id)?.name || '¿?',
+  const feed = deaths.slice(-6).reverse().map((d, i) => ({
+    k: `${d.id}:${deathCount - i}`, by: d.by ? findPlayer(room, d.by)?.name : null, w: d.w, victim: findPlayer(room, d.id)?.name || '¿?',
   }));
-  const myDeath = deaths.find((d) => d.id === me.id);
+  const myDeath = [...deaths].reverse().find((d) => d.id === me.id); // en roba la bandera se muere varias veces: la última
   const myKiller = myDeath?.by ? findPlayer(room, myDeath.by) : null;
+  const match = room.match;
+  const myTeam = mine?.team ?? 0;
+  const flagCarrier = (i) => (match?.flags?.[i] ? findPlayer(room, match.flags[i]) : null);
+  const carrying = ctf && match?.flags?.[1 - myTeam] === me.id;
+  const myFlagTaken = ctf && flagCarrier(myTeam);
+  const clock = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  const selected = hud.sel === 0 ? 'rocket' : hud.inv[hud.sel - 1]?.w;
+  const selectedN = hud.sel === 0 ? 0 : hud.inv[hud.sel - 1]?.n || 0;
   return (
     <div className={`ck-stage${hud.inStorm && !hud.dead ? ' is-storm' : ''}`} ref={wrapRef}>
       <canvas
@@ -714,7 +875,8 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
       <div className="ck-top">
         <span title="Monedas"><Icon name="coin" size={18} /> {mine?.coins || 0}</span>
         <span title="Bajas"><Icon name="skull" size={18} /> {mine?.kills || 0}</span>
-        <span className="ck-mode" title={mode.blurb} data-mode={room.options.mode || 'water'}>{mode.name}</span>
+        <span className="ck-mode" title={mode.mode.blurb} data-mode={mode.gameMode} data-zone-kind={mode.zone}>{mode.label}</span>
+        {mode.machines && <span className="ck-mode ck-mode-robots" title="Hay máquinas patrullando el mapa" data-machines><Icon name="robot" size={16} /> Máquinas</span>}
       </div>
       {hud.zone && !hud.dead && (
         <p className={`ck-zone${hud.zone.shrinking ? ' is-closing' : ''}`} data-zone>
@@ -723,18 +885,34 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
         </p>
       )}
       {hud.inStorm && !hud.dead && <p className="ck-stormhit" data-in-storm>Estás en la tormenta: −10 por segundo. ¡Volvé al círculo!</p>}
-      {byTeams && (
+      {ctf && match?.score && (
+        <div className="ck-ctf" data-ctf>
+          <span className="ck-ctf-team" style={{ background: TEAMS[0].color }} data-score="0" title={`Equipo ${TEAMS[0].name}`}>{match.score[0]}</span>
+          <span className="ck-ctf-mid">
+            <b data-clock>{hud.ctfLeft == null ? '∞' : clock(hud.ctfLeft)}</b>
+            <small>{match.target ? `a ${match.target} banderas` : 'sin límite de puntos'}</small>
+          </span>
+          <span className="ck-ctf-team" style={{ background: TEAMS[1].color }} data-score="1" title={`Equipo ${TEAMS[1].name}`}>{match.score[1]}</span>
+        </div>
+      )}
+      {ctf && !hud.dead && (carrying || myFlagTaken) && (
+        <p className="ck-ctf-hint" data-ctf-hint>
+          <Icon name="flag" size={18} />
+          {carrying ? (myFlagTaken ? `¡Tenés la bandera! Pero ${myFlagTaken.name} se llevó la tuya: eliminalo para poder sumar.` : '¡Tenés la bandera! Llevala hasta tu base y tocá la tuya.') : `${myFlagTaken.name} se llevó tu bandera: ¡eliminalo para que vuelva!`}
+        </p>
+      )}
+      {byTeams && !ctf && (
         <div className="ck-teamcount" data-teams>
           {TEAMS.map((t, i) => <span key={t.name} style={{ background: t.color }} title={`Equipo ${t.name}`}>{alivePlayers(room).filter((pl) => pl.team === i).length}</span>)}
         </div>
       )}
-      <div className="ck-remaining" data-left><small>Tanques<br />quedan</small><strong>{left}</strong></div>
+      {!ctf && <div className="ck-remaining" data-left><small>Tanques<br />quedan</small><strong>{left}</strong></div>}
       <ul className="ck-feed">
         {hits.map((h) => (
           <li key={h.k} className="is-hit" data-hit><Icon name="hit" size={16} /> Le pegaste a <b>{h.name}</b> <ItemIcon w={h.w} size={16} /> −{Math.round(h.dmg)}</li>
         ))}
         {feed.map((f) => (
-          <li key={f.k}>{f.by ? <>{f.by} <ItemIcon w={f.w || 'rocket'} size={16} /> {f.victim}</> : <>{f.victim} <Icon name={f.w === 'storm' ? 'storm' : 'wave'} size={16} /></>}</li>
+          <li key={f.k}>{f.by ? <>{f.by} <ItemIcon w={f.w || 'rocket'} size={16} /> {f.victim}</> : <>{f.victim} <Icon name={f.w === 'storm' ? 'storm' : f.w === 'robot' ? 'robot' : 'wave'} size={16} /></>}</li>
         ))}
       </ul>
       {killLabel && <p className="ck-killed"><Icon name="skull" size={22} /> {killLabel}</p>}
@@ -763,17 +941,25 @@ export default function CohetesGame({ room, me, code, offset, onDispatch }) {
           <div className="ck-hp"><i style={{ width: `${Math.min(100, (hud.hp / hud.maxHp) * 100)}%` }} className={hud.hp / hud.maxHp < 0.35 ? 'is-low' : ''} /><small>{hud.hp}</small></div>
         </div>
       )}
+      {!hud.dead && selected && (
+        <aside className="ck-iteminfo" data-iteminfo={selected}>
+          <strong><ItemIcon w={selected} size={26} /> {ITEMS[selected].name}{selectedN > 1 ? ` ×${selectedN}` : ''}</strong>
+          <p>{ITEM_DESC[selected]}</p>
+        </aside>
+      )}
       {notice && <p className="ck-notice">{notice}</p>}
       {hud.elapsed < 0 && <div className="ck-countdown"><small>¡PREPARATE!</small>{Math.ceil(-hud.elapsed)}</div>}
-      {hud.mode === 'ship' && hud.elapsed >= 0 && !hud.dead && <div className="ck-deploy">⌃<br />Disparo para saltar</div>}
-      {hud.elapsed > 25 && hud.elapsed < 32 && !hud.dead && <p className="ck-warning"><Icon name={mode.zone === 'water' ? 'wave' : 'storm'} size={20} /> {mode.zone === 'water' ? '¡El agua empieza a subir!' : mode.zone === 'storm' ? '¡La tormenta empieza a cerrarse!' : '¡La tormenta y el agua empiezan a avanzar!'}</p>}
+      {!ctf && hud.mode === 'ship' && hud.elapsed >= 0 && !hud.dead && <div className="ck-deploy">⌃<br />Disparo para saltar</div>}
+      {(mode.zone === 'water' || mode.zone === 'storm' || mode.zone === 'both') && hud.elapsed > 25 && hud.elapsed < 32 && !hud.dead && <p className="ck-warning"><Icon name={mode.zone === 'water' ? 'wave' : 'storm'} size={20} /> {mode.zone === 'water' ? '¡El agua empieza a subir!' : mode.zone === 'storm' ? '¡La tormenta empieza a cerrarse!' : '¡La tormenta y el agua empiezan a avanzar!'}</p>}
       {hud.dead && mine && (
         <div className="ck-eliminated">
           <div className="ck-elim-text">
-            <strong>¡ELIMINADO!</strong>
-            <span>{myKiller ? <>por <b>{myKiller.name}</b> con <ItemIcon w={myDeath.w || 'rocket'} size={22} /></> : myDeath?.w === 'storm' ? 'Te llevó la tormenta' : 'Te hundiste'}</span>
+            <strong>{ctf ? '¡TE ELIMINARON!' : '¡ELIMINADO!'}</strong>
+            <span>{myKiller ? <>por <b>{myKiller.name}</b> con <ItemIcon w={myDeath.w || 'rocket'} size={22} /></> : myDeath?.w === 'storm' ? 'Te llevó la tormenta' : myDeath?.w === 'robot' ? 'Te eliminó una máquina' : 'Te hundiste'}</span>
           </div>
-          <div className="ck-elim-place"><strong>{mine.place || left + 1}</strong><small>de {total}</small></div>
+          {ctf
+            ? <div className="ck-elim-place" data-respawn><strong>{hud.respawn}</strong><small>reaparecés</small></div>
+            : <div className="ck-elim-place"><strong>{mine.place || left + 1}</strong><small>de {total}</small></div>}
         </div>
       )}
     </div>

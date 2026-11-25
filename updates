@@ -1229,8 +1229,17 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.73.0 = Cohete Royale: modo por equipos
+1.73.0 = Cohete Royale: modo por equipos
 - Nueva opción «Equipos» en la sala: todos contra todos o 2 equipos (rojo y azul). Cada uno elige el suyo (el anfitrión puede pasar a otros) y, si quedan dispares, al empezar pasan al otro los últimos que entraron.
 - Los compañeros no se hacen daño (los cohetes los atraviesan, aunque las explosiones los empujan igual) y las bajas a un compañero no suman. Gana el último equipo en pie.
 - En la partida: banderita y nombre del color del equipo, cuántos quedan de cada uno, el mapa chico con los colores del equipo y la flecha roja solo apunta a rivales.
 - Se combina con cualquiera de los ocho modos.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.74.0 = Cohete Royale: modos de juego de verdad, modificadores, roba la bandera y máquinas
+- Los ocho «modos» de antes pasan a llamarse **Modificadores** y ahora se combinan: se elige una opción de cada bloque de color. Zona: Marea (por defecto), Tormenta, Sin peligro o Peligro total (marea y tormenta). Vida: Normal, Titanes (200) o Frágil (40). Extra: Nada nuevo o Máquinas. Frenesí, Arsenal y Luna ya no están.
+- Arriba de los modificadores hay una sección de **Modos**: Todos contra todos (por defecto), Por equipos (reemplaza a la opción «Equipos») y Roba la bandera. Hay una tarjeta «Próximamente…» que todavía no se puede elegir.
+- **Roba la bandera**: dos equipos, una bandera en cada punta de un mapa ancho (espejado, así es parejo), sin helicópteros: aparecés de tu lado a una altura al azar y, si te eliminan, reaparecés a los 4 segundos. Tocá la bandera rival, llevala y tocá la tuya (tiene que estar en su base) para sumar un punto en el marcador de arriba. Si eliminan al que la lleva, vuelve a su base. El anfitrión elige el tiempo y las banderas para ganar; con 0 en una es sin límite, y con las dos en 0 la partida es infinita. Siempre es «Sin peligro».
+- **Máquinas**: tanques-robot sin nombre que patrullan el mapa, te persiguen y te disparan. Un cohete las rompe y vuelven a los 12 segundos.
+- Al elegir un objeto aparece abajo a la derecha un cuadro con su nombre y una descripción de qué hace.

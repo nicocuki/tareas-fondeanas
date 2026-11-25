@@ -78,6 +78,32 @@ export const ITEMS = {
   // Lo que cae de un ataque aéreo (no se agarra de una caja).
   airbomb: { name: 'Ataque aéreo', kind: 'shot', speed: 160, gravity: 130, crater: 19, radius: 38, damage: 38, knock: 280, life: 5 },
 };
+// Qué hace cada objeto (se muestra en el cuadro de abajo a la derecha al elegirlo).
+export const ITEM_DESC = {
+  rocket: 'Cohete explosivo: rompe el terreno y empuja. Es infinito: tenés 3 en el cargador y se recargan solos.',
+  nuke: 'Bomba gigante: un cráter enorme y muchísimo daño en un área grande. ¡Alejate de la explosión!',
+  mine: 'Se queda pegada donde cae y explota cuando alguien se le acerca (o a los 45 segundos).',
+  rapid: 'Ráfaga de 5 cohetitos seguidos hacia donde apuntás.',
+  shield: 'Durante 5 segundos un escudo devuelve a quien los tiró los disparos que te lleguen.',
+  flak: 'Metralla: 7 perdigones muy rápidos. Alcance corto, pero de cerca duele mucho.',
+  grenade: 'Tres granadas que rebotan y explotan a los pocos instantes de tocar algo.',
+  drill: 'Atraviesa la pared y deja un túnel por donde pasa: explota recién al salir del otro lado.',
+  homing: 'Cohete teledirigido: gira solo hacia el enemigo más cercano.',
+  whirl: 'Un remolino de 4 segundos que empuja tanques y disparos hacia donde apuntaste.',
+  jetpack: 'Volás unos 3,6 segundos, empujado para el lado contrario al que apuntás.',
+  poison: 'Deja una nube tóxica que le saca vida a todos los que estén adentro.',
+  laser: 'Carga 2 segundos y suelta un rayo instantáneo de 100 de daño: mata de un tiro.',
+  smoke: 'Una nube de humo que tapa la vista en esa zona.',
+  heal: 'Te cura el 30 % de la vida apenas la agarrás.',
+  teleport: 'Te manda hasta donde apuntás (hasta 260 de distancia), atravesando paredes.',
+  turbo: 'Durante 6 segundos manejás casi al doble de velocidad.',
+  shock: 'Una onda a tu alrededor que empuja fuerte a los demás, con poco daño.',
+  medkit: 'Te cura 60 de vida al usarlo.',
+  triple: 'Tres cohetes en abanico: más chances de pegar.',
+  bounce: 'Cohete que rebota hasta 3 veces contra las paredes antes de explotar.',
+  cement: 'Rellena de tierra donde pega: tapá un hueco, armate un puente o encerrate.',
+  strike: 'Una bengala marca el lugar y, unos instantes después, caen seis bombas desde arriba.',
+};
 export const ITEM_LIST = ['nuke', 'mine', 'rapid', 'shield', 'flak', 'grenade', 'drill', 'homing', 'whirl', 'jetpack', 'poison', 'laser', 'smoke', 'heal',
   'teleport', 'turbo', 'shock', 'medkit', 'triple', 'bounce', 'cement', 'strike'];
 export const STRIKE_DELAY = 0.9;   // segundos entre la bengala y la primera bomba

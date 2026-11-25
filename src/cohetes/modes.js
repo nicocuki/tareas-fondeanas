@@ -1,47 +1,66 @@
-// Modos de juego de Cohete Royale, sin React ni red. Un modo es un paquete de reglas: qué cierra el mapa (el agua,
-// la tormenta o las dos) y unos cuantos ajustes (gravedad, vida, recarga, cajas, arsenal inicial).
-// Todas las pantallas leen `room.options.mode` y calculan lo mismo, así que nada de esto viaja por la red.
-import { ITEM_LIST } from './sim.js';
+// Modos de juego y modificadores de Cohete Royale, sin React ni red.
+// - Un **modo** es cómo se gana: todos contra todos, por equipos o roba la bandera.
+// - Los **modificadores** se acumulan, uno de cada bloque: la zona (qué cierra el mapa), la vida y un extra.
+// Todas las pantallas leen `room.options` y calculan lo mismo, así que nada de esto viaja por la red.
 import { TOP, seeded } from './terrain.js';
 
 export const STORM_DPS = 10;       // la tormenta no mata al toque: saca 10 de vida por segundo
 export const STORM_START = 30;     // segundos quietos mientras bajan todos de los helicópteros
 
-// zone: 'water' (sube el agua), 'storm' (círculo que se cierra) o 'both' (las dos juntas).
-// g: gravedad · hp: vida · reload: tiempo entre cohetes · crates: segundos entre cajas · kit: objetos al arrancar · knock: empuje de las explosiones
-export const MODES = {
-  water: { name: 'Marea alta', zone: 'water', blurb: 'El clásico: el agua sube y los bloques se rompen. Gana el último que queda.', tag: 'Clásico', g: 1, hp: 100, reload: 1, crates: 10, kit: 0, knock: 1 },
-  storm: { name: 'Tormenta', zone: 'storm', blurb: 'Una tormenta cierra el mapa desde los bordes hasta el medio. No mata al toque, pero saca 10 de vida por segundo.', tag: 'Nuevo', g: 1, hp: 100, reload: 1, crates: 10, kit: 0, knock: 1 },
-  frenzy: { name: 'Frenesí', zone: 'water', blurb: 'Llueven cajas cada pocos segundos y los cohetes se recargan el doble de rápido. Puro caos.', tag: 'Caos', g: 1, hp: 100, reload: 0.5, crates: 3, kit: 0, knock: 1 },
-  arsenal: { name: 'Arsenal', zone: 'storm', blurb: 'Arrancás con tres objetos al azar y cada tanto cae una caja nueva. La tormenta cierra el círculo.', tag: 'Armado', g: 1, hp: 100, reload: 1, crates: 7, kit: 3, knock: 1 },
-  moon: { name: 'Luna', zone: 'water', blurb: 'Poca gravedad: los cohetes flotan, las explosiones te mandan lejos y todo es más largo y más loco.', tag: 'Flotante', g: 0.42, hp: 100, reload: 1, crates: 10, kit: 0, knock: 1.25 },
-  titans: { name: 'Titanes', zone: 'storm', blurb: 'Todos con 200 de vida: duelos largos, y la tormenta aprieta igual.', tag: 'Resistente', g: 1, hp: 200, reload: 1, crates: 8, kit: 0, knock: 0.9 },
-  glass: { name: 'Cristal', zone: 'water', blurb: 'Con 40 de vida, cualquier explosión duele y te manda volando. Un descuido y estás afuera.', tag: 'Frágil', g: 1, hp: 40, reload: 0.8, crates: 8, kit: 1, knock: 1.5 },
-  apocalypse: { name: 'Apocalipsis', zone: 'both', blurb: 'La tormenta se cierra y el agua sube al mismo tiempo. No hay dónde esconderse.', tag: 'Extremo', g: 1, hp: 100, reload: 0.8, crates: 6, kit: 1, knock: 1 },
+// Los modos. `teams`: se juega de a dos equipos. `soon`: todavía no se puede elegir.
+export const GAME_MODES = {
+  ffa: { name: 'Todos contra todos', tag: 'Clásico', icon: 'skull', teams: false, blurb: 'Cada uno por su cuenta: gana el último tanque que queda.' },
+  teams: { name: 'Por equipos', tag: 'Equipos', icon: 'crown', teams: true, blurb: 'Dos equipos, rojo y azul. Los compañeros no se hacen daño y gana el último equipo en pie.' },
+  ctf: { name: 'Roba la bandera', tag: 'Nuevo', icon: 'flag', teams: true, blurb: 'Robá la bandera del otro equipo y llevala hasta la tuya. Se reaparece, no hay helicópteros y el mapa es ancho.' },
+  soon: { name: 'Próximamente…', tag: 'Pronto', icon: 'hit', teams: false, soon: true, blurb: 'Se viene otro modo. Todavía no se puede elegir.' },
 };
-export const MODE_LIST = Object.keys(MODES);
-export const DEFAULT_MODE = 'water';
-export const modeOf = (options) => MODES[options?.mode] || MODES[DEFAULT_MODE];
-export const hasWater = (mode) => mode.zone !== 'storm';
-export const hasStorm = (mode) => mode.zone !== 'water';
+export const MODE_CARDS = Object.keys(GAME_MODES);                                  // las tarjetas que se ven
+export const GAME_MODE_LIST = MODE_CARDS.filter((k) => !GAME_MODES[k].soon);        // las que se pueden elegir
+export const DEFAULT_GAME_MODE = 'ffa';
 
-// Lo que cada tanque recibe al arrancar (modos con `kit`): objetos al azar y distintos, siempre iguales para ese jugador.
-function hashId(id) {
-  let h = 2166136261;
-  for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
-  return h >>> 0;
+// Los modificadores: cada bloque es de elegir uno solo; entre bloques se acumulan.
+// zone: qué cierra el mapa · hp: vida de cada tanque · machines: bots que buscan a los jugadores.
+export const MODIFIERS = {
+  zone: {
+    title: 'Zona', hint: 'Qué va cerrando el mapa.', default: 'water',
+    choices: {
+      water: { name: 'Marea', icon: ['wave'], blurb: 'El agua sube de a poco y se lleva a los que quedan abajo.' },
+      storm: { name: 'Tormenta', icon: ['storm'], blurb: 'Un círculo se cierra hacia el medio: afuera te saca 10 de vida por segundo.' },
+      none: { name: 'Sin peligro', icon: [], blurb: 'El mapa no se cierra. Solo te hundís si te caés al fondo.' },
+      both: { name: 'Peligro total', icon: ['wave', 'storm'], blurb: 'La marea sube y la tormenta se cierra al mismo tiempo.' },
+    },
+  },
+  life: {
+    title: 'Vida', hint: 'Cuánta vida tiene cada tanque.', default: 'normal',
+    choices: {
+      normal: { name: 'Normal', hp: 100, blurb: '100 de vida.' },
+      titans: { name: 'Titanes', hp: 200, blurb: '200 de vida: duelos largos.' },
+      fragile: { name: 'Frágil', hp: 40, blurb: '40 de vida: cualquier explosión duele.' },
+    },
+  },
+  extra: {
+    title: 'Extra', hint: 'Algo más en el mapa.', default: 'none',
+    choices: {
+      none: { name: 'Nada nuevo', icon: [], blurb: 'Sin extras.' },
+      machines: { name: 'Máquinas', icon: ['robot'], blurb: 'Tanques-robot sin nombre que patrullan el mapa buscando a quién eliminar.' },
+    },
+  },
+};
+
+// Lo que vale en una sala: el modo y los tres modificadores ya resueltos. Roba la bandera siempre es «Sin peligro».
+export function settingsOf(options) {
+  const gameMode = GAME_MODE_LIST.includes(options?.gameMode) ? options.gameMode : DEFAULT_GAME_MODE;
+  const pick = (group, value) => (MODIFIERS[group].choices[value] ? value : MODIFIERS[group].default);
+  const zone = gameMode === 'ctf' ? 'none' : pick('zone', options?.zone);
+  const life = pick('life', options?.life);
+  return {
+    gameMode, mode: GAME_MODES[gameMode], ctf: gameMode === 'ctf', teams: GAME_MODES[gameMode].teams,
+    zone, life, hp: MODIFIERS.life.choices[life].hp, machines: options?.extra === 'machines',
+    label: `${GAME_MODES[gameMode].name} · ${MODIFIERS.zone.choices[zone].name}`,
+  };
 }
-export function startKit(seed, id, n) {
-  if (!n) return [];
-  const rand = seeded((seed ^ hashId(id)) >>> 0);
-  const pool = ITEM_LIST.filter((w) => w !== 'heal');
-  const kit = [];
-  while (kit.length < Math.min(n, pool.length)) {
-    const w = pool[Math.floor(rand() * pool.length)];
-    if (!kit.includes(w)) kit.push(w);
-  }
-  return kit;
-}
+export const hasWater = (s) => s.zone === 'water' || s.zone === 'both';
+export const hasStorm = (s) => s.zone === 'storm' || s.zone === 'both';
 
 // ─── La tormenta ─────────────────────────────────────────────────────────────
 // Un círculo que arranca cubriendo todo el mapa y se cierra por fases, cada una adentro de la anterior. Entre fase y fase el

@@ -23,7 +23,12 @@ export const THEMES = ['tierra', 'hielo', 'volcan', 'desierto', 'selva', 'oceano
 
 // Columnas según cuántos juegan: con 25 hace falta lugar.
 export const colsFor = (players) => Math.max(5, Math.min(14, 4 + Math.ceil(players / 2.2)));
-export const sizeFor = (players) => ({ W: colsFor(players) * CELL + MARGIN * 2, H: TOP + ROWS * CELL + 150 });
+// Roba la bandera: un mapa mucho más ancho que alto (dos filas), porque los tanques van de izquierda a derecha.
+export const CTF_ROWS = 2;
+export const ctfColsFor = (players) => 10 + 2 * Math.min(3, Math.floor(players / 8)); // siempre par, para poder espejarlo
+export const sizeFor = (players, ctf = false) => (ctf
+  ? { W: ctfColsFor(players) * CELL + MARGIN * 2, H: TOP + CTF_ROWS * CELL + 150 }
+  : { W: colsFor(players) * CELL + MARGIN * 2, H: TOP + ROWS * CELL + 150 });
 
 // Números al azar repetibles (mulberry32).
 export function seeded(seed) {
@@ -494,17 +499,42 @@ function volcano(t, rand) {
 
 const CELLS = { desierto: desertCell, selva: jungleCell, oceano: coralCell, espacio: spaceCell, cementerio: graveCell, ruinas: ruinsCell, dulces: candyCell };
 
-// El tema que le toca a una semilla (es lo primero que sale de su sucesión al azar).
-export const themeFor = (seed) => THEMES[Math.floor(seeded(seed)() * THEMES.length)];
+// Los temas que se pueden sortear: el volcán es un cono altísimo y no entra en el mapa ancho de roba la bandera.
+const themesFor = (ctf) => (ctf ? THEMES.filter((k) => k !== 'volcan') : THEMES);
 
-// Arma el mapa. Devuelve { W, H, grid, holes, theme }.
-export function makeTerrain(seed, players) {
-  const { W, H } = sizeFor(players);
-  const cols = colsFor(players);
+// El tema que le toca a una semilla (es lo primero que sale de su sucesión al azar).
+export const themeFor = (seed, ctf = false) => { const pool = themesFor(ctf); return pool[Math.floor(seeded(seed)() * pool.length)]; };
+
+// Roba la bandera: la mitad de la izquierda se copia espejada a la derecha, así los dos equipos tienen el mismo mapa.
+function mirror(t) {
+  const { W, H, grid } = t;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W >> 1; x++) grid[y * W + (W - 1 - x)] = grid[y * W + x];
+  t.holes = t.holes.filter((h) => h.x + h.w / 2 < W / 2).flatMap((h) => [h, { ...h, x: W - h.x - h.w }]);
+}
+
+// Las bases: una plataforma de tierra con aire de sobra arriba, a cada punta del mapa. La bandera se apoya en `bases[i]`.
+export const BASE_X = 210;       // distancia de cada base al borde
+export const BASE_W = 160;
+function stampBases(t) {
+  const py = t.H - 190;
+  t.bases = [0, 1].map((side) => {
+    const cx = side === 0 ? BASE_X : t.W - BASE_X;
+    paint(t, { x: cx - BASE_W / 2, y: py - 150, w: BASE_W, h: 150, r: 0 }, 0);
+    paint(t, { x: cx - BASE_W / 2, y: py, w: BASE_W, h: 70, r: 14 }, 1);
+    return { x: cx, y: py };
+  });
+}
+
+// Arma el mapa. Devuelve { W, H, grid, holes, theme } (y, en roba la bandera, `ctf: true` y `bases`).
+export function makeTerrain(seed, players, ctf = false) {
+  const { W, H } = sizeFor(players, ctf);
+  const cols = ctf ? ctfColsFor(players) : colsFor(players);
+  const rows = ctf ? CTF_ROWS : ROWS;
   const rand = seeded(seed);
-  const theme = THEMES[Math.floor(rand() * THEMES.length)]; // = themeFor(seed)
+  const pool = themesFor(ctf);
+  const theme = pool[Math.floor(rand() * pool.length)]; // = themeFor(seed, ctf)
   const t = { W, H, grid: new Uint8Array(W * H), holes: [], theme };
-  for (let row = 0; row < ROWS; row++) {
+  for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const x0 = MARGIN + col * CELL, y0 = TOP + row * CELL;
       if (theme === 'hielo') iceCell(t, rand, x0, y0);
@@ -521,6 +551,7 @@ export function makeTerrain(seed, players) {
     const x = MARGIN + (i + rand() * 0.6) * ((W - MARGIN * 2) / islands);
     paint(t, { x, y: H - 95 - rand() * 25, w, h: 120, r: 30 }, 1);
   }
+  if (ctf) { mirror(t); stampBases(t); t.ctf = true; }
   return t;
 }
 

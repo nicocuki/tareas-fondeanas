@@ -12,9 +12,9 @@ import { useAutoCreate } from '../ui/mudanza.js';
 import { AVATARS, fullscreenElement, getProfile, setProfile, toggleFullscreen, useFullscreenTarget, useRegisterRoom } from '../ui/store.js';
 import GameChat from '../ui/GameChat.jsx';
 import { gameUrl } from '../ui/games.js';
-import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, TEAMS, applyAction, cleanName, findPlayer, inGame, makeId, newRoom, ranking, score, teamsOn } from './game.js';
-import { ITEMS, ITEM_LIST } from './sim.js';
-import { MODES, MODE_LIST, modeOf } from './modes.js';
+import { GAME_TYPE, MAX_PLAYERS, MIN_PLAYERS, OPTION_VALUES, TEAMS, applyAction, cleanName, findPlayer, inGame, isCtf, makeId, newRoom, ranking, score, teamsOn } from './game.js';
+import { ITEMS, ITEM_DESC, ITEM_LIST } from './sim.js';
+import { GAME_MODES, MODE_CARDS, MODIFIERS, hasStorm, hasWater, settingsOf } from './modes.js';
 import Icon from './Icon.jsx';
 import CohetesGame, { ItemIcon } from './CohetesGame.jsx';
 import './cohetes.css';
@@ -82,6 +82,10 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   const enough = room.players.length >= MIN_PLAYERS;
   const teams = teamsOn(room);
+  const ctf = isCtf(room);
+  const settings = settingsOf(room.options);
+  const chosen = { zone: settings.zone, life: settings.life, extra: settings.machines ? 'machines' : 'none' };
+  const setOption = (options) => onDispatch({ type: 'setOptions', options });
   return (
     <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Cohete Royale · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
       <div className="ck-card">
@@ -111,18 +115,15 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         </div>
       )}
       <div className="ck-card">
-        <div className="ck-card-head"><h2>Modo de juego</h2><span>{host ? 'Elegí cómo se juega' : 'Lo elige el anfitrión'}</span></div>
+        <div className="ck-card-head"><h2>Modo de juego</h2><span>{host ? 'Cómo se gana' : 'Lo elige el anfitrión'}</span></div>
         <div className="ck-modes" role="radiogroup" aria-label="Modo de juego">
-          {MODE_LIST.map((key) => {
-            const mode = MODES[key];
-            const on = modeOf(room.options) === mode;
+          {MODE_CARDS.map((key) => {
+            const mode = GAME_MODES[key];
+            const on = settings.gameMode === key;
             return (
-              <button key={key} type="button" role="radio" aria-checked={on} disabled={!host} data-opt="mode" data-value={key} className={`ck-modecard${on ? ' is-on' : ''}`} onClick={() => onDispatch({ type: 'setOptions', options: { mode: key } })}>
+              <button key={key} type="button" role="radio" aria-checked={on} disabled={!host || mode.soon} data-opt="gameMode" data-value={key} className={`ck-modecard${on ? ' is-on' : ''}${mode.soon ? ' is-soon' : ''}`} onClick={() => setOption({ gameMode: key })}>
                 <span className="ck-modecard-top">
-                  <span className="ck-modecard-zone">
-                    {mode.zone !== 'storm' && <Icon name="wave" size={22} />}
-                    {mode.zone !== 'water' && <Icon name="storm" size={22} />}
-                  </span>
+                  <span className="ck-modecard-zone"><Icon name={mode.icon} size={26} /></span>
                   <em>{mode.tag}</em>
                 </span>
                 <strong>{mode.name}</strong>
@@ -131,17 +132,57 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
             );
           })}
         </div>
+        {ctf && (
+          <div className="ck-ctfopts">
+            <OptionField title="Tiempo" hint="Cuánto dura la partida. Sin límite: no termina por el reloj.">
+              <Segmented name="ctfMinutes" value={room.options.ctfMinutes} disabled={!host} onChange={(v) => setOption({ ctfMinutes: v })}
+                choices={OPTION_VALUES.ctfMinutes.map((v) => ({ value: v, label: v ? `${v} min` : 'Sin límite' }))} />
+            </OptionField>
+            <OptionField title="Banderas para ganar" hint="Gana el primer equipo que llega a esta cantidad. Sin límite: no termina por los puntos.">
+              <Segmented name="ctfPoints" value={room.options.ctfPoints} disabled={!host} onChange={(v) => setOption({ ctfPoints: v })}
+                choices={OPTION_VALUES.ctfPoints.map((v) => ({ value: v, label: v ? String(v) : 'Sin límite' }))} />
+            </OptionField>
+            {!room.options.ctfMinutes && !room.options.ctfPoints && <p className="ck-hint">Con tiempo y banderas en «Sin límite» la partida es infinita: se termina cuando el anfitrión la corta o se van todos.</p>}
+          </div>
+        )}
       </div>
+      <div className="ck-card">
+        <div className="ck-card-head"><h2>Modificadores</h2><span>Se suman: elegí una opción de cada bloque de color</span></div>
+        <div className="ck-modblocks">
+          {Object.entries(MODIFIERS).map(([group, def], gi) => {
+            const locked = group === 'zone' && ctf; // roba la bandera siempre es sin peligro
+            return (
+              <fieldset key={group} className={`ck-modblock ck-modblock-${gi}`} data-group={group} disabled={!host || locked}>
+                <legend>{def.title} <small>{locked ? 'En roba la bandera siempre es «Sin peligro»' : def.hint}</small></legend>
+                <div className="ck-modes" role="radiogroup" aria-label={def.title}>
+                  {Object.entries(def.choices).map(([key, c]) => {
+                    const on = chosen[group] === key;
+                    return (
+                      <button key={key} type="button" role="radio" aria-checked={on} disabled={!host || locked} data-opt={group} data-value={key} className={`ck-modecard${on ? ' is-on' : ''}`} onClick={() => setOption({ [group]: key })}>
+                        <span className="ck-modecard-top">
+                          <span className="ck-modecard-zone">{(c.icon || []).map((ic) => <Icon key={ic} name={ic} size={22} />)}{c.hp && <b className="ck-hpchip">{c.hp}</b>}</span>
+                        </span>
+                        <strong>{c.name}</strong>
+                        <small>{c.blurb}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            );
+          })}
+        </div>
+      </div>
+      {(hasWater(settings) || hasStorm(settings)) && (
       <LobbyOptions canEdit={host}>
-        <OptionField title="Velocidad de la zona" hint="Qué tan rápido sube el agua o se cierra la tormenta: con más rápida, las partidas son más cortas.">
-          <Segmented name="water" value={room.options.water} disabled={!host} onChange={(v) => onDispatch({ type: 'setOptions', options: { water: v } })}
-            choices={[{ value: 0.6, label: 'Lenta' }, { value: 1, label: 'Normal' }, { value: 1.6, label: 'Rápida' }]} />
-        </OptionField>
-        <OptionField title="Equipos" hint="Dos equipos (rojo y azul): los compañeros no se hacen daño y gana el último equipo en pie.">
-          <Segmented name="teams" value={room.options.teams || 0} disabled={!host} onChange={(v) => onDispatch({ type: 'setOptions', options: { teams: v } })}
-            choices={[{ value: 0, label: 'Todos contra todos' }, { value: 2, label: '2 equipos' }]} />
-        </OptionField>
+        {(
+          <OptionField title="Velocidad de la zona" hint="Qué tan rápido sube el agua o se cierra la tormenta: con más rápida, las partidas son más cortas.">
+            <Segmented name="water" value={room.options.water} disabled={!host} onChange={(v) => setOption({ water: v })}
+              choices={[{ value: 0.6, label: 'Lenta' }, { value: 1, label: 'Normal' }, { value: 1.6, label: 'Rápida' }]} />
+          </OptionField>
+        )}
       </LobbyOptions>
+      )}
       <div className="ck-card ck-controls">
         <h2>Cómo se juega</h2>
         <ul>
@@ -150,7 +191,10 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <li>Cada tiro te empuja para atrás: <b>disparando para el lado contrario te despegás y salís volando</b>.</li>
           <li>Los cohetes rompen el terreno. La zona se cierra (el agua que sube o la tormenta, según el modo): el que se hunde o se queda sin vida, queda afuera. Gana el último que queda. Abajo a la izquierda tenés el mapa chico.</li>
           <li>Juntá monedas <Icon name="coin" size={18} /> y agarrá las cajas (hay por el mapa y caen más en paracaídas). Lo que traen se suma a tu inventario: <kbd>1</kbd> es el cohete, que nunca se acaba, y <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> lo que juntaste.</li>
-          <li className="ck-items">{ITEM_LIST.map((w) => <span key={w} title={ITEMS[w].name}><ItemIcon w={w} size={30} /> {ITEMS[w].name}</span>)}</li>
+          <li><b>Roba la bandera:</b> no hay helicópteros, aparecés de tu lado a una altura al azar y, si te eliminan, reaparecés a los pocos segundos. Tocá la bandera del otro equipo para llevártela y después tocá la tuya (tiene que estar en su base) para sumar un punto. Si eliminan al que la lleva, vuelve a su base.</li>
+          <li><b>Máquinas:</b> tanques-robot sin nombre que patrullan el mapa y te disparan. Un cohete tuyo las rompe, pero vuelven a los 12 segundos.</li>
+          <li>Al elegir un objeto aparece abajo a la derecha un cuadro con su nombre y qué hace.</li>
+          <li className="ck-items">{ITEM_LIST.map((w) => <span key={w} title={`${ITEMS[w].name}: ${ITEM_DESC[w]}`}><ItemIcon w={w} size={30} /> {ITEMS[w].name}</span>)}</li>
         </ul>
       </div>
       <div className="ck-start">
@@ -167,25 +211,30 @@ function Final({ room, me, onDispatch, onLeave }) {
   const rank = ranking(room);
   const total = rank.length;
   const winner = findPlayer(room, room.match?.winner);
+  const match = room.match;
+  const ctfMatch = match?.mode === 'ctf';
   return (
     <div className="ck-final">
       <div className="ck-wins">
         {room.match?.teams
-          ? (room.match.winTeam != null ? <><span className="ck-dot" style={{ background: TEAMS[room.match.winTeam].color }} /> EQUIPO <b>{TEAMS[room.match.winTeam].name.toUpperCase()}</b> GANA</> : 'SE ELIMINARON TODOS')
+          ? (room.match.winTeam != null ? <><span className="ck-dot" style={{ background: TEAMS[room.match.winTeam].color }} /> EQUIPO <b>{TEAMS[room.match.winTeam].name.toUpperCase()}</b> GANA</> : (ctfMatch ? 'EMPATE' : 'SE ELIMINARON TODOS'))
           : winner ? <><span className="ck-dot" style={{ background: winner.color }} /> <b>{winner.name}</b> GANA</> : 'SE HUNDIERON TODOS'}
       </div>
       {(room.match?.teams ? findPlayer(room, me.id)?.team === room.match.winTeam && room.match.winTeam != null : winner?.id === me.id) && <p className="ck-eyebrow"><Icon name="crown" size={22} /> ¡Ganaste!</p>}
-      <p className="ck-hint">Modo: <b>{modeOf(room.options).name}</b></p>
+      <p className="ck-hint">Modo: <b>{settingsOf(room.options).label}</b>{settingsOf(room.options).machines ? ' · Máquinas' : ''}</p>
+      {ctfMatch && match.score && <p className="ck-ctf-final" data-final-score><span style={{ background: TEAMS[0].color }}>{match.score[0]}</span> : <span style={{ background: TEAMS[1].color }}>{match.score[1]}</span></p>}
       <table className="ck-table">
-        <thead><tr><th>#</th><th>Jugador</th><th><Icon name="skull" size={18} /> Bajas</th><th><Icon name="coin" size={18} /> Monedas</th><th>Puntos</th></tr></thead>
+        <thead>{ctfMatch
+          ? <tr><th>#</th><th>Jugador</th><th><Icon name="flag" size={18} /> Banderas</th><th><Icon name="skull" size={18} /> Bajas</th><th>Muertes</th></tr>
+          : <tr><th>#</th><th>Jugador</th><th><Icon name="skull" size={18} /> Bajas</th><th><Icon name="coin" size={18} /> Monedas</th><th>Puntos</th></tr>}</thead>
         <tbody>
           {rank.map((p, i) => (
             <tr key={p.id} className={p.id === me.id ? 'is-me' : ''}>
               <td><span className={`ck-medal ck-medal-${i < 3 ? i + 1 : 0}`}>{p.place || i + 1}</span></td>
               <td><span className="ck-dot" style={{ background: room.match?.teams ? TEAMS[p.team || 0].color : p.color }} /> {p.name}</td>
-              <td>{p.kills}</td>
-              <td>{p.coins}</td>
-              <td><strong>{score(p, total)}</strong></td>
+              {ctfMatch
+                ? <><td><strong>{p.captures}</strong></td><td>{p.kills}</td><td>{p.deaths}</td></>
+                : <><td>{p.kills}</td><td>{p.coins}</td><td><strong>{score(p, total)}</strong></td></>}
             </tr>
           ))}
         </tbody>
