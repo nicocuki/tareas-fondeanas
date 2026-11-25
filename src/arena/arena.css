@@ -105,3 +105,11 @@
   .ar-fr-name { font-size: 0.56rem; }
   .ar-fr.is-small { width: 54px; height: 80px; }
 }
+
+/* En la sala de espera (una sola pantalla) el mazo se achica: las 50 cartas en filas de diez. */
+.lb[data-game='arena'] .lb-main { grid-template-columns: minmax(320px, 0.9fr) minmax(0, 2fr); }
+.lb[data-game='arena'] .ar-card { padding: 12px 14px; }
+.lb[data-game='arena'] .ar-deck { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 8px 4px; padding: 4px 0; }
+.lb[data-game='arena'] .ar-deck > * { transform: scale(0.8); transform-origin: top center; margin-bottom: -22px; }
+.lb[data-game='arena'] .ar-hint { margin: 6px 0 0; font-size: 12px; }
+.lb[data-game='arena'] .ar-teams { gap: 8px; }

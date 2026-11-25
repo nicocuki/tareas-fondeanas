@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useContext } from 'react';
+import { InLobby } from './context.js';
 import { COLORS, panelStyle } from '../theme.js';
 
 export function Segmented({ name, value, choices, onChange, disabled }) {
@@ -52,15 +53,17 @@ export default function LobbyOptions({
   style,
   children,
 }) {
+  const compact = useContext(InLobby); // dentro de la sala de espera (LobbyLayout) las opciones se acomodan en columnas
   return (
-    <div style={{ ...panelStyle, padding: 18, marginBottom: 24, ...style }}>
+    <div className={compact ? 'lb-options' : undefined} style={{ ...panelStyle, padding: 18, marginBottom: compact ? 0 : 24, ...style }}>
       <div
+        className={compact ? 'lb-options-head' : undefined}
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'baseline',
           gap: 10,
-          marginBottom: 16,
+          marginBottom: compact ? 10 : 16,
           flexWrap: 'wrap',
         }}
       >
@@ -71,7 +74,7 @@ export default function LobbyOptions({
           {canEdit ? canEditHint : readOnlyHint}
         </div>
       </div>
-      {children}
+      <div className={compact ? 'lb-options-body' : undefined}>{children}</div>
     </div>
   );
 }

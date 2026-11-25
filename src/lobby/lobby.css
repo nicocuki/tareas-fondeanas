@@ -1,0 +1,227 @@
+/* Sala de espera de todos los juegos (src/lobby/LobbyLayout.jsx).
+   Una sola pantalla: a la izquierda el panel del juego, a la derecha jugadores y opciones en horizontal y abajo el
+   botón de empezar. Cada juego se viste con `data-game`, `data-pattern`, `data-font`, `data-tile` y `data-motion`
+   (themes.js). Los colores del panel son fijos: se ven igual en los dos temas del sitio. */
+
+.lb {
+  --accent: var(--lb-accent);
+  --accent-soft: color-mix(in srgb, var(--lb-accent) 18%, transparent);
+  --on-accent: #fff;
+  --tile-r: 14px;
+  height: var(--page-h);
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: clamp(250px, 23vw, 320px) minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px 16px;
+  overflow: hidden;
+  color: var(--text);
+}
+/* Los acentos claros llevan texto oscuro arriba. */
+.lb[data-game='timba'], .lb[data-game='cafe-o-te'], .lb[data-game='futbol'], .lb[data-game='la-mecha'], .lb[data-game='tiros'] { --on-accent: #1a1304; }
+
+/* Los juegos que son oscuros por dentro tienen la sala oscura, sea cual sea el tema del sitio. */
+.lb[data-tone='dark'] {
+  color-scheme: dark;
+  --bg: #0b0d12; --surface: #141822; --surface-2: #1b2030; --surface-3: #242a3c;
+  --border: #2a3042; --border-strong: #3a4260;
+  --text: #f3f1ea; --text-2: #aab0c0; --text-3: #7a8196; --input-bg: #0d1017;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  background: radial-gradient(900px 500px at 0% 0%, color-mix(in srgb, var(--lb-b) 22%, transparent), transparent 70%), #0a0d14;
+}
+
+/* ─── El panel del juego ─────────────────────────────────────────────────── */
+.lb-rail {
+  position: relative; isolation: isolate; min-height: 0; overflow: hidden auto;
+  display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 14px;
+  border-radius: 24px; text-align: center; color: var(--lb-ink);
+  background: linear-gradient(165deg, var(--lb-a), var(--lb-b));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  scrollbar-width: none;
+}
+.lb-rail::-webkit-scrollbar { display: none; }
+.lb-rail::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: 0.55; pointer-events: none; }
+.lb-rail > * { position: relative; flex: none; }
+
+.lb-art { flex: 1 1 80px; min-height: 64px; max-height: 190px; width: 100%; }
+.lb-emoji {
+  position: absolute; inset: 0; display: grid; place-items: center; font-size: clamp(54px, 12vh, 112px); line-height: 1;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.38)); animation: lb-pulse 3.6s ease-in-out infinite;
+}
+.lb-deco { position: absolute; font-size: clamp(18px, 3.8vh, 34px); line-height: 1; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35)); }
+.lb-deco-0 { left: 4%; top: 6%; }
+.lb-deco-1 { right: 5%; top: 14%; }
+.lb-deco-2 { left: 9%; bottom: 4%; }
+.lb-deco-3 { right: 8%; bottom: 8%; }
+.lb[data-motion='float'] .lb-deco { animation: lb-float 4.2s ease-in-out infinite; }
+.lb[data-motion='bounce'] .lb-deco { animation: lb-bounce 1.7s ease-in-out infinite; }
+.lb[data-motion='spin'] .lb-deco { animation: lb-spin 9s linear infinite; }
+.lb[data-motion='drift'] .lb-deco { animation: lb-drift 6s ease-in-out infinite; }
+.lb-deco-1 { animation-delay: -0.6s !important; }
+.lb-deco-2 { animation-delay: -1.2s !important; }
+.lb-deco-3 { animation-delay: -1.8s !important; }
+@keyframes lb-pulse { 50% { transform: scale(1.06) rotate(-2deg); } }
+@keyframes lb-float { 50% { transform: translateY(-9px); } }
+@keyframes lb-bounce { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-12px) rotate(6deg); } }
+@keyframes lb-spin { to { transform: rotate(360deg); } }
+@keyframes lb-drift { 50% { transform: translate(10px, -6px) rotate(8deg); } }
+@media (prefers-reduced-motion: reduce) { .lb-emoji, .lb-deco { animation: none !important; } }
+
+.lb-title h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(22px, 3.7vh, 32px); line-height: 1.05; letter-spacing: -0.01em; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.22); }
+.lb-eyebrow { margin: 0 0 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
+.lb-tag { margin: 5px 0 0; font-size: 13px; line-height: 1.3; opacity: 0.9; }
+
+/* El código de sala: cuatro fichas, cada juego con la suya */
+.lb-code { display: flex; gap: 6px; }
+.lb-code span {
+  display: grid; place-items: center; width: clamp(40px, 3.5vw, 52px); height: clamp(50px, 7vh, 64px);
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(24px, 4vh, 34px);
+  border-radius: var(--tile-r); background: #fffdf7; color: #1c1a16;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.22);
+}
+.lb[data-tile='pixel'] .lb-code span { --tile-r: 3px; border: 3px solid #101018; box-shadow: 4px 4px 0 #101018; background: #f4f0e0; }
+.lb[data-tile='neon'] .lb-code span { background: rgba(0, 0, 0, 0.35); color: #fff; border: 2px solid var(--lb-ink); box-shadow: 0 0 14px color-mix(in srgb, var(--lb-ink) 70%, transparent), inset 0 0 12px color-mix(in srgb, var(--lb-ink) 30%, transparent); text-shadow: 0 0 10px var(--lb-ink); }
+.lb[data-tile='round'] .lb-code span { --tile-r: 50%; width: clamp(44px, 3.8vw, 54px); height: clamp(44px, 3.8vw, 54px); }
+.lb[data-tile='dice'] .lb-code span { --tile-r: 12px; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.14), 0 6px 14px rgba(0, 0, 0, 0.3); }
+.lb[data-tile='dice'] .lb-code span:nth-child(odd) { transform: rotate(-5deg); }
+.lb[data-tile='dice'] .lb-code span:nth-child(even) { transform: rotate(5deg); }
+.lb[data-tile='card'] .lb-code span { box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.22); border-bottom: 4px solid rgba(0, 0, 0, 0.18); }
+.lb[data-tile='meme'] .lb-code span { background: #fff; color: #fff; -webkit-text-stroke: 2px #000; paint-order: stroke fill; transform: skewX(-4deg); font-size: clamp(26px, 4.4vh, 38px); }
+.lb[data-font='anton'] .lb-title h1, .lb[data-font='anton'] .lb-code span { font-family: 'Anton', 'Bricolage Grotesque', sans-serif; font-weight: 400; letter-spacing: 0.02em; }
+.lb[data-font='lilita'] .lb-title h1, .lb[data-font='lilita'] .lb-code span { font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; }
+.lb[data-font='pixelify'] .lb-title h1, .lb[data-font='pixelify'] .lb-code span { font-family: 'Pixelify Sans', monospace; font-weight: 700; }
+.lb[data-font='vt'] .lb-title h1, .lb[data-font='vt'] .lb-code span { font-family: 'VT323', monospace; font-weight: 400; font-size: 1.25em; }
+.lb[data-font='nunito'] .lb-title h1, .lb[data-font='nunito'] .lb-code span { font-family: 'Nunito', sans-serif; font-weight: 900; }
+
+.lb-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.lb-actions .tf-btn { padding: 8px 14px; font-size: 13.5px; }
+.lb-rail .lb-leave, .lb-rail .lb-help-open, .lb-rail .tf-change-game-open, .lb-rail .tf-kick-open {
+  background: rgba(255, 255, 255, 0.16); color: var(--lb-ink); border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: none;
+}
+.lb-rail .lb-leave:hover, .lb-rail .lb-help-open:hover, .lb-rail .tf-change-game-open:hover, .lb-rail .tf-kick-open:hover { background: rgba(255, 255, 255, 0.26); }
+.lb-sub { margin: 0; font-size: 12px; line-height: 1.35; opacity: 0.88; max-width: 28ch; }
+
+.lb-tools { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; margin-top: auto; }
+.lb-tools-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.lb-tools-row .tf-btn { padding: 7px 12px; font-size: 12.5px; margin: 0; }
+.lb-rail .tf-public-switch { margin: 0; gap: 4px; }
+.lb-rail .tf-public-toggle { padding: 4px 12px 4px 4px; font-size: 13px; background: rgba(0, 0, 0, 0.28); color: var(--lb-ink); border-color: rgba(255, 255, 255, 0.3); }
+.lb-rail .tf-public-switch small { color: var(--lb-ink); opacity: 0.8; font-size: 11px; line-height: 1.25; max-width: 26ch; text-align: center; }
+.lb-rail .tf-public-switch strong { font-size: 13px; }
+
+/* Cambiar de juego y sacar a alguien se abren como ventana sobre la sala, no adentro del panel. */
+.lb-rail .tf-change-game, .lb-rail .tf-kick {
+  position: fixed; z-index: 80; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(680px, 92vw); max-width: none; max-height: 82dvh; overflow: auto; margin: 0; color: var(--text);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.5), var(--shadow-lg);
+}
+.lb-rail .tf-kick { width: min(440px, 92vw); }
+
+/* ─── El lado de las opciones ────────────────────────────────────────────── */
+.lb-stage { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
+.lb-banners { flex: none; }
+.lb-main { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(230px, 0.85fr) minmax(0, 1.6fr); gap: 12px; }
+.lb-main.is-solo { grid-template-columns: minmax(0, 1fr); }
+.lb-col { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden auto; scrollbar-width: thin; padding: 2px; }
+.lb-col > * { margin: 0 !important; flex: 0 0 auto; box-sizing: border-box; max-width: 100%; }
+.lb-col-players > :first-child:not(.lb-options) { flex: 1 1 auto; }
+.lb-col .tf-lobby-unassigned { width: auto; }
+
+/* Las opciones se acomodan en columnas: lo que antes era una lista larga ahora ocupa el ancho. */
+.lb-options { padding: 14px 16px !important; }
+.lb-options-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px 18px; align-items: start; }
+.lb-options-body > * { margin: 0 !important; min-width: 0; }
+
+/* El botón de empezar, siempre a la vista */
+.lb-foot {
+  flex: none; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 16px;
+  border-radius: 18px; background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow);
+}
+.lb-foot > * { margin: 0 !important; }
+.lb-foot [class$='-start'] { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; width: 100%; padding: 0; text-align: left; }
+.lb-foot [class$='-start'] p { margin: 0; font-size: 13px; color: var(--text-2); }
+.lb-foot button.tf-btn-primary, .lb-foot .lb-action-btn { padding: 12px 32px !important; font-size: 16px !important; border-radius: 14px !important; }
+.lb-action { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; width: 100%; }
+.lb-action-info { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.lb-action-info > * { margin: 0 !important; }
+
+/* El botón de empezar apagado se lee igual de bien en todos los colores. */
+.lb-foot button:disabled { background: var(--surface-3) !important; color: var(--text-2) !important; opacity: 1 !important; box-shadow: none !important; border: 1px dashed var(--border-strong) !important; }
+
+/* Los juegos de equipos: los equipos arriba, a todo lo ancho, y las opciones abajo en columnas. */
+.lb-main.is-teams { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+.lb-main.is-teams .lb-col-players { flex-direction: row; flex-wrap: wrap; overflow: visible; }
+.lb-main.is-teams .lb-col-players > * { flex: 1 1 260px; }
+
+/* ─── Cada juego, con su forma ───────────────────────────────────────────── */
+.lb[data-tile='pixel'] .lb-col > *, .lb[data-tile='pixel'] .lb-foot { border-radius: 6px !important; border-width: 2px !important; box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35) !important; }
+.lb[data-tile='neon'] .lb-col > *, .lb[data-tile='neon'] .lb-foot { border-color: color-mix(in srgb, var(--lb-accent) 60%, var(--border-strong)) !important; box-shadow: 0 0 18px color-mix(in srgb, var(--lb-accent) 22%, transparent) !important; }
+.lb[data-tile='meme'] .lb-col > * { border-width: 2px !important; border-color: #111 !important; }
+.lb[data-tile='dice'] .lb-foot, .lb[data-tile='card'] .lb-foot { border-bottom-width: 4px; }
+
+/* ─── Los dibujos de fondo del panel ─────────────────────────────────────── */
+.lb[data-pattern='waves'] .lb-rail::before { background:
+  radial-gradient(circle at 50% 130%, transparent 40%, rgba(255, 255, 255, 0.16) 41% 43%, transparent 44%) 0 0 / 64px 32px,
+  radial-gradient(circle at 50% 130%, transparent 40%, rgba(255, 255, 255, 0.1) 41% 43%, transparent 44%) 32px 16px / 64px 32px; }
+.lb[data-pattern='checker'] .lb-rail::before { background: conic-gradient(rgba(255, 255, 255, 0.1) 25%, transparent 0 50%, rgba(255, 255, 255, 0.1) 0 75%, transparent 0) 0 0 / 52px 52px; }
+.lb[data-pattern='bricks'] .lb-rail::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='48'%3E%3Cg fill='none' stroke='rgba(0,0,0,0.3)' stroke-width='2'%3E%3Cpath d='M0 1h64M0 25h64M32 1v24M0 25v23M64 25v23'/%3E%3C/g%3E%3C/svg%3E"); background-size: 64px 48px; }
+.lb[data-pattern='stars'] .lb-rail::before { background:
+  radial-gradient(1.6px 1.6px at 12% 18%, #fff, transparent), radial-gradient(1.2px 1.2px at 74% 12%, #fff, transparent),
+  radial-gradient(2px 2px at 38% 44%, #fff, transparent), radial-gradient(1.2px 1.2px at 88% 52%, #fff, transparent),
+  radial-gradient(1.6px 1.6px at 24% 78%, #fff, transparent), radial-gradient(1.2px 1.2px at 62% 88%, #fff, transparent),
+  radial-gradient(1.2px 1.2px at 52% 26%, #fff, transparent), radial-gradient(2px 2px at 92% 90%, #fff, transparent); opacity: 0.8; }
+.lb[data-pattern='scan'] .lb-rail::before { background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 4px), radial-gradient(ellipse at 50% 40%, transparent 40%, rgba(0, 0, 0, 0.4)); }
+.lb[data-pattern='turf'] .lb-rail::before { background:
+  radial-gradient(circle at 50% 80%, transparent 54px, rgba(255, 255, 255, 0.4) 55px 57px, transparent 58px),
+  linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4)) 0 80% / 100% 2px no-repeat,
+  repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 38px, transparent 38px 76px); }
+.lb[data-pattern='rays'] .lb-rail::before { background: repeating-conic-gradient(from 0deg at 50% 22%, rgba(255, 255, 255, 0.13) 0 9deg, transparent 9deg 18deg); }
+.lb[data-pattern='felt'] .lb-rail::before { background: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1.6px) 0 0 / 11px 11px; box-shadow: inset 0 0 0 4px rgba(255, 220, 130, 0.35), inset 0 0 0 7px rgba(0, 0, 0, 0.15); }
+.lb[data-pattern='dots'] .lb-rail::before { background: radial-gradient(rgba(255, 255, 255, 0.2) 2.6px, transparent 3px) 0 0 / 22px 22px; }
+.lb[data-pattern='grid'] .lb-rail::before { background: linear-gradient(rgba(255, 255, 255, 0.13) 1px, transparent 1px) 0 0 / 28px 28px, linear-gradient(90deg, rgba(255, 255, 255, 0.13) 1px, transparent 1px) 0 0 / 28px 28px; }
+.lb[data-pattern='stripes'] .lb-rail::before { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.11) 0 14px, transparent 14px 28px); }
+.lb[data-pattern='pixels'] .lb-rail::before { background: conic-gradient(rgba(255, 255, 255, 0.12) 25%, transparent 0 50%, rgba(255, 255, 255, 0.07) 0 75%, transparent 0) 0 0 / 28px 28px; }
+
+/* ─── Cómo se juega: una ventana que se abre con el botón del panel ──────── */
+.lb-help { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: var(--overlay, rgba(0, 0, 0, 0.55)); }
+.lb-help-card { width: min(760px, 100%); max-height: 88dvh; display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-lg); color: var(--text); }
+.lb-help-body { overflow: auto; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.lb-help-body > * { margin: 0 !important; }
+.lb-help-card > .tf-btn { align-self: center; }
+
+/* ─── Pantallas que no alcanzan para todo a la vez (celulares, ventanas chatas): la sala se apila y el botón de empezar queda pegado abajo ─── */
+@media (max-width: 900px), (max-height: 480px) {
+  .lb { height: auto; min-height: var(--page-h); grid-template-columns: minmax(0, 1fr); overflow: visible; padding: 10px; }
+  .lb-rail { overflow: visible; display: grid; grid-template-columns: auto 1fr; align-items: center; justify-items: start; text-align: left; gap: 8px 12px; padding: 12px; }
+  .lb-art { grid-row: span 2; width: 70px; min-height: 0; max-height: none; height: 70px; flex: none; }
+  .lb-emoji { font-size: 52px; }
+  .lb-deco { display: none; }
+  .lb-title { min-width: 0; }
+  .lb-code, .lb-actions, .lb-sub, .lb-tools { grid-column: 1 / -1; justify-content: flex-start; }
+  .lb-tools { align-items: flex-start; margin-top: 0; }
+  .lb-tools-row { justify-content: flex-start; }
+  .lb-main { grid-template-columns: minmax(0, 1fr); }
+  .lb-col { overflow: visible; }
+  .lb-foot { position: sticky; bottom: 8px; z-index: 5; }
+}
+
+/* Opciones más chicas para que entren todas en la pantalla */
+.lb-options .cs-btn { padding: 5px 10px !important; font-size: 12.5px !important; }
+.lb-options-body > div > div:last-child:not(:only-child) { font-size: 10.5px !important; line-height: 1.3; margin-top: 3px !important; }
+.lb-options-body { grid-template-columns: repeat(auto-fill, minmax(min(100%, 235px), 1fr)); gap: 10px 16px; }
+.lb-action-problems { display: flex; flex-wrap: wrap; gap: 2px 14px; flex-basis: 100%; justify-content: center; }
+.lb-action-problems p { margin: 0 !important; font-size: 12px !important; }
+.lb-action-problems:empty { display: none; }
+
+/* Los equipos: sus lugares uno al lado del otro */
+.lb-team { padding: 12px 14px !important; }
+.lb-team-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 14px; align-items: start; }
+.lb-team-body > * { margin: 0 !important; }
+.lb-team > .cs-mono { margin-bottom: 8px !important; }
+.lb-stage > .tf-lobby-unassigned { flex: none; margin: 0 auto; padding: 3px 12px; font-size: 12px; }
+
+/* ─── Pantallas bajas (notebooks): todo se achica un poco para que siga entrando en una sola pantalla ─── */
+@media (min-width: 901px) and (max-height: 780px) { .lb-col, .lb-foot, .lb-rail { zoom: 0.92; } }
+@media (min-width: 901px) and (max-height: 720px) { .lb-col, .lb-foot, .lb-rail { zoom: 0.84; } }
+@media (min-width: 901px) and (max-height: 660px) { .lb-col, .lb-foot, .lb-rail { zoom: 0.76; } }
+@media (min-width: 901px) and (max-height: 600px) { .lb-col, .lb-foot, .lb-rail { zoom: 0.68; } }

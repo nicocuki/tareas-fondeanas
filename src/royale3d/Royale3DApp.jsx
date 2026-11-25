@@ -78,8 +78,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   const problem = startProblem(room);
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Royale 3D · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="r3-card">
+    <LobbyLayout game="royale3d" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Royale 3D · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="r3-card" data-lb="players">
         <div className="r3-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="r3-roster">
           {room.players.map((p) => (
@@ -97,7 +97,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
             choices={[{ value: 'lenta', label: 'Lenta' }, { value: 'normal', label: 'Normal' }, { value: 'rapida', label: 'Rápida' }]} />
         </OptionField>
       </LobbyOptions>
-      <div className="r3-card r3-howto">
+      <div className="r3-card r3-howto" data-lb="help">
         <h2>Cómo se juega</h2>
         <ul>
           <li>Primero esperás en una isla chica (podés probar la pistola: ahí no duele). Después subís al <b>bus de batalla</b>, saltás con <kbd>Espacio</kbd> cuando quieras, caés en picada (<kbd>W</kbd>) y el planeador se abre solo cerca del piso (o antes con <kbd>Espacio</kbd>).</li>
@@ -109,7 +109,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <li>Una tormenta violeta se cierra sobre la isla en cinco fases: mirá el mapa (<kbd>M</kbd> lo agranda; círculo blanco = próxima zona). Gana el último en pie.</li>
         </ul>
       </div>
-      <div className="r3-start">
+      <div className="r3-start" data-lb="start">
         {host ? <button type="button" className="tf-btn tf-btn-primary r3-start-btn" disabled={Boolean(problem)} onClick={() => onDispatch({ type: 'start' })}>🏝️ ¡A la isla!</button> : <p>Esperando que el anfitrión arranque…</p>}
         {problem && <p className="r3-hint">{problem}{room.players.length < MIN_PLAYERS ? ' Pasales el código.' : ''}</p>}
       </div>

@@ -141,7 +141,7 @@ function DeckBuilder({ deck, onSave }) {
   };
   const shown = CARD_BY_ID[info] || null;
   return (
-    <div className="ar-card" data-deck>
+    <div className="ar-card" data-lb="options" data-deck>
       <div className="ar-card-head">
         <h2>Tu mazo</h2>
         <span>{draft.length} / {DECK_SIZE}{draft.length === DECK_SIZE ? ` · elixir ${averageCost(draft).toFixed(1)}` : ''}</span>
@@ -172,13 +172,13 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const ready = !problem;
   const saveMyDeck = (deck) => { saveDeck(deck); onDispatch({ type: 'setDeck', deck }); };
   return (
-    <LobbyLayout
+    <LobbyLayout game="arena"
       code={code} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} host={host} players={room.players.length}
       gameTitle="Arena Royale · sala de espera"
       subtitle={host ? 'Armá los equipos, elegí tu mazo y arrancá.' : 'El anfitrión arranca la partida cuando estén los equipos.'}
       copied={copied} onCopyInvite={onCopy} onLeave={onLeave}
     >
-      <div className="ar-card" data-teams>
+      <div className="ar-card" data-lb="players" data-teams>
         <div className="ar-card-head"><h2>Equipos</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <div className="ar-teams">
           {[0, 1].map((team) => (
@@ -198,13 +198,13 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
       </div>
 
       {isDraft(mode) ? (
-        <div className="ar-card" data-draft-info>
+        <div className="ar-card" data-lb="options" data-draft-info>
           <div className="ar-card-head"><h2>{MODE_INFO[mode].label}</h2></div>
           <p className="ar-hint">{MODE_INFO[mode].hint} Las cartas se eligen al empezar la partida: no hace falta armar un mazo.</p>
         </div>
       ) : <DeckBuilder deck={me?.deck || DEFAULT_DECK} onSave={saveMyDeck} />}
 
-      <LobbyOptions canEdit={host}>
+      <LobbyOptions data-lb="players" canEdit={host}>
         <OptionField title="Cómo se eligen las cartas" hint={MODE_INFO[mode].hint}>
           <Segmented name="mode" value={mode} disabled={!host} onChange={(v) => set({ mode: v })} choices={MODES.map((m) => ({ value: m, label: MODE_INFO[m].label }))} />
         </OptionField>
@@ -213,7 +213,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         </OptionField>
       </LobbyOptions>
 
-      <div className="ar-start">
+      <div className="ar-start" data-lb="start">
         {host ? (
           <button type="button" className="tf-btn tf-btn-primary ar-start-btn" disabled={!ready} data-act="start" onClick={() => onDispatch({ type: 'start' })}>Empezar la partida</button>
         ) : <p>Esperando que el anfitrión arranque…</p>}

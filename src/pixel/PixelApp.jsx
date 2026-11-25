@@ -81,8 +81,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   const problem = startProblem(room);
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Pixel Royale · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="px-card">
+    <LobbyLayout game="pixel" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Pixel Royale · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="px-card" data-lb="players">
         <div className="px-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="px-players">
           {room.players.map((p) => (
@@ -104,7 +104,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
             choices={[{ value: 0.7, label: 'Lenta' }, { value: 1, label: 'Normal' }, { value: 1.5, label: 'Rápida' }]} />
         </OptionField>
       </LobbyOptions>
-      <div className="px-card px-controls">
+      <div className="px-card px-controls" data-lb="help">
         <h2>Cómo se juega</h2>
         <ul>
           <li>Arrancás solo con un <b>pico</b> (slot <kbd>1</kbd>): rompé árboles, cajas y paredes para juntar <b>madera</b>. Con <kbd>Z</kbd> armás una <b>pared</b> y con <kbd>X</kbd> un <b>piso</b> (también sobre el agua: puentes), todo de madera. Las armas están en los cofres.</li>
@@ -117,7 +117,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <li className="px-items">{WEAPON_LIST.map((w) => <span key={w} title={WEAPONS[w].name}><LootIcon kind={w} scale={2} /> {WEAPONS[w].name}</span>)}{ITEM_LIST.map((k) => <span key={k} title={ITEMS[k].name}><LootIcon kind={k} scale={2} /> {ITEMS[k].name}</span>)}</li>
         </ul>
       </div>
-      <div className="px-start">
+      <div className="px-start" data-lb="start">
         {host ? <button type="button" className="tf-btn tf-btn-primary px-start-btn" disabled={Boolean(problem)} onClick={() => onDispatch({ type: 'start' })}>🪂 ¡A jugar!</button> : <p>Esperando que el anfitrión arranque…</p>}
         {problem && <p className="px-hint">{problem}{room.players.length < MIN_PLAYERS ? ' Pasales el código.' : ''}</p>}
       </div>

@@ -174,7 +174,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
     onDispatch({ type: 'addBot', botId: `bot-${makeId().slice(0, 6)}`, name: free[0] || 'Bot' });
   };
   return (
-    <LobbyLayout
+    <LobbyLayout game="monopoly"
       code={code}
       roster={room.players}
       me={me?.id}
@@ -187,7 +187,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
       onCopyInvite={onCopy}
       onLeave={onLeave}
     >
-      <div className="mp-card">
+      <div className="mp-card" data-lb="players">
         <div className="mp-card-head">
           <h2>Jugadores</h2>
           <span>{room.players.length} / {MAX_PLAYERS}</span>
@@ -232,7 +232,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         </OptionField>
       </LobbyOptions>
 
-      <div className="mp-start">
+      <div className="mp-start" data-lb="start">
         {host ? (
           <button type="button" className="tf-btn tf-btn-primary mp-start-btn" disabled={!enough} data-act="start" onClick={() => onDispatch({ type: 'start' })}>
             🎩 Empezar la partida
@@ -256,7 +256,7 @@ function Resume({ room, me, code, onDispatch, onLeave, onCopy, copied, onClaim }
   const gone = room.players.filter((p) => p.out);
   const free = seats.length - seated.length;
   return (
-    <LobbyLayout
+    <LobbyLayout game="monopoly"
       code={code}
       roster={seated}
       me={me?.id}
@@ -269,7 +269,7 @@ function Resume({ room, me, code, onDispatch, onLeave, onCopy, copied, onClaim }
       onCopyInvite={onCopy}
       onLeave={onLeave}
     >
-      <div className="mp-card" data-seats>
+      <div className="mp-card" data-lb="players" data-seats>
         <div className="mp-card-head">
           <h2>Quién es quién</h2>
           <span>{seated.length} / {seats.length}</span>
@@ -291,7 +291,7 @@ function Resume({ room, me, code, onDispatch, onLeave, onCopy, copied, onClaim }
         </ul>
         {gone.length > 0 && <p className="mp-hint">Ya no juegan (quebraron o se fueron): {gone.map((p) => p.name).join(', ')}.</p>}
       </div>
-      <div className="mp-start">
+      <div className="mp-start" data-lb="start">
         {host ? (
           <button type="button" className="tf-btn tf-btn-primary mp-start-btn" disabled={seated.length < MIN_PLAYERS} data-act="resumeStart" onClick={() => onDispatch({ type: 'resumeStart' })}>
             ▶️ Retomar la partida

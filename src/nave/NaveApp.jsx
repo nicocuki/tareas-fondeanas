@@ -103,8 +103,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const enough = room.players.length >= MIN_PLAYERS;
   const taken = new Set(room.players.filter((p) => p.id !== me.id).map((p) => p.color));
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Entre Nosotros · sala de espera" subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos.' : 'El anfitrión elige las reglas y arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="nv-card">
+    <LobbyLayout game="nave" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Entre Nosotros · sala de espera" subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos.' : 'El anfitrión elige las reglas y arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="nv-card" data-lb="players">
         <div className="nv-card-head"><h2>Tripulación</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="nv-crew">
           {room.players.map((p) => (
@@ -116,7 +116,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           ))}
         </ul>
       </div>
-      <div className="nv-card">
+      <div className="nv-card" data-lb="players">
         <h2>Tu color</h2>
         <div className="nv-colors">
           {COLORS.map((c, i) => (
@@ -135,14 +135,14 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           ))}
         </div>
       </LobbyOptions>
-      <div className="nv-card nv-controls">
+      <div className="nv-card nv-controls" data-lb="help">
         <h2>Controles</h2>
         <ul>
           <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o las flechas para moverse · <kbd>E</kbd> o <kbd>Espacio</kbd> usar (tareas, botón, ventilaciones)</li>
           <li><kbd>R</kbd> reportar un cuerpo · <kbd>Q</kbd> matar (impostor) · <kbd>Tab</kbd> mapa y sabotajes · <kbd>Esc</kbd> cerrar</li>
         </ul>
       </div>
-      <div className="nv-start">
+      <div className="nv-start" data-lb="start">
         {host ? (
           <button type="button" className="tf-btn tf-btn-primary nv-start-btn" disabled={!enough} onClick={() => onDispatch({ type: 'start' })}>🚀 Empezar</button>
         ) : <p>Esperando que el anfitrión arranque…</p>}

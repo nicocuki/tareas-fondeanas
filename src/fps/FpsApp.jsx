@@ -80,8 +80,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   const problem = startProblem(room);
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Fuego Cruzado · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="r3-card">
+    <LobbyLayout game="fps" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Fuego Cruzado · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="r3-card" data-lb="players">
         <div className="r3-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="r3-roster">
           {room.players.map((p) => (
@@ -107,7 +107,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
             choices={[10, 20, 30, 50].map((v) => ({ value: v, label: String(v) }))} />
         </OptionField>
       </LobbyOptions>
-      <div className="r3-card r3-howto">
+      <div className="r3-card r3-howto" data-lb="help">
         <h2>Cómo se juega</h2>
         <ul>
           <li><b>Todos contra todos</b>, en primera persona. Arrancás con una pistola y un pico; las demás armas están <b>tiradas en el mapa</b> (agarralas con <kbd>E</kbd>) y vuelven a aparecer a los 20 segundos.</li>
@@ -117,7 +117,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <li>Gana el primero que llega a las bajas elegidas, o el que tiene más cuando se acaba el tiempo.</li>
         </ul>
       </div>
-      <div className="r3-start">
+      <div className="r3-start" data-lb="start">
         {host ? <button type="button" className="tf-btn tf-btn-primary r3-start-btn" disabled={Boolean(problem)} onClick={() => onDispatch({ type: 'start' })}>🔫 ¡A jugar!</button> : <p>Esperando que el anfitrión arranque…</p>}
         {problem && <p className="r3-hint">{problem}{room.players.length < MIN_PLAYERS ? ' Pasales el código.' : ''}</p>}
       </div>

@@ -34,7 +34,7 @@ export default function CafeOTeLobby({ room, code, me, onDispatch, onLeave, onCo
   const unassigned = room.players.filter((p) => !p.team || !p.role);
 
   return (
-    <LobbyLayout
+    <LobbyLayout game="cafe-o-te" layout="teams"
       roster={room.players}
       me={me?.id}
       onKick={(id) => onDispatch({ type: 'kick', target: id })}
@@ -50,7 +50,7 @@ export default function CafeOTeLobby({ room, code, me, onDispatch, onLeave, onCo
       unassignedPlayers={unassigned}
     >
       {/* Equipos y Roles */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 24 }}>
+      <div data-lb="players" style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 24 }}>
         {/* Equipo Rojo */}
         <LobbyTeamCard
           team="red"

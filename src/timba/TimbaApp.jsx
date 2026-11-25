@@ -141,8 +141,8 @@ function SavedGames({ onResume, busy }) {
 function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="La Timba · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="tb-card">
+    <LobbyLayout game="timba" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="La Timba · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="tb-card" data-lb="players">
         <div className="tb-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="tb-players">
           {room.players.map((p) => (
@@ -154,7 +154,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           ))}
         </ul>
       </div>
-      <div className="tb-card tb-controls">
+      <div className="tb-card tb-controls" data-lb="help">
         <h2>Cómo se juega</h2>
         <ul>
           <li>Todos juegan con la <b>misma plata</b>: arrancan con <b>$1K</b> y <b>15 tickets</b> dorados, y cada día tienen que llegar a una <b>cuota</b> (la primera es $1,2K). Si no la juntan, se termina.</li>
@@ -164,7 +164,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <li>El día dura <b>5 minutos</b> y arranca cuando el ascensor sube por primera vez al piso 1. Cuando se acaba, todos vuelven al ascensor y tienen que bajar al lobby. Después de entrar al casino se puede volver a casa en la <b>limusina</b> de la puerta (cuando están todos arriba, vuelven): con la cuota juntada sigue otro día, y si no, es <b>game over</b>.</li>
         </ul>
       </div>
-      <div className="tb-start">
+      <div className="tb-start" data-lb="start">
         {host ? <button type="button" className="tf-btn tf-btn-primary tb-start-btn" disabled={room.players.length < MIN_PLAYERS} onClick={() => onDispatch({ type: 'start' })}>🎰 ¡A la timba!</button> : <p>Esperando que el anfitrión arranque…</p>}
       </div>
     </LobbyLayout>
@@ -179,13 +179,13 @@ function Resume({ room, me, code, onDispatch, onLeave, onCopy, copied, onClaim }
   const seated = room.players.filter((p) => p.by);
   const free = room.players.length - seated.length;
   return (
-    <LobbyLayout
+    <LobbyLayout game="timba"
       code={code} roster={seated} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} host={host} players={seated.length}
       gameTitle="La Timba · partida guardada"
       subtitle={me ? (host ? 'Cuando estén todos sentados, retomá la partida.' : 'Esperando que el anfitrión retome la partida.') : 'Elegí quién eras vos en esta partida.'}
       copied={copied} onCopyInvite={onCopy} onLeave={onLeave}
     >
-      <div className="tb-card" data-seats>
+      <div className="tb-card" data-lb="players" data-seats>
         <div className="tb-card-head"><h2>Quién es quién</h2><span>{seated.length} / {room.players.length}</span></div>
         <p className="tb-hint">Día {room.day.n} de {TOTAL_DAYS} · caja {fmtMoney(room.money)} · cuota {fmtMoney(room.day.quota)}</p>
         <ul className="tb-players">
@@ -200,7 +200,7 @@ function Resume({ room, me, code, onDispatch, onLeave, onCopy, copied, onClaim }
           ))}
         </ul>
       </div>
-      <div className="tb-start">
+      <div className="tb-start" data-lb="start">
         {host ? <button type="button" className="tf-btn tf-btn-primary tb-start-btn" disabled={!seated.length} data-act="resumeStart" onClick={() => onDispatch({ type: 'resumeStart' })}>▶️ Retomar la partida</button>
           : me ? <p>Esperando que el anfitrión retome la partida…</p> : null}
         {host && free > 0 && <p className="tb-hint">Los {free} lugar{free === 1 ? '' : 'es'} que nadie tome se van de la partida al retomar.</p>}

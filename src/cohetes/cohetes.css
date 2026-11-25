@@ -173,3 +173,32 @@
 .ck-iteminfo { position: absolute; right: 12px; bottom: 12px; width: min(250px, 38vw); padding: 10px 12px; border-radius: 12px; background: rgba(20, 16, 36, 0.88); border: 3px solid #11101a; pointer-events: none; }
 .ck-iteminfo strong { display: flex; align-items: center; gap: 8px; font: 900 16px 'Bricolage Grotesque', Inter, sans-serif; }
 .ck-iteminfo p { margin: 6px 0 0; font: 500 12.5px/1.4 Inter, sans-serif; color: #e6e3f2; }
+
+/* En la sala de espera (una sola pantalla) las tarjetas de modo y de modificador se compactan: la que está elegida
+   muestra qué hace y las demás quedan con el nombre (la descripción sale al dejar el mouse encima). */
+.lb[data-game='cohetes'] .lb-main { grid-template-columns: minmax(210px, 0.5fr) minmax(0, 2.2fr); }
+.lb[data-game='cohetes'] .ck-card { padding: 12px 14px; }
+.lb[data-game='cohetes'] .ck-card-head { margin-bottom: 8px; }
+.lb[data-game='cohetes'] .ck-card h2 { font-size: 17px; margin-bottom: 8px; }
+.lb[data-game='cohetes'] .ck-modes { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.lb[data-game='cohetes'] .ck-modecard { padding: 8px 10px; gap: 3px; border-width: 2px; }
+.lb[data-game='cohetes'] .ck-modecard strong { font-size: 14px; }
+.lb[data-game='cohetes'] .ck-modecard small { font-size: 11.5px; line-height: 1.3; }
+.lb[data-game='cohetes'] .ck-modecard-top em { font-size: 9px; padding: 1px 6px; }
+.lb[data-game='cohetes'] .ck-modblocks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.lb[data-game='cohetes'] .ck-modblock { padding: 6px 8px 8px; border-radius: 16px; }
+.lb[data-game='cohetes'] .ck-modblock legend { font-size: 13px; padding: 0 6px; }
+.lb[data-game='cohetes'] .ck-modblock legend small { display: none; }
+.lb[data-game='cohetes'] .ck-modblock .ck-modes { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+.lb[data-game='cohetes'] .ck-modblock .ck-modecard { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.lb[data-game='cohetes'] .ck-modblock .ck-modecard-top { width: auto; }
+.lb[data-game='cohetes'] .ck-modblock .ck-modecard small { display: none; flex-basis: 100%; }
+.lb[data-game='cohetes'] .ck-modblock .ck-modecard.is-on small { display: block; }
+.lb[data-game='cohetes'] .ck-ctfopts { margin-top: 8px; padding-top: 8px; }
+.lb[data-game='cohetes'] .lb-options { padding: 10px 14px !important; }
+.lb[data-game='cohetes'] .ck-teams { gap: 8px; }
+
+.lb[data-game='cohetes'] .lb-col { gap: 8px; }
+.lb[data-game='cohetes'] .ck-modes > .ck-modecard:not(.is-on) small { display: none; }
+.lb[data-game='cohetes'] .ck-modes > .ck-modecard.is-soon small { display: block; }
+.lb[data-game='cohetes'] .ck-ctfopts .ck-hint { font-size: 11.5px; }

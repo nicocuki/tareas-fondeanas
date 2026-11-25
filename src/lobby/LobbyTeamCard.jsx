@@ -182,6 +182,7 @@ export default function LobbyTeamCard({
 
   return (
     <div
+      className="lb-team"
       style={{
         ...panelStyle,
         flex: '1 1 230px',
@@ -212,7 +213,7 @@ export default function LobbyTeamCard({
         )}
       </div>
 
-      {children}
+      <div className="lb-team-body">{children}</div>
     </div>
   );
 }

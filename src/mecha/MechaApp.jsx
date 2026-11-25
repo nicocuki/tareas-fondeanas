@@ -97,7 +97,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const set = (patch) => onDispatch({ type: 'setOptions', options: patch });
   const enough = room.players.length >= MIN_PLAYERS;
   return (
-    <LobbyLayout
+    <LobbyLayout game="la-mecha"
       code={code}
       roster={room.players}
       me={me?.id}
@@ -110,7 +110,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
       onCopyInvite={onCopy}
       onLeave={onLeave}
     >
-      <div className="lm-card">
+      <div className="lm-card" data-lb="players">
         <div className="lm-card-head">
           <h2>Jugadores</h2>
           <span>{room.players.length} / {MAX_PLAYERS}</span>
@@ -141,7 +141,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         </OptionField>
       </LobbyOptions>
 
-      <div className="lm-start">
+      <div className="lm-start" data-lb="start">
         {host ? (
           <button type="button" className="tf-btn tf-btn-primary lm-start-btn" disabled={!enough} onClick={() => onDispatch({ type: 'start' })}>
             💣 Encender la mecha
