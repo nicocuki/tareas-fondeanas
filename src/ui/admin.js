@@ -37,8 +37,8 @@ export async function adminFetch(path, { body, clave = key } = {}) {
 }
 
 // Manda un aviso arriba en el medio: a todas las pantallas, a una sala (`to.room`) o a un jugador de esa sala (`to.room` y `to.name`).
-// Sin texto, saca los avisos que estén a la vista.
-export const sendNotice = (text, seconds, to) => adminFetch('/aviso', { body: { text, seconds, ...(to || {}) } });
+// `image` es un data URL opcional; un link de partida en el texto se vuelve invitación. Sin texto ni imagen, saca los avisos que estén a la vista.
+export const sendNotice = (text, seconds, to, image = '') => adminFetch('/aviso', { body: { text, seconds, ...(to || {}), ...(image ? { image } : {}) } });
 
 const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 // ¿Este aviso es para mí? Sin `to` va a todos; con sala, a los que están en esa sala; con nombre, solo a ese jugador (el servidor corta los nombres en 24).

@@ -1253,6 +1253,12 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.74.2 = Cohete Royale: el impulso del paracaídas tiene tope
+1.74.2 = Cohete Royale: el impulso del paracaídas tiene tope
 - Al tirarte del helicóptero tenés 3 impulsos como máximo (se ven abajo: «Impulsos de paracaídas»). Cuando se gastan, solo caés.
 - Los impulsos ya no se suman sin límite: hay una velocidad máxima y, hacia arriba, todavía más baja. Ya no te quedás flotando fuera del mapa.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST OCULTA 1.74.3 = Avisos con imagen e invitaciones
+- Los avisos del panel de admin ahora pueden llevar una imagen (con un mensaje opcional).
+- Si el mensaje trae un link de una sala, el aviso se ve como una invitación con el juego, el código y un botón «Unirse» que te mete en esa partida.

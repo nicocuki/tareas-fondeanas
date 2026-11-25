@@ -132,7 +132,34 @@ function Suggestions({ list, onReload }) {
 }
 
 // Un aviso que aparece arriba en el medio, por unos segundos: en la pantalla de todos, de una sala o de un jugador.
+// Achica la imagen (máximo 480 px, JPEG) hasta que entre en lo que el servidor acepta.
+function shrinkImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer esa imagen.')); };
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      for (const side of [480, 360, 260]) {
+        const k = Math.min(1, side / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * k)); canvas.height = Math.max(1, Math.round(img.height * k));
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        for (const q of [0.8, 0.6, 0.45]) {
+          const data = canvas.toDataURL('image/jpeg', q);
+          if (data.length <= 85000) { resolve(data); return; }
+        }
+      }
+      reject(new Error('La imagen es muy pesada.'));
+    };
+    img.src = url;
+  });
+}
+
 function Announce({ rooms }) {
+  const [image, setImage] = useState('');
   const [text, setText] = useState('');
   const [seconds, setSeconds] = useState(10);
   const [busy, setBusy] = useState(false);
@@ -146,19 +173,25 @@ function Announce({ rooms }) {
   const noTarget = dest !== 'all' && (!room || (dest === 'player' && !name));
   async function send(e, clear = false) {
     e?.preventDefault();
-    if (!clear && (!text.trim() || noTarget)) return;
+    if (!clear && ((!text.trim() && !image) || noTarget)) return;
     setBusy(true);
     try {
-      await sendNotice(clear ? '' : text, seconds, clear ? null : to);
+      await sendNotice(clear ? '' : text, seconds, clear ? null : to, clear ? '' : image);
       showToast(clear ? 'Avisos sacados' : `Aviso enviado ${!to ? 'a todos' : to.name ? `a ${to.name}` : `a la sala ${to.room}`} 📣`);
-      if (!clear) setText('');
+      if (!clear) { setText(''); setImage(''); }
     } catch (err) { showToast(err.message); } finally { setBusy(false); }
   }
   return (
     <section className="tf-admin-card" aria-labelledby="tf-admin-aviso">
       <div className="tf-admin-head"><h2 id="tf-admin-aviso">Mandar un aviso 📣</h2></div>
       <form className="tf-admin-notice" onSubmit={send} data-admin-notice>
-        <input className="tf-input" value={text} maxLength={140} placeholder="Un mensaje que aparece arriba en la pantalla" onChange={(e) => setText(e.target.value)} />
+        <input className="tf-input" value={text} maxLength={400} placeholder="Un mensaje (o pegá el link de una partida para invitar)" onChange={(e) => setText(e.target.value)} />
+        <label className="tf-admin-secs">Imagen <input type="file" accept="image/*" data-notice-file onChange={async (e) => {
+          const file = e.target.files?.[0]; e.target.value = '';
+          if (!file) return;
+          try { setImage(await shrinkImage(file)); } catch (err) { showToast(err.message); }
+        }} /></label>
+        {image && <><img className="tf-admin-preview" src={image} alt="Vista previa" /><button type="button" className="tf-btn tf-btn-soft" onClick={() => setImage('')}>Sacar imagen</button></>}
         <label className="tf-admin-secs">Para <select className="tf-input" value={dest} onChange={(e) => setDest(e.target.value)} data-notice-dest>
           <option value="all">Todos</option>
           <option value="room">Una sala</option>
@@ -177,7 +210,7 @@ function Announce({ rooms }) {
           </select>
         )}
         <label className="tf-admin-secs">Dura <select className="tf-input" value={seconds} onChange={(e) => setSeconds(Number(e.target.value))}>{[5, 10, 20, 30, 60].map((s) => <option key={s} value={s}>{s} s</option>)}</select></label>
-        <button type="submit" className="tf-btn tf-btn-primary" disabled={busy || !text.trim() || noTarget}>Enviar</button>
+        <button type="submit" className="tf-btn tf-btn-primary" disabled={busy || (!text.trim() && !image) || noTarget}>Enviar</button>
         <button type="button" className="tf-btn tf-btn-soft" disabled={busy} onClick={(e) => send(e, true)}>Sacar los avisos</button>
       </form>
     </section>

@@ -51,18 +51,41 @@ export function adminListing(tree, code, connections) {
   };
 }
 
-export const NOTICE_MAX = 140;
+export const NOTICE_MAX = 280;
 export const NOTICE_SECONDS = [3, 60]; // cuánto puede durar a la vista
-// El aviso que mandó el admin: el texto sin espacios de más (hasta 140 letras), los segundos que dura (10 si no dice) y a quién va.
+export const NOTICE_IMAGE_MAX = 90000; // letras de la imagen (data URL) que se acepta
+const IMAGE_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+const LINK_RE = /https?:\/\/[^\s]+/g;
+
+// Una invitación a partida dentro del texto: un link con `sala=ABCD` (y `juego=…`, que si falta es Código Secreto).
+// Devuelve la invitación y el texto sin ese link, o `invite: null` si no hay ninguno.
+export function parseInvite(text) {
+  for (const link of String(text || '').match(LINK_RE) || []) {
+    let url;
+    try { url = new URL(link); } catch { continue; }
+    const code = String(url.searchParams.get('sala') || '').toUpperCase();
+    if (!/^[A-Z]{4}$/.test(code)) continue;
+    const game = String(url.searchParams.get('juego') || 'codigo-secreto').toLowerCase();
+    if (!/^[a-z0-9-]{2,24}$/.test(game)) continue;
+    return { invite: { game, code }, text: text.replace(link, ' ').replace(/\s+/g, ' ').trim() };
+  }
+  return { invite: null, text };
+}
+
+// El aviso que mandó el admin: el texto sin espacios de más (hasta 280 letras), una imagen opcional, la invitación si pegó un link
+// de partida, los segundos que dura (10 si no dice) y a quién va. `empty`: no trae nada para mostrar (se usa para sacar los avisos).
 export function cleanNotice(input) {
-  const text = String(input?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, NOTICE_MAX);
+  const typed = String(input?.text ?? '').replace(/\s+/g, ' ').trim();
+  const { invite, text: rest } = parseInvite(typed);
+  const text = rest.slice(0, NOTICE_MAX);
+  const image = typeof input?.image === 'string' && input.image.length <= NOTICE_IMAGE_MAX && IMAGE_RE.test(input.image) ? input.image : '';
   const secs = Number(input?.seconds);
   const seconds = Number.isFinite(secs) && input?.seconds != null ? Math.max(NOTICE_SECONDS[0], Math.min(NOTICE_SECONDS[1], Math.round(secs))) : 10;
   // A quién va: a todos (sin `room`), a una sala (`room`) o a un jugador de esa sala (`room` y `name`).
   const room = String(input?.room ?? '').toUpperCase();
   const name = String(input?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 24);
   const to = /^[A-Z]{4}$/.test(room) ? { room, ...(name ? { name } : {}) } : null;
-  return { text, seconds, to };
+  return { text, seconds, to, image, invite, empty: !text && !image && !invite };
 }
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -91,10 +114,11 @@ export async function handleAdmin(request, env, url) {
   // Un aviso para todas las pantallas, para una sala o para un jugador (sin texto, saca los que estén a la vista).
   if (route === 'POST /aviso') {
     const raw = await body(request);
-    const { text, seconds, to } = cleanNotice(raw);
+    const { text, seconds, to, image, invite, empty } = cleanNotice(raw);
     if (raw?.room && !to) return json({ error: 'El código tiene 4 letras.' }, 400);
-    await directorio().avisar(text, seconds * 1000, to);
-    return json({ ok: true, text, seconds, ...(to ? { to } : {}) });
+    if (typeof raw?.image === 'string' && raw.image && !image) return json({ error: 'La imagen no sirve o es muy pesada.' }, 400);
+    await directorio().avisar(empty ? '' : text, seconds * 1000, to, { image, invite });
+    return json({ ok: true, text, seconds, ...(to ? { to } : {}), ...(image ? { image: true } : {}), ...(invite ? { invite } : {}) });
   }
   if (route === 'GET /salas') return json(await directorio().todas());
   if (route === 'POST /salas/cerrar') {

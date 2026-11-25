@@ -10,7 +10,7 @@ export class Directorio extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.entries = new Map();
-    this.notices = []; // los avisos del admin que siguen a la vista: { id, text, until, to? } (to = { room, name? }; sin to, van a todos)
+    this.notices = []; // los avisos del admin que siguen a la vista: { id, text, until, to?, image?, invite? } (to = { room, name? }; sin to, van a todos)
     this.all = new Map(); // todas las salas con gente, para el modo admin (`a:` en disco)
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     ctx.blockConcurrencyWhile(async () => {
@@ -52,19 +52,22 @@ export class Directorio extends DurableObject {
   live() {
     const now = Date.now();
     this.notices = this.notices.filter((n) => n.until > now);
-    return this.notices.map((n) => ({ id: n.id, text: n.text, left: n.until - now, ...(n.to ? { to: n.to } : {}) }));
+    return this.notices.map((n) => ({ id: n.id, text: n.text, left: n.until - now, ...(n.to ? { to: n.to } : {}), ...(n.image ? { image: n.image } : {}), ...(n.invite ? { invite: n.invite } : {}) }));
   }
 
   noticeMessage() {
     return JSON.stringify({ t: 'aviso', l: this.live() });
   }
 
-  async avisar(text, ms, to = null) {
+  // `extra`: { image (data URL), invite ({ game, code }) }. Sin texto, imagen ni invitación, saca los avisos.
+  async avisar(text, ms, to = null, extra = {}) {
     this.live();
-    if (!text) this.notices = [];
-    else this.notices = [...this.notices, { id: crypto.randomUUID(), text, until: Date.now() + ms, ...(to ? { to } : {}) }].slice(-MAX_NOTICES);
+    const { image = '', invite = null } = extra || {};
+    const clear = !text && !image && !invite;
+    if (clear) this.notices = [];
+    else this.notices = [...this.notices, { id: crypto.randomUUID(), text, until: Date.now() + ms, ...(to ? { to } : {}), ...(image ? { image } : {}), ...(invite ? { invite } : {}) }].slice(-MAX_NOTICES);
     await this.ctx.storage.put('avisos', this.notices);
-    const message = text ? JSON.stringify({ t: 'aviso', m: this.live().at(-1) }) : JSON.stringify({ t: 'aviso', m: null });
+    const message = !clear ? JSON.stringify({ t: 'aviso', m: this.live().at(-1) }) : JSON.stringify({ t: 'aviso', m: null });
     for (const ws of this.ctx.getWebSockets('aviso')) {
       try { ws.send(message); } catch {}
     }

@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { getCurrentRoom, getProfile } from './store.js';
 import { noticeIsForMe } from './admin.js';
+import { gameById, gameUrl } from './games.js';
 
 const RECONNECT_MS = [1000, 3000, 8000, 15000];
 const PING_MS = 45000;
@@ -14,9 +15,9 @@ export default function Notice() {
     let ws = null, closed = false, attempt = 0, retry = null, ping = null, hide = null;
     function show(m) {
       clearTimeout(hide);
-      if (!m || !m.text || !(m.left > 0)) { setNotice(null); return; }
+      if (!m || !(m.text || m.image || m.invite) || !(m.left > 0)) { setNotice(null); return; }
       if (!noticeIsForMe(m.to, { room: getCurrentRoom()?.code, name: getProfile().name })) return; // es de otra sala u otro jugador
-      setNotice({ id: m.id, text: String(m.text) });
+      setNotice({ id: m.id, text: String(m.text || ''), image: typeof m.image === 'string' ? m.image : '', invite: m.invite && gameById(m.invite.game) ? m.invite : null });
       hide = setTimeout(() => setNotice(null), m.left);
     }
     function connect() {
@@ -43,5 +44,20 @@ export default function Notice() {
     return () => { closed = true; clearTimeout(retry); clearTimeout(hide); clearInterval(ping); try { ws?.close(); } catch {} };
   }, []);
   if (!notice) return null;
-  return <div key={notice.id} className="tf-notice" role="status" aria-live="polite" data-notice>{notice.text}</div>;
+  const game = notice.invite ? gameById(notice.invite.game) : null;
+  // Una invitación se puede tocar: lleva a la sala y entra sola (como al seguir al anfitrión que cambia de juego).
+  const join = () => window.location.assign(`${gameUrl(notice.invite.game, notice.invite.code)}&auto=1`);
+  return (
+    <div key={notice.id} className={`tf-notice${notice.invite ? ' has-invite' : ''}`} role="status" aria-live="polite" data-notice>
+      {notice.image && <img className="tf-notice-img" src={notice.image} alt="" data-notice-image />}
+      {notice.text && <div className="tf-notice-text">{notice.text}</div>}
+      {game && (
+        <div className="tf-notice-invite" data-notice-invite={notice.invite.code}>
+          <span className="tf-notice-game">{game.emoji} {game.title}</span>
+          <span className="tf-notice-code">Sala {notice.invite.code}</span>
+          <button type="button" className="tf-notice-join" onClick={join} data-act="notice-join">Unirse</button>
+        </div>
+      )}
+    </div>
+  );
 }

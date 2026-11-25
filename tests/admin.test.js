@@ -59,8 +59,8 @@ test('admin: las rutas hacen lo suyo y con otra clave todo da 404', async () => 
 });
 
 test('admin: el aviso se limpia (140 letras, entre 3 y 60 segundos) y se manda al directorio', async () => {
-  assert.deepEqual(cleanNotice({ text: '  hola   mundo ', seconds: 20 }), { text: 'hola mundo', seconds: 20, to: null });
-  assert.equal(cleanNotice({ text: 'x'.repeat(500) }).text.length, 140);
+  assert.deepEqual(cleanNotice({ text: '  hola   mundo ', seconds: 20 }), { text: 'hola mundo', seconds: 20, to: null, image: '', invite: null, empty: false });
+  assert.equal(cleanNotice({ text: 'x'.repeat(500) }).text.length, 280);
   assert.equal(cleanNotice({ text: 'a' }).seconds, 10);
   assert.equal(cleanNotice({ text: 'a', seconds: 1 }).seconds, 3);
   assert.equal(cleanNotice({ text: 'a', seconds: 999 }).seconds, 60);
@@ -69,6 +69,20 @@ test('admin: el aviso se limpia (140 letras, entre 3 y 60 segundos) y se manda a
   assert.equal((await call(env, 'POST', '/aviso', { body: { text: '¡Hola a todos!', seconds: 5 } })).status, 200);
   assert.equal((await call(env, 'POST', '/aviso', { body: {} })).status, 200, 'sin texto saca el aviso');
   assert.deepEqual(env.calls.filter((c) => c[0] === 'avisar'), [['avisar', '¡Hola a todos!', 5000, null], ['avisar', '', 10000, null]]);
+});
+
+test('admin: el aviso lleva imagen opcional y un link de partida se vuelve invitación', async () => {
+  const img = 'data:image/jpeg;base64,AAAA';
+  assert.equal(cleanNotice({ text: '', image: img }).image, img);
+  assert.equal(cleanNotice({ text: '', image: img }).empty, false);
+  assert.equal(cleanNotice({ text: 'a', image: 'http://malo.com/x.png' }).image, '', 'solo data URLs de imagen');
+  assert.equal(cleanNotice({ text: 'a', image: 'data:image/jpeg;base64,' + 'A'.repeat(100000) }).image, '', 'muy pesada');
+  const c = cleanNotice({ text: 'Vengan https://x.workers.dev/?juego=monopoly&sala=abcd ya' });
+  assert.deepEqual(c.invite, { game: 'monopoly', code: 'ABCD' });
+  assert.equal(c.text, 'Vengan ya');
+  assert.deepEqual(cleanNotice({ text: 'https://x.dev/?sala=WXYZ' }).invite, { game: 'codigo-secreto', code: 'WXYZ' });
+  assert.equal(cleanNotice({ text: 'mirá https://google.com' }).invite, null);
+  assert.equal(cleanNotice({ text: '   ' }).empty, true);
 });
 
 test('admin: el aviso puede ir a una sala o a un jugador, y cada pantalla se queda con lo suyo', async () => {
