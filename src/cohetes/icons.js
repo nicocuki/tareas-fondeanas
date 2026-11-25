@@ -11,7 +11,7 @@ export const ICON_COLORS = {
   heal: '#ff4d5e', teleport: '#b86bff', turbo: '#ffb02e', shock: '#4d8bff', medkit: '#2ecf8a', triple: '#46d0c0', bounce: '#ff8fd0',
   cement: '#b0875a', strike: '#ff5a2e', airbomb: '#ff5a2e',
 };
-const BARE = new Set(['skull', 'hit', 'wave', 'storm', 'coin', 'crown']);
+const BARE = new Set(['skull', 'hit', 'wave', 'storm', 'coin', 'crown', 'flag', 'robot']);
 export const ICON_NAMES = [...Object.keys(ICON_COLORS), ...BARE];
 
 const shade = (hex, f) => {
@@ -211,6 +211,19 @@ const GLYPHS = {
   crown(c) {
     c.beginPath(); c.moveTo(-0.85, 0.6); c.lineTo(-0.9, -0.55); c.lineTo(-0.42, -0.05); c.lineTo(0, -0.8); c.lineTo(0.42, -0.05); c.lineTo(0.9, -0.55); c.lineTo(0.85, 0.6); c.closePath(); fs(c, '#ffd23f');
     for (const x of [-0.5, 0, 0.5]) { circ(c, x, 0.28, 0.12); fs(c, '#ff4d5e'); }
+  },
+  // Una bandera en su mástil (roba la bandera).
+  flag(c) {
+    c.beginPath(); c.roundRect(-0.62, -0.95, 0.16, 1.9, 0.06); fs(c, '#d6dae3');
+    c.beginPath(); c.moveTo(-0.46, -0.9); c.quadraticCurveTo(0.1, -1.05, 0.2, -0.78); c.quadraticCurveTo(0.5, -0.55, 0.9, -0.7); c.lineTo(0.9, 0.1); c.quadraticCurveTo(0.5, 0.25, 0.2, 0.02); c.quadraticCurveTo(0.1, -0.2, -0.46, -0.06); c.closePath(); fs(c, '#ff4d5e');
+  },
+  // La cara de una máquina: cabeza cuadrada, un visor rojo y antena.
+  robot(c) {
+    c.beginPath(); c.moveTo(0, -0.62); c.lineTo(0, -0.95); c.stroke(); circ(c, 0, -0.98, 0.1); fs(c, '#ff4d5e');
+    c.beginPath(); c.roundRect(-0.78, -0.62, 1.56, 1.4, 0.28); fs(c, '#aab4c3');
+    c.beginPath(); c.roundRect(-0.58, -0.28, 1.16, 0.46, 0.2); fs(c, '#1d2430');
+    circ(c, -0.26, -0.05, 0.13); fs(c, '#ff3b3b'); circ(c, 0.26, -0.05, 0.13); fs(c, '#ff3b3b');
+    c.lineWidth = 0.09; c.beginPath(); c.moveTo(-0.4, 0.5); c.lineTo(0.4, 0.5); c.stroke();
   },
 };
 GLYPHS.airbomb = GLYPHS.strike;

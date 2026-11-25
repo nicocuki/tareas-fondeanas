@@ -142,3 +142,34 @@
 .ck-team ul { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; min-height: 28px; }
 .ck-team li { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-weight: 700; }
 @media (max-width: 560px) { .ck-teams { grid-template-columns: 1fr; } }
+
+/* Modos y modificadores en la sala de espera. */
+.ck-modecard.is-soon { opacity: 0.55; border-style: dashed; }
+.ck-modecard.is-soon em { background: var(--text-3); }
+.ck-modblocks { display: flex; flex-direction: column; gap: 14px; }
+.ck-modblock { margin: 0; padding: 12px; border-radius: var(--radius-xl); border: 2px solid var(--mb, var(--border)); background: color-mix(in srgb, var(--mb, var(--border)) 9%, transparent); min-width: 0; }
+.ck-modblock legend { padding: 0 8px; font-weight: 800; font-size: 15px; color: var(--mb); }
+.ck-modblock legend small { margin-left: 6px; font-weight: 500; font-size: 12px; color: var(--text-2); }
+.ck-modblock-0 { --mb: #3d8fe0; }
+.ck-modblock-1 { --mb: #4cc35a; }
+.ck-modblock-2 { --mb: #a463d9; }
+.ck-modblock .ck-modes { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.ck-modblock .ck-modecard.is-on { border-color: var(--mb); background: color-mix(in srgb, var(--mb) 18%, var(--surface-2)); }
+.ck-hpchip { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--mb); color: #fff; font-size: 12px; }
+.ck-ctfopts { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 8px; }
+
+/* Roba la bandera: marcador, aviso y resultado. */
+.ck-ctf { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: flex; align-items: stretch; border-radius: 14px; overflow: hidden; border: 3px solid #11101a; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35); }
+.ck-ctf-team { min-width: 56px; padding: 4px 12px; display: grid; place-items: center; font: 900 30px 'Bricolage Grotesque', Inter, sans-serif; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); }
+.ck-ctf-mid { min-width: 96px; padding: 3px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(20, 16, 36, 0.92); }
+.ck-ctf-mid b { font: 900 22px/1 'Bricolage Grotesque', Inter, sans-serif; }
+.ck-ctf-mid small { font: 700 10px Inter, sans-serif; opacity: 0.85; }
+.ck-ctf-hint { position: absolute; left: 50%; top: 72px; transform: translateX(-50%); margin: 0; padding: 6px 14px; display: inline-flex; align-items: center; gap: 8px; border-radius: 10px; background: rgba(255, 210, 63, 0.95); color: #1b1530; font: 800 14px Inter, sans-serif; text-align: center; max-width: min(92vw, 560px); }
+.ck-ctf-final { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 12px; font: 900 34px 'Bricolage Grotesque', Inter, sans-serif; }
+.ck-ctf-final span { min-width: 54px; padding: 2px 12px; border-radius: 10px; border: 3px solid #11101a; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); }
+.ck-mode-robots { background: rgba(154, 166, 181, 0.95) !important; }
+
+/* Cuadro del objeto elegido: nombre y qué hace. */
+.ck-iteminfo { position: absolute; right: 12px; bottom: 12px; width: min(250px, 38vw); padding: 10px 12px; border-radius: 12px; background: rgba(20, 16, 36, 0.88); border: 3px solid #11101a; pointer-events: none; }
+.ck-iteminfo strong { display: flex; align-items: center; gap: 8px; font: 900 16px 'Bricolage Grotesque', Inter, sans-serif; }
+.ck-iteminfo p { margin: 6px 0 0; font: 500 12.5px/1.4 Inter, sans-serif; color: #e6e3f2; }

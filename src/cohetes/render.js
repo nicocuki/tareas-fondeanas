@@ -469,7 +469,7 @@ const shadeRgb = (hex, f) => {
 
 // El tanquecito: orugas abajo, cúpula arriba y el caño hacia `angle`. Gira con la superficie
 // (`nx`, `ny` = hacia dónde es «arriba» para el tanque).
-export function drawTank(ctx, p, color, angle, { hurt = false, chute = false, shield = false, now = 0, team = null } = {}) {
+export function drawTank(ctx, p, color, angle, { hurt = false, chute = false, shield = false, now = 0, team = null, robot = false } = {}) {
   const up = Math.atan2(p.nx ?? 0, -(p.ny ?? -1));
   const c = turret(p);
   // Caño (atrás del cuerpo).
@@ -485,9 +485,22 @@ export function drawTank(ctx, p, color, angle, { hurt = false, chute = false, sh
   ctx.rotate(up);
   ctx.lineWidth = 0.9;
   ctx.strokeStyle = '#1d2a33';
-  // Cúpula.
-  ctx.fillStyle = hurt ? '#fff' : '#ffffff';
-  ctx.beginPath(); ctx.arc(0, -1.2, 4.6, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (robot) {
+    // Una máquina: cabeza cuadrada con un visor rojo que titila, y antena.
+    ctx.beginPath(); ctx.moveTo(0, -7.6); ctx.lineTo(0, -10.4); ctx.stroke();
+    ctx.fillStyle = Math.sin(now * 7) > 0 ? '#ff4d4d' : '#7a1f1f';
+    ctx.beginPath(); ctx.arc(0, -10.8, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = hurt ? '#fff' : '#c3cad6';
+    ctx.beginPath(); ctx.roundRect(-4.4, -7.4, 8.8, 6.4, 1.4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#1d2430';
+    ctx.beginPath(); ctx.roundRect(-3.2, -5.6, 6.4, 2.6, 1); ctx.fill();
+    ctx.fillStyle = '#ff3b3b';
+    ctx.fillRect(-2.3, -4.9, 1.6, 1.2); ctx.fillRect(0.7, -4.9, 1.6, 1.2);
+  } else {
+    // Cúpula.
+    ctx.fillStyle = hurt ? '#fff' : '#ffffff';
+    ctx.beginPath(); ctx.arc(0, -1.2, 4.6, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
   // Cuerpo con orugas.
   ctx.fillStyle = hurt ? '#fff' : color;
   ctx.beginPath(); ctx.roundRect(-TANK_R - 0.5, -1.4, (TANK_R + 0.5) * 2, 6.2, 3); ctx.fill(); ctx.stroke();
@@ -938,8 +951,41 @@ export function drawStorm(ctx, cam, storm, now) {
   }
 }
 
+// Una bandera parada en (x, y) (el pie del mástil). `carried`: la lleva un tanque, así que va más chica y flameando atrás.
+export function drawFlag(ctx, x, y, color, now, carried = false) {
+  const k = carried ? 0.75 : 1;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#1d2a33';
+  ctx.lineWidth = 0.9;
+  ctx.fillStyle = '#e8ebf2';
+  ctx.beginPath(); ctx.roundRect(-0.8, -26 * k, 1.6, 26 * k, 0.6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = color;
+  const top = -26 * k, w = 17 * k, h = 11 * k;
+  ctx.beginPath();
+  ctx.moveTo(0.8, top);
+  for (let i = 0; i <= 6; i++) ctx.lineTo(0.8 + (w * i) / 6, top + Math.sin(now * 6 + i * 0.9) * 1.3 * (i / 6));
+  for (let i = 6; i >= 0; i--) ctx.lineTo(0.8 + (w * i) / 6, top + h + Math.sin(now * 6 + i * 0.9) * 1.3 * (i / 6));
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+// La zona de una base: un aro en el suelo del color del equipo (solo dibujo).
+export function drawBase(ctx, base, color, now) {
+  ctx.save();
+  ctx.translate(base.x, base.y);
+  ctx.fillStyle = color + '33';
+  ctx.beginPath(); ctx.ellipse(0, 0, 44, 8, 0, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.2;
+  ctx.setLineDash([5, 4]); ctx.lineDashOffset = -now * 6;
+  ctx.beginPath(); ctx.ellipse(0, 0, 44, 8, 0, Math.PI, 0); ctx.stroke();
+  ctx.restore();
+}
+
 // Mapa chico abajo a la izquierda: el terreno, la zona (agua o tormenta), mi tanque y los demás. En pantalla (no en el mundo).
-export function drawMinimap(ctx, cam, view, t, { me, others = [], storm = null, level = null, theme }) {
+export function drawMinimap(ctx, cam, view, t, { me, others = [], storm = null, level = null, theme, flags = [] }) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const dpr = cam.dpr || 1;
   const w = Math.round(Math.min(240, cam.w * 0.26) ), h = Math.round(w * t.H / t.W);
@@ -963,7 +1009,14 @@ export function drawMinimap(ctx, cam, view, t, { me, others = [], storm = null, 
       ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(x0 + storm.next.x * k, y0 + storm.next.y * k, storm.next.r * k, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
     }
   }
-  for (const o of others) { ctx.fillStyle = o.color; ctx.strokeStyle = '#17121f'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x0 + o.x * k, y0 + o.y * k, 2.6 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+  // Banderas (roba la bandera): un cuadradito del color del equipo dueño, más grande que los tanques.
+  for (const f of flags) { ctx.fillStyle = f.color; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.rect(x0 + f.x * k - 3.4 * dpr, y0 + f.y * k - 3.4 * dpr, 6.8 * dpr, 6.8 * dpr); ctx.fill(); ctx.stroke(); }
+  for (const o of others) {
+    ctx.fillStyle = o.color; ctx.strokeStyle = '#17121f'; ctx.lineWidth = 1; ctx.beginPath();
+    if (o.square) ctx.rect(x0 + o.x * k - 2.4 * dpr, y0 + o.y * k - 2.4 * dpr, 4.8 * dpr, 4.8 * dpr); // las máquinas son cuadradas
+    else ctx.arc(x0 + o.x * k, y0 + o.y * k, 2.6 * dpr, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+  }
   if (me) {
     ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#17121f'; ctx.lineWidth = 1.3;
     ctx.beginPath(); ctx.arc(x0 + me.x * k, y0 + me.y * k, 3.6 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();

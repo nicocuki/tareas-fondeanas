@@ -1237,13 +1237,22 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-1.74.0 = Sugerencias del buzón: tirar cosas en Royale 3D, el desierto de La Timba y más jugadores
+1.74.0 = Cohete Royale: modos de juego de verdad, modificadores, roba la bandera y máquinas
+- Los ocho «modos» de antes pasan a llamarse **Modificadores** y ahora se combinan: se elige una opción de cada bloque de color. Zona: Marea (por defecto), Tormenta, Sin peligro o Peligro total (marea y tormenta). Vida: Normal, Titanes (200) o Frágil (40). Extra: Nada nuevo o Máquinas. Frenesí, Arsenal y Luna ya no están.
+- Arriba de los modificadores hay una sección de **Modos**: Todos contra todos (por defecto), Por equipos (reemplaza a la opción «Equipos») y Roba la bandera. Hay una tarjeta «Próximamente…» que todavía no se puede elegir.
+- **Roba la bandera**: dos equipos, una bandera en cada punta de un mapa ancho (espejado, así es parejo), sin helicópteros: aparecés de tu lado a una altura al azar y, si te eliminan, reaparecés a los 4 segundos. Tocá la bandera rival, llevala y tocá la tuya (tiene que estar en su base) para sumar un punto en el marcador de arriba. Si eliminan al que la lleva, vuelve a su base. El anfitrión elige el tiempo y las banderas para ganar; con 0 en una es sin límite, y con las dos en 0 la partida es infinita. Siempre es «Sin peligro».
+- **Máquinas**: tanques-robot sin nombre que patrullan el mapa, te persiguen y te disparan. Un cohete las rompe y vuelven a los 12 segundos.
+- Al elegir un objeto aparece abajo a la derecha un cuadro con su nombre y una descripción de qué hace.
+
+--------------------------------------------------------------------------------------------------------------------
+
+1.74.1 = Sugerencias del buzón: tirar cosas en Royale 3D, el desierto de La Timba y más jugadores
 - Royale 3D: ahora se puede tirar lo que tenés en la mano con la tecla Q (se puede cambiar en «Teclas»), o arrastrando cualquier arma o pila (vendas, botiquines, escudos, granadas) afuera del inventario. Lo tirado queda en el piso para que lo agarre cualquiera con E.
 - La Timba: si volvés a casa sin juntar la cuota, la limusina ya no te lleva a casa: te deja en un desierto con un pozo gigante y tipos armados apuntándote. El juego termina cuando todos se tiran al pozo (con una caída de verdad). Si nadie se decide, a los 2 minutos los empujan.
 - Más jugadores: Armá el Meme ahora admite hasta 30 y La Mecha hasta 40. Donde el tope depende del tablero, el mapa, los colores o el tamaño de la sala (Código Secreto, Monopoly, Abismo y los juegos en tiempo real), se mantiene.
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST 1.74.1 = Cohete Royale: el impulso del paracaídas tiene tope
+LATEST 1.74.2 = Cohete Royale: el impulso del paracaídas tiene tope
 - Al tirarte del helicóptero tenés 3 impulsos como máximo (se ven abajo: «Impulsos de paracaídas»). Cuando se gastan, solo caés.
 - Los impulsos ya no se suman sin límite: hay una velocidad máxima y, hacia arriba, todavía más baja. Ya no te quedás flotando fuera del mapa.
