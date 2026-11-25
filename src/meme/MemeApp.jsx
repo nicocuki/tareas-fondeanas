@@ -101,8 +101,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const set = (patch) => onDispatch({ type: 'setOptions', options: patch });
   const enough = room.players.length >= MIN_PLAYERS;
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Armá el Meme · sala de espera" subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos.' : 'El anfitrión elige las reglas y arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="mm-card">
+    <LobbyLayout game="meme" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Armá el Meme · sala de espera" subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos.' : 'El anfitrión elige las reglas y arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="mm-card" data-lb="players">
         <div className="mm-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="mm-players">
           {room.players.map((p) => (
@@ -128,7 +128,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <Segmented name="seconds" value={opts.seconds} disabled={!host} onChange={(v) => set({ seconds: v })} choices={[45, 60, 90, 120].map((n) => ({ value: n, label: `${n} s` }))} />
         </OptionField>
       </LobbyOptions>
-      <div className="mm-start">
+      <div className="mm-start" data-lb="start">
         {host ? (
           <button type="button" className="tf-btn tf-btn-primary mm-start-btn" disabled={!enough} onClick={() => onDispatch({ type: 'start', pool: samplePool() })}>
             🖼️ ¡A memear!

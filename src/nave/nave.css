@@ -230,3 +230,13 @@
   .nv-chat { flex: 1 1 260px; height: auto; min-height: 220px; }
   .nv-vote-grid { grid-template-columns: 1fr; }
 }
+
+/* En la sala de espera (una sola pantalla) las opciones ocupan todo el ancho y los colores van en dos filas. */
+.lb[data-game='nave'] .lb-main { grid-template-columns: minmax(200px, 0.55fr) minmax(0, 2.2fr); }
+.lb[data-game='nave'] .nv-card { padding: 14px 16px; }
+.lb[data-game='nave'] .nv-options { grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 16px; }
+.lb[data-game='nave'] .nv-colors { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.lb[data-game='nave'] .nv-colors button { height: 46px; }
+.lb[data-game='nave'] .nv-crew { max-height: 30vh; overflow: auto; }
+.lb[data-game='nave'] .nv-colors button { padding: 0; height: 40px; min-width: 0; overflow: hidden; }
+.lb[data-game='nave'] .nv-colors button svg { width: 26px; height: 26px; }

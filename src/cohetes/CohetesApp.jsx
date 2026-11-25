@@ -87,8 +87,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const chosen = { zone: settings.zone, life: settings.life, extra: settings.machines ? 'machines' : 'none' };
   const setOption = (options) => onDispatch({ type: 'setOptions', options });
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Cohete Royale · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="ck-card">
+    <LobbyLayout game="cohetes" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Cohete Royale · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="ck-card" data-lb="players">
         <div className="ck-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="ck-players">
           {room.players.map((p) => (
@@ -101,7 +101,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         </ul>
       </div>
       {teams && (
-        <div className="ck-card">
+        <div className="ck-card" data-lb="players">
           <div className="ck-card-head"><h2>Equipos</h2><span>Elegí el tuyo; si quedan dispares, los últimos que entraron pasan al otro</span></div>
           <div className="ck-teams">
             {TEAMS.map((t, i) => (
@@ -121,7 +121,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
             const mode = GAME_MODES[key];
             const on = settings.gameMode === key;
             return (
-              <button key={key} type="button" role="radio" aria-checked={on} disabled={!host || mode.soon} data-opt="gameMode" data-value={key} className={`ck-modecard${on ? ' is-on' : ''}${mode.soon ? ' is-soon' : ''}`} onClick={() => setOption({ gameMode: key })}>
+              <button key={key} type="button" role="radio" aria-checked={on} disabled={!host || mode.soon} data-opt="gameMode" data-value={key} className={`ck-modecard${on ? ' is-on' : ''}${mode.soon ? ' is-soon' : ''}`} title={mode.blurb} onClick={() => setOption({ gameMode: key })}>
                 <span className="ck-modecard-top">
                   <span className="ck-modecard-zone"><Icon name={mode.icon} size={26} /></span>
                   <em>{mode.tag}</em>
@@ -158,7 +158,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
                   {Object.entries(def.choices).map(([key, c]) => {
                     const on = chosen[group] === key;
                     return (
-                      <button key={key} type="button" role="radio" aria-checked={on} disabled={!host || locked} data-opt={group} data-value={key} className={`ck-modecard${on ? ' is-on' : ''}`} onClick={() => setOption({ [group]: key })}>
+                      <button key={key} type="button" role="radio" aria-checked={on} disabled={!host || locked} data-opt={group} data-value={key} className={`ck-modecard${on ? ' is-on' : ''}`} title={c.blurb} onClick={() => setOption({ [group]: key })}>
                         <span className="ck-modecard-top">
                           <span className="ck-modecard-zone">{(c.icon || []).map((ic) => <Icon key={ic} name={ic} size={22} />)}{c.hp && <b className="ck-hpchip">{c.hp}</b>}</span>
                         </span>
@@ -174,7 +174,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         </div>
       </div>
       {(hasWater(settings) || hasStorm(settings)) && (
-      <LobbyOptions canEdit={host}>
+      <LobbyOptions data-lb="players" canEdit={host}>
         {(
           <OptionField title="Velocidad de la zona" hint="Qué tan rápido sube el agua o se cierra la tormenta: con más rápida, las partidas son más cortas.">
             <Segmented name="water" value={room.options.water} disabled={!host} onChange={(v) => setOption({ water: v })}
@@ -183,7 +183,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         )}
       </LobbyOptions>
       )}
-      <div className="ck-card ck-controls">
+      <div className="ck-card ck-controls" data-lb="help">
         <h2>Cómo se juega</h2>
         <ul>
           <li>Arrancan en <b>dos helicópteros</b>, uno de cada lado: <b>disparás para saltar</b> y bajás en paracaídas donde quieras (en el aire, cada disparo es un impulso con humo que no hace daño).</li>
@@ -197,7 +197,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <li className="ck-items">{ITEM_LIST.map((w) => <span key={w} title={`${ITEMS[w].name}: ${ITEM_DESC[w]}`}><ItemIcon w={w} size={30} /> {ITEMS[w].name}</span>)}</li>
         </ul>
       </div>
-      <div className="ck-start">
+      <div className="ck-start" data-lb="start">
         {host ? <button type="button" className="tf-btn tf-btn-primary ck-start-btn" disabled={!enough} onClick={() => onDispatch({ type: 'start' })}>¡A jugar!</button> : <p>Esperando que el anfitrión arranque…</p>}
         {!enough && <p className="ck-hint">Hacen falta al menos {MIN_PLAYERS} jugadores. Pasales el código.</p>}
       </div>

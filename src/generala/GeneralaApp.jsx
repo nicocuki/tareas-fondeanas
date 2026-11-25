@@ -82,8 +82,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   const set = (options) => onDispatch({ type: 'setOptions', options });
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Generala · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="gn-card">
+    <LobbyLayout game="generala" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Generala · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="gn-card" data-lb="players">
         <div className="gn-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="gn-players" data-players>
           {room.players.map((p) => (
@@ -103,7 +103,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <Segmented name="doble" value={room.options.doble} choices={YES_NO} disabled={!host} onChange={(v) => set({ doble: v })} />
         </OptionField>
       </LobbyOptions>
-      <div className="gn-card gn-rules">
+      <div className="gn-card gn-rules" data-lb="help">
         <h2>Cómo se juega</h2>
         <ul>
           <li>En tu turno tenés hasta <b>tres tiradas</b>. Mantené apretado sobre la mesa (o el botón, o <kbd>Espacio</kbd>) para <b>sacudir el cubilete</b> y soltá para tirar.</li>
@@ -120,7 +120,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           </tbody>
         </table>
       </div>
-      <div className="gn-start">
+      <div className="gn-start" data-lb="start">
         {host ? <button type="button" className="tf-btn tf-btn-primary gn-start-btn" data-act="start" disabled={room.players.length < MIN_PLAYERS} onClick={() => onDispatch({ type: 'start' })}>🎲 ¡A tirar!</button> : <p>Esperando que el anfitrión arranque…</p>}
       </div>
     </LobbyLayout>

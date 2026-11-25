@@ -33,7 +33,7 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
   const gameTitle = room?.isTrainingMode ? 'modo entrenamiento' : (room?.isLocalGame ? 'partida local' : 'sala de espera');
 
   return (
-    <LobbyLayout
+    <LobbyLayout game="futbol" layout="teams"
       roster={room.players}
       me={me?.id}
       onKick={(id) => onDispatch({ type: 'kick', target: id })}
@@ -49,7 +49,7 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
     >
       {/* Equipos / Modo Entrenamiento */}
       {room?.isTrainingMode ? (
-        <div style={{ marginBottom: 24 }}>
+        <div data-lb="players" style={{ marginBottom: 24 }}>
           <div style={{
             background: COLORS.panelSoft,
             border: `1px solid ${COLORS.panelBorder}`,
@@ -85,7 +85,7 @@ export default function FutbolLobby({ room, code, me, onDispatch, onLeave, onCop
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 24 }}>
+        <div data-lb="players" style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 24 }}>
           {/* Equipo Rojo */}
           <LobbyTeamCard
             team="red"

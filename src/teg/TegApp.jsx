@@ -92,7 +92,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const opts = room.options;
   const enough = room.players.length >= MIN_PLAYERS;
   return (
-    <LobbyLayout
+    <LobbyLayout game="teg"
       code={code}
       roster={room.players}
       me={me?.id}
@@ -105,7 +105,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
       onCopyInvite={onCopy}
       onLeave={onLeave}
     >
-      <div className="tg-card">
+      <div className="tg-card" data-lb="players">
         <div className="tg-card-head">
           <h2>Jugadores</h2>
           <span>{room.players.length} / {MAX_PLAYERS}</span>
@@ -131,7 +131,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         </OptionField>
       </LobbyOptions>
 
-      <div className="tg-start">
+      <div className="tg-start" data-lb="start">
         {host ? (
           <button type="button" className="tf-btn tf-btn-primary tg-start-btn" disabled={!enough} data-act="start" onClick={() => onDispatch({ type: 'start' })}>
             🌍 Empezar la guerra

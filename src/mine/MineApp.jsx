@@ -79,8 +79,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   const problem = startProblem(room);
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Cubolandia · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="mc-card">
+    <LobbyLayout game="mine" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Cubolandia · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="mc-card" data-lb="players">
         <div className="mc-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="mc-players">
           {room.players.map((p) => (
@@ -108,7 +108,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
             choices={GRACE_MINUTES.map((v) => ({ value: v, label: `${v} min` }))} />
         </OptionField>
       </LobbyOptions>
-      <div className="mc-card mc-controls">
+      <div className="mc-card mc-controls" data-lb="help">
         <h2>Cómo se juega</h2>
         <ul>
           <li>Es un mundo 2D visto de costado, hecho al azar: <b>biomas</b> (llanura, bosque, desierto, tundra y montañas), <b>cuevas</b>, océanos, lava y <b>minerales</b> (carbón, hierro, oro y diamante) cada vez más hondo.</li>
@@ -120,7 +120,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <li>De noche salen zombis; las vacas y los cerdos dan comida.</li>
         </ul>
       </div>
-      <div className="mc-start">
+      <div className="mc-start" data-lb="start">
         {host ? <button type="button" className="tf-btn tf-btn-primary mc-start-btn" disabled={Boolean(problem)} onClick={() => onDispatch({ type: 'start' })}>⛏ ¡A jugar!</button> : <p>Esperando que el anfitrión arranque…</p>}
         {problem && <p className="mc-hint">{problem}{room.players.length < MIN_PLAYERS ? ' Pasales el código.' : ''}</p>}
       </div>

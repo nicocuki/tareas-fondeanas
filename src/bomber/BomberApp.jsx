@@ -80,8 +80,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const host = room.hostId === me.id;
   const problem = startProblem(room);
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Bombardero · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="bb-card">
+    <LobbyLayout game="bomber" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Bombardero · sala de espera" subtitle={host ? 'Arrancá cuando estén todos.' : 'El anfitrión arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="bb-card" data-lb="players">
         <div className="bb-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="bb-roster">
           {room.players.map((p) => (
@@ -108,7 +108,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
             choices={[{ value: true, label: 'Sí' }, { value: false, label: 'No' }]} />
         </OptionField>
       </LobbyOptions>
-      <div className="bb-card bb-howto">
+      <div className="bb-card bb-howto" data-lb="help">
         <h2>Cómo se juega</h2>
         <ul>
           <li><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> (o las flechas) para moverte y <kbd>Espacio</kbd> para dejar una bomba donde estás parado. Explota a los 2,4 segundos en cruz: el fuego frena en la piedra y rompe el primer ladrillo.</li>
@@ -119,7 +119,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <li className="bb-skulls">Enfermedades de la calavera: {SKULL_LIST.map((k) => <span key={k} title={SKULLS[k].info}>{SKULLS[k].name}</span>)}.</li>
         </ul>
       </div>
-      <div className="bb-start">
+      <div className="bb-start" data-lb="start">
         {host ? <button type="button" className="tf-btn tf-btn-primary bb-start-btn" disabled={Boolean(problem)} onClick={() => onDispatch({ type: 'start' })}>💣 ¡A jugar!</button> : <p>Esperando que el anfitrión arranque…</p>}
         {problem && <p className="bb-hint">{problem}{room.players.length < MIN_PLAYERS ? ' Pasales el código.' : ''}</p>}
       </div>

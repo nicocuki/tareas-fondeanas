@@ -384,7 +384,7 @@ export default function CodigoSecretoApp({ onBackToMenu }) {
     const isReady = Boolean(me?.ready);
 
     return (
-      <LobbyLayout
+      <LobbyLayout game="codigo-secreto" layout="teams"
         roster={room.players}
         me={me?.id}
         onKick={(id) => dispatch({ type: 'kick', target: id })}
@@ -400,7 +400,7 @@ export default function CodigoSecretoApp({ onBackToMenu }) {
         banners={banners}
         unassignedPlayers={unassigned}
       >
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 24 }}>
+        <div data-lb="players" style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 24 }}>
           {room.teams.map((team) => (
             <LobbyTeamCard
               key={team}

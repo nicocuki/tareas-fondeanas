@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useContext } from 'react';
+import { InLobby } from './context.js';
 import { COLORS } from '../theme.js';
 
 export default function LobbyActionSection({
@@ -12,6 +13,7 @@ export default function LobbyActionSection({
   problems = [],
   style,
 }) {
+  const compact = useContext(InLobby); // dentro de la sala de espera (LobbyLayout): el botón y su estado en una fila
   const isGreen = variant === 'green';
   const isSoft = variant === 'soft' || disabled;
 
@@ -24,11 +26,11 @@ export default function LobbyActionSection({
       : '0 4px 16px var(--accent-soft)';
 
   return (
-    <div style={{ textAlign: 'center', marginTop: 16, marginBottom: 20, ...style }}>
+    <div className={compact ? 'lb-action' : undefined} style={compact ? style : { textAlign: 'center', marginTop: 16, marginBottom: 20, ...style }}>
       {buttonText && (
         <button
           type="button"
-          className="cs-btn"
+          className="cs-btn lb-action-btn"
           disabled={disabled}
           onClick={onClick}
           style={{
@@ -48,7 +50,7 @@ export default function LobbyActionSection({
       )}
 
       {(counterText || statusHint) && (
-        <div style={{ marginTop: 14 }}>
+        <div className={compact ? 'lb-action-info' : undefined} style={compact ? undefined : { marginTop: 14 }}>
           {counterText && (
             <div
               className="cs-mono"
@@ -70,7 +72,7 @@ export default function LobbyActionSection({
       )}
 
       {problems && problems.length > 0 && (
-        <div style={{ marginTop: 8 }}>
+        <div className={compact ? 'lb-action-problems' : undefined} style={compact ? undefined : { marginTop: 8 }}>
           {problems.map((p, idx) => (
             <p key={idx} style={{ color: COLORS.error, fontSize: 12.5, margin: '6px 0 0' }}>
               ⚠️ {p}

@@ -118,8 +118,8 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
   const set = (options) => onDispatch({ type: 'setOptions', options });
   const solo = room.players.length === 1;
   return (
-    <LobbyLayout code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Abismo · sala de espera" subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos. También podés jugar solo.' : 'El anfitrión elige las reglas y arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
-      <div className="ab-card">
+    <LobbyLayout game="abismo" code={code} host={host} players={room.players.length} roster={room.players} me={me?.id} onKick={(id) => onDispatch({ type: 'kick', target: id })} gameTitle="Abismo · sala de espera" subtitle={host ? 'Elegí las reglas y arrancá cuando estén todos. También podés jugar solo.' : 'El anfitrión elige las reglas y arranca la partida.'} copied={copied} onCopyInvite={onCopy} onLeave={onLeave}>
+      <div className="ab-card" data-lb="players">
         <div className="ab-card-head"><h2>Jugadores</h2><span>{room.players.length} / {MAX_PLAYERS}</span></div>
         <ul className="ab-players" data-players>
           {room.players.map((p) => (
@@ -139,7 +139,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
           <Segmented name="seconds" value={room.options.seconds} disabled={!host} onChange={(v) => set({ seconds: v })} choices={OPTION_VALUES.seconds.map((n) => ({ value: n, label: `${n} s` }))} />
         </OptionField>
       </LobbyOptions>
-      <div className="ab-card">
+      <div className="ab-card" data-lb="help">
         <div className="ab-card-head"><h2>Cómo se juega</h2></div>
         <ul className="ab-rules">
           <li>Aparece una consigna (<b>«Nombrá una fruta»</b>) y todos escriben <b>una sola respuesta</b> antes de que se acabe el tiempo.</li>
@@ -149,7 +149,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         </ul>
         <TierLegend />
       </div>
-      <div className="ab-start">
+      <div className="ab-start" data-lb="start">
         {host ? <button type="button" className="tf-btn tf-btn-primary ab-start-btn" data-act="start" onClick={() => onDispatch({ type: 'start' })}>🤿 {solo ? 'Sumergirme' : '¡A sumergirse!'}</button> : <p>Esperando que el anfitrión arranque…</p>}
       </div>
     </LobbyLayout>
