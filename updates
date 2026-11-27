@@ -1259,6 +1259,17 @@ OCULTA 1.51.1 = Avisos del admin: a todos, a una sala o a un jugador
 
 --------------------------------------------------------------------------------------------------------------------
 
-LATEST OCULTA 1.74.3 = Avisos con imagen e invitaciones
+OCULTA 1.74.3 = Avisos con imagen e invitaciones
 - Los avisos del panel de admin ahora pueden llevar una imagen (con un mensaje opcional).
 - Si el mensaje trae un link de una sala, el aviso se ve como una invitación con el juego, el código y un botón «Unirse» que te mete en esa partida.
+
+--------------------------------------------------------------------------------------------------------------------
+
+LATEST 1.75.0 = Entre Nosotros: diseño nuevo, más animado, y un mapa que no te frena
+- La nave se ve distinta: pisos con dibujo en cada sala (rombos en la cafetería, baldosas, rejillas, franjas de peligro), paredes con paneles, luces y pantallitas, mesas con bancos curvos, el botón de emergencia con su marco y su brillo, núcleo del reactor que gira, consolas que parpadean y estrellas que titilan afuera.
+- Los porotos tienen animación de verdad: caminan moviendo las piernas con rebote, respiran quietos, levantan polvo al pisar, y los fantasmas flotan con la cola ondulada. La cámara te sigue con suavidad.
+- Las muertes se ven: el cuerpo cae con rebote, salpica sangre y deja un charco que se abre. Las ventilaciones echan humo al abrirse y las tareas terminadas sueltan destellos.
+- HUD rehecho: barra verde de «Tareas completadas», lista de tareas translúcida con pestaña para esconderla, botones redondos (Usar, Reportar, Matar con reloj circular, Sabotear), aviso rojo de sabotaje arriba y botón de mapa.
+- El mapa es el plano azul del juego original (salas azules, pasillos claros, nombres, un «!» en cada tarea, vos como un poroto) y **te dejás mover con el mapa abierto**: ya no tapa ni frena el juego. El impostor sabotea tocando los íconos rojos del mapa.
+- Pantallas nuevas con animación: el reparto de roles con rayos de luz, el cartel de «Cuerpo encontrado» / «Reunión de emergencia», la expulsión con estrellas pasando, la pantalla de «Te mataron» con el tajo, y el final con confeti.
+

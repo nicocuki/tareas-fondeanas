@@ -2,6 +2,7 @@
 // los resultados de la votación y la expulsión.
 import React, { useEffect, useRef, useState } from 'react';
 import Bean from './Bean.jsx';
+import { Icon } from './Hud.jsx';
 import { CHAT_LEN, EJECT_MS, RESULTS_MS, colorOf, findPlayer, inGame } from './game.js';
 
 const seconds = (ms) => Math.max(0, Math.ceil(ms / 1000));
@@ -13,12 +14,13 @@ export function Roles({ room, me }) {
   const shown = me.impostor ? imps : inGame(room);
   return (
     <div className={`nv-screen nv-roles${me.impostor ? ' is-impostor' : ''}`}>
+      <div className="nv-roles-glow" aria-hidden="true" />
       <p className="nv-roles-hint">{me.impostor ? 'Matá a los tripulantes sin que te descubran.' : `Hay ${plural(imps.length, 'impostor', 'impostores')} entre nosotros`}</p>
       <h1>{me.impostor ? 'Impostor' : 'Tripulante'}</h1>
       <div className="nv-roles-beans">
-        {shown.map((p) => (
-          <figure key={p.id} className={p.id === me.id ? 'is-me' : ''}>
-            <Bean color={colorOf(p).body} size={p.id === me.id ? 120 : 84} />
+        {shown.map((p, i) => (
+          <figure key={p.id} className={p.id === me.id ? 'is-me' : ''} style={{ animationDelay: `${0.5 + i * 0.12}s` }}>
+            <Bean color={colorOf(p).body} size={p.id === me.id ? 130 : 90} motion="idle" />
             <figcaption style={{ color: me.impostor ? '#ff4d4d' : undefined }}>{p.name}</figcaption>
           </figure>
         ))}
@@ -58,9 +60,25 @@ export function ChatBox({ room, me, onSend, ghostOnly = false, disabled = false,
 }
 
 // ─── Reunión ─────────────────────────────────────────────────────────────────
+// El cartel de apertura: «cuerpo encontrado» o «reunión de emergencia», antes de ver la votación.
+function MeetingIntro({ body, caller }) {
+  return (
+    <div className="nv-intro" aria-hidden="true">
+      <div className="nv-intro-flash" />
+      <div className="nv-intro-card">
+        {body ? <Bean color={colorOf(body).body} size={120} dead /> : <span className="nv-intro-alarm"><Icon name="alarm" size={96} /></span>}
+        <h2>{body ? 'Cuerpo encontrado' : 'Reunión de emergencia'}</h2>
+        <p>{body ? `${body.name} apareció sin vida.` : `${caller?.name || 'Alguien'} apretó el botón.`}</p>
+      </div>
+    </div>
+  );
+}
+
 export function Meeting({ room, me, now, onDispatch }) {
   const m = room.meeting;
   const [picked, setPicked] = useState(null);
+  const [intro, setIntro] = useState(true);
+  useEffect(() => { const id = setTimeout(() => setIntro(false), 2300); return () => clearTimeout(id); }, []);
   const caller = findPlayer(room, m.caller);
   const victim = m.body ? findPlayer(room, m.body) : null;
   const voting = now >= m.votingAt;
@@ -70,6 +88,7 @@ export function Meeting({ room, me, now, onDispatch }) {
   const sameTeam = (p) => me.impostor && p.impostor;
   return (
     <div className="nv-screen nv-meeting">
+      {intro && <MeetingIntro body={victim} caller={caller} />}
       <div className="nv-meeting-board">
         <header>
           <h1>¿Quién es el impostor?</h1>
@@ -154,7 +173,9 @@ export function Ejection({ room, me, now }) {
   const shown = Math.min(line.length, Math.floor((elapsed - RESULTS_MS) / 55));
   return (
     <div className="nv-screen nv-eject">
-      {ejected && <div className="nv-eject-bean" style={{ animationDuration: `${(EJECT_MS - RESULTS_MS) / 1000}s` }}><Bean color={colorOf(ejected).body} size={110} /></div>}
+      <div className="nv-eject-stars" aria-hidden="true" />
+      <div className="nv-eject-stars is-near" aria-hidden="true" />
+      {ejected && <div className="nv-eject-bean" style={{ animationDuration: `${(EJECT_MS - RESULTS_MS) / 1000}s` }}><Bean color={colorOf(ejected).body} size={120} /></div>}
       <p className="nv-eject-text">{line.slice(0, shown)}<span className="nv-caret" /></p>
       {room.options.confirmEjects && shown >= line.length && <p className="nv-eject-sub">{e.impostorsLeft === 1 ? 'Queda 1 impostor.' : `Quedan ${e.impostorsLeft} impostores.`}</p>}
       {me.id === e.id && shown >= line.length && <p className="nv-eject-sub">Ahora sos un fantasma.</p>}

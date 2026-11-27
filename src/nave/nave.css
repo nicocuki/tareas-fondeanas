@@ -42,47 +42,84 @@
 }
 .nv-play kbd, .nv-screen kbd { background: rgba(255, 255, 255, 0.12); color: inherit; border-color: rgba(255, 255, 255, 0.25); }
 
-/* Lista de tareas y barra */
-.nv-tasks { position: absolute; top: 12px; left: 12px; width: min(330px, 46%); z-index: 3; font-size: 13px; }
-.nv-taskbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(15, 18, 26, 0.85); border: 2px solid #0b0d12; border-radius: 8px; font-weight: 700; }
-.nv-taskbar span { white-space: nowrap; }
-.nv-taskbar div { flex: 1; height: 14px; background: #2c3442; border-radius: 4px; overflow: hidden; border: 1px solid #000; }
-.nv-taskbar i { display: block; height: 100%; background: #43d16b; transition: width 0.4s; }
-.nv-tasks-toggle { margin-top: 6px; border: 0; border-radius: 6px 6px 0 0; padding: 4px 10px; background: rgba(15, 18, 26, 0.85); color: #fff; font: 700 12px Inter, sans-serif; cursor: pointer; }
-.nv-tasks ul { list-style: none; margin: 0; padding: 8px 12px; background: rgba(15, 18, 26, 0.82); border-radius: 0 8px 8px 8px; line-height: 1.6; }
-.nv-tasks li.is-done { color: #43d16b; }
-.nv-tasks li.is-half { color: #ffd23f; }
-.nv-tasks li.is-alarm { color: #ff5a4f; font-weight: 700; animation: nv-blink 0.8s steps(2) infinite; }
-.nv-tasks li.is-impostor { color: #ff5a4f; font-weight: 700; }
+/* ─── HUD de la partida ───────────────────────────────────────────────────── */
 @keyframes nv-blink { 50% { opacity: 0.45; } }
+@keyframes nv-pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: none; } }
+@keyframes nv-fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nv-slamin { 0% { opacity: 0; transform: scale(2.2); } 100% { opacity: 1; transform: none; } }
+@keyframes nv-rise { from { opacity: 0; transform: translateY(40px) scale(0.7); } to { opacity: 1; transform: none; } }
+@keyframes nv-spin { to { transform: rotate(360deg); } }
+@keyframes nv-slideup { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
 
-/* Botones de acción */
-.nv-actions { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 10px; z-index: 3; flex-wrap: wrap; justify-content: flex-end; max-width: 70%; }
-.nv-act {
-  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 86px; height: 86px;
-  border-radius: 18px; border: 3px solid #0b0d12; background: rgba(36, 42, 56, 0.92); color: #fff; font: 800 13px Inter, sans-serif; cursor: pointer;
-}
-.nv-act span { font-size: 28px; line-height: 1; }
-.nv-act kbd { position: absolute; top: 4px; right: 4px; font-size: 10px; padding: 0 4px; min-width: 0; }
-.nv-act:disabled { opacity: 0.35; cursor: default; }
-.nv-act.is-red { background: rgba(120, 22, 22, 0.92); }
-.nv-act.is-use:not(:disabled) { background: rgba(48, 92, 160, 0.95); }
-.nv-vent-moves { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); display: flex; gap: 8px; z-index: 3; }
-.nv-note { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); margin: 0; padding: 8px 14px; border-radius: 10px; background: rgba(0, 0, 0, 0.75); z-index: 4; font-weight: 600; }
-.nv-ghost-banner { position: absolute; right: 14px; top: 12px; max-width: min(300px, 40%); margin: 0; padding: 8px 12px; border-radius: 12px; background: rgba(40, 60, 110, 0.75); z-index: 2; font-size: 13px; }
+/* Barra de tareas y lista (como el original: la lista es translúcida y se esconde con la pestaña) */
+.nv-tasks { position: absolute; top: 12px; left: 12px; width: min(350px, 56%); z-index: 3; font-size: 13px; }
+.nv-taskbar { position: relative; height: 28px; border: 3px solid #0b0d12; border-radius: 7px; background: rgba(8, 10, 16, 0.82); overflow: hidden; }
+.nv-taskbar i { position: absolute; inset: 0 auto 0 0; background: repeating-linear-gradient(90deg, #3fd367 0 22px, #2fae52 22px 24px); box-shadow: 0 0 16px rgba(67, 209, 107, 0.7); transition: width 0.7s ease; }
+.nv-taskbar span { position: relative; display: block; text-align: center; font: 800 12px/22px Inter, sans-serif; letter-spacing: 0.1em; text-shadow: 0 1px 3px #000; }
+.nv-tasklist { position: relative; margin-top: 8px; transition: transform 0.35s cubic-bezier(0.3, 0.9, 0.3, 1); }
+.nv-tasks.is-closed .nv-tasklist { transform: translateX(calc(-100% + 20px)); }
+.nv-tasklist ul { list-style: none; margin: 0; padding: 10px 14px; background: rgba(110, 140, 185, 0.32); border: 2px solid rgba(255, 255, 255, 0.14); border-radius: 0 10px 10px 10px; backdrop-filter: blur(3px); line-height: 1.55; text-shadow: 0 1px 2px #000; font-weight: 600; }
+.nv-tasklist li small { opacity: 0.85; font-weight: 600; }
+.nv-tasklist li.is-done { color: #5be07f; text-decoration: line-through; text-decoration-color: rgba(91, 224, 127, 0.6); }
+.nv-tasklist li.is-half { color: #ffd23f; }
+.nv-tasklist li.is-alarm { color: #ff6a5f; font-weight: 800; animation: nv-blink 0.8s steps(2) infinite; }
+.nv-tasklist li.is-impostor { color: #ff5a4f; font-weight: 800; }
+.nv-tasktab { position: absolute; right: -30px; top: 0; width: 30px; height: 84px; border: 0; border-radius: 0 10px 10px 0; background: rgba(110, 140, 185, 0.5); backdrop-filter: blur(3px); color: #fff; cursor: pointer; font: 800 13px Inter, sans-serif; letter-spacing: 0.06em; }
+.nv-tasktab span { writing-mode: vertical-rl; display: block; margin: 0 auto; }
+.nv-tasktab:hover { background: rgba(130, 165, 215, 0.65); }
+
+/* Aviso de sabotaje */
+.nv-sab { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 24px; max-width: min(520px, 88%); text-align: center; border: 3px solid #0b0d12; border-radius: 12px; background: rgba(146, 14, 14, 0.92); box-shadow: 0 0 30px rgba(255, 40, 30, 0.55); animation: nv-sabpulse 0.9s ease-in-out infinite; }
+.nv-sab b { font: 900 22px 'Bricolage Grotesque', Inter, sans-serif; letter-spacing: 0.1em; }
+.nv-sab span { font-size: 13px; font-weight: 600; }
+@keyframes nv-sabpulse { 50% { box-shadow: 0 0 8px rgba(255, 40, 30, 0.2); background: rgba(100, 10, 10, 0.92); } }
+
+/* Botones redondos de acción (abajo a la derecha) */
+.nv-pad { position: absolute; right: 22px; bottom: 20px; z-index: 3; display: grid; grid-template-columns: auto auto; gap: 8px 16px; align-items: end; justify-items: center; }
+.nv-pad .is-sabo { grid-column: 1; grid-row: 1; }
+.nv-pad .is-report { grid-column: 2; grid-row: 1; }
+.nv-pad .is-kill { grid-column: 1; grid-row: 2; }
+.nv-pad .is-use { grid-column: 2; grid-row: 2; }
+.nv-round { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: #fff; font: 800 12px Inter, sans-serif; cursor: pointer; text-shadow: 0 1px 3px #000; transition: transform 0.12s; }
+.nv-round:not(:disabled):hover { transform: translateY(-2px) scale(1.04); }
+.nv-round:not(:disabled):active { transform: scale(0.94); }
+.nv-round-face { position: relative; display: grid; place-items: center; width: 78px; height: 78px; border: 4px solid #0b0d12; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #9aa6bd, #475066 70%); box-shadow: 0 5px 0 #0b0d12, inset 0 -6px 10px rgba(0, 0, 0, 0.35); overflow: hidden; }
+.nv-round.is-big .nv-round-face { width: 108px; height: 108px; }
+.nv-round.is-kill .nv-round-face, .nv-round.is-sabo .nv-round-face { background: radial-gradient(circle at 35% 28%, #ff7a6e, #b3201a 70%); }
+.nv-round.is-use .nv-round-face { background: radial-gradient(circle at 35% 28%, #8fbdff, #2c5dc4 70%); }
+.nv-round.is-report .nv-round-face { background: radial-gradient(circle at 35% 28%, #ffd870, #d98412 70%); }
+.nv-round:disabled { cursor: default; }
+.nv-round:disabled .nv-round-face { filter: grayscale(0.85) brightness(0.55); }
+.nv-round:disabled .nv-round-label { opacity: 0.55; }
+.nv-round.is-ready .nv-round-face { animation: nv-ready 1.1s ease-in-out infinite; }
+@keyframes nv-ready { 50% { box-shadow: 0 5px 0 #0b0d12, inset 0 -6px 10px rgba(0, 0, 0, 0.35), 0 0 0 7px rgba(255, 255, 255, 0.28), 0 0 24px rgba(255, 255, 255, 0.5); } }
+.nv-round.is-cooling .nv-round-face::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(0, 0, 0, 0.62) var(--p, 360deg), transparent 0); }
+.nv-round-num { position: absolute; z-index: 1; font: 900 28px 'Bricolage Grotesque', Inter, sans-serif; text-shadow: 0 2px 4px #000; }
+.nv-round-label { white-space: nowrap; }
+.nv-round kbd { position: absolute; top: -2px; right: -4px; font-size: 10px; padding: 0 5px; min-width: 0; background: #0b0d12; border-color: rgba(255, 255, 255, 0.4); }
+.nv-topbtns { position: absolute; top: 12px; right: 14px; z-index: 4; display: flex; gap: 8px; }
+.nv-roundmini { display: grid; place-items: center; width: 52px; height: 52px; border: 3px solid #0b0d12; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #8d98ae, #3f485c 75%); color: #fff; cursor: pointer; box-shadow: 0 3px 0 #0b0d12; }
+.nv-roundmini:hover, .nv-roundmini.is-on { background: radial-gradient(circle at 35% 28%, #9fc4ff, #3563c9 75%); }
+
+.nv-vent-moves { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); display: flex; gap: 10px; z-index: 3; }
+.nv-ventbtn { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border: 3px solid #0b0d12; border-radius: 12px; background: linear-gradient(180deg, #5a6376, #3a4252); color: #fff; font: 800 14px Inter, sans-serif; cursor: pointer; box-shadow: 0 4px 0 #0b0d12; }
+.nv-ventbtn:hover { background: linear-gradient(180deg, #7480a0, #4a5470); }
+.nv-note { position: absolute; left: 50%; top: 88px; transform: translateX(-50%); margin: 0; padding: 8px 16px; border: 2px solid rgba(255, 255, 255, 0.18); border-radius: 999px; background: rgba(8, 10, 18, 0.85); z-index: 4; font-weight: 700; animation: nv-pop 0.2s; }
+.nv-ghost-banner { position: absolute; right: 14px; top: 76px; display: flex; align-items: center; gap: 8px; max-width: min(320px, 40%); margin: 0; padding: 8px 12px; border-radius: 12px; background: rgba(60, 86, 150, 0.7); z-index: 2; font-size: 13px; font-weight: 600; }
 .nv-ghost-chat { position: absolute; left: 12px; bottom: 12px; width: min(320px, 40%); height: 230px; z-index: 3; }
-.nv-alarm { position: absolute; inset: 0; pointer-events: none; z-index: 2; box-shadow: inset 0 0 120px rgba(255, 30, 30, 0.6); animation: nv-alarm 1s ease-in-out infinite; }
+.nv-alarm { position: absolute; inset: 0; pointer-events: none; z-index: 2; box-shadow: inset 0 0 140px rgba(255, 30, 30, 0.65); animation: nv-alarm 1s ease-in-out infinite; }
 @keyframes nv-alarm { 50% { box-shadow: inset 0 0 40px rgba(255, 30, 30, 0.25); } }
+.nv-dimmer { position: absolute; inset: 0; pointer-events: none; z-index: 1; background: radial-gradient(ellipse at center, transparent 35%, rgba(0, 8, 30, 0.5)); }
 
-/* Ventanas (tareas, luces, reactor, mapa) */
-.nv-overlay { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: rgba(0, 0, 0, 0.45); }
-.nv-window { width: min(560px, 94%); background: #1c212b; border: 3px solid #0b0d12; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); overflow: hidden; }
-.nv-window.is-map { width: min(980px, 96%); }
-.nv-window header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #121620; font-size: 15px; }
-.nv-close { border: 0; background: #b3261e; color: #fff; width: 32px; height: 32px; border-radius: 8px; font-size: 16px; cursor: pointer; }
+/* Ventanas (tareas, luces, reactor): un panel de consola */
+.nv-overlay { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: rgba(2, 6, 16, 0.55); backdrop-filter: blur(3px); animation: nv-fadein 0.2s; }
+.nv-window { width: min(580px, 94%); background: linear-gradient(180deg, #27344f, #172033); border: 3px solid #0b0d12; border-radius: 18px; box-shadow: 0 0 0 2px rgba(120, 170, 255, 0.22), 0 24px 70px rgba(0, 0, 0, 0.65); overflow: hidden; animation: nv-pop 0.25s cubic-bezier(0.2, 1.3, 0.4, 1); }
+.nv-window header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: linear-gradient(180deg, #38496a, #232e46); border-bottom: 3px solid #0b0d12; font-size: 15px; text-shadow: 0 1px 2px #000; }
+.nv-close { display: grid; place-items: center; width: 34px; height: 34px; border: 3px solid #0b0d12; border-radius: 50%; background: #d83a2e; color: #fff; cursor: pointer; padding: 0; }
+.nv-close:hover { background: #f1493c; }
 .nv-window > :not(header) { margin: 14px; }
 .nv-window .nv-hint { color: #aab2c0; text-align: center; }
-.nv-big-btn { border: 3px solid #0b0d12; border-radius: 12px; padding: 12px 22px; background: #2f6fd1; color: #fff; font: 800 16px Inter, sans-serif; cursor: pointer; touch-action: none; }
+.nv-big-btn { border: 3px solid #0b0d12; border-radius: 12px; padding: 12px 22px; background: #2f6fd1; color: #fff; font: 800 16px Inter, sans-serif; cursor: pointer; touch-action: none; box-shadow: 0 4px 0 #0b0d12; }
 .nv-big-btn:disabled { opacity: 0.35; cursor: default; }
 
 .nv-mg-svg { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; touch-action: none; user-select: none; }
@@ -147,29 +184,55 @@
 .nv-reactor-clock { color: #ff5a4f; font: 800 22px Inter, sans-serif; }
 .nv-hand { width: 160px; height: 160px; border-radius: 20px; border: 4px solid #0b0d12; background: #33405a; font-size: 80px; cursor: pointer; touch-action: none; }
 .nv-hand.is-on { background: #2f7d4a; box-shadow: 0 0 30px #43d16b; }
-.nv-map { position: relative; }
-.nv-map canvas { display: block; width: 100%; aspect-ratio: 126 / 75; background: #0b1424; border-radius: 10px; }
-.nv-sabotages { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
-.nv-sabotages .tf-btn { background: #7a1712; color: #fff; }
-.nv-sabotages span { color: #aab2c0; font-size: 13px; }
+
+/* El mapa de la nave: plano azul encima del juego. No frena nada: solo los botones atrapan el mouse. */
+.nv-mapwrap { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; container-type: size; pointer-events: none; background: radial-gradient(ellipse at center, rgba(10, 22, 80, 0.38), rgba(2, 4, 22, 0.74)); animation: nv-fadein 0.2s; }
+.nv-mapbox { position: relative; width: min(92cqw, 84cqh * 1.68); aspect-ratio: 126 / 75; filter: drop-shadow(0 0 22px rgba(90, 120, 255, 0.5)); animation: nv-pop 0.25s cubic-bezier(0.2, 1.3, 0.4, 1); }
+.nv-mapbox canvas { display: block; width: 100%; height: 100%; }
+.nv-mapclose { position: absolute; top: 14px; left: 14px; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 3px solid #fff; border-radius: 50%; background: rgba(8, 16, 70, 0.85); color: #fff; cursor: pointer; pointer-events: auto; }
+.nv-mapclose:hover { background: #d83a2e; }
+.nv-maphint { position: absolute; bottom: 16px; left: 0; right: 0; margin: 0; text-align: center; color: #cfe0ff; font-weight: 700; font-size: 14px; text-shadow: 0 1px 4px #000; }
+.nv-sabicon { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; width: 54px; height: 54px; padding: 0; border: 3px solid #fff; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #ff7a6e, #b3201a 70%); color: #fff; cursor: pointer; pointer-events: auto; box-shadow: 0 0 18px rgba(255, 60, 50, 0.8); animation: nv-sabicon 1.2s ease-in-out infinite; }
+.nv-sabicon:hover:not(:disabled) { filter: brightness(1.2); }
+.nv-sabicon:disabled { background: #4b5160; box-shadow: none; animation: none; cursor: default; }
+.nv-sabicon b { position: absolute; font: 900 20px 'Bricolage Grotesque', Inter, sans-serif; text-shadow: 0 2px 4px #000; }
+@keyframes nv-sabicon { 50% { transform: translate(-50%, -50%) scale(1.1); } }
 
 /* Te mataron */
-.nv-killed { position: absolute; inset: 0; z-index: 8; display: grid; place-content: center; text-align: center; background: rgba(120, 0, 0, 0.55); animation: nv-fade 2.6s forwards; }
-.nv-killed-scene { display: flex; align-items: center; gap: 10px; font-size: 60px; }
-.nv-killed p { font: 900 42px 'Bricolage Grotesque', Inter, sans-serif; margin: 10px 0 0; }
+.nv-killed { position: absolute; inset: 0; z-index: 8; display: grid; place-content: center; justify-items: center; text-align: center; background: radial-gradient(ellipse at center, rgba(150, 0, 0, 0.55), rgba(30, 0, 0, 0.93)); animation: nv-fade 2.6s forwards; }
+.nv-killed-scene { position: relative; display: flex; align-items: flex-end; }
+.nv-slash { position: absolute; left: 22%; top: 18%; width: 58%; height: 7px; border-radius: 4px; background: #fff; box-shadow: 0 0 20px #ff3030, 0 0 40px #ff3030; transform: rotate(-32deg) scaleX(0); transform-origin: left center; animation: nv-slash 0.3s 0.15s ease-out forwards; }
+@keyframes nv-slash { to { transform: rotate(-32deg) scaleX(1); } }
+.nv-killed p { margin: 6px 0 0; font: 900 clamp(40px, 8vw, 72px) 'Bricolage Grotesque', Inter, sans-serif; color: #ff4a3d; text-shadow: 0 4px 0 #0b0d12, 0 0 30px rgba(255, 60, 40, 0.6); animation: nv-slamin 0.5s 0.1s both cubic-bezier(0.2, 1.4, 0.4, 1); }
+.nv-killed small { color: #ffd1cc; font-size: 16px; font-weight: 600; }
 @keyframes nv-fade { 0% { opacity: 0; } 10%, 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* El poroto (SVG): camina en el lugar o respira */
+.bean { display: block; }
+.bean-leg { transform-box: fill-box; transform-origin: 50% 0; }
+.bean-walk .bean-leg-a { animation: bean-leg 0.42s ease-in-out infinite alternate; }
+.bean-walk .bean-leg-b { animation: bean-leg 0.42s ease-in-out infinite alternate-reverse; }
+.bean-walk .bean-body { animation: bean-bob 0.21s ease-in-out infinite alternate; }
+.bean-idle .bean-body { transform-box: fill-box; transform-origin: 50% 100%; animation: bean-breathe 2.4s ease-in-out infinite; }
+@keyframes bean-leg { from { transform: translateX(-0.11px) scaleY(1); } to { transform: translateX(0.11px) scaleY(0.7); } }
+@keyframes bean-bob { to { transform: translateY(-0.06px); } }
+@keyframes bean-breathe { 50% { transform: scaleY(1.035) scaleX(0.985); } }
+@media (prefers-reduced-motion: reduce) { .bean-walk *, .bean-idle * { animation: none !important; } }
 
 /* ─── Pantallas que tapan la nave ─────────────────────────────────────────── */
 .nv-screen { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; color: #f1f3f8; background: radial-gradient(ellipse at center, #121826 0%, #04050a 80%); overflow: auto; }
-.nv-roles h1 { margin: 0; font: 900 clamp(48px, 9vw, 96px) 'Bricolage Grotesque', Inter, sans-serif; color: #7ec8ff; text-shadow: 0 0 30px rgba(126, 200, 255, 0.5); }
-.nv-roles.is-impostor h1 { color: #ff3b30; text-shadow: 0 0 30px rgba(255, 59, 48, 0.5); }
-.nv-roles-hint { margin: 0 0 6px; color: #c6cbd6; font-size: 18px; }
-.nv-roles-beans { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: flex-end; margin: 26px 0; }
-.nv-roles-beans figure { margin: 0; text-align: center; }
-.nv-roles-beans figcaption { margin-top: 6px; font-weight: 700; }
+.nv-roles { background: radial-gradient(ellipse at center, #1a2c4e 0%, #04050a 75%); overflow: hidden; --tint: 126, 200, 255; }
+.nv-roles.is-impostor { background: radial-gradient(ellipse at center, #4a0a0d 0%, #060205 75%); --tint: 255, 59, 48; }
+.nv-roles-glow { position: absolute; left: -50%; top: -50%; width: 200%; height: 200%; pointer-events: none; background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(var(--tint), 0.13) 0 7deg, transparent 7deg 18deg); -webkit-mask: radial-gradient(circle at 50% 50%, #000, transparent 38%); mask: radial-gradient(circle at 50% 50%, #000, transparent 38%); animation: nv-spin 40s linear infinite; }
+.nv-roles h1 { position: relative; margin: 0; font: 900 clamp(48px, 9vw, 96px) 'Bricolage Grotesque', Inter, sans-serif; color: rgb(var(--tint)); text-shadow: 0 4px 0 #0b0d12, 0 0 36px rgba(var(--tint), 0.6); animation: nv-slamin 0.7s 0.1s both cubic-bezier(0.2, 1.4, 0.4, 1); }
+.nv-roles-hint { position: relative; margin: 0 0 6px; color: #c6cbd6; font-size: 18px; animation: nv-fadein 0.6s both; }
+.nv-roles-beans { position: relative; display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: flex-end; margin: 26px 0; }
+.nv-roles-beans figure { margin: 0; text-align: center; animation: nv-rise 0.6s both cubic-bezier(0.2, 1.3, 0.4, 1); }
+.nv-roles-beans figure.is-me .bean { filter: drop-shadow(0 0 16px rgba(var(--tint), 0.8)); }
+.nv-roles-beans figcaption { margin-top: 6px; font-weight: 700; text-shadow: 0 2px 4px #000; }
 
 .nv-meeting { flex-direction: row; align-items: stretch; gap: 16px; background: rgba(4, 5, 10, 0.92); }
-.nv-meeting-board { flex: 1 1 640px; max-width: 760px; display: flex; flex-direction: column; background: #c9d4e3; color: #11151d; border: 4px solid #0b0d12; border-radius: 18px; padding: 16px; overflow: auto; }
+.nv-meeting-board { animation: nv-slideup 0.45s cubic-bezier(0.2, 1.1, 0.3, 1) both; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), inset 0 0 0 3px rgba(255, 255, 255, 0.35); flex: 1 1 640px; max-width: 760px; display: flex; flex-direction: column; background: #c9d4e3; color: #11151d; border: 4px solid #0b0d12; border-radius: 18px; padding: 16px; overflow: auto; }
 .nv-meeting-board header { text-align: center; }
 .nv-meeting-board h1 { margin: 0; font: 900 30px 'Bricolage Grotesque', Inter, sans-serif; }
 .nv-meeting-board header p { margin: 4px 0; }
@@ -177,7 +240,9 @@
 .nv-vote-grid { list-style: none; margin: 14px 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .nv-vote-grid li { position: relative; }
 .nv-vote-grid li > button, .nv-vote-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-radius: 12px; border: 3px solid #0b0d12; background: #eef2f7; color: inherit; font: inherit; text-align: left; }
+.nv-vote-grid li > button { box-shadow: 0 3px 0 #0b0d12; transition: transform 0.12s, background 0.12s; }
 .nv-vote-grid li > button:not(:disabled) { cursor: pointer; }
+.nv-vote-grid li > button:not(:disabled):hover { transform: translateY(-2px); }
 .nv-vote-grid li > button:not(:disabled):hover { background: #ffffff; }
 .nv-vote-grid li.is-dead > button, .nv-vote-grid li.is-dead .nv-vote-row { background: #8f99a8; opacity: 0.7; }
 .nv-vote-grid li.is-picked > button, .nv-vote-grid li.is-picked .nv-vote-row { outline: 3px solid #2f6fd1; }
@@ -195,7 +260,7 @@
 .nv-dots { display: flex; flex-wrap: wrap; gap: 4px; }
 .nv-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #0b0d12; }
 
-.nv-chat { flex: 0 1 340px; min-width: 260px; display: flex; flex-direction: column; background: #f4f6fa; color: #11151d; border: 4px solid #0b0d12; border-radius: 18px; overflow: hidden; height: 100%; }
+.nv-chat { animation: nv-slideup 0.45s 0.08s cubic-bezier(0.2, 1.1, 0.3, 1) both; flex: 0 1 340px; min-width: 260px; display: flex; flex-direction: column; background: #f4f6fa; color: #11151d; border: 4px solid #0b0d12; border-radius: 18px; overflow: hidden; height: 100%; }
 .nv-chat.is-ghost { background: rgba(20, 26, 40, 0.92); color: #f1f3f8; border-color: rgba(140, 170, 255, 0.4); border-radius: 12px; }
 .nv-chat ol { list-style: none; margin: 0; padding: 10px; flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
 .nv-chat li { display: flex; gap: 8px; align-items: flex-start; }
@@ -209,21 +274,43 @@
 .nv-chat.is-ghost form { border-color: rgba(140, 170, 255, 0.3); }
 .nv-chat form .tf-input { flex: 1; min-width: 0; }
 
-.nv-eject { overflow: hidden; background: #000 radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.15) 1px, transparent 2px) 0 0 / 60px 60px; }
-.nv-eject-bean { position: absolute; top: 30%; left: -140px; animation: nv-float linear forwards; }
+.nv-eject { overflow: hidden; background: #02030a; }
+/* Estrellas: capas con tamaños que no encajan entre sí, así no se nota la repetición. */
+.nv-eject-stars { position: absolute; inset: 0; pointer-events: none; opacity: 0.75; background-image: radial-gradient(circle at 20% 30%, #fff 0 1px, transparent 1.6px), radial-gradient(circle at 70% 60%, #cfe3ff 0 1.4px, transparent 2px), radial-gradient(circle at 45% 85%, #fff 0 1px, transparent 1.6px), radial-gradient(circle at 85% 15%, #fff 0 1.2px, transparent 1.8px), radial-gradient(circle at 10% 70%, #ffe9c4 0 1px, transparent 1.6px); background-size: 137px 131px, 211px 199px, 173px 181px, 251px 233px, 97px 103px; animation: nv-stars 7s linear infinite; }
+.nv-eject-stars.is-near { opacity: 1; background-size: 277px 263px, 331px 317px, 233px 241px, 389px 367px, 191px 203px; animation-duration: 3s; }
+@keyframes nv-stars { to { background-position: -1100px 0, -1100px 0, -1100px 0, -1100px 0, -1100px 0; } }
+.nv-eject-bean { position: absolute; top: 30%; left: -140px; animation: nv-float linear forwards; filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.35)); }
 @keyframes nv-float { to { left: calc(100% + 140px); transform: rotate(720deg); } }
-.nv-eject-text { font: 800 clamp(22px, 3.4vw, 36px) Inter, sans-serif; margin: 120px 0 0; text-align: center; min-height: 1.4em; }
-.nv-eject-sub { color: #c6cbd6; font-size: 18px; margin: 10px 0 0; }
+.nv-eject-text { position: relative; font: 800 clamp(22px, 3.4vw, 36px) Inter, sans-serif; margin: 120px 0 0; text-align: center; min-height: 1.4em; text-shadow: 0 2px 6px #000; }
+.nv-eject-sub { position: relative; color: #c6cbd6; font-size: 18px; margin: 10px 0 0; }
 .nv-caret { display: inline-block; width: 3px; height: 1em; background: #fff; margin-left: 4px; vertical-align: -0.1em; animation: nv-blink 0.8s steps(2) infinite; }
 
-.nv-final { position: relative; min-height: calc(100dvh - 72px); }
-.nv-final h1 { margin: 0; font: 900 clamp(48px, 9vw, 96px) 'Bricolage Grotesque', Inter, sans-serif; }
+.nv-final { position: relative; min-height: calc(100dvh - 72px); overflow: hidden; --tint: #16355f; background: radial-gradient(ellipse at 50% 30%, var(--tint), #04050a 72%); }
+.nv-final.is-impostor { --tint: #5a0c0e; }
+.nv-final.is-lost { --tint: #232733; }
+.nv-final h1 { position: relative; margin: 0; font: 900 clamp(48px, 9vw, 96px) 'Bricolage Grotesque', Inter, sans-serif; text-shadow: 0 5px 0 #0b0d12; animation: nv-slamin 0.7s both cubic-bezier(0.2, 1.4, 0.4, 1); }
 .nv-final.is-crew h1 { color: #7ec8ff; }
 .nv-final.is-impostor h1 { color: #ff3b30; }
-.nv-final-reason { font-size: 20px; margin: 6px 0 0; }
-.nv-final-imps { color: #c6cbd6; }
-.nv-final-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+.nv-final.is-lost h1 { color: #9aa3b5; }
+.nv-final-reason { position: relative; font-size: 20px; margin: 6px 0 0; }
+.nv-final-imps { position: relative; color: #c6cbd6; }
+.nv-final .nv-roles-beans figure { animation: nv-rise 0.6s both cubic-bezier(0.2, 1.3, 0.4, 1); }
+.nv-final-actions { position: relative; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
 .nv-final .nv-hint { color: #c6cbd6; }
+.nv-confetti { position: absolute; inset: 0; pointer-events: none; }
+.nv-final.is-lost .nv-confetti { display: none; }
+.nv-confetti i { position: absolute; top: -24px; width: 10px; height: 16px; border-radius: 2px; animation: nv-confetti 3.6s linear infinite; }
+@keyframes nv-confetti { to { transform: translateY(110vh) rotate(720deg); } }
+
+.nv-intro { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(2, 4, 10, 0.94); animation: nv-introfade 2.3s forwards; }
+.nv-intro-flash { position: absolute; inset: 0; background: #ff2d2d; opacity: 0; animation: nv-flash 0.6s ease-out; }
+.nv-intro-card { position: relative; text-align: center; color: #fff; animation: nv-slamin 0.55s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.nv-intro-card h2 { margin: 10px 0 4px; font: 900 clamp(34px, 7vw, 72px) 'Bricolage Grotesque', Inter, sans-serif; color: #ff4a3d; text-shadow: 0 4px 0 #0b0d12, 0 0 34px rgba(255, 60, 40, 0.55); }
+.nv-intro-card p { margin: 0; font-size: 18px; color: #d3d8e3; }
+.nv-intro-alarm { display: inline-grid; color: #ff4a3d; animation: nv-sabpulse 0.5s ease-in-out infinite; }
+@keyframes nv-flash { 0% { opacity: 0.85; } 100% { opacity: 0; } }
+@keyframes nv-introfade { 0%, 82% { opacity: 1; } 100% { opacity: 0; } }
+
 
 @media (max-width: 860px) {
   .nv-meeting { flex-direction: column; }

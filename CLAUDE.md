@@ -191,7 +191,7 @@ por una versión anterior siga abriéndose sin romper.
 | `src/mecha/` | La Mecha: reducer (`game.js`), palabras y diccionario (`words.js`, `dictionary.js`), pantallas |
 | `src/meme/` | Armá el Meme: reducer (`game.js`), catálogo de plantillas (`catalog.js`), el meme con textos (`MemeView.jsx`), pantallas |
 | `src/tiros/` | A los Tiros: reducer de la sala (`game.js`), cartas (`cards.js`), mapas (`maps.js`), formas y choques (`shapes.js`), física (`sim.js`), cajas sueltas (`boxes.js`), dibujo (`render.js`), sprites de los efectos (`sprites/`, `sprites.js`), pelea en tiempo real (`TirosGame.jsx`) |
-| `src/nave/` | Entre Nosotros (Among Us): mapa (`map.js`), tareas (`tasks.js`), reducer (`game.js`), movimiento y vista (`sim.js`), dibujo (`render.js`), la nave en vivo (`NaveGame.jsx`), minijuegos, reunión (ver *Entre Nosotros*) |
+| `src/nave/` | Entre Nosotros (Among Us): mapa (`map.js`), tareas (`tasks.js`), reducer (`game.js`), movimiento y vista (`sim.js`), dibujo (`render.js`), la nave en vivo (`NaveGame.jsx`), HUD y mapa (`Hud.jsx`), poroto en SVG (`Bean.jsx`), minijuegos, reunión (ver *Entre Nosotros*) |
 | `src/arena/` | Arena Royale: cartas (`cards.js`), simulación determinista con rollback (`sim.js`), reducer de la sala (`game.js`), dibujo de cada carta (`sprites.js`), la arena y las torres (`render.js`), piezas de interfaz (`Art.jsx`), pantallas (ver *Arena Royale*) |
 | `src/mine/` | Cubolandia (Minecraft 2D): bloques, ítems y recetas (`blocks.js`), mundo por semilla (`world.js`), reducer (`game.js`), física, vida, bichos y luz (`sim.js`), dibujo (`render.js`), la partida en vivo (`MineGame.jsx`) (ver *Cubolandia*) |
 | `src/pixel/` | Pixel Royale: mapa y tormenta (`map.js`), armas, botín y balas (`sim.js`), reducer (`game.js`), dibujo pixelado (`render.js`), la partida en vivo (`PixelGame.jsx`) (ver *Pixel Royale*) |
@@ -787,9 +787,11 @@ ventilaciones, sabotajes, fantasmas y visión limitada; solo compu (teclado). De
 - El peor caso de sala (10 jugadores con todas las tareas, chat lleno de comillas) queda por debajo de
   26.000 caracteres: hay un test. El chat tiene `MAX_CHAT` y `CHAT_BUDGET`.
 - `window.__nave` (el estado de la pantalla: posición propia, demás, ventilación) y `data-act`,
-  `data-vote`, `data-color`, `data-chat-list` existen para manejar el juego desde un navegador
+  `data-vote`, `data-color`, `data-chat-list`, `data-sabotage` y `data-nave-map` existen para manejar el juego desde un navegador
   automatizado. **Con el panel del navegador oculto no hay cuadros de `requestAnimationFrame`**: el
   juego sigue (`everyFrame`), pero el canvas no se redibuja; para capturas, mostrá el panel.
+- **Diseño y HUD (1.75.0, pedido de Nico: «el diseño es muy pobre, sin animaciones»)**: `render.js` dibuja todo con canvas y sin imágenes. Cada sala tiene su look en `LOOKS` (piso `diamond`, `checker` o `plate`, color de luces y franjas de peligro); los pasillos son rejillas. Un tema de sala nuevo es una entrada ahí. El poroto de `drawCrewmate` (canvas) y el de `Bean.jsx` (SVG) tienen que verse igual: si cambiás uno, cambiá el otro; en el SVG, `motion="walk"` o `"idle"` anima con CSS (`.bean-*` en `nave.css`). Las partículas (polvo, sangre, humo de ventilación, destellos) son solo dibujo: `s.fx` en `NaveGame.jsx`, `stepParticles` / `drawParticles` en `render.js`; los cuerpos que ya estaban al cargar la página no hacen la animación de caída (`s.bodySeen`).
+- **El mapa no es una ventana** (`ShipMap` en `Hud.jsx`, estado `mapOpen` aparte de `overlay`): se ve encima de la nave y **no frena el movimiento**; solo las ventanas de tareas, luces y reactor (`overlay`) frenan. Tab o M lo abren; Escape cierra primero la ventana y después el mapa. Se dibuja con `drawShipMap` (plano azul como el original) y los íconos de sabotaje del impostor son botones HTML puestos en porcentaje (`x / W`, `y / H`), así siguen al canvas. Los botones de acción son redondos (`ActionPad`) y el reloj de matar es un `conic-gradient`.
 - Los dibujos son nuestros (el poroto con visor de `render.js` y `Bean.jsx`), pero el juego, el mapa y
   los nombres de las tareas copian a Among Us (de Innersloth): entre amigos está bien; si llegara un
   pedido de bajarlo, se saca la entrada de `games.js`.

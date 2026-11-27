@@ -109,7 +109,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         <ul className="nv-crew">
           {room.players.map((p) => (
             <li key={p.id} className={p.id === me.id ? 'is-me' : ''}>
-              <Bean color={colorOf(p).body} size={40} />
+              <Bean color={colorOf(p).body} size={40} motion="idle" />
               <strong>{p.name}</strong>
               <small>{p.id === room.hostId ? '👑 anfitrión' : p.id === me.id ? 'vos' : ''}</small>
             </li>
@@ -121,7 +121,7 @@ function Lobby({ room, me, code, onDispatch, onLeave, onCopy, copied }) {
         <div className="nv-colors">
           {COLORS.map((c, i) => (
             <button key={c.name} type="button" className={me.color === i ? 'is-selected' : ''} disabled={taken.has(i)} onClick={() => onDispatch({ type: 'color', color: i })} title={c.name} aria-label={c.name} data-color={i}>
-              <Bean color={c.body} size={38} />
+              <Bean color={c.body} size={38} motion={me.color === i ? 'walk' : ''} />
             </button>
           ))}
         </div>
@@ -165,13 +165,14 @@ function Final({ room, me, onDispatch, onLeave }) {
   const won = me.inGame && crewWon !== me.impostor;
   const winners = inGame(room).filter((p) => p.impostor !== crewWon);
   return (
-    <div className={`nv-screen nv-final${crewWon ? ' is-crew' : ' is-impostor'}`}>
+    <div className={`nv-screen nv-final${crewWon ? ' is-crew' : ' is-impostor'}${me.inGame && !won ? ' is-lost' : ''}`}>
+      <div className="nv-confetti" aria-hidden="true">{Array.from({ length: 28 }, (_, i) => <i key={i} style={{ left: `${(i * 37) % 100}%`, animationDelay: `${(i % 9) * 0.25}s`, background: ['#ffd23f', '#7ec8ff', '#ff5d8f', '#6bff9e'][i % 4] }} />)}</div>
       <h1>{me.inGame ? (won ? 'Victoria' : 'Derrota') : crewWon ? 'Ganaron los tripulantes' : 'Ganaron los impostores'}</h1>
       <p className="nv-final-reason">{REASONS[room.reason] || ''}</p>
       <div className="nv-roles-beans">
-        {winners.map((p) => (
-          <figure key={p.id}>
-            <Bean color={colorOf(p).body} size={84} ghost={!p.alive} />
+        {winners.map((p, i) => (
+          <figure key={p.id} style={{ animationDelay: `${0.3 + i * 0.1}s` }}>
+            <Bean color={colorOf(p).body} size={96} ghost={!p.alive} motion="idle" />
             <figcaption>{p.name}</figcaption>
           </figure>
         ))}
